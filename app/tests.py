@@ -7,6 +7,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
 from .models import FeedingLog, FeedingSchedule, PendingCommand, PetProfile
+from django.utils import timezone
 
 class BackendAPITests(TestCase):
     def setUp(self):
@@ -65,3 +66,28 @@ class BackendAPITests(TestCase):
         # Delete
         resp_del = self.client.delete(f'/schedules/{sch_id}/')
         self.assertIn(resp_del.status_code, (status.HTTP_204_NO_CONTENT, status.HTTP_200_OK))
+
+    def test_check_schedule_respects_days_of_week(self):
+        # Disable any existing schedules from setUp
+        FeedingSchedule.objects.all().update(enabled=False)
+        # Determine current local time rounded to minute
+        now_local = timezone.localtime(timezone.now())
+        hhmm = now_local.strftime("%H:%M")
+        today_abbr = now_local.strftime("%a")
+        # Create a schedule at current time but exclude today's day
+        days = [d for d in ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] if d != today_abbr]
+        FeedingSchedule.objects.create(time=hhmm, portion_size=10.0, enabled=True, days_of_week=days)
+        # Call check_schedule
+        resp = self.client.get(reverse('check_schedule'))
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertFalse(resp.data.get("should_feed"))
+        # Ensure schedules list includes our days_of_week field
+        self.assertTrue(any(isinstance(s.get("days_of_week"), list) for s in resp.data.get("schedules", [])))
+
+    def test_schedule_time_fallback_on_bad_input(self):
+        # Invalid time should fallback to 08:00 per serializer policy
+        payload = {"time": "not-a-time", "portion_size": 10, "enabled": True}
+        resp = self.client.post('/schedules/', payload, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        # Representation is 24-hour HH:MM:SS
+        self.assertEqual(resp.data.get("time"), "08:00:00")

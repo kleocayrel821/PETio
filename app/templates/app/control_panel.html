@@ -233,16 +233,56 @@
         <div class="card">
             <div class="card-header">Schedule Feeding</div>
             <div class="card-body">
-                <form id="addScheduleForm" class="row g-3 mb-4">
-                    <div class="col-md-4">
+                <form id="addScheduleForm" class="row g-3 mb-4" novalidate aria-describedby="scheduleFormErrors">
+                    <div class="col-md-3">
                         <label for="scheduleTime" class="form-label">Time</label>
-                        <input type="time" class="form-control" id="scheduleTime" required>
+                        <input type="time" class="form-control" id="scheduleTime" required aria-required="true" aria-invalid="false" aria-describedby="scheduleTimeError">
+                        <div id="scheduleTimeError" class="text-danger small" role="alert" aria-live="polite" style="display:none"></div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label for="schedulePortion" class="form-label">Portion (g)</label>
-                        <input type="number" class="form-control" id="schedulePortion" min="1" required>
+                        <input type="number" class="form-control" id="schedulePortion" min="1" required aria-required="true" aria-invalid="false" aria-describedby="schedulePortionError">
+                        <div id="schedulePortionError" class="text-danger small" role="alert" aria-live="polite" style="display:none"></div>
                     </div>
-                    <div class="col-md-4 d-flex align-items-end">
+                    <div class="col-md-3">
+                        <label for="scheduleLabel" class="form-label">Label (optional)</label>
+                        <input type="text" class="form-control" id="scheduleLabel" maxlength="20" placeholder="e.g., Breakfast">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label d-block" for="scheduleDaysContainer">Days of Week</label>
+                        <div id="scheduleDaysContainer" class="d-flex flex-wrap gap-2" aria-describedby="scheduleDaysError">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input dow-checkbox" type="checkbox" id="dowMon" value="Mon" checked>
+                                <label class="form-check-label" for="dowMon">Mon</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input dow-checkbox" type="checkbox" id="dowTue" value="Tue" checked>
+                                <label class="form-check-label" for="dowTue">Tue</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input dow-checkbox" type="checkbox" id="dowWed" value="Wed" checked>
+                                <label class="form-check-label" for="dowWed">Wed</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input dow-checkbox" type="checkbox" id="dowThu" value="Thu" checked>
+                                <label class="form-check-label" for="dowThu">Thu</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input dow-checkbox" type="checkbox" id="dowFri" value="Fri" checked>
+                                <label class="form-check-label" for="dowFri">Fri</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input dow-checkbox" type="checkbox" id="dowSat" value="Sat" checked>
+                                <label class="form-check-label" for="dowSat">Sat</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input dow-checkbox" type="checkbox" id="dowSun" value="Sun" checked>
+                                <label class="form-check-label" for="dowSun">Sun</label>
+                            </div>
+                        </div>
+                        <div id="scheduleDaysError" class="text-danger small" role="alert" aria-live="polite" style="display:none"></div>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
                         <button type="submit" class="btn btn-primary">Add Schedule</button>
                     </div>
                 </form>
@@ -251,6 +291,8 @@
                         <tr>
                             <th>Time</th>
                             <th>Portion</th>
+                            <th>Label</th>
+                            <th>Days</th>
                             <th>Enabled</th>
                             <th>Actions</th>
                         </tr>
@@ -261,198 +303,48 @@
                 </table>
             </div>
         </div>
-        <script>
-        // Fetch and render schedules (kept for compatibility but not used)
-        function fetchSchedules() {
-            fetch('/schedules/')
-                .then(res => res.json())
-                .then(data => {
-                    const tbody = document.querySelector('#scheduleTable tbody');
-                    tbody.innerHTML = '';
-                    data.forEach(sch => {
-                        tbody.innerHTML += `
-                            <tr data-id="${sch.id}">
-                                <td><input type="time" value="${formatTimeForInput(sch.time)}" class="form-control schedule-time" /></td>
-                                <td><input type="number" value="${sch.portion_size}" min="1" class="form-control schedule-portion" /></td>
-                                <td><input type="checkbox" ${sch.enabled ? 'checked' : ''} class="form-check-input schedule-enabled" /></td>
-                                <td>
-                                    <button class="btn btn-info btn-sm edit-schedule" title="Edit"><i class="fas fa-pen"></i></button>
-                                    <button class="btn btn-danger btn-sm delete-schedule">Delete</button>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                });
-        }
-        function formatTimeForInput(timeStr) {
-            // Convert "03:15:00 PM" to "15:15" for input[type=time]
-            const [hm, , ampm] = timeStr.split(' ');
-            let [h, m] = hm.split(':');
-            h = parseInt(h);
-            if (ampm === 'PM' && h !== 12) h += 12;
-            if (ampm === 'AM' && h === 12) h = 0;
-            return `${h.toString().padStart(2,'0')}:${m}`;
-        }
-        document.addEventListener('DOMContentLoaded', () => {
-            // Ensure schedules load on page entry
-            loadSchedules();
 
-            // Create (inline form)
-            const addForm = document.getElementById('addScheduleForm');
-            addForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const time = addForm.querySelector('#scheduleTime').value;
-                const portion = addForm.querySelector('#schedulePortion').value;
-                // Convert 24-hour to 12-hour format with AM/PM
-                let [h, m] = time.split(':');
-                h = parseInt(h);
-                let ampm = h >= 12 ? 'PM' : 'AM';
-                let h12 = h % 12;
-                if (h12 === 0) h12 = 12;
-                const time12 = `${h12.toString().padStart(2,'0')}:${m}:00 ${ampm}`;
-                fetch('/schedules/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({time: time12, portion_size: portion, enabled: true})
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to add schedule');
-                    }
-                    return response.json();
-                })
-                .then(() => {
-                    showToast('Schedule added successfully!', 'success');
-                    addForm.reset();
-                    loadSchedules();
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('Failed to add schedule. Please try again.', 'danger');
-                });
-            });
-
-            // Read/Update/Delete via table actions (delegate to modal + helper)
-            document.querySelector('#scheduleTable').addEventListener('click', function(e) {
-                const tr = e.target.closest('tr');
-                if (!tr) return;
-                const id = tr.getAttribute('data-id');
-
-                // Edit: open modal and prefill fields
-                const editBtn = e.target.closest('.edit-schedule');
-                if (editBtn) {
-                    const time = tr.querySelector('.schedule-time').value;
-                    const portion = tr.querySelector('.schedule-portion').value;
-                    const enabled = tr.querySelector('.schedule-enabled').checked;
-                    // Prefill modal-scoped inputs to avoid ID clashes
-                    const modalEl = document.getElementById('addScheduleModal');
-                    modalEl.querySelector('#scheduleTime').value = time;
-                    modalEl.querySelector('#schedulePortion').value = portion;
-                    modalEl.querySelector('#scheduleEnabled').checked = enabled;
-                    // Track which schedule is being edited
-                    window.editingScheduleId = id;
-                    // Show the modal (uses existing bootstrap modal instance)
-                    addScheduleModal.show();
-                    return;
-                }
-
-                // Delete: use existing helper to ensure CSRF and feedback
-                const deleteBtn = e.target.closest('.delete-schedule');
-                if (deleteBtn) {
-                    deleteSchedule(id);
-                    return;
-                }
-            });
-        });
-        </script>
-        
-        <!-- <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Schedule Feeding</span>
-                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addScheduleModal">
-                            <i class="fas fa-plus"></i> Add Schedule
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="row" id="schedulesList">
-                            <!-- Schedule cards will be loaded here -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div> 
-        
         <!-- Feeding Logs Section -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">Feeding Logs</div>
-                    <div class="card-body">
-                        <div class="table-responsive" id="feedingLogs">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Time</th>
-                                        <th>Portion (g)</th>
-                                        <th>Source</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="logsList">
-                                    <!-- Logs will be loaded here -->
-                                </tbody>
-                            </table>
-                            <div class="d-flex justify-content-between align-items-center mt-2" id="logsPagination">
-                                <button class="btn btn-secondary btn-sm" id="logsPrevBtn" disabled>Previous</button>
-                                <div id="logsPageInfo" class="text-muted">Page 1</div>
-                                <button class="btn btn-secondary btn-sm" id="logsNextBtn" disabled>Next</button>
-                            </div>
-                        </div>
+        <div class="card mt-4">
+            <div class="card-header">Feeding Logs</div>
+            <div class="card-body">
+                <div class="table-responsive" id="feedingLogs">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Portion</th>
+                                <th>Source</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsList"></tbody>
+                    </table>
+                </div>
+                <div class="row g-2 align-items-end mt-2" id="logsFilters">
+                    <div class="col-sm-4 col-md-3">
+                        <label for="logsStartDate" class="form-label">From</label>
+                        <input type="date" id="logsStartDate" class="form-control" aria-label="Filter start date">
+                    </div>
+                    <div class="col-sm-4 col-md-3">
+                        <label for="logsEndDate" class="form-label">To</label>
+                        <input type="date" id="logsEndDate" class="form-control" aria-label="Filter end date">
+                    </div>
+                    <div class="col-sm-4 col-md-3 d-flex gap-2">
+                        <button class="btn btn-primary" id="applyLogsFilters" aria-label="Apply date filters">Apply</button>
+                        <button class="btn btn-outline-secondary" id="clearLogsFilters" aria-label="Clear date filters">Clear</button>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-    
-   
-    <div class="modal fade" id="addScheduleModal" tabindex="-1" aria-labelledby="addScheduleModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="addScheduleModalLabel">Add Feeding Schedule</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="scheduleForm">
-                        <div class="mb-3">
-                            <label for="scheduleTime" class="form-label">Feeding Time</label>
-                            <input type="time" class="form-control" id="scheduleTime" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="schedulePortion" class="form-label">Portion Size (g)</label>
-                            <input type="number" class="form-control" id="schedulePortion" min="25" max="500" value="100" required>
-                        </div>
-                        <div class="mb-3 form-check form-switch">
-                            <input type="checkbox" class="form-check-input" id="scheduleEnabled" checked>
-                            <label class="form-check-label" for="scheduleEnabled">Enabled</label>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="saveScheduleBtn">Save Schedule</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <div>
+                        <button class="btn btn-outline-secondary btn-sm" id="logsPrevBtn" aria-label="Previous page">Prev</button>
+                        <button class="btn btn-outline-secondary btn-sm ms-2" id="logsNextBtn" aria-label="Next page">Next</button>
+                    </div>
+                    <div id="logsPageInfo" class="text-muted small" aria-live="polite">Page 1</div>
+                </div>
+            </div>
+        </div>
+        <script>
         // Helper function to get CSRF token
         function getCookie(name) {
             let cookieValue = null;
@@ -494,226 +386,217 @@
             }, 3000);
         }
         
-        // DOM Elements
-        const portionSlider = document.getElementById('portionSize');
-        const portionValue = document.getElementById('portionValue');
-        const feedNowBtn = document.getElementById('feedNowBtn');
-        const saveScheduleBtn = document.getElementById('saveScheduleBtn');
-        const scheduleForm = document.getElementById('scheduleForm');
-        // logsList is declared later together with pagination controls
-        const schedulesList = document.getElementById('schedulesList');
-        const addScheduleModal = new bootstrap.Modal(document.getElementById('addScheduleModal'));
-
-        // Update portion size display
-        portionSlider.addEventListener('input', () => {
-            portionValue.textContent = `${portionSlider.value}g`;
-        });
-
-        // Feed Now Button
-        feedNowBtn.addEventListener('click', () => {
-            const portionSize = portionSlider.value;
-            
-            // Show loading state
-            feedNowBtn.disabled = true;
-            feedNowBtn.innerHTML = '<div><i class="fas fa-spinner fa-spin"></i><div>Feeding...</div></div>';
-            
-            fetch('/feed_now/', {
+        // Utility: Simple debounce to rate-limit frequent actions
+        function debounce(fn, delay = 300) {
+            let t;
+            return function(...args) {
+                clearTimeout(t);
+                t = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+        
+        // Helper: Collect selected days within a container (inline form or modal)
+        // Returns an array of day abbreviations like ["Mon","Tue",...]
+        function getSelectedDays(containerEl) {
+            const days = [];
+            containerEl.querySelectorAll('.dow-checkbox').forEach(chk => { if (chk.checked) days.push(chk.value); });
+            return days;
+        }
+        
+        // Helper: Set selected days in a container given an array of abbreviations
+        function setSelectedDays(containerEl, days) {
+            const set = new Set(days || []);
+            containerEl.querySelectorAll('.dow-checkbox').forEach(chk => { chk.checked = set.has(chk.value); });
+        }
+        
+        // Helper: Convert serializer time to input[type=time] value (HH:MM)
+        // Accepts either "HH:MM" or "hh:mm:ss AM/PM" and returns "HH:MM"
+        function timeToInputValue(timeStr) {
+            if (!timeStr) return '';
+            const hasMeridiem = /AM|PM/i.test(timeStr);
+            if (!hasMeridiem) {
+                const parts = timeStr.split(':');
+                return `${parts[0].padStart(2,'0')}:${parts[1]}`;
+            }
+            const [hm, , ampmRaw] = timeStr.split(' ');
+            let [h, m] = hm.split(':');
+            let hour = parseInt(h, 10);
+            const ampm = ampmRaw.toUpperCase();
+            if (ampm === 'PM' && hour !== 12) hour += 12;
+            if (ampm === 'AM' && hour === 12) hour = 0;
+            return `${hour.toString().padStart(2,'0')}:${m}`;
+        }
+        
+        // Helper: Convert input HH:MM to 12-hour format with seconds for serializer input
+        function to12HourWithSeconds(hhmm) {
+            const [hStr, m] = hhmm.split(':');
+            let h = parseInt(hStr, 10);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            let h12 = h % 12; if (h12 === 0) h12 = 12;
+            return `${h12.toString().padStart(2,'0')}:${m}:00 ${ampm}`;
+        }
+        
+        // Render a group of days-of-week checkboxes for a schedule row
+        // selectedDays: array like ["Mon","Tue",...]
+        function renderDaysCheckboxes(selectedDays = []) {
+            const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+            const set = new Set(selectedDays || []);
+            return days.map(day => `
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input dow-checkbox" type="checkbox" value="${day}" ${set.has(day) ? 'checked' : ''}>
+                    <label class="form-check-label">${day}</label>
+                </div>
+            `).join('');
+        }
+        
+        // Use direct DOM lookup to avoid temporal dead zone error before variable initialization
+        document.getElementById('addScheduleForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formEl = e.target;
+            const timeInput = formEl.querySelector('#scheduleTime');
+            const portionInput = formEl.querySelector('#schedulePortion');
+            const daysContainer = formEl.querySelector('#scheduleDaysContainer');
+            const timeRaw = timeInput.value;
+            const portionRaw = portionInput.value;
+            const labelRaw = (formEl.querySelector('#scheduleLabel').value || '').trim();
+            const days = getSelectedDays(formEl);
+        
+            // Reset errors
+            const timeErr = formEl.querySelector('#scheduleTimeError');
+            const portionErr = formEl.querySelector('#schedulePortionError');
+            const daysErr = formEl.querySelector('#scheduleDaysError');
+            [timeErr, portionErr, daysErr].forEach(el => { if (el) { el.style.display = 'none'; el.textContent = ''; } });
+            timeInput.setAttribute('aria-invalid', 'false');
+            portionInput.setAttribute('aria-invalid', 'false');
+            daysContainer && daysContainer.setAttribute('aria-invalid', 'false');
+        
+            // Validate fields
+            let hasError = false;
+            if (!timeRaw) {
+                timeErr.textContent = 'Time is required.';
+                timeErr.style.display = 'block';
+                timeInput.setAttribute('aria-invalid', 'true');
+                hasError = true;
+            }
+            const portionVal = parseFloat(portionRaw);
+            if (!portionRaw || isNaN(portionVal) || portionVal < 1) {
+                portionErr.textContent = 'Portion must be a number of at least 1 gram.';
+                portionErr.style.display = 'block';
+                portionInput.setAttribute('aria-invalid', 'true');
+                hasError = true;
+            }
+            if (!days || days.length === 0) {
+                daysErr.textContent = 'Select at least one day of the week.';
+                daysErr.style.display = 'block';
+                daysContainer && daysContainer.setAttribute('aria-invalid', 'true');
+                hasError = true;
+            }
+        
+            if (hasError) {
+                showToast('Please fix the errors in the form.', 'warning');
+                return;
+            }
+        
+            const scheduleData = {
+                time: to12HourWithSeconds(timeRaw),
+                portion_size: portionVal,
+                label: labelRaw, // do not send null; backend CharField expects string
+                days_of_week: days,
+                enabled: true
+            };
+        
+            fetch('/schedules/', {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
-                body: JSON.stringify({ portion_size: portionSize })
+                body: JSON.stringify(scheduleData)
             })
-            .then(async (response) => {
-                // Attempt to parse JSON safely regardless of status
-                let data = null;
-                try { data = await response.json(); } catch (_) { /* ignore parse errors */ }
-                if (!response.ok) {
-                    // Handle non-2xx statuses (e.g., 409 conflict when a feed is already pending)
-                    const msg = (data && (data.message || data.error || data.detail)) || `Request failed (${response.status})`;
-                    throw new Error(msg);
-                }
-                return data;
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to add schedule');
+                return response.json();
             })
-            .then(data => {
-                if (data && data.status === 'ok') {
-                    // Show success state
-                    feedNowBtn.innerHTML = '<div><i class="fas fa-check"></i><div>Success!</div></div>';
-                    
-                    // Show success toast
-                    showToast(`Successfully queued ${data.portion_size}g feed command.`, 'success');
-                    
-                    // Reset button after 2 seconds
-                    setTimeout(() => {
-                        feedNowBtn.disabled = false;
-                        feedNowBtn.innerHTML = '<div><i class="fas fa-utensils"></i><div>Feed Now</div></div>';
-                    }, 2000);
-                    
-                    // Refresh logs after a short delay
-                    setTimeout(() => loadFeedingLogs(), 2000);
-                } else {
-                    // Unexpected payload but 2xx; show generic message and reset
-                    const msg = (data && (data.message || data.detail)) || 'Feed command not accepted.';
-                    showToast(msg, 'danger');
-                    feedNowBtn.disabled = false;
-                    feedNowBtn.innerHTML = '<div><i class="fas fa-utensils"></i><div>Feed Now</div></div>';
-                }
+            .then(() => {
+                showToast('Schedule added successfully!', 'success');
+                formEl.reset();
+                // Default: check all days again after reset
+                setSelectedDays(formEl, ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']);
+                loadSchedules();
             })
-            .catch(error => {
-                // Reset button on error
-                console.error('Feed Now error:', error);
-                feedNowBtn.disabled = false;
-                feedNowBtn.innerHTML = '<div><i class="fas fa-utensils"></i><div>Feed Now</div></div>';
-                showToast(error.message || 'Failed to dispatch feed command. Please try again.', 'danger');
+            .catch(err => {
+                console.error('Add schedule error:', err);
+                showToast('Failed to add schedule. Please try again.', 'danger');
             });
         });
+        
+        // Load Schedules (duplicate definition removed)
 
-        // Save Schedule Button
-        saveScheduleBtn.addEventListener('click', () => {
-            const modalEl = document.getElementById('addScheduleModal');
-            const timeInput = modalEl.querySelector('#scheduleTime');
-            const portionInput = modalEl.querySelector('#schedulePortion');
-            const enabledInput = modalEl.querySelector('#scheduleEnabled');
-
-            const timeRaw = timeInput ? timeInput.value : '';
-            const portionRaw = portionInput ? portionInput.value : '';
-            const enabledRaw = enabledInput ? enabledInput.checked : false;
-
-            if (!timeRaw || !portionRaw) {
-                showToast('Please provide both time and portion size.', 'warning');
+        // Save Schedule (inline row PUT)
+        function saveSchedule(id) {
+            const row = document.querySelector(`tr[data-id="${id}"]`);
+            if (!row) return;
+            const timeInput = row.querySelector('.schedule-time');
+            const portionInput = row.querySelector('.schedule-portion');
+            const labelInput = row.querySelector('.schedule-label');
+            const enabledInput = row.querySelector('.schedule-enabled');
+        
+            const timeRaw = timeInput.value;
+            const portionRaw = portionInput.value;
+            const labelRaw = (labelInput.value || '').trim();
+            const enabledRaw = !!enabledInput.checked;
+        
+            const days = [];
+            row.querySelectorAll('.dow-checkbox').forEach(chk => { if (chk.checked) days.push(chk.value); });
+        
+            // Basic validation
+            const portionVal = parseFloat(portionRaw);
+            if (!timeRaw || !portionRaw || isNaN(portionVal) || portionVal < 1 || days.length === 0) {
+                showToast('Please provide valid time, portion >= 1, and select at least one day.', 'warning');
                 return;
             }
-
-            const scheduleData = {
-                time: timeRaw,
-                portion_size: portionRaw,
+        
+            const payload = {
+                time: to12HourWithSeconds(timeRaw),
+                portion_size: portionVal,
+                label: labelRaw, // send empty string if blank; backend CharField does not accept null
+                days_of_week: days,
                 enabled: enabledRaw
             };
-
-            // Convert 24-hour to 12-hour format with AM/PM for serializer input
-            let [h, m] = scheduleData.time.split(':');
-            h = parseInt(h);
-            if (isNaN(h) || !m) {
-                showToast('Invalid time format.', 'danger');
-                return;
-            }
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            let h12 = h % 12;
-            if (h12 === 0) h12 = 12;
-            scheduleData.time = `${h12.toString().padStart(2,'0')}:${m}:00 ${ampm}`;
-
-            if (window.editingScheduleId) {
-                fetch(`/schedules/${window.editingScheduleId}/`, {
-                    method: 'PUT',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify(scheduleData)
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to update schedule');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    addScheduleModal.hide();
-                    showToast('Schedule updated successfully!', 'success');
-                    scheduleForm.reset();
-                    window.editingScheduleId = null;
-                    loadSchedules();
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('Failed to update schedule. Please try again.', 'danger');
-                });
-            } else {
-                fetch('/schedules/', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify(scheduleData)
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to add schedule');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    addScheduleModal.hide();
-                    showToast('Schedule added successfully!', 'success');
-                    scheduleForm.reset();
-                    loadSchedules();
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('Failed to add schedule. Please try again.', 'danger');
-                });
-            }
-        });
-
-        // Load Feeding Logs
-        const logsList = document.getElementById('logsList');
-        const logsPrevBtn = document.getElementById('logsPrevBtn');
-        const logsNextBtn = document.getElementById('logsNextBtn');
-        const logsPageInfo = document.getElementById('logsPageInfo');
-        let logsCurrentPage = 1;
-        const LOGS_PAGE_SIZE = 10;
         
-        // Load Feeding Logs with pagination
-        function loadFeedingLogs(page = logsCurrentPage) {
-            const url = `/logs/?page=${page}&page_size=${LOGS_PAGE_SIZE}`;
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    logsList.innerHTML = '';
-                    // DRF pagination returns an object: {count, next, previous, results}
-                    const results = Array.isArray(data) ? data : (data.results || []);
-                    results.forEach(log => {
-                        const row = document.createElement('tr');
-                        const timestamp = new Date(log.timestamp).toLocaleString();
-                        row.innerHTML = `
-                            <td>${timestamp}</td>
-                            <td>${log.portion_dispensed}g</td>
-                            <td>${log.source}</td>
-                        `;
-                        logsList.appendChild(row);
-                    });
-                    // Update pagination controls
-                    if (Array.isArray(data)) {
-                        // Non-paginated fallback
-                        logsPrevBtn.disabled = true;
-                        logsNextBtn.disabled = true;
-                        logsPageInfo.textContent = `Total: ${data.length}`;
-                    } else {
-                        const totalCount = data.count || 0;
-                        const hasPrev = !!data.previous;
-                        const hasNext = !!data.next;
-                        logsPrevBtn.disabled = !hasPrev;
-                        logsNextBtn.disabled = !hasNext;
-                        const totalPages = Math.max(1, Math.ceil(totalCount / LOGS_PAGE_SIZE));
-                        logsPageInfo.textContent = `Page ${logsCurrentPage} of ${totalPages} (${totalCount} logs)`;
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        logsPrevBtn.addEventListener('click', () => {
-            if (logsCurrentPage > 1) {
-                logsCurrentPage -= 1;
-                loadFeedingLogs(logsCurrentPage);
+            const saveBtn = row.querySelector('button.btn-success');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
             }
-        });
-
-        logsNextBtn.addEventListener('click', () => {
-            logsCurrentPage += 1;
-            loadFeedingLogs(logsCurrentPage);
-        });
+        
+            fetch(`/schedules/${id}/`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to update schedule');
+                return response.json();
+            })
+            .then(() => {
+                showToast('Schedule updated successfully!', 'success');
+                loadSchedules();
+            })
+            .catch(err => {
+                console.error('Update schedule error:', err);
+                showToast('Failed to update schedule. Please try again.', 'danger');
+            })
+            .finally(() => {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save';
+                }
+            });
+        }
 
         // Format time for display (HH:MM to 12-hour format)
         function formatTime(timeString) {
@@ -732,55 +615,60 @@
             .then(data => {
                 const tbody = document.querySelector('#scheduleTable tbody');
                 tbody.innerHTML = '';
-                
+                // Sort by id descending so the most recently added schedule appears first
+                data.sort((a, b) => (b.id || 0) - (a.id || 0));
+        
                 data.forEach(schedule => {
-                    // Format time for display
-                    const displayTime = formatTimeForInput(schedule.time);
-                    
-                    tbody.innerHTML += `
+                    const displayTime = timeToInputValue(schedule.time);
+                    const labelValue = schedule.label || '';
+                    const days = Array.isArray(schedule.days_of_week) ? schedule.days_of_week : [];
+                    const rowHtml = `
                         <tr data-id="${schedule.id}">
                             <td><input type="time" value="${displayTime}" class="form-control schedule-time" /></td>
                             <td><input type="number" value="${schedule.portion_size}" min="1" class="form-control schedule-portion" /></td>
-                            <td><input type="checkbox" ${schedule.enabled ? 'checked' : ''} class="form-check-input schedule-enabled" /></td>
+                            <td><input type="text" value="${labelValue}" maxlength="20" class="form-control schedule-label" placeholder="Label (optional)" /></td>
+                            <td>${renderDaysCheckboxes(days)}</td>
+                            <td><input type="checkbox" ${schedule.enabled ? 'checked' : ''} class="form-check-input schedule-enabled" onchange="toggleSchedule(${schedule.id}, this.checked)" /></td>
                             <td>
-                                <button class="btn btn-info btn-sm edit-schedule" title="Edit"><i class="fas fa-pen"></i></button>
-                                <button class="btn btn-danger btn-sm delete-schedule" onclick="deleteSchedule(${schedule.id})">Delete</button>
+                                <button class="btn btn-success btn-sm" onclick="saveSchedule(${schedule.id})">Save</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteSchedule(${schedule.id})">Delete</button>
                             </td>
                         </tr>
                     `;
+                    tbody.insertAdjacentHTML('beforeend', rowHtml);
                 });
             })
             .catch(error => console.error('Error:', error));
         }
 
         // Toggle Schedule
-function toggleSchedule(id, enabled) {
-    const row = document.querySelector(`tr[data-id="${id}"]`);
-    const toggleSwitch = row.querySelector('.schedule-enabled');
-    toggleSwitch.disabled = true;
-    
-    fetch(`/schedules/${id}/`, {
-        method: 'PATCH',
-        headers: { 
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({ enabled: enabled })
-    })
-    .then(response => response.json())
-    .then(data => {
-        // Show success notification
-        showToast(`Schedule ${enabled ? 'enabled' : 'disabled'} successfully!`, 'success');
-        toggleSwitch.disabled = false;
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        // Revert the toggle if there was an error
-        toggleSwitch.checked = !enabled;
-        toggleSwitch.disabled = false;
-        showToast(`Failed to ${enabled ? 'enable' : 'disable'} schedule. Please try again.`, 'danger');
-    });
-}
+        function toggleSchedule(id, enabled) {
+            const row = document.querySelector(`tr[data-id="${id}"]`);
+            const toggleSwitch = row.querySelector('.schedule-enabled');
+            toggleSwitch.disabled = true;
+            
+            fetch(`/schedules/${id}/`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ enabled: enabled })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Show success notification
+                showToast(`Schedule ${enabled ? 'enabled' : 'disabled'} successfully!`, 'success');
+                toggleSwitch.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Revert the toggle if there was an error
+                toggleSwitch.checked = !enabled;
+                toggleSwitch.disabled = false;
+                showToast(`Failed to ${enabled ? 'enable' : 'disable'} schedule. Please try again.`, 'danger');
+            });
+        }
 
         // Delete Schedule
         function deleteSchedule(id) {
@@ -807,16 +695,155 @@ function toggleSchedule(id, enabled) {
         }
 
         // Initial data load
+        // Wire up core UI interactions and start polling
+        const portionSlider = document.getElementById('portionSize');
+        const portionValue = document.getElementById('portionValue');
+        const feedNowBtn = document.getElementById('feedNowBtn');
+        const addScheduleForm = document.getElementById('addScheduleForm');
+
+        // Update portion size display as the slider moves
+        portionSlider.addEventListener('input', () => {
+            portionValue.textContent = `${portionSlider.value}g`;
+        });
+
+        // Feeding Logs: pagination and rendering
+        const logsList = document.getElementById('logsList');
+        const logsPrevBtn = document.getElementById('logsPrevBtn');
+        const logsNextBtn = document.getElementById('logsNextBtn');
+        const logsPageInfo = document.getElementById('logsPageInfo');
+        const logsStartDate = document.getElementById('logsStartDate');
+        const logsEndDate = document.getElementById('logsEndDate');
+        const applyLogsFiltersBtn = document.getElementById('applyLogsFilters');
+        const clearLogsFiltersBtn = document.getElementById('clearLogsFilters');
+        let logsCurrentPage = 1;
+        const LOGS_PAGE_SIZE = 10;
+        const debouncedLoadLogs = debounce((page) => loadFeedingLogs(page), 250);
+        let logsFetchController = null;
+        function buildLogsUrl(page) {
+            const params = new URLSearchParams({ page: page, page_size: LOGS_PAGE_SIZE });
+            if (logsStartDate && logsStartDate.value) params.set('start_date', logsStartDate.value);
+            if (logsEndDate && logsEndDate.value) params.set('end_date', logsEndDate.value);
+            return `/logs/?${params.toString()}`;
+        }
+        function loadFeedingLogs(page = logsCurrentPage) {
+            const url = buildLogsUrl(page);
+            // Abort any in-flight logs request before starting a new one
+            if (logsFetchController) {
+                try { logsFetchController.abort(); } catch (_) {}
+            }
+            logsFetchController = new AbortController();
+            fetch(url, { signal: logsFetchController.signal })
+                .then(response => response.json())
+                .then(data => {
+                    logsList.innerHTML = '';
+                    const results = Array.isArray(data) ? data : (data.results || []);
+                    results.forEach(log => {
+                        const row = document.createElement('tr');
+                        const timestamp = new Date(log.timestamp).toLocaleString();
+                        row.innerHTML = `
+                            <td>${timestamp}</td>
+                            <td>${log.portion_dispensed}g</td>
+                            <td>${log.source}</td>
+                        `;
+                        logsList.appendChild(row);
+                    });
+                    if (Array.isArray(data)) {
+                        logsPrevBtn.disabled = true;
+                        logsNextBtn.disabled = true;
+                        logsPageInfo.textContent = `Total: ${data.length}`;
+                    } else {
+                        const totalCount = data.count || 0;
+                        const hasPrev = !!data.previous;
+                        const hasNext = !!data.next;
+                        logsPrevBtn.disabled = !hasPrev;
+                        logsNextBtn.disabled = !hasNext;
+                        const totalPages = Math.max(1, Math.ceil(totalCount / LOGS_PAGE_SIZE));
+                        logsPageInfo.textContent = `Page ${logsCurrentPage} of ${totalPages} (${totalCount} logs)`;
+                    }
+                })
+                .catch(error => {
+                    if (error && (error.name === 'AbortError' || (error instanceof TypeError && error.message === 'Failed to fetch'))) {
+                        // Ignore aborted/preview reload fetch interruptions
+                        return;
+                    }
+                    console.error('Logs fetch error:', error);
+                });
+        }
+
+        applyLogsFiltersBtn.addEventListener('click', () => {
+            logsCurrentPage = 1;
+            debouncedLoadLogs(logsCurrentPage);
+        });
+        clearLogsFiltersBtn.addEventListener('click', () => {
+            if (logsStartDate) logsStartDate.value = '';
+            if (logsEndDate) logsEndDate.value = '';
+            logsCurrentPage = 1;
+            debouncedLoadLogs(logsCurrentPage);
+        });
+
+        logsPrevBtn.addEventListener('click', () => {
+            if (logsCurrentPage > 1) {
+                logsCurrentPage -= 1;
+                debouncedLoadLogs(logsCurrentPage);
+            }
+        });
+        logsNextBtn.addEventListener('click', () => {
+            logsCurrentPage += 1;
+            debouncedLoadLogs(logsCurrentPage);
+        });
+
+        // Dispatch a "Feed Now" command to the backend API
+        feedNowBtn.addEventListener('click', () => {
+            const portionSize = portionSlider.value;
+            feedNowBtn.disabled = true;
+            feedNowBtn.innerHTML = '<div><i class="fas fa-spinner fa-spin"></i><div>Feeding...</div></div>';
+            fetch('/feed_now/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ portion_size: portionSize })
+            })
+            .then(async (response) => {
+                let data = null;
+                try { data = await response.json(); } catch (_) {}
+                if (!response.ok) {
+                    const msg = (data && (data.message || data.error || data.detail)) || `Request failed (${response.status})`;
+                    throw new Error(msg);
+                }
+                return data;
+            })
+            .then(data => {
+                if (data && data.status === 'ok') {
+                    feedNowBtn.innerHTML = '<div><i class="fas fa-check"></i><div>Success!</div></div>';
+                    showToast(`Successfully queued ${data.portion_size}g feed command.`, 'success');
+                    setTimeout(() => {
+                        feedNowBtn.disabled = false;
+                        feedNowBtn.innerHTML = '<div><i class="fas fa-utensils"></i><div>Feed Now</div></div>';
+                    }, 2000);
+                    setTimeout(() => debouncedLoadLogs(logsCurrentPage), 2000);
+                } else {
+                    const msg = (data && (data.message || data.detail)) || 'Feed command not accepted.';
+                    showToast(msg, 'danger');
+                    feedNowBtn.disabled = false;
+                    feedNowBtn.innerHTML = '<div><i class="fas fa-utensils"></i><div>Feed Now</div></div>';
+                }
+            })
+            .catch(error => {
+                console.error('Feed Now error:', error);
+                feedNowBtn.disabled = false;
+                feedNowBtn.innerHTML = '<div><i class="fas fa-utensils"></i><div>Feed Now</div></div>';
+                showToast(error.message || 'Failed to dispatch feed command. Please try again.', 'danger');
+            });
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
-            loadFeedingLogs();
+            debouncedLoadLogs(logsCurrentPage);
             loadSchedules();
-            
-            // Auto-refresh feeding logs every 10 seconds so manual hardware button feeds appear without manual refresh
-            window._logsRefreshTimer = setInterval(() => loadFeedingLogs(), 10000);
-            
-            // Also refresh when the tab becomes active or window gains focus
-            document.addEventListener('visibilitychange', () => { if (!document.hidden) loadFeedingLogs(); });
-            window.addEventListener('focus', () => loadFeedingLogs());
+            window._logsRefreshTimer = setInterval(() => debouncedLoadLogs(logsCurrentPage), 10000);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) debouncedLoadLogs(logsCurrentPage); });
+            window.addEventListener('focus', () => debouncedLoadLogs(logsCurrentPage));
         });
     </script>
 </body>

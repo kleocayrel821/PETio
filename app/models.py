@@ -1,5 +1,13 @@
 from django.db import models
 from django.utils import timezone
+from django.core.validators import MinValueValidator, MaxValueValidator
+
+
+def default_days_of_week():
+    """Return all seven days enabled by default to avoid silent inactivation.
+    Values use three-letter English abbreviations.
+    """
+    return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
 class PendingCommand(models.Model):
@@ -26,7 +34,7 @@ class PendingCommand(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     processed_at = models.DateTimeField(null=True, blank=True)
     error_message = models.TextField(blank=True)
-    
+
     class Meta:
         ordering = ['-created_at']
     
@@ -38,7 +46,7 @@ class PendingCommand(models.Model):
         self.status = 'processing'
         self.processed_at = timezone.now()
         self.save()
-    
+
     def mark_completed(self):
         """Mark command as completed"""
         self.status = 'completed'
@@ -75,8 +83,16 @@ class FeedingLog(models.Model):
 
 class FeedingSchedule(models.Model):
     time = models.TimeField()
-    portion_size = models.FloatField()
+    # Portion stored in grams; enforce safe range 1-500g with default 25g.
+    portion_size = models.FloatField(
+        default=25,
+        validators=[MinValueValidator(1), MaxValueValidator(500)]
+    )
     enabled = models.BooleanField(default=True)
+    # Optional user label, capped at 20 characters (per requirement)
+    label = models.CharField(max_length=20, blank=True, default="")
+    # Days-of-week selection stored as JSON array of abbreviations
+    days_of_week = models.JSONField(default=default_days_of_week)
     
     def __str__(self):
-        return f"{self.time} - {self.portion_size}g - {self.enabled}"
+        return f"{self.time} - {self.portion_size}g - {self.enabled} - {','.join(self.days_of_week or [])}"

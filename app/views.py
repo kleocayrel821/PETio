@@ -174,6 +174,8 @@ def check_schedule(request):
         current_time = local_now.time()
         current_time_str = current_time.strftime("%I:%M %p")
         today_date = local_now.date()
+        # Current day abbreviation (Mon, Tue, ...)
+        current_day_abbr = local_now.strftime("%a")
         
         # Get all enabled schedules
         schedules = FeedingSchedule.objects.filter(enabled=True)
@@ -194,6 +196,13 @@ def check_schedule(request):
         # Check if current time matches any schedule (within trigger window)
         for schedule in schedules:
             schedule_time = schedule.time
+            # Respect days_of_week selection; default to all days if empty/None
+            days = schedule.days_of_week if getattr(schedule, 'days_of_week', None) else ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+            if isinstance(days, list) and current_day_abbr not in days:
+                logger.info(
+                    f"check_schedule: skip sched_id={schedule.id} (day {current_day_abbr} not in {days})"
+                )
+                continue
             
             # Create timezone-aware datetime for today's scheduled time using current TZ
             schedule_naive = datetime.combine(today_date, schedule_time)
@@ -208,8 +217,8 @@ def check_schedule(request):
             cache_hit = cache.get(cache_key) is not None
             
             logger.info(
-                f"check_schedule: now={current_time_str} sched_id={schedule.id} sched_time={schedule_time.strftime('%H:%M')} "
-                f"diff={time_diff:.2f}s within_window={within_window} cache_hit={cache_hit}"
+                f"check_schedule: now={current_time_str} day={current_day_abbr} sched_id={schedule.id} sched_time={schedule_time.strftime('%H:%M')} "
+                f"diff={time_diff:.2f}s within_window={within_window} cache_hit={cache_hit} label={getattr(schedule, 'label', '')}"
             )
             
             if within_window and not cache_hit:
@@ -233,7 +242,7 @@ def check_schedule(request):
                     triggered_schedule = schedule
                     logger.info(
                         f"check_schedule: TRIGGER schedule_id={schedule.id} time={schedule_time.strftime('%H:%M')} "
-                        f"portion={schedule.portion_size}"
+                        f"portion={schedule.portion_size} day={current_day_abbr}"
                     )
                     break
         
@@ -244,7 +253,9 @@ def check_schedule(request):
                 "id": schedule.id,
                 "time": schedule.time.strftime("%H:%M"),
                 "portion_size": schedule.portion_size,
-                "enabled": schedule.enabled
+                "enabled": schedule.enabled,
+                "days_of_week": getattr(schedule, 'days_of_week', []),
+                "label": getattr(schedule, 'label', ""),
             })
         
         response_data = {
@@ -455,6 +466,32 @@ class FeedingLogViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "head", "options"]
     # Enable server-side pagination for logs endpoint
     pagination_class = FeedingLogPagination
+
+    def get_queryset(self):
+        """Optionally filter logs by start_date/end_date query params (YYYY-MM-DD).
+        - start_date: include logs with timestamp >= start_date 00:00:00
+        - end_date: include logs with timestamp <= end_date 23:59:59.999999
+        """
+        qs = FeedingLog.objects.order_by("-timestamp")
+        params = getattr(self.request, 'query_params', {})
+        start_date = params.get('start_date')
+        end_date = params.get('end_date')
+        from datetime import datetime, time
+        from django.utils.dateparse import parse_date
+
+        if start_date:
+            sd = parse_date(start_date)
+            if sd:
+                start_dt = datetime.combine(sd, time.min)
+                qs = qs.filter(timestamp__gte=start_dt)
+        if end_date:
+            ed = parse_date(end_date)
+            if ed:
+                # End of day inclusive
+                from datetime import timedelta
+                end_dt = datetime.combine(ed, time.max)
+                qs = qs.filter(timestamp__lte=end_dt)
+        return qs
 
 class FeedingScheduleViewSet(viewsets.ModelViewSet):
     queryset = FeedingSchedule.objects.all()
