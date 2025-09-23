@@ -1,0 +1,895 @@
+{% extends 'app/base.html' %}
+
+{% block title %}History - PETio{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Page Header -->
+    <div class="text-center">
+        <h1 class="section-title justify-center text-3xl mb-2">
+            <i class="fas fa-history text-blue-400"></i>
+            Feeding History
+        </h1>
+        <p class="text-gray-400 text-lg">Track your pet's feeding logs and patterns</p>
+    </div>
+
+    <!-- Filters Card -->
+    <div class="enhanced-card">
+        <div class="section-title">
+            <i class="fas fa-filter text-purple-400"></i>
+            Filter & Search
+        </div>
+        <div class="space-y-4">
+            <!-- Filter Row -->
+            <div class="responsive-grid">
+                <!-- Date Range -->
+                <div>
+                    <label class="subsection-title">
+                        <i class="fas fa-calendar-alt text-green-400"></i>
+                        Date Range
+                    </label>
+                    <div class="flex gap-2">
+                        <input 
+                            type="date" 
+                            id="startDate" 
+                            class="form-control-enhanced flex-1"
+                            title="Start date"
+                        >
+                        <span class="flex items-center text-gray-400">to</span>
+                        <input 
+                            type="date" 
+                            id="endDate" 
+                            class="form-control-enhanced flex-1"
+                            title="End date"
+                        >
+                    </div>
+                </div>
+
+                <!-- Feed Type Filter -->
+                <div>
+                    <label class="subsection-title">
+                        <i class="fas fa-utensils text-orange-400"></i>
+                        Feed Type
+                    </label>
+                    <select id="feedTypeFilter" class="form-control-enhanced w-full">
+                        <option value="">All Types</option>
+                        <option value="manual">Manual Button</option>
+                        <option value="scheduled">Schedule</option>
+                        <option value="automatic">Automatic Button</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Search and Actions Row -->
+            <div class="flex flex-col sm:flex-row gap-4 items-end">
+                <!-- Search Input -->
+                <div class="flex-1">
+                    <label class="subsection-title">
+                        <i class="fas fa-search text-teal-400"></i>
+                        Search Logs
+                    </label>
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        class="form-control-enhanced w-full"
+                        placeholder="Search by amount, type, or notes..."
+                    >
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2">
+                    <button 
+                        id="applyFilters" 
+                        class="btn btn-enhanced btn-primary-enhanced"
+                        onclick="applyFilters()"
+                    >
+                        <i class="fas fa-search"></i>
+                        Apply Filters
+                    </button>
+                    <button 
+                        id="clearFilters" 
+                        class="btn btn-enhanced btn-ghost"
+                        onclick="clearFilters()"
+                    >
+                        <i class="fas fa-times"></i>
+                        Clear
+                    </button>
+                    <button 
+                        id="refreshLogs" 
+                        class="btn btn-enhanced btn-ghost"
+                        onclick="loadLogs()"
+                        title="Refresh logs"
+                    >
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Active Filters Display -->
+            <div id="activeFilters" class="hidden">
+                <div class="flex flex-wrap gap-2 items-center">
+                    <span class="text-sm text-gray-400">Active filters:</span>
+                    <div id="filterChips" class="flex flex-wrap gap-2">
+                        <!-- Dynamic filter chips -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="stat-card">
+            <div class="stat-icon bg-blue-500/20">
+                <i class="fas fa-list-ol text-blue-400"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="totalFeeds">-</div>
+                <div class="stat-label">Total Feeds</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon bg-green-500/20">
+                <i class="fas fa-weight text-green-400"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="totalAmount">-</div>
+                <div class="stat-label">Total Amount</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon bg-purple-500/20">
+                <i class="fas fa-calendar-day text-purple-400"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="todayFeeds">-</div>
+                <div class="stat-label">Today's Feeds</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon bg-orange-500/20">
+                <i class="fas fa-chart-line text-orange-400"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="avgDaily">-</div>
+                <div class="stat-label">Daily Average</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs Table Card -->
+    <div class="enhanced-card">
+        <div class="section-title justify-between">
+            <span>
+                <i class="fas fa-table text-blue-400"></i>
+                Feeding Logs
+            </span>
+            <div class="flex items-center gap-4">
+                <!-- Results Count -->
+                <span id="resultsCount" class="text-sm text-gray-400">
+                    Loading...
+                </span>
+                <!-- Export Button -->
+                <button 
+                    id="exportLogs" 
+                    class="btn btn-enhanced btn-ghost btn-sm"
+                    onclick="exportLogs()"
+                    title="Export to CSV"
+                >
+                    <i class="fas fa-download"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="logsLoading" class="text-center py-8">
+            <i class="fas fa-spinner fa-spin text-purple-400 text-2xl mb-2"></i>
+            <div class="text-gray-400">Loading feeding logs...</div>
+        </div>
+
+        <!-- Logs Table -->
+        <div id="logsContainer" class="hidden">
+            <div class="overflow-x-auto">
+                <table class="enhanced-table striped-table w-full">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="timestamp">
+                                <i class="fas fa-clock mr-2"></i>Date & Time
+                                <i class="fas fa-sort sort-icon"></i>
+                            </th>
+                            <th class="sortable" data-sort="amount">
+                                <i class="fas fa-weight mr-2"></i>Amount
+                                <i class="fas fa-sort sort-icon"></i>
+                            </th>
+                            <th class="sortable" data-sort="feed_type">
+                                <i class="fas fa-tag mr-2"></i>Type
+                                <i class="fas fa-sort sort-icon"></i>
+                            </th>
+                            <th>
+                                <i class="fas fa-info-circle mr-2"></i>Status
+                            </th>
+                            <th>
+                                <i class="fas fa-sticky-note mr-2"></i>Notes
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTable">
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyLogs" class="hidden text-center py-12">
+                <i class="fas fa-inbox text-gray-500 text-4xl mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-400 mb-2">No Logs Found</h3>
+                <p class="text-gray-500 mb-4">No feeding logs match your current filters</p>
+                <button 
+                    class="btn btn-enhanced btn-ghost"
+                    onclick="clearFilters()"
+                >
+                    <i class="fas fa-filter"></i>
+                    Clear Filters
+                </button>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div id="paginationContainer" class="hidden">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-gray-700">
+                <!-- Page Info -->
+                <div class="text-sm text-gray-400">
+                    Showing <span id="pageStart">1</span> to <span id="pageEnd">10</span> 
+                    of <span id="totalResults">0</span> results
+                </div>
+
+                <!-- Pagination Controls -->
+                <div class="flex items-center gap-2">
+                    <button 
+                        id="firstPage" 
+                        class="pagination-btn"
+                        onclick="goToPage(1)"
+                        title="First page"
+                    >
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                    <button 
+                        id="prevPage" 
+                        class="pagination-btn"
+                        onclick="goToPage(currentPage - 1)"
+                        title="Previous page"
+                    >
+                        <i class="fas fa-angle-left"></i>
+                    </button>
+
+                    <!-- Page Numbers -->
+                    <div id="pageNumbers" class="flex gap-1">
+                        <!-- Dynamic page numbers -->
+                    </div>
+
+                    <button 
+                        id="nextPage" 
+                        class="pagination-btn"
+                        onclick="goToPage(currentPage + 1)"
+                        title="Next page"
+                    >
+                        <i class="fas fa-angle-right"></i>
+                    </button>
+                    <button 
+                        id="lastPage" 
+                        class="pagination-btn"
+                        onclick="goToPage(totalPages)"
+                        title="Last page"
+                    >
+                        <i class="fas fa-angle-double-right"></i>
+                    </button>
+                </div>
+
+                <!-- Page Size Selector -->
+                <div class="flex items-center gap-2 text-sm">
+                    <label class="text-gray-400">Show:</label>
+                    <select id="pageSize" class="form-control-enhanced text-sm" onchange="changePageSize()">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span class="text-gray-400">per page</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Statistics Cards */
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: var(--transition-fast);
+}
+
+.stat-card:hover {
+    background: var(--bg-card-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+
+/* Striped Table */
+.striped-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.striped-table tbody tr:hover {
+    background: var(--bg-card-hover);
+}
+
+/* Sortable Headers */
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+.sortable:hover {
+    background: var(--bg-secondary);
+}
+
+.sort-icon {
+    opacity: 0.5;
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    transition: var(--transition-fast);
+}
+
+.sortable:hover .sort-icon {
+    opacity: 1;
+}
+
+.sortable.sort-asc .sort-icon::before {
+    content: '\f0de'; /* fa-sort-up */
+    color: var(--primary-purple);
+}
+
+.sortable.sort-desc .sort-icon::before {
+    content: '\f0dd'; /* fa-sort-down */
+    color: var(--primary-purple);
+}
+
+/* Filter Chips */
+.filter-chip {
+    background: var(--primary-purple);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    animation: slideIn 0.3s ease-out;
+}
+
+.filter-chip-remove {
+    cursor: pointer;
+    opacity: 0.7;
+    transition: var(--transition-fast);
+}
+
+.filter-chip-remove:hover {
+    opacity: 1;
+}
+
+/* Pagination */
+.pagination-btn {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+    border-color: var(--primary-purple);
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-btn.active {
+    background: var(--primary-purple);
+    color: white;
+    border-color: var(--primary-purple);
+}
+
+/* Feed Type Badges */
+.feed-type-manual {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--primary-blue);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.feed-type-scheduled {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success-green);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.feed-type-button {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning-yellow);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Status Badges */
+.status-success {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success-green);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-error {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--error-red);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.status-pending {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning-yellow);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Animations */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+</style>
+
+<script>
+let logs = [];
+let currentPage = 1;
+let totalPages = 1;
+let pageSize = 25;
+let currentSort = { field: 'timestamp', direction: 'desc' };
+let currentFilters = {};
+
+// Load logs from API
+async function loadLogs(page = 1) {
+    const loading = document.getElementById('logsLoading');
+    const container = document.getElementById('logsContainer');
+    const emptyState = document.getElementById('emptyLogs');
+    const pagination = document.getElementById('paginationContainer');
+    
+    loading.classList.remove('hidden');
+    container.classList.add('hidden');
+    pagination.classList.add('hidden');
+    
+    try {
+        // Build query parameters
+        const params = new URLSearchParams({
+            page: page,
+            page_size: pageSize,
+            ordering: currentSort.direction === 'desc' ? `-${currentSort.field}` : currentSort.field,
+            ...currentFilters
+        });
+        
+        const response = await fetch(`/api/logs/?${params}`);
+        const data = await response.json();
+        
+        logs = data.results || [];
+        currentPage = page;
+        totalPages = Math.ceil((data.count || 0) / pageSize);
+        
+        renderLogs();
+        renderPagination(data.count || 0);
+        updateStatistics();
+        
+        loading.classList.add('hidden');
+        
+        if (logs.length === 0) {
+            emptyState.classList.remove('hidden');
+        } else {
+            container.classList.remove('hidden');
+            pagination.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+        }
+        
+        // Update results count
+        document.getElementById('resultsCount').textContent = 
+            `${data.count || 0} result${data.count !== 1 ? 's' : ''}`;
+        
+    } catch (error) {
+        console.error('Failed to load logs:', error);
+        loading.innerHTML = `
+            <div class="text-center py-8">
+                <i class="fas fa-exclamation-triangle text-red-400 text-2xl mb-2"></i>
+                <div class="text-red-400">Failed to load logs</div>
+                <button class="btn btn-enhanced btn-ghost btn-sm mt-2" onclick="loadLogs()">
+                    <i class="fas fa-retry"></i>
+                    Retry
+                </button>
+            </div>
+        `;
+    }
+}
+
+// Render logs table
+function renderLogs() {
+    const tbody = document.getElementById('logsTable');
+    
+    if (logs.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-8 text-gray-400">
+                    <i class="fas fa-inbox mr-2"></i>
+                    No logs found
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = logs.map(log => `
+        <tr class="log-row" data-id="${log.id}">
+            <td class="font-mono">
+                <div class="font-semibold text-purple-400">
+                    ${formatDate(log.timestamp)}
+                </div>
+                <div class="text-sm text-gray-400">
+                    ${formatTime(log.timestamp)}
+                </div>
+            </td>
+            <td class="font-semibold text-orange-400">
+                ${log.amount}g
+            </td>
+            <td>
+                <span class="status-badge feed-type-${log.feed_type || 'manual'}">
+                    <i class="fas fa-${getFeedTypeIcon(log.feed_type)}"></i>
+                    ${getFeedTypeLabel(log.feed_type)}
+                </span>
+            </td>
+            <td>
+                <span class="status-badge status-${log.status || 'success'}">
+                    <i class="fas fa-${getStatusIcon(log.status)}"></i>
+                    ${getStatusLabel(log.status)}
+                </span>
+            </td>
+            <td class="text-sm text-gray-300">
+                ${log.notes || '-'}
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Format date for display
+function formatDate(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+
+// Format time for display
+function formatTime(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+
+// Get feed type icon
+function getFeedTypeIcon(type) {
+    const icons = {
+        manual: 'hand-paper',
+        scheduled: 'clock',
+        automatic: 'bolt'
+    };
+    return icons[type] || 'utensils';
+}
+
+// Get feed type label
+function getFeedTypeLabel(type) {
+    const labels = {
+        manual: 'Manual Button',
+        scheduled: 'Schedule',
+        automatic: 'Automatic Button'
+    };
+    return labels[type] || 'Manual Button';
+}
+
+// Get status icon
+function getStatusIcon(status) {
+    const icons = {
+        success: 'check-circle',
+        error: 'exclamation-triangle',
+        pending: 'clock'
+    };
+    return icons[status] || 'check-circle';
+}
+
+// Get status label
+function getStatusLabel(status) {
+    const labels = {
+        success: 'Success',
+        error: 'Error',
+        pending: 'Pending'
+    };
+    return labels[status] || 'Success';
+}
+
+// Apply filters
+function applyFilters() {
+    const filters = {};
+    
+    // Date range
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    if (startDate) filters.start_date = startDate;
+    if (endDate) filters.end_date = endDate;
+    
+    // Feed type
+    const feedType = document.getElementById('feedTypeFilter').value;
+    if (feedType) filters.feed_type = feedType;
+    
+    // Search
+    const search = document.getElementById('searchInput').value.trim();
+    if (search) filters.search = search;
+    
+    currentFilters = filters;
+    currentPage = 1;
+    
+    renderActiveFilters();
+    loadLogs(1);
+}
+
+// Clear filters
+function clearFilters() {
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    document.getElementById('feedTypeFilter').value = '';
+    document.getElementById('searchInput').value = '';
+    
+    currentFilters = {};
+    currentPage = 1;
+    
+    renderActiveFilters();
+    loadLogs(1);
+}
+
+// Render active filters
+function renderActiveFilters() {
+    const container = document.getElementById('activeFilters');
+    const chipsContainer = document.getElementById('filterChips');
+    
+    const chips = [];
+    
+    if (currentFilters.start_date || currentFilters.end_date) {
+        const dateRange = `${currentFilters.start_date || '...'} to ${currentFilters.end_date || '...'}`;
+        chips.push({ label: `Date: ${dateRange}`, key: 'date' });
+    }
+    
+    if (currentFilters.feed_type) {
+        chips.push({ label: `Type: ${getFeedTypeLabel(currentFilters.feed_type)}`, key: 'feed_type' });
+    }
+    
+    if (currentFilters.search) {
+        chips.push({ label: `Search: "${currentFilters.search}"`, key: 'search' });
+    }
+    
+    if (chips.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+    
+    chipsContainer.innerHTML = chips.map(chip => `
+        <div class="filter-chip">
+            ${chip.label}
+            <i class="fas fa-times filter-chip-remove" onclick="removeFilter('${chip.key}')"></i>
+        </div>
+    `).join('');
+    
+    container.classList.remove('hidden');
+}
+
+// Remove specific filter
+function removeFilter(key) {
+    if (key === 'date') {
+        delete currentFilters.start_date;
+        delete currentFilters.end_date;
+        document.getElementById('startDate').value = '';
+        document.getElementById('endDate').value = '';
+    } else if (key === 'feed_type') {
+        delete currentFilters.feed_type;
+        document.getElementById('feedTypeFilter').value = '';
+    } else if (key === 'search') {
+        delete currentFilters.search;
+        document.getElementById('searchInput').value = '';
+    }
+    
+    renderActiveFilters();
+    loadLogs(1);
+}
+
+// Render pagination
+function renderPagination(totalResults) {
+    const pageStart = (currentPage - 1) * pageSize + 1;
+    const pageEnd = Math.min(currentPage * pageSize, totalResults);
+    
+    document.getElementById('pageStart').textContent = totalResults > 0 ? pageStart : 0;
+    document.getElementById('pageEnd').textContent = pageEnd;
+    document.getElementById('totalResults').textContent = totalResults;
+    
+    // Update button states
+    document.getElementById('firstPage').disabled = currentPage === 1;
+    document.getElementById('prevPage').disabled = currentPage === 1;
+    document.getElementById('nextPage').disabled = currentPage === totalPages;
+    document.getElementById('lastPage').disabled = currentPage === totalPages;
+    
+    // Render page numbers
+    const pageNumbers = document.getElementById('pageNumbers');
+    const pages = [];
+    
+    // Always show first page
+    if (totalPages > 0) pages.push(1);
+    
+    // Show pages around current page
+    for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+        if (!pages.includes(i)) pages.push(i);
+    }
+    
+    // Always show last page
+    if (totalPages > 1 && !pages.includes(totalPages)) pages.push(totalPages);
+    
+    pageNumbers.innerHTML = pages.map(page => `
+        <button 
+            class="pagination-btn ${page === currentPage ? 'active' : ''}"
+            onclick="goToPage(${page})"
+        >
+            ${page}
+        </button>
+    `).join('');
+}
+
+// Go to specific page
+function goToPage(page) {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    loadLogs(page);
+}
+
+// Change page size
+function changePageSize() {
+    pageSize = parseInt(document.getElementById('pageSize').value);
+    currentPage = 1;
+    loadLogs(1);
+}
+
+// Sort table
+function sortTable(field) {
+    if (currentSort.field === field) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort.field = field;
+        currentSort.direction = 'desc';
+    }
+    
+    // Update sort indicators
+    document.querySelectorAll('.sortable').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+    });
+    
+    const sortedHeader = document.querySelector(`[data-sort="${field}"]`);
+    if (sortedHeader) {
+        sortedHeader.classList.add(`sort-${currentSort.direction}`);
+    }
+    
+    loadLogs(currentPage);
+}
+
+// Update statistics
+async function updateStatistics() {
+    try {
+        const response = await fetch('/api/logs/stats/');
+        const stats = await response.json();
+        
+        document.getElementById('totalFeeds').textContent = stats.total_feeds || 0;
+        document.getElementById('totalAmount').textContent = `${stats.total_amount || 0}g`;
+        document.getElementById('todayFeeds').textContent = stats.today_feeds || 0;
+        document.getElementById('avgDaily').textContent = `${stats.avg_daily || 0}g`;
+    } catch (error) {
+        console.error('Failed to load statistics:', error);
+    }
+}
+
+// Export logs
+function exportLogs() {
+    const params = new URLSearchParams({
+        format: 'csv',
+        ...currentFilters
+    });
+    
+    window.open(`/api/logs/export/?${params}`, '_blank');
+}
+
+// Add event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Load initial data
+    loadLogs();
+    
+    // Set default date range (last 30 days)
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+    
+    document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+    document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+    
+    // Add sort event listeners
+    document.querySelectorAll('.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            sortTable(th.dataset.sort);
+        });
+    });
+    
+    // Add filter event listeners
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            applyFilters();
+        }
+    });
+});
+</script>
+{% endblock %}

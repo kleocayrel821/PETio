@@ -9,6 +9,80 @@ from rest_framework import status
 from .models import FeedingLog, FeedingSchedule, PendingCommand, PetProfile
 from django.utils import timezone
 
+
+class APITests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_log_feed_creates_feeding_log(self):
+        payload = {"portion_dispensed": 10.0, "source": "web"}
+        resp = self.client.post(reverse('log_feed'), payload, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(FeedingLog.objects.count(), 1)
+
+    def test_logs_viewset_list(self):
+        FeedingLog.objects.create(portion_dispensed=5.0, source='button')
+        resp = self.client.get('/logs/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        # When no pagination configured globally, list may be array; ensure non-empty
+        self.assertTrue(len(resp.data) >= 1)
+
+    def test_stop_feeding_endpoint(self):
+        resp = self.client.post(reverse('stop_feeding'), {}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(PendingCommand.objects.filter(command='stop_feeding').count(), 1)
+
+    def test_api_router_under_prefix(self):
+        """Ensure /api/ prefix exposes routers (e.g., /api/logs/)."""
+        FeedingLog.objects.create(portion_dispensed=3.0, source='web')
+        resp = self.client.get('/api/logs/?limit=1')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        # DRF pagination returns count/results
+        self.assertIn('results', resp.data)
+        self.assertLessEqual(len(resp.data['results']), 1)
+
+    def test_logs_stats_endpoint(self):
+        """Verify /api/logs/stats/ returns expected aggregate keys."""
+        # Create some logs today and in the past
+        FeedingLog.objects.create(portion_dispensed=5.0, source='web')
+        FeedingLog.objects.create(portion_dispensed=7.5, source='button')
+        resp = self.client.get('/api/logs/stats/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        for key in ['total_feeds', 'total_amount', 'today_feeds', 'avg_daily']:
+            self.assertIn(key, resp.data)
+
+    def test_logs_export_csv(self):
+        """Verify /api/logs/export/ returns CSV content and includes header row."""
+        FeedingLog.objects.create(portion_dispensed=4.5, source='web')
+        resp = self.client.get('/api/logs/export/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIn('text/csv', resp.headers.get('Content-Type', ''))
+        content = resp.content.decode('utf-8')
+        self.assertTrue(content.startswith('timestamp,amount_g,source'))
+
+    def test_feeding_log_serializer_amount_alias(self):
+        """Ensure 'amount' alias is present for frontend compatibility."""
+        FeedingLog.objects.create(portion_dispensed=12.3, source='web')
+        resp = self.client.get('/api/logs/?limit=1')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        first = resp.data['results'][0]
+        self.assertIn('amount', first)
+        self.assertAlmostEqual(first['amount'], first['portion_dispensed'])
+
+    def test_feeding_log_includes_action_and_success(self):
+        """Ensure logs include 'action' and 'success' fields used by home.html recent activity."""
+        FeedingLog.objects.create(portion_dispensed=5.0, source='web')
+        FeedingLog.objects.create(portion_dispensed=0.0, source='schedule')
+        resp = self.client.get('/api/logs/?limit=5')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIn('results', resp.data)
+        for item in resp.data['results']:
+            self.assertIn('action', item)
+            self.assertIn('success', item)
+            self.assertIn(item['action'], ['feed', 'scheduled'])
+            self.assertIsInstance(item['success'], bool)
+
+
 class BackendAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()

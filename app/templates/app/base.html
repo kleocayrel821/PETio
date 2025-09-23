@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PETio - Smart Pet Feeder{% endblock %}</title>
+    
+    <!-- DaisyUI + Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Custom CSS Variables and Enhancements -->
+    <style>
+        :root {
+            /* Enhanced Color Palette */
+            --primary-purple: #8b5cf6;
+            --accent-teal: #14b8a6;
+            --accent-orange: #f97316;
+            --success-green: #10b981;
+            --warning-yellow: #f59e0b;
+            --error-red: #ef4444;
+            
+            /* Background Variations */
+            --bg-primary: #1f2937;
+            --bg-secondary: #374151;
+            --bg-card: #2d3748;
+            --bg-card-hover: #3a4553;
+            
+            /* Text Colors */
+            --text-primary: #f9fafb;
+            --text-secondary: #d1d5db;
+            --text-muted: #9ca3af;
+            
+            /* Shadows */
+            --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+            --shadow-card-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+            
+            /* Transitions */
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-fast: all 0.15s ease-in-out;
+        }
+        
+        /* Enhanced Body with Gradient Background */
+        body {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #1a202c 100%);
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            transition: var(--transition-smooth);
+        }
+        
+        /* Typography Hierarchy */
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .subsection-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+        }
+        
+        /* Enhanced Card Styling */
+        .enhanced-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            box-shadow: var(--shadow-card);
+            padding: 1.5rem;
+            transition: var(--transition-smooth);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .enhanced-card:hover {
+            box-shadow: var(--shadow-card-hover);
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+        }
+        
+        /* Button Enhancements */
+        .btn-enhanced {
+            transition: var(--transition-fast);
+            font-weight: 600;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-enhanced:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-enhanced:active {
+            transform: translateY(0);
+        }
+        
+        /* Enhanced Microinteractions & Animations */
+        
+        /* Button Press Effects */
+        .btn:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-enhanced:active {
+            transform: scale(0.96) translateY(1px);
+        }
+        
+        /* Ripple Effect for Buttons */
+        .btn-enhanced {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-enhanced::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .btn-enhanced:active::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        /* Enhanced Hover Animations */
+        .enhanced-card {
+            transition: all var(--transition-medium);
+        }
+        
+        .enhanced-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Form Control Focus Animations */
+        .form-control-enhanced {
+            position: relative;
+            transition: all var(--transition-medium);
+        }
+        
+        .form-control-enhanced:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
+        }
+        
+        /* Loading Spinner Animation */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        /* Pulse Animation for Status Indicators */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        /* Bounce Animation for Success States */
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% { transform: translate3d(0,0,0); }
+            40%, 43% { transform: translate3d(0,-8px,0); }
+            70% { transform: translate3d(0,-4px,0); }
+            90% { transform: translate3d(0,-2px,0); }
+        }
+        
+        .bounce {
+            animation: bounce 1s ease-in-out;
+        }
+        
+        /* Shake Animation for Error States */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+            20%, 40%, 60%, 80% { transform: translateX(4px); }
+        }
+        
+        .shake {
+            animation: shake 0.6s ease-in-out;
+        }
+        
+        /* Slide In Animations */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .slide-in-up {
+            animation: slideInUp 0.6s ease-out;
+        }
+        
+        .slide-in-down {
+            animation: slideInDown 0.6s ease-out;
+        }
+        
+        .slide-in-left {
+            animation: slideInLeft 0.6s ease-out;
+        }
+        
+        .slide-in-right {
+            animation: slideInRight 0.6s ease-out;
+        }
+        
+        /* Fade In Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.8s ease-out;
+        }
+        
+        /* Scale In Animation */
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .scale-in {
+            animation: scaleIn 0.5s ease-out;
+        }
+        
+        /* Enhanced Toast Styles */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 400px;
+            pointer-events: none; /* Let clicks pass through when no toast is under the cursor */
+        }
+        
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all var(--transition-medium);
+            position: relative;
+            overflow: hidden;
+            pointer-events: auto; /* Allow interaction with the toast itself */
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        
+        .toast.hide {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        
+        .toast::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--primary-purple);
+        }
+        
+        .toast.success::before {
+            background: var(--success-green);
+        }
+        
+        .toast.error::before {
+            background: var(--error-red);
+        }
+        
+        .toast.warning::before {
+            background: var(--warning-yellow);
+        }
+        
+        .toast.info::before {
+            background: var(--primary-blue);
+        }
+        
+        .toast-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        
+        .toast.success .toast-icon {
+            color: var(--success-green);
+        }
+        
+        .toast.error .toast-icon {
+            color: var(--error-red);
+        }
+        
+        .toast.warning .toast-icon {
+            color: var(--warning-yellow);
+        }
+        
+        .toast.info .toast-icon {
+            color: var(--primary-blue);
+        }
+        
+        .toast-content {
+            flex: 1;
+        }
+        
+        .toast-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+        
+        .toast-message {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+        
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: var(--transition-fast);
+            flex-shrink: 0;
+        }
+        
+        .toast-close:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        
+        /* Progress Bar for Toast Auto-dismiss */
+        .toast-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.3);
+            transition: width linear;
+        }
+        
+        /* Navbar Hover Effects */
+        .navbar-nav .nav-link {
+            position: relative;
+            transition: all var(--transition-fast);
+        }
+        
+        .navbar-nav .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: var(--primary-purple);
+            transition: all var(--transition-fast);
+            transform: translateX(-50%);
+        }
+        
+        .navbar-nav .nav-link:hover::after,
+        .navbar-nav .nav-link.active::after {
+            width: 100%;
+        }
+        
+        .navbar-nav .nav-link:hover {
+            color: var(--primary-purple) !important;
+            transform: translateY(-1px);
+        }
+        
+        /* Table Row Hover Effects */
+        .enhanced-table tbody tr {
+            transition: all var(--transition-fast);
+        }
+        
+        .enhanced-table tbody tr:hover {
+            background: var(--bg-card-hover);
+            transform: translateX(4px);
+            box-shadow: 4px 0 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Status Badge Animations */
+        .status-badge {
+            transition: all var(--transition-fast);
+        }
+        
+        .status-badge:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Loading States */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 40;
+            opacity: 0;
+            visibility: hidden;
+            transition: all var(--transition-medium);
+            pointer-events: none; /* Prevent overlay from blocking clicks (nav stays clickable) */
+        }
+        
+        .loading-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .loading-content {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            pointer-events: auto; /* Allow interaction with content inside overlay if needed */
+        }
+        
+        /* Stagger Animation for Lists */
+        .stagger-item {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: staggerIn 0.6s ease-out forwards;
+        }
+        
+        @keyframes staggerIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .stagger-item:nth-child(1) { animation-delay: 0.1s; }
+        .stagger-item:nth-child(2) { animation-delay: 0.2s; }
+        .stagger-item:nth-child(3) { animation-delay: 0.3s; }
+        .stagger-item:nth-child(4) { animation-delay: 0.4s; }
+        .stagger-item:nth-child(5) { animation-delay: 0.5s; }
+        .stagger-item:nth-child(6) { animation-delay: 0.6s; }
+        .stagger-item:nth-child(7) { animation-delay: 0.7s; }
+        .stagger-item:nth-child(8) { animation-delay: 0.8s; }
+        
+        /* Smooth Scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* Focus Visible for Accessibility */
+        .btn:focus-visible,
+        .form-control-enhanced:focus-visible {
+            outline: 2px solid var(--primary-purple);
+            outline-offset: 2px;
+        }
+        
+        /* Reduced Motion Support */
+         @media (prefers-reduced-motion: reduce) {
+             *,
+             *::before,
+             *::after {
+                 animation-duration: 0.01ms !important;
+                 animation-iteration-count: 1 !important;
+                 transition-duration: 0.01ms !important;
+             }
+         }
+         
+         /* Accent Button Variants */
+         .btn-primary-enhanced {
+             background: linear-gradient(135deg, var(--primary-purple), #7c3aed);
+             border: none;
+             color: white;
+         }
+         
+         .btn-primary-enhanced:hover {
+             background: linear-gradient(135deg, #7c3aed, var(--primary-purple));
+         }
+         
+         .btn-accent-teal {
+             background: linear-gradient(135deg, var(--accent-teal), #0d9488);
+             border: none;
+             color: white;
+         }
+         
+         .btn-accent-orange {
+             background: linear-gradient(135deg, var(--accent-orange), #ea580c);
+             border: none;
+             color: white;
+         }
+         
+         /* Table Enhancements */
+         .enhanced-table {
+             background: var(--bg-card);
+             border-radius: 12px;
+             overflow: hidden;
+             box-shadow: var(--shadow-card);
+         }
+         
+         .enhanced-table th {
+             background: var(--bg-secondary);
+             color: var(--text-primary);
+             font-weight: 600;
+             padding: 1rem;
+             border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+         }
+         
+         .enhanced-table td {
+             padding: 0.75rem 1rem;
+             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+             transition: var(--transition-fast);
+         }
+         
+         .enhanced-table tbody tr:hover {
+             background: rgba(255, 255, 255, 0.05);
+         }
+         
+         .enhanced-table tbody tr:nth-child(even) {
+             background: rgba(255, 255, 255, 0.02);
+         }
+         
+         /* Form Enhancements */
+         .form-control-enhanced {
+             background: var(--bg-secondary);
+             border: 2px solid rgba(255, 255, 255, 0.1);
+             border-radius: 8px;
+             color: var(--text-primary);
+             transition: var(--transition-fast);
+             padding: 0.75rem;
+         }
+         
+         .form-control-enhanced:focus {
+             border-color: var(--primary-purple);
+             box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+             outline: none;
+         }
+         
+         /* Status Badges */
+         .status-badge {
+             display: inline-flex;
+             align-items: center;
+             gap: 0.25rem;
+             padding: 0.25rem 0.75rem;
+             border-radius: 9999px;
+             font-size: 0.875rem;
+             font-weight: 500;
+         }
+         
+         .status-enabled {
+             background: rgba(16, 185, 129, 0.2);
+             color: var(--success-green);
+             border: 1px solid rgba(16, 185, 129, 0.3);
+         }
+         
+         .status-disabled {
+             background: rgba(156, 163, 175, 0.2);
+             color: var(--text-muted);
+             border: 1px solid rgba(156, 163, 175, 0.3);
+         }
+         
+         /* Navbar Enhancements */
+         .navbar-enhanced {
+             background: rgba(31, 41, 55, 0.95);
+             backdrop-filter: blur(10px);
+             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+             z-index: 10010 !important; /* Keep navbar above overlays and toasts */
+         }
+         
+         .navbar-enhanced .navbar-brand {
+             font-weight: 700;
+             font-size: 1.25rem;
+             color: var(--primary-purple);
+         }
+         
+         .navbar-enhanced .nav-link {
+             color: var(--text-secondary);
+             transition: var(--transition-fast);
+             padding: 0.5rem 1rem;
+             border-radius: 6px;
+         }
+         
+         .navbar-enhanced .nav-link:hover {
+             color: var(--text-primary);
+             background: rgba(255, 255, 255, 0.1);
+         }
+         
+         .navbar-enhanced .nav-link.active {
+             color: var(--primary-purple);
+             background: rgba(139, 92, 246, 0.1);
+         }
+         
+         /* Responsive Grid */
+         .responsive-grid {
+             display: grid;
+             gap: 1.5rem;
+             grid-template-columns: 1fr;
+         }
+         
+         @media (min-width: 768px) {
+             .responsive-grid {
+                 grid-template-columns: repeat(2, 1fr);
+             }
+         }
+         
+         /* Slider Enhancements */
+         .range-enhanced {
+             appearance: none;
+             background: var(--bg-secondary);
+             height: 8px;
+             border-radius: 4px;
+             outline: none;
+             transition: var(--transition-fast);
+         }
+         
+         .range-enhanced::-webkit-slider-thumb {
+             appearance: none;
+             width: 20px;
+             height: 20px;
+             border-radius: 50%;
+             background: var(--primary-purple);
+             cursor: pointer;
+             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+             transition: var(--transition-fast);
+         }
+         
+         .range-enhanced::-webkit-slider-thumb:hover {
+             transform: scale(1.1);
+             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+         }
+         
+         /* Pagination Enhancements */
+         .pagination-enhanced .btn {
+             margin: 0 0.125rem;
+             border-radius: 6px;
+             transition: var(--transition-fast);
+         }
+         
+         .pagination-enhanced .btn:hover {
+             transform: translateY(-1px);
+         }
+     </style>
+</head>
+<body>
+     <!-- Enhanced Navbar -->
+     <nav class="navbar navbar-enhanced sticky top-0 z-50">
+         <div class="navbar-start">
+             <div class="dropdown">
+                 <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">
+                     <i class="fas fa-bars text-lg"></i>
+                 </div>
+                 <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                     <li><a href="/" class="nav-link"><i class="fas fa-home"></i> Home</a></li>
+                     <li><a href="/schedules-ui/" class="nav-link"><i class="fas fa-calendar-alt"></i> Schedules</a></li>
+                     <li><a href="/history/" class="nav-link"><i class="fas fa-history"></i> History</a></li>
+                 </ul>
+             </div>
+             <a href="/" class="navbar-brand">
+                 <i class="fas fa-paw"></i> PETio
+             </a>
+         </div>
+         <div class="navbar-center hidden lg:flex">
+             <ul class="menu menu-horizontal px-1">
+                 <li><a href="/" class="nav-link"><i class="fas fa-home"></i> Home</a></li>
+                 <li><a href="/schedules-ui/" class="nav-link"><i class="fas fa-calendar-alt"></i> Schedules</a></li>
+                 <li><a href="/history/" class="nav-link"><i class="fas fa-history"></i> History</a></li>
+             </ul>
+         </div>
+         <div class="navbar-end">
+             <div class="flex items-center gap-2 text-sm text-gray-400">
+                 <i class="fas fa-wifi text-green-400"></i>
+                 <span>Connected</span>
+             </div>
+         </div>
+     </nav>
+
+     <!-- Main Content -->
+     <main class="container mx-auto px-4 py-6">
+         {% block content %}
+         {% endblock %}
+     </main>
+
+     <!-- Toast Container -->
+     <div class="toast-container" id="toastContainer"></div>
+
+     <!-- Enhanced JavaScript -->
+     <script>
+         // CSRF Token Helper
+         function getCookie(name) {
+             let cookieValue = null;
+             if (document.cookie && document.cookie !== '') {
+                 const cookies = document.cookie.split(';');
+                 for (let i = 0; i < cookies.length; i++) {
+                     const cookie = cookies[i].trim();
+                     if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                         cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                         break;
+                     }
+                 }
+             }
+             return cookieValue;
+         }
+
+         // Enhanced Toast System
+        class ToastManager {
+            constructor() {
+                this.container = this.createContainer();
+                this.toasts = new Map();
+                this.toastId = 0;
+            }
+            
+            createContainer() {
+                let container = document.querySelector('.toast-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.className = 'toast-container';
+                    document.body.appendChild(container);
+                }
+                return container;
+            }
+            
+            show(message, type = 'info', options = {}) {
+                const id = ++this.toastId;
+                const toast = this.createToast(id, message, type, options);
+                
+                this.container.appendChild(toast);
+                this.toasts.set(id, toast);
+                
+                // Trigger show animation
+                requestAnimationFrame(() => {
+                    toast.classList.add('show');
+                });
+                
+                // Auto dismiss
+                if (options.autoDismiss !== false) {
+                    const duration = options.duration || this.getDefaultDuration(type);
+                    this.startProgressBar(toast, duration);
+                    setTimeout(() => this.hide(id), duration);
+                }
+                
+                return id;
+            }
+            
+            createToast(id, message, type, options) {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.dataset.toastId = id;
+                
+                const icon = this.getIcon(type);
+                const title = options.title || this.getDefaultTitle(type);
+                
+                toast.innerHTML = `
+                    <div class="toast-icon">
+                        <i class="fas fa-${icon}"></i>
+                    </div>
+                    <div class="toast-content">
+                        <div class="toast-title">${title}</div>
+                        <div class="toast-message">${message}</div>
+                    </div>
+                    <button class="toast-close" onclick="toastManager.hide(${id})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <div class="toast-progress"></div>
+                `;
+                
+                return toast;
+            }
+            
+            hide(id) {
+                const toast = this.toasts.get(id);
+                if (!toast) return;
+                
+                toast.classList.add('hide');
+                toast.classList.remove('show');
+                
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                    this.toasts.delete(id);
+                }, 300);
+            }
+            
+            startProgressBar(toast, duration) {
+                const progressBar = toast.querySelector('.toast-progress');
+                if (progressBar) {
+                    progressBar.style.width = '100%';
+                    progressBar.style.transitionDuration = `${duration}ms`;
+                    requestAnimationFrame(() => {
+                        progressBar.style.width = '0%';
+                    });
+                }
+            }
+            
+            getIcon(type) {
+                const icons = {
+                    success: 'check-circle',
+                    error: 'exclamation-triangle',
+                    warning: 'exclamation-circle',
+                    info: 'info-circle'
+                };
+                return icons[type] || 'info-circle';
+            }
+            
+            getDefaultTitle(type) {
+                const titles = {
+                    success: 'Success',
+                    error: 'Error',
+                    warning: 'Warning',
+                    info: 'Information'
+                };
+                return titles[type] || 'Notification';
+            }
+            
+            getDefaultDuration(type) {
+                const durations = {
+                    success: 4000,
+                    error: 6000,
+                    warning: 5000,
+                    info: 4000
+                };
+                return durations[type] || 4000;
+            }
+            
+            // Convenience methods
+            success(message, options = {}) {
+                return this.show(message, 'success', options);
+            }
+            
+            error(message, options = {}) {
+                return this.show(message, 'error', options);
+            }
+            
+            warning(message, options = {}) {
+                return this.show(message, 'warning', options);
+            }
+            
+            info(message, options = {}) {
+                return this.show(message, 'info', options);
+            }
+        }
+        
+        // Initialize global toast manager
+        const toastManager = new ToastManager();
+        
+        // Enhanced Loading States
+        function showLoading(element, message = 'Loading...') {
+            if (!element) return;
+            
+            element.style.position = 'relative';
+            
+            const overlay = document.createElement('div');
+            overlay.className = 'loading-overlay show';
+            overlay.innerHTML = `
+                <div class="loading-content">
+                    <i class="fas fa-spinner loading-spinner text-purple-400 text-2xl mb-2"></i>
+                    <div class="text-gray-400">${message}</div>
+                </div>
+            `;
+            
+            element.appendChild(overlay);
+            return overlay;
+        }
+        
+        function hideLoading(element) {
+            if (!element) return;
+            
+            const overlay = element.querySelector('.loading-overlay');
+            if (overlay) {
+                overlay.classList.remove('show');
+                setTimeout(() => {
+                    if (overlay.parentNode) {
+                        overlay.parentNode.removeChild(overlay);
+                    }
+                }, 300);
+            }
+        }
+        
+        // Enhanced Button States
+        function setButtonLoading(button, loading = true) {
+            if (!button) return;
+            
+            if (loading) {
+                button.disabled = true;
+                button.dataset.originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner loading-spinner mr-2"></i>Loading...';
+                button.classList.add('loading');
+            } else {
+                button.disabled = false;
+                button.innerHTML = button.dataset.originalText || button.innerHTML;
+                button.classList.remove('loading');
+            }
+        }
+        
+        // Animation Utilities
+        function animateElement(element, animation, duration = 600) {
+            return new Promise((resolve) => {
+                element.style.animationDuration = `${duration}ms`;
+                element.classList.add(animation);
+                
+                const handleAnimationEnd = () => {
+                    element.classList.remove(animation);
+                    element.removeEventListener('animationend', handleAnimationEnd);
+                    resolve();
+                };
+                
+                element.addEventListener('animationend', handleAnimationEnd);
+            });
+        }
+        
+        // Stagger Animation for Lists
+        function staggerAnimate(elements, delay = 100) {
+            elements.forEach((element, index) => {
+                setTimeout(() => {
+                    element.classList.add('stagger-item');
+                }, index * delay);
+            });
+        }
+        
+        // Enhanced Form Validation with Animations
+        function showFieldError(field, message) {
+            field.classList.add('shake');
+            field.style.borderColor = 'var(--error-red)';
+            
+            // Remove existing error message
+            const existingError = field.parentNode.querySelector('.field-error');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            // Add new error message
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'field-error text-red-400 text-sm mt-1 slide-in-up';
+            errorDiv.textContent = message;
+            field.parentNode.appendChild(errorDiv);
+            
+            // Remove shake animation after it completes
+            setTimeout(() => {
+                field.classList.remove('shake');
+            }, 600);
+        }
+        
+        function clearFieldError(field) {
+            field.style.borderColor = '';
+            const errorDiv = field.parentNode.querySelector('.field-error');
+            if (errorDiv) {
+                errorDiv.classList.add('slide-out-up');
+                setTimeout(() => errorDiv.remove(), 300);
+            }
+        }
+        
+        // Smooth Scroll to Element
+        function scrollToElement(element, offset = 0) {
+            if (!element) return;
+            
+            const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+            const offsetPosition = elementPosition - offset;
+            
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: 'smooth'
+            });
+        }
+        
+        // Enhanced Navigation Active State
+        function updateActiveNavigation() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        }
+        
+        // Initialize animations on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update navigation
+            updateActiveNavigation();
+            
+            // Add stagger animation to cards
+            const cards = document.querySelectorAll('.enhanced-card');
+            staggerAnimate(cards, 150);
+            
+            // Add fade-in animation to main content
+            const mainContent = document.querySelector('main');
+            if (mainContent) {
+                mainContent.classList.add('fade-in');
+            }
+            
+            // Enhanced form interactions
+            const formControls = document.querySelectorAll('.form-control-enhanced');
+            formControls.forEach(control => {
+                control.addEventListener('focus', function() {
+                    this.parentNode.classList.add('focused');
+                });
+                
+                control.addEventListener('blur', function() {
+                    this.parentNode.classList.remove('focused');
+                    if (this.value) {
+                        this.parentNode.classList.add('has-value');
+                    } else {
+                        this.parentNode.classList.remove('has-value');
+                    }
+                });
+            });
+            
+            // Add ripple effect to buttons
+            const buttons = document.querySelectorAll('.btn-enhanced');
+            buttons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    const ripple = document.createElement('span');
+                    const rect = this.getBoundingClientRect();
+                    const size = Math.max(rect.width, rect.height);
+                    const x = e.clientX - rect.left - size / 2;
+                    const y = e.clientY - rect.top - size / 2;
+                    
+                    ripple.style.width = ripple.style.height = size + 'px';
+                    ripple.style.left = x + 'px';
+                    ripple.style.top = y + 'px';
+                    ripple.classList.add('ripple');
+                    
+                    this.appendChild(ripple);
+                    
+                    setTimeout(() => {
+                        ripple.remove();
+                    }, 600);
+                });
+            });
+        });
+        
+        // Global error handler with toast notifications
+        window.addEventListener('error', function(e) {
+            console.error('Global error:', e.error);
+            toastManager.error('An unexpected error occurred. Please try again.');
+        });
+        
+        // Global unhandled promise rejection handler
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Unhandled promise rejection:', e.reason);
+            toastManager.error('A network error occurred. Please check your connection.');
+        });
+    </script>

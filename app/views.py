@@ -11,11 +11,32 @@ import logging
 logger = logging.getLogger(__name__)
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.pagination import PageNumberPagination
+from django.views.generic import TemplateView
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.utils.decorators import method_decorator
+from rest_framework.filters import OrderingFilter
+from rest_framework.decorators import action
 
 
 # Web UI views
 def control_panel(request):
     return render(request, 'app/control_panel.html')
+
+# New Class-Based Views for split UI pages
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class HomeView(TemplateView):
+    """Home page: manual feeding controls and quick schedule form."""
+    template_name = 'app/home.html'
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class SchedulesView(TemplateView):
+    """Schedules management page: add/edit/delete schedules."""
+    template_name = 'app/schedules.html'
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class HistoryView(TemplateView):
+    """Feeding logs page with filters and pagination."""
+    template_name = 'app/history.html'
 
 
 # API views for ESP8266 communication
@@ -458,6 +479,16 @@ class FeedingLogPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 100
 
+    def get_page_size(self, request):
+        """Support both 'page_size' and legacy 'limit' query params."""
+        limit = request.query_params.get('limit')
+        if limit is not None:
+            try:
+                return min(int(limit), self.max_page_size)
+            except Exception:
+                pass
+        return super().get_page_size(request)
+
 class FeedingLogViewSet(viewsets.ModelViewSet):
     queryset = FeedingLog.objects.order_by("-timestamp")
     serializer_class = FeedingLogSerializer
@@ -466,18 +497,27 @@ class FeedingLogViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "head", "options"]
     # Enable server-side pagination for logs endpoint
     pagination_class = FeedingLogPagination
+    # Enable ordering via query param, e.g. ?ordering=-timestamp
+    filter_backends = [OrderingFilter]
+    ordering_fields = ["timestamp", "portion_dispensed", "source"]
+    ordering = ["-timestamp"]
 
     def get_queryset(self):
-        """Optionally filter logs by start_date/end_date query params (YYYY-MM-DD).
+        """Filter logs by start_date/end_date, feed_type, and search.
         - start_date: include logs with timestamp >= start_date 00:00:00
         - end_date: include logs with timestamp <= end_date 23:59:59.999999
+        - feed_type: maps UI values to source categories (manual->[manual_button,button,manual], automatic->[automatic_button,remote_command,web,esp,serial_command], scheduled->[schedule,scheduled]); legacy keys 'button','remote','esp' are also supported
+        - search: case-insensitive contains on source
         """
         qs = FeedingLog.objects.order_by("-timestamp")
         params = getattr(self.request, 'query_params', {})
         start_date = params.get('start_date')
         end_date = params.get('end_date')
+        feed_type = params.get('feed_type')
+        search = params.get('search')
         from datetime import datetime, time
         from django.utils.dateparse import parse_date
+        from django.db.models import Q
 
         if start_date:
             sd = parse_date(start_date)
@@ -491,12 +531,131 @@ class FeedingLogViewSet(viewsets.ModelViewSet):
                 from datetime import timedelta
                 end_dt = datetime.combine(ed, time.max)
                 qs = qs.filter(timestamp__lte=end_dt)
+        if feed_type:
+            ft = (feed_type or '').lower()
+            category_map = {
+                'manual': ['manual_button', 'button', 'manual'],
+                'automatic': ['automatic_button', 'remote_command', 'web', 'esp', 'serial_command'],
+                'scheduled': ['schedule', 'scheduled'],
+                # Legacy/synonyms support
+                'button': ['manual_button', 'button'],
+                'remote': ['automatic_button', 'remote_command'],
+                'esp': ['esp'],
+                'web': ['web'],
+            }
+            sources = category_map.get(ft)
+            if sources:
+                qs = qs.filter(source__in=sources)
+            else:
+                qs = qs.filter(source__iexact=ft)
+        if search:
+            qs = qs.filter(Q(source__icontains=search))
         return qs
+
+    @action(detail=False, methods=['get'], url_path='stats', permission_classes=[AllowAny])
+    def stats(self, request):
+        """Return aggregate statistics for logs: total feeds, total amount, today's feeds, 30-day average daily amount."""
+        qs = self.get_queryset()
+        total_feeds = qs.count()
+        from django.db.models import Sum
+        total_amount = qs.aggregate(total=Sum('portion_dispensed'))['total'] or 0
+        from django.utils import timezone
+        today = timezone.localdate()
+        today_feeds = qs.filter(timestamp__date=today).count()
+        from datetime import timedelta
+        start_30 = today - timedelta(days=30)
+        qs30 = FeedingLog.objects.filter(timestamp__date__gte=start_30, timestamp__date__lte=today)
+        total30 = qs30.aggregate(total=Sum('portion_dispensed'))['total'] or 0
+        days_with_data = qs30.values('timestamp__date').distinct().count() or 1
+        avg_daily = total30 / days_with_data
+        return Response({
+            'total_feeds': total_feeds,
+            'total_amount': round(total_amount, 2),
+            'today_feeds': today_feeds,
+            'avg_daily': round(avg_daily, 2),
+        })
+
+    @action(detail=False, methods=['get'], url_path='export', permission_classes=[AllowAny])
+    def export(self, request):
+        """Export logs as CSV applying current filters."""
+        qs = self.get_queryset()
+        from django.http import HttpResponse
+        import csv
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="feeding_logs.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['timestamp', 'amount_g', 'source'])
+        for log in qs:
+            writer.writerow([log.timestamp.isoformat(), f"{log.portion_dispensed}", log.source])
+        return response
 
 class FeedingScheduleViewSet(viewsets.ModelViewSet):
     queryset = FeedingSchedule.objects.all()
     serializer_class = FeedingScheduleSerializer
     permission_classes = [AllowAny]
+    # Use same pagination as logs to return count/results keys expected by frontend
+    pagination_class = FeedingLogPagination
+    # Enable ordering via query param, e.g. ?ordering=-id or ?ordering=time
+    filter_backends = [OrderingFilter]
+    ordering_fields = ["id", "time", "portion_size", "enabled"]
+    # Default to newest first so recently added schedules show up immediately
+    ordering = ["-id"]
+
+    def get_queryset(self):
+        """
+        Return schedules, optionally filtered by the "enabled" query parameter.
+        Accepts enabled=true/false/1/0/yes/no (case-insensitive).
+        Ensures default ordering (-id) when no explicit ordering is provided.
+        """
+        qs = FeedingSchedule.objects.all()
+        enabled_param = self.request.query_params.get("enabled")
+        if enabled_param is not None:
+            val = enabled_param.strip().lower()
+            if val in ("true", "1", "yes"):
+                qs = qs.filter(enabled=True)
+            elif val in ("false", "0", "no"):
+                qs = qs.filter(enabled=False)
+        # Apply default ordering only if no explicit ordering provided via query params
+        if not self.request.query_params.get("ordering") and hasattr(self, "ordering"):
+            return qs.order_by(*self.ordering)
+        return qs
+
+    @action(detail=False, methods=['get'], url_path='stats', permission_classes=[AllowAny])
+    def stats(self, request):
+        """Return aggregate statistics for logs: total feeds, total amount, today's feeds, 30-day average daily amount."""
+        qs = self.get_queryset()
+        total_feeds = qs.count()
+        from django.db.models import Sum
+        total_amount = qs.aggregate(total=Sum('portion_dispensed'))['total'] or 0
+        from django.utils import timezone
+        today = timezone.localdate()
+        today_feeds = qs.filter(timestamp__date=today).count()
+        from datetime import timedelta
+        start_30 = today - timedelta(days=30)
+        qs30 = FeedingLog.objects.filter(timestamp__date__gte=start_30, timestamp__date__lte=today)
+        total30 = qs30.aggregate(total=Sum('portion_dispensed'))['total'] or 0
+        days_with_data = qs30.values('timestamp__date').distinct().count() or 1
+        avg_daily = total30 / days_with_data
+        return Response({
+            'total_feeds': total_feeds,
+            'total_amount': round(total_amount, 2),
+            'today_feeds': today_feeds,
+            'avg_daily': round(avg_daily, 2),
+        })
+
+    @action(detail=False, methods=['get'], url_path='export', permission_classes=[AllowAny])
+    def export(self, request):
+        """Export logs as CSV applying current filters."""
+        qs = self.get_queryset()
+        from django.http import HttpResponse
+        import csv
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="feeding_logs.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['timestamp', 'amount_g', 'source'])
+        for log in qs:
+            writer.writerow([log.timestamp.isoformat(), f"{log.portion_dispensed}", log.source])
+        return response
 
 class PendingCommandViewSet(viewsets.ModelViewSet):
     queryset = PendingCommand.objects.all()

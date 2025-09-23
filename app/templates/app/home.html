@@ -1,0 +1,544 @@
+{% extends 'app/base.html' %}
+{% block title %}Home - PETio{% endblock %}
+{% block content %}
+<div class="space-y-8">
+    <!-- Welcome Header -->
+    <div class="text-center">
+        <h1 class="section-title justify-center text-3xl mb-2">
+            <i class="fas fa-home text-purple-400"></i>
+            Welcome to PETio
+        </h1>
+        <p class="text-gray-400 text-lg">Your smart pet feeding companion</p>
+    </div>
+
+    <!-- Main Control Grid -->
+    <div class="responsive-grid">
+        <!-- Feed Now Card -->
+        <div class="enhanced-card">
+            <div class="section-title">
+                <i class="fas fa-utensils text-orange-400"></i>
+                Feed Now
+            </div>
+            <div class="space-y-4">
+                <!-- Portion Size Control -->
+                <div>
+                    <label class="subsection-title flex items-center gap-2">
+                        <i class="fas fa-balance-scale text-teal-400"></i>
+                        Portion Size: <span id="portionDisplay" class="text-purple-400 font-bold">25 grams</span>
+                    </label>
+                    <div class="relative">
+                        <input 
+                            type="range" 
+                            id="portionSlider" 
+                            class="range-enhanced w-full" 
+                            min="25" 
+                            max="500" 
+                            value="25"
+                            oninput="updatePortionDisplay(this.value)"
+                        >
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>25g</span>
+                            <span>250g</span>
+                            <span>500g</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feed Button -->
+                <button 
+                    id="feedNowBtn" 
+                    class="btn btn-enhanced btn-accent-orange w-full text-lg py-3"
+                    onclick="feedNow()"
+                >
+                    <i class="fas fa-paw"></i>
+                    Feed Now
+                </button>
+
+                <!-- Last Fed Info -->
+                <div class="bg-gray-800 rounded-lg p-3 text-center">
+                    <div class="text-sm text-gray-400">Last Fed</div>
+                    <div id="lastFedTime" class="text-white font-semibold">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Schedule Card -->
+        <div class="enhanced-card">
+            <div class="section-title">
+                <i class="fas fa-clock text-teal-400"></i>
+                Quick Schedule
+            </div>
+            <form id="quickScheduleForm" class="space-y-4">
+                <!-- Time Input -->
+                <div>
+                    <label class="subsection-title">
+                        <i class="fas fa-time text-purple-400"></i>
+                        Feeding Time
+                    </label>
+                    <input 
+                        type="time" 
+                        id="scheduleTime" 
+                        class="form-control-enhanced w-full"
+                        required
+                    >
+                </div>
+
+                <!-- Amount Input -->
+                <div>
+                    <label class="subsection-title">
+                        <i class="fas fa-weight text-orange-400"></i>
+                        Amount (grams)
+                    </label>
+                    <input 
+                        type="number" 
+                        id="scheduleAmount" 
+                        class="form-control-enhanced w-full"
+                        min="25" 
+                        max="500" 
+                        value="25"
+                        required
+                    >
+                </div>
+
+                <!-- Days Selection -->
+                <div>
+                    <label class="subsection-title">
+                        <i class="fas fa-calendar text-green-400"></i>
+                        Days
+                    </label>
+                    <div class="grid grid-cols-7 gap-1">
+                        <label class="day-toggle">
+                            <input type="checkbox" name="days" value="monday" class="hidden">
+                            <span class="day-label">M</span>
+                        </label>
+                        <label class="day-toggle">
+                            <input type="checkbox" name="days" value="tuesday" class="hidden">
+                            <span class="day-label">T</span>
+                        </label>
+                        <label class="day-toggle">
+                            <input type="checkbox" name="days" value="wednesday" class="hidden">
+                            <span class="day-label">W</span>
+                        </label>
+                        <label class="day-toggle">
+                            <input type="checkbox" name="days" value="thursday" class="hidden">
+                            <span class="day-label">T</span>
+                        </label>
+                        <label class="day-toggle">
+                            <input type="checkbox" name="days" value="friday" class="hidden">
+                            <span class="day-label">F</span>
+                        </label>
+                        <label class="day-toggle">
+                            <input type="checkbox" name="days" value="saturday" class="hidden">
+                            <span class="day-label">S</span>
+                        </label>
+                        <label class="day-toggle">
+                            <input type="checkbox" name="days" value="sunday" class="hidden">
+                            <span class="day-label">S</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Add Schedule Button -->
+                <button 
+                    type="submit" 
+                    class="btn btn-enhanced btn-primary-enhanced w-full"
+                >
+                    <i class="fas fa-plus"></i>
+                    Add Schedule
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Recent Activity Card -->
+    <div class="enhanced-card">
+        <div class="section-title">
+            <i class="fas fa-history text-green-400"></i>
+            Recent Activity
+        </div>
+        <div class="overflow-x-auto">
+            <table class="enhanced-table w-full">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-clock mr-2"></i>Time</th>
+                        <th><i class="fas fa-info-circle mr-2"></i>Action</th>
+                        <th><i class="fas fa-weight mr-2"></i>Amount</th>
+                        <th><i class="fas fa-check-circle mr-2"></i>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="recentActivityTable">
+                    <tr>
+                        <td colspan="4" class="text-center text-gray-400 py-8">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                            Loading recent activity...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-4 text-center">
+            <a href="/history/" class="btn btn-enhanced btn-ghost">
+                <i class="fas fa-external-link-alt"></i>
+                View Full History
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="enhanced-card text-center">
+            <div class="text-2xl font-bold text-purple-400" id="todayFeedings">-</div>
+            <div class="text-sm text-gray-400">Today's Feedings</div>
+        </div>
+        <div class="enhanced-card text-center">
+            <div class="text-2xl font-bold text-teal-400" id="activeSchedules">-</div>
+            <div class="text-sm text-gray-400">Active Schedules</div>
+        </div>
+        <div class="enhanced-card text-center">
+            <div class="text-2xl font-bold text-orange-400" id="totalAmount">-</div>
+            <div class="text-sm text-gray-400">Total Amount Today</div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Day Toggle Styling */
+.day-toggle {
+    cursor: pointer;
+}
+
+.day-label {
+    display: block;
+    text-align: center;
+    padding: 0.5rem;
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: var(--transition-fast);
+    border: 2px solid transparent;
+}
+
+.day-toggle:hover .day-label {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+}
+
+.day-toggle input:checked + .day-label {
+    background: var(--primary-purple);
+    color: white;
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+/* Progress Bar for Portion Slider */
+.range-enhanced {
+    background: linear-gradient(to right, var(--primary-purple) 0%, var(--primary-purple) 25%, var(--bg-secondary) 25%, var(--bg-secondary) 100%);
+}
+
+/* Status Badge Variants */
+.status-success {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success-green);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-pending {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning-yellow);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-error {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--error-red);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+</style>
+
+<script>
+// Helper function to show toast notifications
+function showToast(message, type = 'success') {
+    // Normalize type: treat 'error' as 'danger' for consistent styling
+    const resolvedType = (type === 'error') ? 'danger' : type;
+    const container = document.createElement('div');
+    container.className = 'position-fixed bottom-0 end-0 p-3';
+    container.style.zIndex = '1100';
+    container.innerHTML = `
+        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true" style="min-width: 260px;">
+            <div class="toast-header">
+                <strong class="me-auto">Pet Feeder</strong>
+                <small>Just now</small>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body ${resolvedType === 'danger' ? 'text-danger' : (resolvedType === 'warning' ? 'text-warning' : '')}">
+                ${message}
+            </div>
+        </div>`;
+    document.body.appendChild(container);
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        if (container.parentNode) {
+            container.parentNode.removeChild(container);
+        }
+    }, 3000);
+}
+
+// Handle fetch/network errors in a consistent way across the page
+function handleFetchError(error) {
+    console.error('Fetch error:', error);
+    const message = (error && error.message) ? error.message : 'Network error. Please try again.';
+    if (typeof showToast === 'function') {
+        showToast(message, 'error');
+    } else {
+        alert(message);
+    }
+}
+// Portion size display update
+function updatePortionDisplay(value) {
+    document.getElementById('portionDisplay').textContent = `${value} grams`;
+    
+    // Update slider background gradient
+    const slider = document.getElementById('portionSlider');
+    const percentage = ((value - slider.min) / (slider.max - slider.min)) * 100;
+    slider.style.background = `linear-gradient(to right, var(--primary-purple) 0%, var(--primary-purple) ${percentage}%, var(--bg-secondary) ${percentage}%, var(--bg-secondary) 100%)`;
+}
+
+// Feed Now function
+async function feedNow() {
+    const button = document.getElementById('feedNowBtn');
+    const portionSize = document.getElementById('portionSlider').value;
+    
+    setButtonLoading(button, true);
+    
+    try {
+        const response = await fetch('/feed_now/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                portion_size: parseInt(portionSize)
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast(`Fed ${portionSize}g successfully!`, 'success');
+            loadRecentActivity();
+            loadStats();
+            updateLastFedTime();
+        } else {
+            showToast(data.error || 'Failed to feed', 'error');
+        }
+    } catch (error) {
+        handleFetchError(error);
+    } finally {
+        setButtonLoading(button, false);
+    }
+}
+
+// Quick Schedule form submission
+document.getElementById('quickScheduleForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const selectedDaysLower = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(cb => cb.value);
+    const dayAbbrMap = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
+    const selectedDays = selectedDaysLower.map(d => dayAbbrMap[d] || d);
+    
+    if (selectedDays.length === 0) {
+        showToast('Please select at least one day', 'warning');
+        return;
+    }
+    
+    const scheduleData = {
+        time: formData.get('scheduleTime') || document.getElementById('scheduleTime').value,
+        portion_size: parseInt(formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value),
+        days_of_week: selectedDays,
+        enabled: true
+    };
+    
+    const submitBtn = this.querySelector('button[type="submit"]');
+    setButtonLoading(submitBtn, true);
+    
+    try {
+        const response = await fetch('/api/schedules/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(scheduleData)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast('Schedule added successfully!', 'success');
+            this.reset();
+            // Uncheck all day toggles
+            document.querySelectorAll('input[name="days"]').forEach(cb => cb.checked = false);
+            loadStats();
+        } else {
+            showToast(data.error || 'Failed to add schedule', 'error');
+        }
+    } catch (error) {
+        handleFetchError(error);
+    } finally {
+        setButtonLoading(submitBtn, false);
+    }
+});
+
+// Load recent activity
+async function loadRecentActivity() {
+    try {
+        const response = await fetch('/api/logs/?limit=5');
+        const data = await response.json();
+        
+        const tbody = document.getElementById('recentActivityTable');
+        
+        if (data.results && data.results.length > 0) {
+            tbody.innerHTML = data.results.map(log => `
+                <tr>
+                    <td class="font-mono text-sm">${new Date(log.timestamp).toLocaleString()}</td>
+                    <td>
+                        <span class="flex items-center gap-2">
+                            <i class="fas fa-${getFeedTypeIcon(log.feed_type)} text-purple-400"></i>
+                            ${getFeedTypeLabel(log.feed_type)}
+                            ${log.action === 'feed' ? 'Manual Feed' : 'Scheduled Feed'}
+                        </span>
+                    </td>
+                    <td class="font-semibold">${log.amount}g</td>
+                    <td>
+                        <span class="status-badge status-${log.success ? 'success' : 'error'}">
+                            <i class="fas fa-${log.success ? 'check' : 'times'}"></i>
+                            ${log.success ? 'Success' : 'Failed'}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center text-gray-400 py-8">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        No recent activity
+                    </td>
+                </tr>
+            `;
+        }
+    } catch (error) {
+        console.error('Failed to load recent activity:', error);
+        document.getElementById('recentActivityTable').innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-red-400 py-8">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Failed to load activity
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// Load statistics
+async function loadStats() {
+    try {
+        const [logsResponse, schedulesResponse] = await Promise.all([
+            fetch('/api/logs/?limit=100'),
+            fetch('/api/schedules/?page_size=100&ordering=-id')
+        ]);
+        
+        const logsData = await logsResponse.json();
+        const schedulesData = await schedulesResponse.json();
+        
+        // Calculate today's stats
+        const today = new Date().toDateString();
+        const todayLogs = logsData.results?.filter(log => 
+            new Date(log.timestamp).toDateString() === today
+        ) || [];
+        
+        document.getElementById('todayFeedings').textContent = todayLogs.length;
+        document.getElementById('activeSchedules').textContent = 
+            schedulesData.results?.filter(s => s.enabled).length || 0;
+        document.getElementById('totalAmount').textContent = 
+            `${todayLogs.reduce((sum, log) => sum + (log.amount || 0), 0)}g`;
+            
+    } catch (error) {
+        console.error('Failed to load stats:', error);
+        document.getElementById('todayFeedings').textContent = '?';
+        document.getElementById('activeSchedules').textContent = '?';
+        document.getElementById('totalAmount').textContent = '?';
+    }
+}
+
+// Update last fed time
+async function updateLastFedTime() {
+    try {
+        const response = await fetch('/api/logs/?limit=1');
+        const data = await response.json();
+        
+        if (data.results && data.results.length > 0) {
+            const lastFed = new Date(data.results[0].timestamp);
+            const now = new Date();
+            const diffMinutes = Math.floor((now - lastFed) / (1000 * 60));
+            
+            let timeText;
+            if (diffMinutes < 1) {
+                timeText = 'Just now';
+            } else if (diffMinutes < 60) {
+                const hours = Math.floor(diffMinutes / 60);
+                timeText = `${hours} hour${hours > 1 ? 's' : ''} ago`;
+            } else if (diffMinutes < 1440) {
+                const hours = Math.floor(diffMinutes / 60);
+                timeText = `${hours} hour${hours > 1 ? 's' : ''} ago`;
+            } else {
+                timeText = lastFed.toLocaleDateString();
+            }
+            
+            document.getElementById('lastFedTime').textContent = timeText;
+        } else {
+            document.getElementById('lastFedTime').textContent = 'Never';
+        }
+    } catch (error) {
+        document.getElementById('lastFedTime').textContent = 'Unknown';
+    }
+}
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    updatePortionDisplay(25);
+    loadRecentActivity();
+    loadStats();
+    updateLastFedTime();
+    
+    // Refresh data every 30 seconds
+    setInterval(() => {
+        loadRecentActivity();
+        loadStats();
+        updateLastFedTime();
+    }, 30000);
+});
+// Feed type helpers for consistent labels/icons
+function getFeedTypeIcon(type) {
+    const icons = {
+        manual: 'hand-paper',
+        scheduled: 'clock',
+        automatic: 'bolt'
+    };
+    return icons[type] || 'utensils';
+}
+function getFeedTypeLabel(type) {
+    const labels = {
+        manual: 'Manual Button',
+        scheduled: 'Schedule',
+        automatic: 'Automatic Button'
+    };
+    return labels[type] || 'Manual Button';
+}
+</script>
+{% endblock %}

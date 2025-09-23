@@ -1,0 +1,825 @@
+{% extends 'app/base.html' %}
+{% block title %}Schedules - PETio{% endblock %}
+{% block content %}
+<div class="space-y-8">
+    <!-- Page Header -->
+    <div class="text-center">
+        <h1 class="section-title justify-center text-3xl mb-2">
+            <i class="fas fa-calendar-alt text-teal-400"></i>
+            Feeding Schedules
+        </h1>
+        <p class="text-gray-400 text-lg">Manage your pet's feeding schedule</p>
+    </div>
+
+    <!-- Add Schedule Card -->
+    <div class="enhanced-card">
+        <div class="section-title">
+            <i class="fas fa-plus-circle text-green-400"></i>
+            Add New Schedule
+        </div>
+        <form id="addScheduleForm" class="space-y-6">
+            <div class="responsive-grid">
+                <!-- Time Input -->
+                <div>
+                    <label class="subsection-title">
+                        <i class="fas fa-clock text-purple-400"></i>
+                        Feeding Time
+                    </label>
+                    <input 
+                        type="time" 
+                        id="scheduleTime" 
+                        class="form-control-enhanced w-full"
+                        required
+                    >
+                </div>
+
+                <!-- Amount Input -->
+                <div>
+                    <label class="subsection-title">
+                        <i class="fas fa-weight text-orange-400"></i>
+                        Amount (grams)
+                    </label>
+                    <input 
+                        type="number" 
+                        id="scheduleAmount" 
+                        class="form-control-enhanced w-full"
+                        min="25" 
+                        max="500" 
+                        value="25"
+                        required
+                    >
+                </div>
+            </div>
+
+            <!-- Label Input -->
+            <div>
+                <label class="subsection-title">
+                    <i class="fas fa-tag text-blue-400"></i>
+                    Schedule Label (Optional)
+                </label>
+                <input 
+                    type="text" 
+                    id="scheduleLabel" 
+                    class="form-control-enhanced w-full"
+                    placeholder="e.g., Morning Breakfast, Evening Dinner"
+                    maxlength="50"
+                >
+            </div>
+
+            <!-- Days Selection -->
+            <div>
+                <label class="subsection-title">
+                    <i class="fas fa-calendar text-green-400"></i>
+                    Days of Week
+                </label>
+                <div class="grid grid-cols-7 gap-2">
+                    <label class="day-toggle-large">
+                        <input type="checkbox" name="days" value="monday" class="hidden">
+                        <span class="day-label-large">Mon</span>
+                    </label>
+                    <label class="day-toggle-large">
+                        <input type="checkbox" name="days" value="tuesday" class="hidden">
+                        <span class="day-label-large">Tue</span>
+                    </label>
+                    <label class="day-toggle-large">
+                        <input type="checkbox" name="days" value="wednesday" class="hidden">
+                        <span class="day-label-large">Wed</span>
+                    </label>
+                    <label class="day-toggle-large">
+                        <input type="checkbox" name="days" value="thursday" class="hidden">
+                        <span class="day-label-large">Thu</span>
+                    </label>
+                    <label class="day-toggle-large">
+                        <input type="checkbox" name="days" value="friday" class="hidden">
+                        <span class="day-label-large">Fri</span>
+                    </label>
+                    <label class="day-toggle-large">
+                        <input type="checkbox" name="days" value="saturday" class="hidden">
+                        <span class="day-label-large">Sat</span>
+                    </label>
+                    <label class="day-toggle-large">
+                        <input type="checkbox" name="days" value="sunday" class="hidden">
+                        <span class="day-label-large">Sun</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex justify-end">
+                <button 
+                    type="submit" 
+                    class="btn btn-enhanced btn-primary-enhanced px-8"
+                >
+                    <i class="fas fa-save"></i>
+                    Save Schedule
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Schedules List Card -->
+    <div class="enhanced-card">
+        <div class="section-title justify-between">
+            <span>
+                <i class="fas fa-list text-blue-400"></i>
+                Active Schedules
+            </span>
+            <div class="flex items-center gap-4">
+                <!-- Filter Toggle -->
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" id="showDisabledSchedules" class="checkbox-enhanced">
+                    <span class="text-gray-400">Show Disabled</span>
+                </label>
+                <!-- Refresh Button -->
+                <button 
+                    id="refreshSchedules" 
+                    class="btn btn-enhanced btn-ghost btn-sm"
+                    onclick="loadSchedules()"
+                >
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="schedulesLoading" class="text-center py-8">
+            <i class="fas fa-spinner fa-spin text-purple-400 text-2xl mb-2"></i>
+            <div class="text-gray-400">Loading schedules...</div>
+        </div>
+
+        <!-- Schedules Table -->
+        <div id="schedulesContainer" class="hidden">
+            <div class="overflow-x-auto">
+                <table class="enhanced-table w-full">
+                    <thead>
+                        <tr>
+                            <th class="w-16">
+                                <i class="fas fa-toggle-on text-green-400"></i>
+                            </th>
+                            <th>
+                                <i class="fas fa-clock mr-2"></i>Time
+                            </th>
+                            <th>
+                                <i class="fas fa-tag mr-2"></i>Label
+                            </th>
+                            <th>
+                                <i class="fas fa-weight mr-2"></i>Amount
+                            </th>
+                            <th>
+                                <i class="fas fa-calendar mr-2"></i>Days
+                            </th>
+                            <th>
+                                <i class="fas fa-info-circle mr-2"></i>Status
+                            </th>
+                            <th class="w-32">
+                                <i class="fas fa-cogs mr-2"></i>Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="schedulesTable">
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptySchedules" class="hidden text-center py-12">
+                <i class="fas fa-calendar-times text-gray-500 text-4xl mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-400 mb-2">No Schedules Found</h3>
+                <p class="text-gray-500 mb-4">Create your first feeding schedule to get started</p>
+                <button 
+                    class="btn btn-enhanced btn-primary-enhanced"
+                    onclick="document.getElementById('scheduleTime').focus()"
+                >
+                    <i class="fas fa-plus"></i>
+                    Add First Schedule
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Schedule Modal -->
+<div id="editScheduleModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="text-xl font-semibold">
+                <i class="fas fa-edit text-blue-400"></i>
+                Edit Schedule
+            </h3>
+            <button class="modal-close" onclick="closeEditModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="editScheduleForm" class="space-y-4">
+            <input type="hidden" id="editScheduleId">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="subsection-title">Time</label>
+                    <input type="time" id="editScheduleTime" class="form-control-enhanced w-full" required>
+                </div>
+                <div>
+                    <label class="subsection-title">Amount (grams)</label>
+                    <input type="number" id="editScheduleAmount" class="form-control-enhanced w-full" min="25" max="500" required>
+                </div>
+            </div>
+            
+            <div>
+                <label class="subsection-title">Label</label>
+                <input type="text" id="editScheduleLabel" class="form-control-enhanced w-full" maxlength="50">
+            </div>
+            
+            <div>
+                <label class="subsection-title">Days</label>
+                <div class="grid grid-cols-7 gap-1" id="editDaysContainer">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-3">
+                <button type="button" class="btn btn-enhanced btn-ghost" onclick="closeEditModal()">
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-enhanced btn-primary-enhanced">
+                    <i class="fas fa-save"></i>
+                    Update Schedule
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+/* Day Toggle Large Styling */
+.day-toggle-large {
+    cursor: pointer;
+}
+
+.day-label-large {
+    display: block;
+    text-align: center;
+    padding: 0.75rem 0.5rem;
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: var(--transition-fast);
+    border: 2px solid transparent;
+}
+
+.day-toggle-large:hover .day-label-large {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+.day-toggle-large input:checked + .day-label-large {
+    background: var(--primary-purple);
+    color: white;
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+/* Status Badge Styles */
+.status-enabled {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success-green);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-disabled {
+    background: rgba(107, 114, 128, 0.2);
+    color: var(--text-secondary);
+    border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+/* Days Pills */
+.days-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.day-pill {
+    background: var(--primary-purple);
+    color: white;
+    padding: 0.125rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.modal-overlay.show {
+    opacity: 1;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.9);
+    transition: transform var(--transition-normal);
+}
+
+.modal-overlay.show .modal-content {
+    transform: scale(1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: var(--transition-fast);
+}
+
+.modal-close:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* Action Button Styles */
+.action-btn {
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-btn-edit {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--primary-blue);
+}
+
+.action-btn-edit:hover {
+    background: rgba(59, 130, 246, 0.3);
+    transform: scale(1.05);
+}
+
+.action-btn-delete {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--error-red);
+}
+
+.action-btn-delete:hover {
+    background: rgba(239, 68, 68, 0.3);
+    transform: scale(1.05);
+}
+
+/* Toggle Switch */
+.schedule-toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    border: 2px solid transparent;
+}
+
+.schedule-toggle.enabled {
+    background: var(--success-green);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.schedule-toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    transition: var(--transition-fast);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.schedule-toggle.enabled::after {
+    transform: translateX(20px);
+}
+</style>
+
+<script>
+ // Helper function to show toast notifications
+ function showToast(message, type = 'success') {
+     const resolvedType = (type === 'error') ? 'danger' : type;
+     const container = document.createElement('div');
+     container.className = 'position-fixed bottom-0 end-0 p-3';
+     container.style.zIndex = '1100';
+     container.innerHTML = `
+         <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true" style="min-width: 260px;">
+             <div class="toast-header">
+                 <strong class="me-auto">Pet Feeder</strong>
+                 <small>Just now</small>
+                 <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+             </div>
+             <div class="toast-body ${resolvedType === 'danger' ? 'text-danger' : (resolvedType === 'warning' ? 'text-warning' : '')}">
+                 ${message}
+             </div>
+         </div>`;
+     document.body.appendChild(container);
+     setTimeout(() => {
+         if (container.parentNode) container.parentNode.removeChild(container);
+     }, 3000);
+ }
+ 
+ // Handle fetch/network errors for this page
+ function handleFetchError(error) {
+     console.error('Fetch error:', error);
+     const message = (error && error.message) ? error.message : 'Network error. Please try again.';
+     if (typeof showToast === 'function') {
+         showToast(message, 'error');
+     } else {
+         alert(message);
+     }
+ }
+ 
+ let schedules = [];
+ let editingScheduleId = null;
+
+const dayToAbbr = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
+
+// Load schedules from API
+async function loadSchedules() {
+    const loading = document.getElementById('schedulesLoading');
+    const container = document.getElementById('schedulesContainer');
+    const emptyState = document.getElementById('emptySchedules');
+    
+    loading.classList.remove('hidden');
+    container.classList.add('hidden');
+    
+    try {
+        const response = await fetch('/api/schedules/?page_size=100&ordering=-id', {
+            headers: { 'Accept': 'application/json' }
+        });
+        const data = await response.json();
+        
+        schedules = data.results || [];
+        renderSchedules();
+        
+        loading.classList.add('hidden');
+        
+        if (schedules.length === 0) {
+            emptyState.classList.remove('hidden');
+        } else {
+            container.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+        }
+        
+    } catch (error) {
+        console.error('Failed to load schedules:', error);
+        loading.innerHTML = `
+            <div class="text-center py-8">
+                <i class="fas fa-exclamation-triangle text-red-400 text-2xl mb-2"></i>
+                <div class="text-red-400">Failed to load schedules</div>
+                <button class="btn btn-enhanced btn-ghost btn-sm mt-2" onclick="loadSchedules()">
+                    <i class="fas fa-retry"></i>
+                    Retry
+                </button>
+            </div>
+        `;
+    }
+}
+
+// Render schedules table
+function renderSchedules() {
+    const tbody = document.getElementById('schedulesTable');
+    const showDisabled = document.getElementById('showDisabledSchedules').checked;
+    
+    const filteredSchedules = schedules.filter(schedule => 
+        showDisabled || schedule.enabled
+    );
+    
+    if (filteredSchedules.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-8 text-gray-400">
+                    <i class="fas fa-filter mr-2"></i>
+                    No schedules match the current filter
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = filteredSchedules.map(schedule => `
+        <tr class="schedule-row" data-id="${schedule.id}">
+            <td>
+                <div 
+                    class="schedule-toggle ${schedule.enabled ? 'enabled' : ''}"
+                    onclick="toggleSchedule(${schedule.id}, ${!schedule.enabled})"
+                    title="${schedule.enabled ? 'Disable' : 'Enable'} schedule"
+                ></div>
+            </td>
+            <td class="font-mono font-semibold text-purple-400">
+                ${formatTime(schedule.time)}
+            </td>
+            <td>
+                <span class="font-medium">
+                    ${schedule.label || `Schedule ${schedule.id}`}
+                </span>
+            </td>
+            <td class="font-semibold text-orange-400">
+                ${schedule.portion_size}g
+            </td>
+            <td>
+                <div class="days-pills">
+                    ${(schedule.days_of_week || []).map(day => `
+                        <span class="day-pill">${String(day).substring(0, 3)}</span>
+                    `).join('')}
+                </div>
+            </td>
+            <td>
+                <span class="status-badge status-${schedule.enabled ? 'enabled' : 'disabled'}">
+                    <i class="fas fa-${schedule.enabled ? 'check-circle' : 'pause-circle'}"></i>
+                    ${schedule.enabled ? 'Active' : 'Disabled'}
+                </span>
+            </td>
+            <td>
+                <div class="flex gap-2">
+                    <button 
+                        class="action-btn action-btn-edit"
+                        onclick="editSchedule(${schedule.id})"
+                        title="Edit schedule"
+                    >
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button 
+                        class="action-btn action-btn-delete"
+                        onclick="deleteSchedule(${schedule.id})"
+                        title="Delete schedule"
+                    >
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Format time for display
+function formatTime(timeString) {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+}
+
+// Add new schedule
+document.getElementById('addScheduleForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const selectedDaysLower = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(cb => cb.value);
+    
+    if (selectedDaysLower.length === 0) {
+        showToast('Please select at least one day', 'warning');
+        return;
+    }
+
+    const portionVal = parseInt(formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value);
+    if (isNaN(portionVal) || portionVal < 25 || portionVal > 500) {
+        showToast('Portion must be between 25 and 500 grams', 'warning');
+        return;
+    }
+    
+    const scheduleData = {
+        time: formData.get('scheduleTime') || document.getElementById('scheduleTime').value,
+        portion_size: portionVal,
+        label: (document.getElementById('scheduleLabel').value || '').slice(0, 20),
+        days_of_week: selectedDaysLower.map(d => dayToAbbr[d] || d),
+        enabled: true
+    };
+    
+    const submitBtn = this.querySelector('button[type="submit"]');
+    setButtonLoading(submitBtn, true);
+    
+    try {
+        const response = await fetch('/api/schedules/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(scheduleData)
+        });
+        
+        if (response.ok) {
+            showToast('Schedule added successfully!', 'success');
+            this.reset();
+            document.querySelectorAll('input[name="days"]').forEach(cb => cb.checked = false);
+            loadSchedules();
+        } else {
+            const data = await response.json();
+            showToast(data.error || 'Failed to add schedule', 'error');
+        }
+    } catch (error) {
+        handleFetchError(error);
+    } finally {
+        setButtonLoading(submitBtn, false);
+    }
+});
+
+// Toggle schedule enabled/disabled
+async function toggleSchedule(scheduleId, enabled) {
+    try {
+        const response = await fetch(`/api/schedules/${scheduleId}/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ enabled })
+        });
+        
+        if (response.ok) {
+            showToast(`Schedule ${enabled ? 'enabled' : 'disabled'}`, 'success');
+            loadSchedules();
+        } else {
+            showToast('Failed to update schedule', 'error');
+        }
+    } catch (error) {
+        handleFetchError(error);
+    }
+}
+
+// Edit schedule
+function editSchedule(scheduleId) {
+    const schedule = schedules.find(s => s.id === scheduleId);
+    if (!schedule) return;
+    
+    editingScheduleId = scheduleId;
+    
+    // Populate form
+    document.getElementById('editScheduleId').value = scheduleId;
+    document.getElementById('editScheduleTime').value = schedule.time;
+    document.getElementById('editScheduleAmount').value = schedule.portion_size;
+    document.getElementById('editScheduleLabel').value = schedule.label || '';
+    
+    // Create days checkboxes
+    const daysContainer = document.getElementById('editDaysContainer');
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const selectedAbbrs = schedule.days_of_week || [];
+    
+    daysContainer.innerHTML = dayNames.map((day, index) => `
+        <label class="day-toggle-large">
+            <input type="checkbox" name="editDays" value="${day}" class="hidden" ${selectedAbbrs.includes(dayToAbbr[day]) ? 'checked' : ''}>
+            <span class="day-label-large">${dayLabels[index]}</span>
+        </label>
+    `).join('');
+    
+    // Show modal
+    const modal = document.getElementById('editScheduleModal');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.add('show'), 10);
+}
+
+// Close edit modal
+function closeEditModal() {
+    const modal = document.getElementById('editScheduleModal');
+    modal.classList.remove('show');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+    editingScheduleId = null;
+}
+
+// Update schedule
+document.getElementById('editScheduleForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    if (!editingScheduleId) return;
+    
+    const formData = new FormData(this);
+    const selectedDaysLower = Array.from(document.querySelectorAll('input[name="editDays"]:checked')).map(cb => cb.value);
+    
+    if (selectedDaysLower.length === 0) {
+        showToast('Please select at least one day', 'warning');
+        return;
+    }
+
+    const portionVal = parseInt(document.getElementById('editScheduleAmount').value);
+    if (isNaN(portionVal) || portionVal < 25 || portionVal > 500) {
+        showToast('Portion must be between 25 and 500 grams', 'warning');
+        return;
+    }
+    
+    const scheduleData = {
+        time: document.getElementById('editScheduleTime').value,
+        portion_size: portionVal,
+        label: (document.getElementById('editScheduleLabel').value || '').slice(0, 20),
+        days_of_week: selectedDaysLower.map(d => dayToAbbr[d] || d)
+    };
+    
+    const submitBtn = this.querySelector('button[type="submit"]');
+    setButtonLoading(submitBtn, true);
+    
+    try {
+        const response = await fetch(`/api/schedules/${editingScheduleId}/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(scheduleData)
+        });
+        
+        if (response.ok) {
+            showToast('Schedule updated successfully!', 'success');
+            closeEditModal();
+            loadSchedules();
+        } else {
+            const data = await response.json();
+            showToast(data.error || 'Failed to update schedule', 'error');
+        }
+    } catch (error) {
+        handleFetchError(error);
+    } finally {
+        setButtonLoading(submitBtn, false);
+    }
+});
+
+// Delete schedule
+async function deleteSchedule(scheduleId) {
+    const schedule = schedules.find(s => s.id === scheduleId);
+    const scheduleName = schedule?.label || `Schedule ${scheduleId}`;
+    
+    if (!confirm(`Are you sure you want to delete "${scheduleName}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/schedules/${scheduleId}/`, {
+            method: 'DELETE',
+            headers: { 'Accept': 'application/json' }
+        });
+        
+        if (response.ok) {
+            showToast('Schedule deleted successfully', 'success');
+            loadSchedules();
+        } else {
+            showToast('Failed to delete schedule', 'error');
+        }
+    } catch (error) {
+        handleFetchError(error);
+    }
+}
+
+// Filter toggle
+document.getElementById('showDisabledSchedules').addEventListener('change', renderSchedules);
+
+// Close modal on outside click
+document.getElementById('editScheduleModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeEditModal();
+    }
+});
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadSchedules();
+});
+</script>
+{% endblock %}

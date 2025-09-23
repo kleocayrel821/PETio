@@ -11,8 +11,12 @@ router.register(r'commands', views.PendingCommandViewSet)
 
 urlpatterns = [
     # Web UI
-    path("", views.control_panel, name="control_panel"),
-    
+    path('', views.HomeView.as_view(), name='home'),
+    path('schedules-ui/', views.SchedulesView.as_view(), name='schedules_ui'),
+    path('history/', views.HistoryView.as_view(), name='history'),
+    # Temporary legacy route to the old control panel (optional; can remove later)
+    path('control/', views.control_panel, name='control_panel'),
+
     # ESP8266 API endpoints
     path("command/", views.get_command, name="get_command"),
     path("feed_now/", views.feed_now, name="feed_now"),
@@ -25,7 +29,8 @@ urlpatterns = [
     path("api/remote-command/", views.remote_command, name="remote_command"),
     path("api/stop-feeding/", views.stop_feeding, name="stop_feeding"),
     path("api/calibrate/", views.calibrate, name="calibrate"),
-    
+
     # DRF API endpoints
-    path("", include(router.urls)),
+    path('', include(router.urls)),          # legacy: /logs/, /schedules/, ...
+    path('api/', include(router.urls)),      # new: /api/logs/, /api/schedules/, ...
 ]

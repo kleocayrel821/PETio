@@ -196,38 +196,35 @@
     <div class="container">
         <h1 class="text-center mb-4">Pet Feeder Control Panel</h1>
         
-        <div class="row">
-            <!-- Feed Now Section (Left) -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">Feed Now</div>
-                    <div class="card-body feed-now-container">
-                        <button id="feedNowBtn" class="feed-now-btn">
-                            <div>
-                                <i class="fas fa-utensils"></i>
-                                <div>Feed Now</div>
-                            </div>
-                        </button>
+        <div class="card">
+            <div class="card-header">Feed Now &amp; Portion Control</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="feed-now-container">
+                            <button id="feedNowBtn" class="feed-now-btn">
+                                <div>
+                                    <i class="fas fa-utensils"></i>
+                                    <div>Feed Now</div>
+                                </div>
+                            </button>
+                        </div>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Portion Control Section (Right) -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">Portion Control</div>
-                    <div class="card-body">
-                        <div class="portion-value" id="portionValue">100g</div>
-                        <div class="portion-control">
-                            <div class="portion-label">
-                                <span>25g</span>
-                                <span>500g</span>
+                    <div class="col-md-6">
+                        <div>
+                            <div class="portion-value" id="portionValue">100g</div>
+                            <div class="portion-control">
+                                <div class="portion-label">
+                                    <span>25g</span>
+                                    <span>500g</span>
+                                </div>
+                                <input type="range" class="form-range" id="portionSize" min="25" max="500" step="5" value="100">
                             </div>
-                            <input type="range" class="form-range" id="portionSize" min="25" max="500" step="5" value="100">
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
         
         <!-- Schedule Feeding Section -->
         <div class="card">
@@ -241,7 +238,7 @@
                     </div>
                     <div class="col-md-3">
                         <label for="schedulePortion" class="form-label">Portion (g)</label>
-                        <input type="number" class="form-control" id="schedulePortion" min="1" required aria-required="true" aria-invalid="false" aria-describedby="schedulePortionError">
+                        <input type="number" class="form-control" id="schedulePortion" min="25" max="500" required aria-required="true" aria-invalid="false" aria-describedby="schedulePortionError">
                         <div id="schedulePortionError" class="text-danger small" role="alert" aria-live="polite" style="display:none"></div>
                     </div>
                     <div class="col-md-3">
@@ -479,11 +476,9 @@
                 hasError = true;
             }
             const portionVal = parseFloat(portionRaw);
-            if (!portionRaw || isNaN(portionVal) || portionVal < 1) {
-                portionErr.textContent = 'Portion must be a number of at least 1 gram.';
-                portionErr.style.display = 'block';
-                portionInput.setAttribute('aria-invalid', 'true');
-                hasError = true;
+            if (!timeRaw || !portionRaw || isNaN(portionVal) || portionVal < 25 || portionVal > 500 || days.length === 0) {
+                showToast('Please provide valid time, portion between 25-500g, and select at least one day.', 'warning');
+                return;
             }
             if (!days || days.length === 0) {
                 daysErr.textContent = 'Select at least one day of the week.';
@@ -505,10 +500,11 @@
                 enabled: true
             };
         
-            fetch('/schedules/', {
+            fetch('/api/schedules/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
                 body: JSON.stringify(scheduleData)
@@ -551,8 +547,8 @@
         
             // Basic validation
             const portionVal = parseFloat(portionRaw);
-            if (!timeRaw || !portionRaw || isNaN(portionVal) || portionVal < 1 || days.length === 0) {
-                showToast('Please provide valid time, portion >= 1, and select at least one day.', 'warning');
+            if (!timeRaw || !portionRaw || isNaN(portionVal) || portionVal < 25 || portionVal > 500 || days.length === 0) {
+                showToast('Please provide valid time, portion between 25-500g, and select at least one day.', 'warning');
                 return;
             }
         
@@ -570,10 +566,11 @@
                 saveBtn.textContent = 'Saving...';
             }
         
-            fetch(`/schedules/${id}/`, {
+            fetch(`/api/schedules/${id}/`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
                 body: JSON.stringify(payload)
@@ -610,22 +607,24 @@
         
         // Load Schedules
         function loadSchedules() {
-            fetch('/schedules/')
+            fetch('/api/schedules/?page_size=100&ordering=-id', { headers: { 'Accept': 'application/json' } })
             .then(response => response.json())
             .then(data => {
                 const tbody = document.querySelector('#scheduleTable tbody');
                 tbody.innerHTML = '';
-                // Sort by id descending so the most recently added schedule appears first
-                data.sort((a, b) => (b.id || 0) - (a.id || 0));
+                // Support both array and paginated responses
+                const results = Array.isArray(data) ? data : (data.results || []);
+                // Sort by id descending so the most recently added schedule appears first (server already orders, but keep as safety)
+                results.sort((a, b) => (b.id || 0) - (a.id || 0));
         
-                data.forEach(schedule => {
+                results.forEach(schedule => {
                     const displayTime = timeToInputValue(schedule.time);
                     const labelValue = schedule.label || '';
                     const days = Array.isArray(schedule.days_of_week) ? schedule.days_of_week : [];
                     const rowHtml = `
                         <tr data-id="${schedule.id}">
                             <td><input type="time" value="${displayTime}" class="form-control schedule-time" /></td>
-                            <td><input type="number" value="${schedule.portion_size}" min="1" class="form-control schedule-portion" /></td>
+                            <td><input type="number" value="${schedule.portion_size}" min="25" max="500" class="form-control schedule-portion" /></td>
                             <td><input type="text" value="${labelValue}" maxlength="20" class="form-control schedule-label" placeholder="Label (optional)" /></td>
                             <td>${renderDaysCheckboxes(days)}</td>
                             <td><input type="checkbox" ${schedule.enabled ? 'checked' : ''} class="form-check-input schedule-enabled" onchange="toggleSchedule(${schedule.id}, this.checked)" /></td>
@@ -647,7 +646,7 @@
             const toggleSwitch = row.querySelector('.schedule-enabled');
             toggleSwitch.disabled = true;
             
-            fetch(`/schedules/${id}/`, {
+            fetch(`/api/schedules/${id}/`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -673,7 +672,7 @@
         // Delete Schedule
         function deleteSchedule(id) {
             if (confirm('Are you sure you want to delete this schedule?')) {
-                fetch(`/schedules/${id}/`, {
+                fetch(`/api/schedules/${id}/`, {
                     method: 'DELETE',
                     headers: {
                         'X-CSRFToken': getCookie('csrftoken')
@@ -723,7 +722,14 @@
             const params = new URLSearchParams({ page: page, page_size: LOGS_PAGE_SIZE });
             if (logsStartDate && logsStartDate.value) params.set('start_date', logsStartDate.value);
             if (logsEndDate && logsEndDate.value) params.set('end_date', logsEndDate.value);
-            return `/logs/?${params.toString()}`;
+            return `/api/logs/?${params.toString()}`;
+        }
+        function getSourceLabel(source) {
+            const src = (source || '').toLowerCase();
+            if (src === 'schedule' || src === 'scheduled') return 'Schedule';
+            if (src === 'manual_button' || src === 'button' || src === 'manual') return 'Manual Button';
+            if (src === 'automatic_button' || src === 'remote_command' || src === 'web' || src === 'esp' || src === 'serial_command') return 'Automatic Button';
+            return 'Manual Button';
         }
         function loadFeedingLogs(page = logsCurrentPage) {
             const url = buildLogsUrl(page);
@@ -743,7 +749,7 @@
                         row.innerHTML = `
                             <td>${timestamp}</td>
                             <td>${log.portion_dispensed}g</td>
-                            <td>${log.source}</td>
+                            <td>${getSourceLabel(log.source)}</td>
                         `;
                         logsList.appendChild(row);
                     });

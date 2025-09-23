@@ -12,9 +12,59 @@ class PetProfileSerializer(serializers.ModelSerializer):
 
 
 class FeedingLogSerializer(serializers.ModelSerializer):
+    """Serializer for FeedingLog used by web UI and firmware.
+    Adds compatibility fields expected by the current frontend templates:
+    - amount: alias of portion_dispensed (read-only)
+    - action: normalized action string used by home/history views
+    - success: boolean indicating successful dispense (derived)
+    - feed_type: normalized type for UI filters/labels (manual/automatic/scheduled)
+    """
+    # Provide 'amount' as alias to 'portion_dispensed' for frontend compatibility
+    amount = serializers.FloatField(source='portion_dispensed', read_only=True)
+    # Computed/derived fields for UI
+    action = serializers.SerializerMethodField(read_only=True)
+    success = serializers.SerializerMethodField(read_only=True)
+    feed_type = serializers.SerializerMethodField(read_only=True)
+
+    def get_action(self, obj: FeedingLog) -> str:
+        """Map the log source to a UI-friendly action string.
+        Frontend expects 'feed' for manual/remote/button/esp and 'scheduled' for schedules.
+        Defaults to 'feed' when unknown.
+        """
+        src = (obj.source or "").lower()
+        if src in ('schedule', 'scheduled'):
+            return 'scheduled'
+        # Treat any other sources (web, button, remote_command, esp, etc.) as manual feed action
+        return 'feed'
+
+    def get_feed_type(self, obj: FeedingLog) -> str:
+        """Normalize source into UI feed_type categories.
+        - manual_button -> manual
+        - automatic_button or remote_command/web -> automatic
+        - schedule/scheduled -> scheduled
+        Fallback to 'manual' when unknown to avoid breaking filters.
+        """
+        src = (obj.source or "").lower()
+        if src in ('schedule', 'scheduled'):
+            return 'scheduled'
+        if src in ('automatic_button', 'remote_command', 'web', 'esp', 'serial_command'):
+            return 'automatic'
+        if src in ('manual_button', 'button', 'manual'):
+            return 'manual'
+        return 'manual'
+
+    def get_success(self, obj: FeedingLog) -> bool:
+        """Infer success from the dispensed amount.
+        If portion_dispensed is greater than 0, consider it a success.
+        """
+        try:
+            return float(obj.portion_dispensed) > 0
+        except Exception:
+            return False
+
     class Meta:
         model = FeedingLog
-        fields = ["id", "timestamp", "source", "portion_dispensed"]
+        fields = ["id", "timestamp", "source", "portion_dispensed", "amount", "action", "success", "feed_type"]
 
 
 class PendingCommandSerializer(serializers.ModelSerializer):
