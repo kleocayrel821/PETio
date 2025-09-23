@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import viewsets, status
 from django.db import transaction
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
-from .models import PetProfile, FeedingLog, FeedingSchedule, PendingCommand
+from .models import PetProfile, FeedingLog, FeedingSchedule, PendingCommand, DeviceStatus
 from .serializers import PetProfileSerializer, FeedingLogSerializer, FeedingScheduleSerializer, PendingCommandSerializer
 
 import logging
@@ -301,39 +301,97 @@ def check_schedule(request):
         )
 
 
-@api_view(["POST"])
+@api_view(["POST", "GET"])
 @permission_classes([AllowAny])
 @authentication_classes([])
 def device_status(request):
-    """Receive device status updates from ESP8266"""
+    """Device status endpoint.
+    - POST: Heartbeat from ESP8266 with telemetry. Persists to DeviceStatus and marks online.
+    - GET: UI polling. Returns computed status (online/offline/unknown) for given device_id.
+    """
     try:
+        from django.utils import timezone
+        from datetime import timedelta
+
+        TTL_SECONDS = 70  # consider device offline if last_seen is older than this
+
+        if request.method == 'GET':
+            device_id = request.query_params.get('device_id') or request.GET.get('device_id')
+            if not device_id:
+                return Response({"status": "unknown", "message": "device_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                ds = DeviceStatus.objects.get(device_id=device_id)
+            except DeviceStatus.DoesNotExist:
+                return Response({"status": "unknown", "device_id": device_id})
+
+            now = timezone.now()
+            is_online = bool(ds.last_seen and (now - ds.last_seen) <= timedelta(seconds=TTL_SECONDS))
+            computed = 'online' if is_online else 'offline'
+            data = {
+                "status": computed,
+                "device_id": ds.device_id,
+                "last_seen": ds.last_seen.isoformat() if ds.last_seen else None,
+                "wifi_rssi": ds.wifi_rssi,
+                "uptime": ds.uptime,
+                "daily_feeds": ds.daily_feeds,
+                "last_feed": ds.last_feed.isoformat() if ds.last_feed else None,
+                "error_message": ds.error_message,
+            }
+            return Response(data)
+
+        # POST heartbeat from device
         device_id = request.data.get("device_id")
-        device_status = request.data.get("status")
-        daily_feeds = request.data.get("daily_feeds", 0)
-        last_feed = request.data.get("last_feed", "")
-        wifi_rssi = request.data.get("wifi_rssi", 0)
-        uptime = request.data.get("uptime", 0)
-        error_message = request.data.get("error_message", "")
-        
         if not device_id:
-            return Response(
-                {"error": "device_id is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Log the device status (you can extend this to store in database)
-        print(f"[DEVICE STATUS] {device_id}: {device_status}, feeds: {daily_feeds}, RSSI: {wifi_rssi}")
-        
-        return Response({
-            "status": "ok",
-            "message": "Device status received"
-        })
-        
+            return Response({"error": "device_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Optional fields
+        raw_status = request.data.get("status")  # may be provided by firmware but we compute online via last_seen
+        daily_feeds = request.data.get("daily_feeds")
+        last_feed = request.data.get("last_feed")
+        wifi_rssi = request.data.get("wifi_rssi")
+        uptime = request.data.get("uptime")
+        error_message = request.data.get("error_message", "")
+
+        # Parse types safely
+        def to_int(val, default=None):
+            try:
+                return int(val)
+            except Exception:
+                return default
+
+        wifi_rssi = to_int(wifi_rssi)
+        uptime = to_int(uptime)
+        daily_feeds = to_int(daily_feeds, default=0) or 0
+
+        parsed_last_feed = None
+        if last_feed:
+            try:
+                # Try ISO8601 first
+                from django.utils.dateparse import parse_datetime
+                parsed_last_feed = parse_datetime(last_feed)
+                if parsed_last_feed and parsed_last_feed.tzinfo is None:
+                    parsed_last_feed = timezone.make_aware(parsed_last_feed)
+            except Exception:
+                parsed_last_feed = None
+
+        now = timezone.now()
+        ds, _created = DeviceStatus.objects.get_or_create(device_id=device_id)
+        ds.status = 'online' if raw_status in (None, '', 'online') else str(raw_status)
+        ds.last_seen = now
+        ds.wifi_rssi = wifi_rssi
+        ds.uptime = uptime
+        ds.daily_feeds = daily_feeds
+        if parsed_last_feed:
+            ds.last_feed = parsed_last_feed
+        ds.error_message = error_message or ""
+        ds.save()
+
+        logger.info(f"device_status: heartbeat from {device_id} rssi={wifi_rssi} uptime={uptime}s feeds={daily_feeds}")
+        return Response({"status": "ok", "device_id": device_id, "computed_status": "online", "last_seen": now.isoformat()})
+
     except Exception as e:
-        return Response(
-            {"error": f"Failed to process device status: {str(e)}"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        logger.exception("device_status: error")
+        return Response({"error": f"Failed to process device status: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(["GET"])

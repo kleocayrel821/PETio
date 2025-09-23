@@ -96,3 +96,35 @@ class FeedingSchedule(models.Model):
     
     def __str__(self):
         return f"{self.time} - {self.portion_size}g - {self.enabled} - {','.join(self.days_of_week or [])}"
+
+
+class DeviceStatus(models.Model):
+    """Tracks the latest status/heartbeat of an ESP8266 device.
+    Stores connection info, last seen timestamp, and recent telemetry for UI polling.
+    """
+    STATUS_CHOICES = [
+        ("online", "Online"),
+        ("offline", "Offline"),
+        ("unknown", "Unknown"),
+    ]
+
+    device_id = models.CharField(max_length=100, unique=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="unknown")
+    last_seen = models.DateTimeField(null=True, blank=True)
+
+    # Telemetry fields
+    wifi_rssi = models.IntegerField(null=True, blank=True)
+    uptime = models.IntegerField(null=True, blank=True)  # seconds
+    daily_feeds = models.IntegerField(default=0)
+    last_feed = models.DateTimeField(null=True, blank=True)
+
+    error_message = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return f"{self.device_id} - {self.status} ({self.last_seen})"

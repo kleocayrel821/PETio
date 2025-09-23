@@ -607,7 +607,11 @@
         
         // Load Schedules
         function loadSchedules() {
-            fetch('/api/schedules/?page_size=100&ordering=-id', { headers: { 'Accept': 'application/json' } })
+            fetch('/api/schedules/?page_size=100&ordering=-id', {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
             .then(response => response.json())
             .then(data => {
                 const tbody = document.querySelector('#scheduleTable tbody');
@@ -654,11 +658,16 @@
                 },
                 body: JSON.stringify({ enabled: enabled })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) throw new Error('Failed');
+                return response.json();
+            })
             .then(data => {
                 // Show success notification
                 showToast(`Schedule ${enabled ? 'enabled' : 'disabled'} successfully!`, 'success');
                 toggleSwitch.disabled = false;
+                // Reload to reflect active-only filters elsewhere
+                loadSchedules();
             })
             .catch(error => {
                 console.error('Error:', error);

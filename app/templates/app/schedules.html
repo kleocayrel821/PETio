@@ -276,7 +276,7 @@
 }
 
 .day-toggle-large input:checked + .day-label-large {
-    background: var(--primary-purple);
+    background: var(--primary-blue);
     color: white;
     border-color: rgba(139, 92, 246, 0.5);
     box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
@@ -303,7 +303,7 @@
 }
 
 .day-pill {
-    background: var(--primary-purple);
+    background: var(--primary-blue);
     color: white;
     padding: 0.125rem 0.5rem;
     border-radius: 12px;
@@ -312,6 +312,9 @@
 }
 
 /* Modal Styles */
+/* Utility fallback - ensure elements with 'hidden' are not interactive */
+.hidden { display: none !important; }
+
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -326,10 +329,12 @@
     z-index: 1000;
     opacity: 0;
     transition: opacity var(--transition-normal);
+    pointer-events: none; /* prevent overlay from blocking clicks when not shown */
 }
 
 .modal-overlay.show {
     opacity: 1;
+    pointer-events: auto; /* allow interaction when modal is shown */
 }
 
 .modal-content {
@@ -404,6 +409,16 @@
     transform: scale(1.05);
 }
 
+.enhanced-table tbody tr:hover {
+    background: var(--bg-card-hover);
+    transform: translateX(4px);
+    box-shadow: 4px 0 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure row background hover doesn't block clicks on inner controls */
+.enhanced-table tbody tr { position: relative; }
+.enhanced-table tbody tr > td { position: relative; }
+
 /* Toggle Switch */
 .schedule-toggle {
     position: relative;
@@ -414,6 +429,7 @@
     cursor: pointer;
     transition: var(--transition-fast);
     border: 2px solid transparent;
+    z-index: 1; /* ensure clickable above cell background */
 }
 
 .schedule-toggle.enabled {
@@ -489,7 +505,10 @@ async function loadSchedules() {
     container.classList.add('hidden');
     
     try {
-        const response = await fetch('/api/schedules/?page_size=100&ordering=-id', {
+        const showDisabled = document.getElementById('showDisabledSchedules')?.checked;
+        const baseUrl = '/api/schedules/?page_size=100&ordering=-id';
+        const url = showDisabled ? baseUrl : `${baseUrl}&enabled=true`;
+        const response = await fetch(url, {
             headers: { 'Accept': 'application/json' }
         });
         const data = await response.json();
@@ -807,8 +826,15 @@ async function deleteSchedule(scheduleId) {
     }
 }
 
-// Filter toggle
-document.getElementById('showDisabledSchedules').addEventListener('change', renderSchedules);
+// Wire checkbox to reload based on active-only filter
+(function(){
+    const cb = document.getElementById('showDisabledSchedules');
+    if (cb) {
+        cb.addEventListener('change', () => {
+            loadSchedules();
+        });
+    }
+})();
 
 // Close modal on outside click
 document.getElementById('editScheduleModal').addEventListener('click', function(e) {

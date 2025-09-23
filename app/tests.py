@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
-from .models import FeedingLog, FeedingSchedule, PendingCommand, PetProfile
+from .models import FeedingLog, FeedingSchedule, PendingCommand, PetProfile, DeviceStatus
 from django.utils import timezone
 
 
@@ -165,3 +165,49 @@ class BackendAPITests(TestCase):
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         # Representation is 24-hour HH:MM:SS
         self.assertEqual(resp.data.get("time"), "08:00:00")
+
+
+class DeviceStatusEndpointTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.device_id = 'feeder-1'
+
+    def test_get_unknown_when_device_not_found(self):
+        resp = self.client.get(reverse('device_status'), {'device_id': self.device_id})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data.get('status'), 'unknown')
+        self.assertEqual(resp.data.get('device_id'), self.device_id)
+
+    def test_post_heartbeat_marks_online_and_sets_last_seen(self):
+        payload = {
+            'device_id': self.device_id,
+            'wifi_rssi': -65,
+            'uptime': 123,
+            'daily_feeds': 2,
+        }
+        resp = self.client.post(reverse('device_status'), payload, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data.get('status'), 'ok')
+        self.assertEqual(resp.data.get('device_id'), self.device_id)
+        # Verify model updated
+        ds = DeviceStatus.objects.get(device_id=self.device_id)
+        self.assertEqual(ds.status, 'online')
+        self.assertIsNotNone(ds.last_seen)
+        self.assertEqual(ds.wifi_rssi, -65)
+        self.assertEqual(ds.uptime, 123)
+        self.assertEqual(ds.daily_feeds, 2)
+
+    def test_get_online_when_recent_last_seen(self):
+        now = timezone.now()
+        DeviceStatus.objects.create(device_id=self.device_id, status='online', last_seen=now)
+        resp = self.client.get(reverse('device_status'), {'device_id': self.device_id})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data.get('status'), 'online')
+
+    def test_get_offline_when_last_seen_expired(self):
+        from datetime import timedelta
+        old = timezone.now() - timedelta(seconds=120)
+        DeviceStatus.objects.create(device_id=self.device_id, status='online', last_seen=old)
+        resp = self.client.get(reverse('device_status'), {'device_id': self.device_id})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data.get('status'), 'offline')

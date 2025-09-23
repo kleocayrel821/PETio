@@ -226,7 +226,7 @@
 }
 
 .day-toggle input:checked + .day-label {
-    background: var(--primary-purple);
+    background: var(--primary-blue);
     color: white;
     border-color: rgba(139, 92, 246, 0.5);
     box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
@@ -234,7 +234,7 @@
 
 /* Progress Bar for Portion Slider */
 .range-enhanced {
-    background: linear-gradient(to right, var(--primary-purple) 0%, var(--primary-purple) 25%, var(--bg-secondary) 25%, var(--bg-secondary) 100%);
+    background: linear-gradient(to right, var(--primary-blue) 0%, var(--primary-blue) 25%, var(--bg-secondary) 25%, var(--bg-secondary) 100%);
 }
 
 /* Status Badge Variants */
@@ -246,7 +246,7 @@
 
 .status-pending {
     background: rgba(245, 158, 11, 0.2);
-    color: var(--warning-yellow);
+    color: var(--warning-orange);
     border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
@@ -302,7 +302,7 @@ function updatePortionDisplay(value) {
     // Update slider background gradient
     const slider = document.getElementById('portionSlider');
     const percentage = ((value - slider.min) / (slider.max - slider.min)) * 100;
-    slider.style.background = `linear-gradient(to right, var(--primary-purple) 0%, var(--primary-purple) ${percentage}%, var(--bg-secondary) ${percentage}%, var(--bg-secondary) 100%)`;
+    slider.style.background = `linear-gradient(to right, var(--primary-blue) 0%, var(--primary-blue) ${percentage}%, var(--bg-secondary) ${percentage}%, var(--bg-secondary) 100%)`;
 }
 
 // Feed Now function
