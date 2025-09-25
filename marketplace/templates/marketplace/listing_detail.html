@@ -1,0 +1,38 @@
+{% extends 'marketplace/base.html' %}
+{% block title %}Listing Detail{% endblock %}
+{% block marketplace_content %}
+<div class="space-y-8">
+  <div class="section-title"><i class="fas fa-box text-teal-400"></i> Listing Title Placeholder</div>
+
+  <div class="responsive-grid">
+    <div class="enhanced-card">
+      <div class="section-title"><i class="fas fa-images text-blue-400"></i> Photos</div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div class="card h-24">Image A</div>
+        <div class="card h-24">Image B</div>
+        <div class="card h-24">Image C</div>
+      </div>
+    </div>
+
+    <div class="enhanced-card">
+      <div class="section-title"><i class="fas fa-info-circle text-purple-400"></i> Details</div>
+      <ul class="list-disc pl-6 text-gray-300">
+        <li>Price: Placeholder</li>
+        <li>Category: Placeholder</li>
+        <li>Description: Placeholder text with specs</li>
+        <li>Condition: Placeholder</li>
+      </ul>
+      <div class="mt-4 flex gap-2">
+        <a class="btn btn-enhanced btn-secondary-enhanced" href="{% url 'marketplace:messages' %}"><i class="fas fa-comment"></i> Message Seller</a>
+        <a class="btn btn-enhanced btn-primary-enhanced" href="{% url 'marketplace:transactions' %}"><i class="fas fa-handshake"></i> Start Transaction</a>
+      </div>
+    </div>
+
+    <div class="enhanced-card">
+      <div class="section-title"><i class="fas fa-user text-green-400"></i> Seller</div>
+      <div>Username Placeholder</div>
+      <div class="text-gray-400">Rating: 4.8 (placeholder)</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

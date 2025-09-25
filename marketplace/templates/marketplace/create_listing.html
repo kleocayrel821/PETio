@@ -1,0 +1,42 @@
+{% extends 'marketplace/base.html' %}
+{% block title %}Create Listing{% endblock %}
+{% block marketplace_content %}
+<div class="space-y-8">
+  <div class="section-title"><i class="fas fa-plus-circle text-green-400"></i> Create New Listing</div>
+
+  <div class="enhanced-card">
+    <div class="responsive-grid">
+      <div>
+        <label class="subsection-title"><i class="fas fa-tag text-blue-400"></i> Title</label>
+        <input class="form-control-enhanced w-full" placeholder="Item title" />
+      </div>
+      <div>
+        <label class="subsection-title"><i class="fas fa-list text-purple-400"></i> Category</label>
+        <select class="form-control-enhanced w-full">
+          <option>Pet Food</option>
+          <option>Accessories</option>
+          <option>Devices</option>
+        </select>
+      </div>
+      <div>
+        <label class="subsection-title"><i class="fas fa-dollar-sign text-yellow-400"></i> Price</label>
+        <input class="form-control-enhanced w-full" placeholder="0.00" />
+      </div>
+    </div>
+
+    <div class="mt-6">
+      <label class="subsection-title"><i class="fas fa-file-upload text-teal-400"></i> Photos</label>
+      <div class="card h-24 flex items-center justify-center text-gray-400">Upload area placeholder</div>
+    </div>
+
+    <div class="mt-6">
+      <label class="subsection-title"><i class="fas fa-align-left text-orange-400"></i> Description</label>
+      <textarea class="form-control-enhanced w-full" rows="4" placeholder="Describe your item"></textarea>
+    </div>
+
+    <div class="mt-6 flex justify-end">
+      <button class="btn btn-enhanced btn-primary-enhanced"><i class="fas fa-save"></i> Submit for Review</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

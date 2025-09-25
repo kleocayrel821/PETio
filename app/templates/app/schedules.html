@@ -72,7 +72,7 @@
                     <i class="fas fa-calendar text-green-400"></i>
                     Days of Week
                 </label>
-                <div class="grid grid-cols-7 gap-2">
+                <div class="grid grid-cols-4 sm:grid-cols-7 gap-2">
                     <label class="day-toggle-large">
                         <input type="checkbox" name="days" value="monday" class="hidden">
                         <span class="day-label-large">Mon</span>
@@ -153,7 +153,7 @@
                 <table class="enhanced-table w-full">
                     <thead>
                         <tr>
-                            <th class="w-16">
+                            <th class="w-12 sm:w-16">
                                 <i class="fas fa-toggle-on text-green-400"></i>
                             </th>
                             <th>
@@ -171,7 +171,7 @@
                             <th>
                                 <i class="fas fa-info-circle mr-2"></i>Status
                             </th>
-                            <th class="w-32">
+                            <th class="w-12 sm:w-16">
                                 <i class="fas fa-cogs mr-2"></i>Actions
                             </th>
                         </tr>
@@ -312,8 +312,10 @@
 }
 
 /* Modal Styles */
-/* Utility fallback - ensure elements with 'hidden' are not interactive */
-.hidden { display: none !important; }
+/* Scoped utility fallback to avoid interfering with Tailwind's responsive classes */
+#schedulesContainer.hidden,
+#emptySchedules.hidden,
+#editScheduleModal.hidden { display: none !important; }
 
 .modal-overlay {
     position: fixed;
@@ -453,6 +455,12 @@
 .schedule-toggle.enabled::after {
     transform: translateX(20px);
 }
+@media (max-width: 640px) {
+    .day-label-large {
+        padding: 0.5rem 0.25rem;
+        font-size: 0.8rem;
+    }
+}
 </style>
 
 <script>
@@ -562,7 +570,7 @@ function renderSchedules() {
     }
     
     tbody.innerHTML = filteredSchedules.map(schedule => `
-        <tr class="schedule-row" data-id="${schedule.id}">
+        <tr class="schedule-row sm:py-2" data-id="${schedule.id}">
             <td>
                 <div 
                     class="schedule-toggle ${schedule.enabled ? 'enabled' : ''}"
@@ -570,15 +578,15 @@ function renderSchedules() {
                     title="${schedule.enabled ? 'Disable' : 'Enable'} schedule"
                 ></div>
             </td>
-            <td class="font-mono font-semibold text-purple-400">
+            <td class="font-mono font-semibold text-purple-400 whitespace-nowrap">
                 ${formatTime(schedule.time)}
             </td>
-            <td>
+            <td class="max-w-[8rem] sm:max-w-none truncate">
                 <span class="font-medium">
                     ${schedule.label || `Schedule ${schedule.id}`}
                 </span>
             </td>
-            <td class="font-semibold text-orange-400">
+            <td class="font-semibold text-orange-400 whitespace-nowrap">
                 ${schedule.portion_size}g
             </td>
             <td>
@@ -595,16 +603,16 @@ function renderSchedules() {
                 </span>
             </td>
             <td>
-                <div class="flex gap-2">
+                <div class="flex gap-1 sm:gap-2">
                     <button 
-                        class="action-btn action-btn-edit"
+                        class="action-btn action-btn-edit text-xs sm:text-sm"
                         onclick="editSchedule(${schedule.id})"
                         title="Edit schedule"
                     >
                         <i class="fas fa-edit"></i>
                     </button>
                     <button 
-                        class="action-btn action-btn-delete"
+                        class="action-btn action-btn-delete text-xs sm:text-sm"
                         onclick="deleteSchedule(${schedule.id})"
                         title="Delete schedule"
                     >

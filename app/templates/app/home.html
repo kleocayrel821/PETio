@@ -106,7 +106,7 @@
                         <i class="fas fa-calendar text-green-400"></i>
                         Days
                     </label>
-                    <div class="grid grid-cols-7 gap-1">
+                    <div class="grid grid-cols-4 sm:grid-cols-7 gap-1">
                         <label class="day-toggle">
                             <input type="checkbox" name="days" value="monday" class="hidden">
                             <span class="day-label">M</span>
@@ -542,3 +542,11 @@ function getFeedTypeLabel(type) {
 }
 </script>
 {% endblock %}
+
+@media (max-width: 640px) {
+    /* Make day pills more compact on small screens */
+    .day-label {
+        padding: 0.375rem 0.25rem;
+        font-size: 0.75rem;
+    }
+}

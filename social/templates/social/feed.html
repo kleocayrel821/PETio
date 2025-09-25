@@ -1,0 +1,127 @@
+{% extends 'social/base.html' %}
+{% block title %}Social · Community{% endblock %}
+{% block social_content %}
+<div class="space-y-8">
+    <!-- Welcome Header -->
+    <div class="text-center">
+        <h1 class="section-title justify-center text-3xl mb-2">
+            <i class="fas fa-users text-purple-400"></i>
+            Welcome to Social
+        </h1>
+        <p class="text-gray-400 text-lg">Connect with the pet community</p>
+    </div>
+
+    <!-- Main Feature Grid -->
+    <div class="responsive-grid">
+        <!-- Share Post Card -->
+        <div class="enhanced-card">
+            <div class="section-title">
+                <i class="fas fa-edit text-orange-400"></i>
+                Share Post
+            </div>
+            <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                    <div class="avatar placeholder">
+                        <div class="bg-primary text-primary-content rounded-full w-10">
+                            <span class="text-lg"><i class="fas fa-user"></i></span>
+                        </div>
+                    </div>
+                    <textarea 
+                        class="textarea textarea-bordered w-full" 
+                        placeholder="Share something about your pets..."
+                        rows="3"
+                    ></textarea>
+                </div>
+                <button class="btn btn-enhanced btn-accent-orange w-full text-lg py-3">
+                    <i class="fas fa-paper-plane"></i>
+                    Share Post
+                </button>
+            </div>
+        </div>
+
+        <!-- Community Forums Card -->
+        <div class="enhanced-card">
+            <div class="section-title">
+                <i class="fas fa-comments text-teal-400"></i>
+                Community Forums
+            </div>
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center p-3 bg-base-200 rounded-lg">
+                        <span class="font-semibold">Pet Care Tips</span>
+                        <span class="badge badge-primary">24 posts</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-base-200 rounded-lg">
+                        <span class="font-semibold">Feeding Stories</span>
+                        <span class="badge badge-secondary">18 posts</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-base-200 rounded-lg">
+                        <span class="font-semibold">General Discussion</span>
+                        <span class="badge badge-accent">12 posts</span>
+                    </div>
+                </div>
+                <a href="{% url 'social:forum_categories' %}" class="btn btn-enhanced btn-primary-enhanced w-full">
+                    <i class="fas fa-arrow-right"></i>
+                    Browse Forums
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Card -->
+    <div class="enhanced-card">
+        <div class="section-title">
+            <i class="fas fa-history text-green-400"></i>
+            Recent Community Activity
+        </div>
+        <div class="space-y-4">
+            {% for i in "123" %}
+            <div class="flex items-center gap-3 p-4 bg-base-200 rounded-lg">
+                <div class="avatar placeholder">
+                    <div class="bg-primary text-primary-content rounded-full w-10">
+                        <span>P{{ forloop.counter }}</span>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="font-semibold">Pet Lover {{ forloop.counter }}</div>
+                    <div class="text-sm opacity-70">Shared a new post about feeding tips</div>
+                    <div class="text-xs opacity-60 mt-1">{{ forloop.counter }} hours ago</div>
+                </div>
+                <div class="flex gap-2">
+                    <button class="btn btn-ghost btn-xs">
+                        <i class="fas fa-heart text-red-400"></i>
+                        {{ forloop.counter }}2
+                    </button>
+                    <button class="btn btn-ghost btn-xs">
+                        <i class="fas fa-comment text-blue-400"></i>
+                        {{ forloop.counter }}
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="mt-4 text-center">
+            <a href="{% url 'social:feed' %}" class="btn btn-enhanced btn-ghost">
+                <i class="fas fa-external-link-alt"></i>
+                View Full Feed
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="enhanced-card text-center">
+            <div class="text-2xl font-bold text-purple-400">127</div>
+            <div class="text-sm text-gray-400">Community Members</div>
+        </div>
+        <div class="enhanced-card text-center">
+            <div class="text-2xl font-bold text-teal-400">54</div>
+            <div class="text-sm text-gray-400">Active Discussions</div>
+        </div>
+        <div class="enhanced-card text-center">
+            <div class="text-2xl font-bold text-orange-400">89</div>
+            <div class="text-sm text-gray-400">Posts This Week</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

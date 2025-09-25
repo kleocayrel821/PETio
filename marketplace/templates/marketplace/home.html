@@ -1,0 +1,59 @@
+{% extends 'marketplace/base.html' %}
+{% block title %}Marketplace - Home{% endblock %}
+{% block marketplace_content %}
+<div class="space-y-8">
+  <div class="text-center">
+    <h1 class="section-title justify-center text-3xl mb-2">
+      <i class="fas fa-store text-teal-400"></i>
+      Marketplace
+    </h1>
+    <p class="text-gray-400">Buy and sell items person-to-person. Admin reviews listings and transactions.</p>
+  </div>
+
+  <div class="enhanced-card">
+    <div class="section-title"><i class="fas fa-search text-blue-400"></i> Search</div>
+    <div class="responsive-grid">
+      <input class="form-control-enhanced w-full" placeholder="Search listings, users, categories" />
+      <select class="form-control-enhanced w-full">
+        <option>All Categories</option>
+        <option>Pet Food</option>
+        <option>Accessories</option>
+        <option>Devices</option>
+      </select>
+      <button class="btn btn-enhanced btn-primary-enhanced"><i class="fas fa-search"></i> Search</button>
+    </div>
+  </div>
+
+  <div class="enhanced-card">
+    <div class="section-title"><i class="fas fa-star text-yellow-400"></i> Featured Listings</div>
+    <div class="responsive-grid">
+      <div class="card">
+        <div class="font-semibold">Sample Item A</div>
+        <div class="text-sm text-gray-400">Short description</div>
+        <div class="mt-3 flex gap-2">
+          <a class="btn btn-enhanced btn-ghost" href="{% url 'marketplace:listing_detail' 1 %}"><i class="fas fa-eye"></i> View</a>
+          <a class="btn btn-enhanced btn-secondary-enhanced" href="{% url 'marketplace:messages' %}"><i class="fas fa-comment"></i> Message Seller</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="font-semibold">Sample Item B</div>
+        <div class="text-sm text-gray-400">Short description</div>
+        <div class="mt-3 flex gap-2">
+          <a class="btn btn-enhanced btn-ghost" href="{% url 'marketplace:listing_detail' 2 %}"><i class="fas fa-eye"></i> View</a>
+          <a class="btn btn-enhanced btn-secondary-enhanced" href="{% url 'marketplace:messages' %}"><i class="fas fa-comment"></i> Message Seller</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="enhanced-card">
+    <div class="section-title"><i class="fas fa-th-large text-purple-400"></i> Categories</div>
+    <div class="responsive-grid">
+      <div class="card">Pet Food</div>
+      <div class="card">Accessories</div>
+      <div class="card">Devices</div>
+      <div class="card">Services</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

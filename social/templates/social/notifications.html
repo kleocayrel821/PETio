@@ -1,0 +1,15 @@
+{% extends 'social/base.html' %}
+{% block title %}Social · Notifications{% endblock %}
+{% block social_content %}
+<div class="space-y-3">
+  {% for i in "123456" %}
+  <div class="alert shadow">
+    <i class="fas fa-bell"></i>
+    <span>Notification item {{ forloop.counter }} — placeholder text</span>
+    <div>
+      <button class="btn btn-ghost btn-xs">Mark read</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

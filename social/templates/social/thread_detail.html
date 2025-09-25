@@ -1,0 +1,44 @@
+{% extends 'social/base.html' %}
+{% block title %}Forum · Thread{% endblock %}
+{% block social_content %}
+<article class="card bg-base-100 shadow">
+  <div class="card-body">
+    <h1 class="card-title">Thread #{{ thread_id }} Title</h1>
+    <p class="opacity-80">This is a placeholder for the first post content of the thread.</p>
+    <div class="flex items-center gap-2 text-sm opacity-70 mt-2">
+      <span>Posted by <strong>UserA</strong></span>
+      <span>•</span>
+      <span>Just now</span>
+    </div>
+  </div>
+</article>
+<div class="mt-4 space-y-3">
+  {% for i in "12345" %}
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <div class="flex items-center gap-2">
+        <div class="avatar placeholder">
+          <div class="bg-neutral text-neutral-content rounded-full w-8">
+            <span>U</span>
+          </div>
+        </div>
+        <div class="font-semibold">User {{ forloop.counter }}</div>
+        <div class="text-xs opacity-60">Just now</div>
+      </div>
+      <p class="mt-2">Reply content placeholder for visualization.</p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<div class="card bg-base-100 shadow mt-4">
+  <div class="card-body">
+    <h3 class="font-semibold">Add a reply</h3>
+    <div class="form-control">
+      <textarea class="textarea textarea-bordered h-24" placeholder="Write your reply..."></textarea>
+    </div>
+    <div class="card-actions justify-end mt-2">
+      <button class="btn btn-primary btn-sm">Reply</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

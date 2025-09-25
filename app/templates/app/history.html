@@ -189,7 +189,7 @@
 
         <!-- Logs Table -->
         <div id="logsContainer" class="hidden">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto -mx-2 sm:mx-0">
                 <table class="enhanced-table striped-table w-full">
                     <thead>
                         <tr>
@@ -491,6 +491,12 @@
     to {
         opacity: 1;
         transform: translateX(0);
+    }
+}
+@media (max-width: 640px) {
+    .enhanced-table thead th,
+    .enhanced-table tbody td {
+        white-space: nowrap;
     }
 }
 </style>
@@ -893,3 +899,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
+/* Additional mobile table tweaks */
+@media (max-width: 640px) {
+    .enhanced-table thead th {
+        white-space: nowrap;
+    }
+    .enhanced-table tbody td {
+        white-space: nowrap;
+    }
+}

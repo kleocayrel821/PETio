@@ -1,0 +1,116 @@
+<!-- Social Base Template (standalone) -->
+<!DOCTYPE html>
+<html lang="en" data-theme="petio">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Social{% endblock %}</title>
+  <!-- DaisyUI + Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    /* Minimal active state styling for social sub-nav */
+    .nav-link.active { color: #3b82f6; font-weight: 700; }
+  </style>
+</head>
+<body class="min-h-screen bg-base-200">
+  <div class="drawer lg:drawer-open">
+    <input id="system-drawer-toggle" type="checkbox" class="drawer-toggle" />
+    <div class="drawer-content flex flex-col">
+      <!-- Top Navbar (Social-specific, hamburger only) -->
+      <nav class="navbar sticky top-0 z-40 bg-base-100 border-b border-base-300">
+        <div class="navbar-start">
+          <label for="system-drawer-toggle" class="btn btn-ghost lg:hidden mr-2" aria-label="Open system navigation">
+            <i class="fas fa-bars text-lg"></i>
+          </label>
+        </div>
+        <div class="navbar-center hidden"></div>
+        <div class="navbar-end hidden"></div>
+      </nav>
+
+      <main class="container mx-auto px-4 py-6">
+        <!-- Social Sub-Navigation (placeholder links) -->
+        <nav class="bg-base-200/80 backdrop-blur border-b border-base-300 -mt-4 -mx-4 mb-4 px-4 py-2 rounded-t-md">
+          <div class="container mx-auto px-0">
+            <ul class="menu menu-horizontal px-1 text-sm gap-1 overflow-x-auto whitespace-nowrap">
+              <li><a href="{% url 'social:feed' %}" class="nav-link {% if request.resolver_match.url_name == 'feed' %}active{% endif %}"><i class="fas fa-rss"></i> Feed</a></li>
+              <li><a href="{% url 'social:friends' %}" class="nav-link {% if request.resolver_match.url_name == 'friends' %}active{% endif %}"><i class="fas fa-user-friends"></i> Friends</a></li>
+              <!-- Messages tab removed -->
+              <li><a href="{% url 'social:notifications' %}" class="nav-link {% if request.resolver_match.url_name == 'notifications' %}active{% endif %}"><i class="fas fa-bell"></i> Notifications</a></li>
+              <li><a href="{% url 'social:profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}"><i class="fas fa-user"></i> Profile</a></li>
+              <li><a href="{% url 'social:forum_categories' %}" class="nav-link {% if '/social/forum/' in request.path %}active{% endif %}"><i class="fas fa-list"></i> Forum</a></li>
+            </ul>
+          </div>
+        </nav>
+
+        {% block social_content %}{% endblock %}
+      </main>
+    </div>
+
+    <!-- System Navigation Sidebar -->
+    <div class="drawer-side">
+      <label for="system-drawer-toggle" aria-label="Close system navigation" class="drawer-overlay"></label>
+      <aside class="min-h-full w-80 bg-base-200 text-base-content flex flex-col">
+        <!-- Sidebar Header -->
+        <div class="p-4 border-b border-base-300">
+          <div class="flex items-center gap-3">
+            <div class="avatar placeholder">
+              <div class="bg-primary text-primary-content rounded-full w-10">
+                <span class="text-lg"><i class="fas fa-paw"></i></span>
+              </div>
+            </div>
+            <div>
+              <h2 class="font-bold text-lg">PETio System</h2>
+              <p class="text-sm opacity-70">IoT Pet Feeder</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation Menu -->
+        <nav class="flex-1 p-4">
+          <ul class="menu menu-lg w-full">
+            <li class="menu-title"><span>Applications</span></li>
+            <li>
+              <a href="/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors">
+                <i class="fas fa-gamepad text-primary text-xl"></i>
+                <div>
+                  <div class="font-semibold">Controller</div>
+                  <div class="text-sm opacity-70">Feed & Schedule Management</div>
+                </div>
+              </a>
+            </li>
+            <li>
+              <a href="/social/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors">
+                <i class="fas fa-users text-secondary text-xl"></i>
+                <div>
+                  <div class="font-semibold">Social</div>
+                  <div class="text-sm opacity-70">Community & Sharing</div>
+                </div>
+              </a>
+            </li>
+            <li>
+              <a href="/marketplace/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors">
+                <i class="fas fa-store text-accent text-xl"></i>
+                <div>
+                  <div class="font-semibold">Marketplace</div>
+                  <div class="text-sm opacity-70">Products & Services</div>
+                </div>
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <!-- Sidebar Footer -->
+        <div class="p-4 border-t border-base-300">
+          <a href="/logout/" class="btn btn-ghost btn-block justify-start gap-3">
+            <i class="fas fa-sign-out-alt text-error"></i>
+            <span>Logout</span>
+          </a>
+        </div>
+      </aside>
+    </div>
+  </div>
+</body>
+</html>

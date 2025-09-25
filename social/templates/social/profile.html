@@ -1,0 +1,43 @@
+{% extends 'social/base.html' %}
+{% block title %}Social · Profile{% endblock %}
+{% block social_content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <section class="lg:col-span-1">
+    <div class="card bg-base-100 shadow">
+      <div class="card-body items-center text-center">
+        <div class="avatar placeholder">
+          <div class="bg-accent text-accent-content rounded-full w-24">
+            <span>U</span>
+          </div>
+        </div>
+        <h2 class="card-title mt-3">Username</h2>
+        <p class="text-sm opacity-70">Pet enthusiast</p>
+        <div class="stats stats-vertical lg:stats-horizontal shadow mt-3">
+          <div class="stat">
+            <div class="stat-title">Posts</div>
+            <div class="stat-value">12</div>
+          </div>
+          <div class="stat">
+            <div class="stat-title">Friends</div>
+            <div class="stat-value">34</div>
+          </div>
+          <div class="stat">
+            <div class="stat-title">Likes</div>
+            <div class="stat-value">210</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="lg:col-span-2 space-y-4">
+    {% for i in "123" %}
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="font-semibold">Post {{ forloop.counter }}</h3>
+        <p class="opacity-80 text-sm">Placeholder profile post content.</p>
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

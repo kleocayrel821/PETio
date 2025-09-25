@@ -757,43 +757,107 @@
      </style>
 </head>
 <body>
-     <!-- Enhanced Navbar -->
-     <nav class="navbar navbar-enhanced sticky top-0 z-50">
-         <div class="navbar-start">
-             <div class="dropdown">
-                 <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">
+     <!-- System-wide Navigation Drawer -->
+     <div class="drawer lg:drawer-open">
+         <input id="system-drawer-toggle" type="checkbox" class="drawer-toggle" />
+         
+         <!-- Main Content Wrapper -->
+         <div class="drawer-content flex flex-col">
+             <!-- Enhanced Navbar -->
+             <nav class="navbar navbar-enhanced sticky top-0 z-40 lg:pl-4">
+             <div class="navbar-start">
+                 <!-- System Drawer Toggle for Mobile -->
+                 <label for="system-drawer-toggle" class="btn btn-ghost lg:hidden mr-2" aria-label="Open system navigation">
                      <i class="fas fa-bars text-lg"></i>
-                 </div>
-                 <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
-                     <li><a href="/" class="nav-link"><i class="fas fa-home"></i> Home</a></li>
-                     <li><a href="/schedules-ui/" class="nav-link"><i class="fas fa-calendar-alt"></i> Schedules</a></li>
-                     <li><a href="/history/" class="nav-link"><i class="fas fa-history"></i> History</a></li>
-                 </ul>
+                 </label>
              </div>
-             <a href="/" class="navbar-brand">
-                 <i class="fas fa-paw"></i> PETio
-             </a>
-         </div>
-         <div class="navbar-center hidden lg:flex">
-             <ul class="menu menu-horizontal px-1">
-                 <li><a href="/" class="nav-link"><i class="fas fa-home"></i> Home</a></li>
-                 <li><a href="/schedules-ui/" class="nav-link"><i class="fas fa-calendar-alt"></i> Schedules</a></li>
-                 <li><a href="/history/" class="nav-link"><i class="fas fa-history"></i> History</a></li>
-             </ul>
-         </div>
-         <div class="navbar-end">
-             <div id="device-status" class="flex items-center gap-2 text-sm text-gray-400">
-                 <i id="device-status-icon" class="fas fa-wifi text-gray-400"></i>
-                 <span id="device-status-text">Unknown</span>
-             </div>
-         </div>
-     </nav>
+             <!-- Hide center links entirely -->
+             <div class="navbar-center hidden"></div>
+             <!-- Hide device status on the right -->
+             <div class="navbar-end hidden"></div>
+             </nav>
 
-     <!-- Main Content -->
-     <main class="container mx-auto px-4 py-6">
-         {% block content %}
-         {% endblock %}
-     </main>
+<style>
+/***** Navbar mobile enhancements *****/
+/* Hide horizontal scrollbar visuals on supported browsers while allowing scroll */
+.navbar .menu::-webkit-scrollbar { display: none; }
+.navbar .menu { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+
+
+
+            <!-- Main Content -->
+            <main class="container mx-auto px-4 py-6 {% if request.resolver_match and request.resolver_match.namespace != 'marketplace' %}pb-[calc(4.5rem+env(safe-area-inset-bottom))] {% endif %}lg:pb-6">
+                {% block content %}
+                {% endblock %}
+            </main>
+         </div>
+         
+         <!-- System Navigation Sidebar -->
+         <div class="drawer-side">
+             <label for="system-drawer-toggle" aria-label="Close system navigation" class="drawer-overlay"></label>
+             <aside class="min-h-full w-80 bg-base-200 text-base-content flex flex-col">
+                 <!-- Sidebar Header -->
+                 <div class="p-4 border-b border-base-300">
+                     <div class="flex items-center gap-3">
+                         <div class="avatar placeholder">
+                             <div class="bg-primary text-primary-content rounded-full w-10">
+                                 <span class="text-lg"><i class="fas fa-paw"></i></span>
+                             </div>
+                         </div>
+                         <div>
+                             <h2 class="font-bold text-lg">PETio System</h2>
+                             <p class="text-sm opacity-70">IoT Pet Feeder</p>
+                         </div>
+                     </div>
+                 </div>
+                 
+                 <!-- Navigation Menu -->
+                 <nav class="flex-1 p-4">
+                     <ul class="menu menu-lg w-full">
+                         <li class="menu-title">
+                             <span>Applications</span>
+                         </li>
+                         <li>
+                             <a href="/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors">
+                                 <i class="fas fa-gamepad text-primary text-xl"></i>
+                                 <div>
+                                     <div class="font-semibold">Controller</div>
+                                     <div class="text-sm opacity-70">Feed & Schedule Management</div>
+                                 </div>
+                             </a>
+                         </li>
+                         <li>
+                             <a href="/social/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors">
+                                 <i class="fas fa-users text-secondary text-xl"></i>
+                                 <div>
+                                     <div class="font-semibold">Social</div>
+                                     <div class="text-sm opacity-70">Community & Sharing</div>
+                                 </div>
+                             </a>
+                         </li>
+                         <li>
+                             <a href="/marketplace/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors">
+                                 <i class="fas fa-store text-accent text-xl"></i>
+                                 <div>
+                                     <div class="font-semibold">Marketplace</div>
+                                     <div class="text-sm opacity-70">Products & Services</div>
+                                 </div>
+                             </a>
+                         </li>
+                     </ul>
+                 </nav>
+                 
+                 <!-- Sidebar Footer -->
+                 <div class="p-4 border-t border-base-300">
+                     <a href="/logout/" class="btn btn-ghost btn-block justify-start gap-3">
+                         <i class="fas fa-sign-out-alt text-error"></i>
+                         <span>Logout</span>
+                     </a>
+                 </div>
+             </aside>
+         </div>
+     </div>
 
      <!-- Toast Container -->
      <div class="toast-container" id="toastContainer"></div>
@@ -1219,4 +1283,130 @@
     setInterval(pollStatus, 30000);
   });
 })();
+
+// System Drawer Accessibility and Interaction
+(function() {
+  const drawerToggle = document.getElementById('system-drawer-toggle');
+  const drawerOverlay = document.querySelector('.drawer-overlay');
+  const sidebar = document.querySelector('.drawer-side aside');
+  
+  // ESC key to close drawer
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && drawerToggle && drawerToggle.checked) {
+      drawerToggle.checked = false;
+      // Return focus to the toggle button
+      const toggleButton = document.querySelector('label[for="system-drawer-toggle"]');
+      if (toggleButton) {
+        toggleButton.focus();
+      }
+    }
+  });
+  
+  // Focus trapping within drawer when open
+  function trapFocus(element) {
+    const focusableElements = element.querySelectorAll(
+      'a[href], button, textarea, input[type="text"], input[type="radio"], input[type="checkbox"], select'
+    );
+    const firstFocusableElement = focusableElements[0];
+    const lastFocusableElement = focusableElements[focusableElements.length - 1];
+    
+    element.addEventListener('keydown', function(e) {
+      if (e.key === 'Tab') {
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusableElement) {
+            lastFocusableElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastFocusableElement) {
+            firstFocusableElement.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    });
+  }
+  
+  // Initialize focus trapping when drawer opens
+  if (drawerToggle && sidebar) {
+    drawerToggle.addEventListener('change', function() {
+      if (this.checked) {
+        // Drawer opened - focus first link and enable focus trapping
+        setTimeout(() => {
+          const firstLink = sidebar.querySelector('a[href]');
+          if (firstLink) {
+            firstLink.focus();
+          }
+        }, 100);
+        trapFocus(sidebar);
+      }
+    });
+  }
+  
+  // Close drawer when clicking overlay
+  if (drawerOverlay) {
+    drawerOverlay.addEventListener('click', function() {
+      if (drawerToggle) {
+        drawerToggle.checked = false;
+      }
+    });
+  }
+  
+  // Active app highlighting
+  function highlightActiveApp() {
+    const currentPath = window.location.pathname;
+    const appLinks = sidebar?.querySelectorAll('nav a[href]');
+    
+    if (appLinks) {
+      appLinks.forEach(link => {
+        link.classList.remove('active');
+        const href = link.getAttribute('href');
+        
+        // Controller app (home page and main paths)
+        if (href === '/' && (currentPath === '/' || currentPath.startsWith('/schedules') || currentPath.startsWith('/history'))) {
+          link.classList.add('active');
+        }
+        // Social app
+        else if (href === '/social/' && currentPath.startsWith('/social')) {
+          link.classList.add('active');
+        }
+        // Marketplace app
+        else if (href === '/marketplace/' && currentPath.startsWith('/marketplace')) {
+          link.classList.add('active');
+        }
+      });
+    }
+  }
+  
+  // Highlight active app on page load
+  document.addEventListener('DOMContentLoaded', highlightActiveApp);
+})();
 </script>
+
+// Mobile Bottom Tab Bar (Option A)
+{% if request.resolver_match and request.resolver_match.namespace != 'marketplace' %}
+{% with url_name=request.resolver_match.url_name %}
+<div id="mobile-tab-bar" class="btm-nav fixed bottom-0 left-0 right-0 z-50 bg-base-100 border-t border-base-300 lg:hidden">
+  <a href="/" class="{% if url_name == 'home' %}active{% endif %}" aria-label="Home">
+    <i class="fas fa-home"></i>
+    <span class="btm-nav-label">Home</span>
+  </a>
+  <!-- Feed tab removed (redundant) -->
+  <a href="/schedules-ui/" class="{% if url_name == 'schedules_ui' %}active{% endif %}" aria-label="Schedules">
+    <i class="fas fa-calendar-alt"></i>
+    <span class="btm-nav-label">Schedules</span>
+  </a>
+  <a href="/history/" class="{% if url_name == 'history' %}active{% endif %}" aria-label="History">
+    <i class="fas fa-history"></i>
+    <span class="btm-nav-label">History</span>
+  </a>
+</div>
+{% endwith %}
+{% endif %}
+
+<style>
+/* Mobile Bottom Tab Bar styling and safe-area support */
+@media (max-width: 1024px) {
+  #mobile-tab-bar { padding-bottom: env(safe-area-inset-bottom); }
+}
+</style>
