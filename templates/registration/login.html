@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Log in - PETio{% endblock %}
+{% block content %}
+<div class="container mx-auto max-w-md py-10">
+  <div class="enhanced-card">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="avatar placeholder">
+        <div class="bg-primary text-primary-content rounded-full w-10">
+          <span class="text-lg"><i class="fas fa-paw"></i></span>
+        </div>
+      </div>
+      <h1 class="text-2xl font-bold">Log in to PETio</h1>
+    </div>
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-error mb-4"><i class="fas fa-exclamation-triangle mr-2"></i>{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <form method="post" class="space-y-4" id="login-form">
+      {% csrf_token %}
+      <div>
+        <label for="id_username" class="block mb-1 font-medium">Username</label>
+        {{ form.username }}
+        {% if form.username.errors %}<p class="text-error text-sm mt-1">{{ form.username.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label for="id_password" class="block mb-1 font-medium">Password</label>
+        <div class="relative">
+          {{ form.password }}
+          <button type="button" id="toggle-password" class="btn btn-ghost btn-xs absolute right-2 top-1/2 -translate-y-1/2" aria-label="Show or hide password"><i class="fas fa-eye"></i></button>
+        </div>
+        {% if form.password.errors %}<p class="text-error text-sm mt-1">{{ form.password.errors.0 }}</p>{% endif %}
+      </div>
+      {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+      {% elif request.GET.next %}
+        <input type="hidden" name="next" value="{{ request.GET.next }}">
+      {% endif %}
+      <button type="submit" class="btn btn-primary btn-enhanced w-full" id="login-submit">Log in</button>
+    </form>
+
+    <div class="mt-4 flex justify-between items-center">
+      <p class="text-sm">Don't have an account? <a href="{% url 'accounts:signup' %}{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}" class="link">Sign up</a></p>
+      <a href="{% url 'password_reset' %}" class="link text-sm">Forgot password?</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// Enhance UX: add classes/attributes, show/hide password, and loading state on submit
+(function(){
+  function enhanceInput(id, placeholder, autocomplete){
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('input','input-bordered','w-full','form-control-enhanced');
+    if (placeholder) el.setAttribute('placeholder', placeholder);
+    if (autocomplete) el.setAttribute('autocomplete', autocomplete);
+  }
+  enhanceInput('id_username', 'Enter your username', 'username');
+  enhanceInput('id_password', 'Enter your password', 'current-password');
+
+  const pwdInput = document.getElementById('id_password');
+  const toggleBtn = document.getElementById('toggle-password');
+  const form = document.getElementById('login-form');
+  const submitBtn = document.getElementById('login-submit');
+  if (toggleBtn && pwdInput) {
+    toggleBtn.addEventListener('click', function(){
+      const isPw = pwdInput.getAttribute('type') === 'password';
+      pwdInput.setAttribute('type', isPw ? 'text' : 'password');
+      toggleBtn.innerHTML = isPw ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+    });
+  }
+  if (form && submitBtn && typeof window.setButtonLoading === 'function') {
+    form.addEventListener('submit', function(){
+      window.setButtonLoading(submitBtn, true);
+    });
+  }
+})();
+</script>
+{% endblock %}

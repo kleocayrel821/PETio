@@ -1,0 +1,107 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% load static %}
+
+{% block marketplace_title %}Report Listing{% endblock %}
+{% block marketplace_header %}Report Listing{% endblock %}
+{% block marketplace_subtitle %}Submit a report for moderation review{% endblock %}
+
+{% block breadcrumbs %}
+<li><a href="{% url 'marketplace:home' %}">Home</a></li>
+<li>Report Listing</li>
+{% endblock %}
+
+{% block marketplace_content %}
+<div class="card bg-base-100 shadow">
+  <div class="card-body">
+    <h2 class="card-title">Report Listing #{{ listing_id }}</h2>
+    <p class="text-sm text-base-content/70">Please provide a brief reason and optional details.</p>
+
+    <form id="report-form" class="space-y-4">
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text">Reason</span>
+        </label>
+        <input type="text" name="reason" id="reason" class="input input-bordered" placeholder="e.g., Spam, counterfeit, inappropriate" required />
+      </div>
+
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text">Details (optional)</span>
+        </label>
+        <textarea name="details" id="details" class="textarea textarea-bordered" rows="4" placeholder="Provide more context if needed"></textarea>
+      </div>
+
+      <div class="form-control">
+        <button type="submit" class="btn btn-error">
+          <i class="fas fa-flag"></i>
+          Submit Report
+        </button>
+      </div>
+    </form>
+
+    <div id="report-result" class="mt-4 hidden">
+      <div class="alert" id="report-alert"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block marketplace_scripts %}
+<script>
+// CSRF helper copied from messages page for safe POST requests
+function getCSRFToken() {
+  const name = 'csrftoken=';
+  const cookies = document.cookie.split(';');
+  for (let c of cookies) {
+    c = c.trim();
+    if (c.startsWith(name)) return c.substring(name.length);
+  }
+  return '';
+}
+
+function showAlert(message, type) {
+  const alertEl = document.getElementById('report-alert');
+  const container = document.getElementById('report-result');
+  alertEl.className = `alert alert-${type}`;
+  alertEl.textContent = message;
+  container.classList.remove('hidden');
+}
+
+(function initReportForm() {
+  const form = document.getElementById('report-form');
+  const listingId = {{ listing_id }};
+  const endpoint = `{% url 'marketplace:api_listing_report' listing_id=0 %}`.replace('/0/', `/${listingId}/`);
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const reason = document.getElementById('reason').value.trim();
+    const details = document.getElementById('details').value.trim();
+    if (!reason) {
+      showAlert('Reason is required.', 'warning');
+      return;
+    }
+
+    try {
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken(),
+        },
+        body: JSON.stringify({ reason, details }),
+      });
+      if (!resp.ok) {
+        const text = await resp.text();
+        showAlert(text || 'Failed to submit report.', 'error');
+        return;
+      }
+      const data = await resp.json();
+      const flaggedMsg = data.flagged ? ' The listing has been flagged for moderation.' : '';
+      showAlert(`Report submitted successfully. Open reports: ${data.open_report_count}.${flaggedMsg}`, 'success');
+    } catch (err) {
+      showAlert('Network error submitting report.', 'error');
+    }
+  });
+})();
+</script>
+{% endblock %}

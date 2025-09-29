@@ -1,0 +1,19 @@
+{# Responsive card action buttons: reuse across listing cards #}
+<div class="card-actions mt-4 flex flex-col sm:flex-row gap-2 sm:gap-3">
+  <a href="{{ view_url }}" class="btn btn-primary btn-sm w-full sm:flex-1 text-xs sm:text-sm">
+    <i class="fas fa-eye mr-0 sm:mr-1"></i>
+    <span class="hidden sm:inline">{{ view_label_long|default:'View Details' }}</span>
+    <span class="sm:hidden">{{ view_label_short|default:'View' }}</span>
+  </a>
+  {% if request.user.is_authenticated %}
+  <a href="{{ message_url }}" class="btn btn-ghost btn-sm w-full sm:w-auto" title="Message Seller" aria-label="Message Seller">
+    <i class="fas fa-envelope mr-0 sm:mr-1"></i>
+    <span class="sm:hidden">Message</span>
+  </a>
+  {% else %}
+  <a href="{% url 'login' %}?next={% url 'marketplace:messages' %}" class="btn btn-ghost btn-sm w-full sm:w-auto" title="Login to message" aria-label="Login to message">
+    <i class="fas fa-envelope mr-0 sm:mr-1"></i>
+    <span class="sm:hidden">Message</span>
+  </a>
+  {% endif %}
+</div>

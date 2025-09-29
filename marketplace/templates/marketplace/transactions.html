@@ -1,21 +1,21 @@
-{% extends 'marketplace/base.html' %}
+{% extends 'marketplace/base_marketplace.html' %}
 {% block title %}Transactions{% endblock %}
 {% block marketplace_content %}
 <div class="space-y-8">
   <div class="section-title"><i class="fas fa-handshake text-teal-400"></i> Transactions</div>
 
-  <div class="enhanced-card">
+  <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
     <div class="section-title"><i class="fas fa-list-alt text-yellow-400"></i> Active</div>
     <ul class="space-y-2">
-      <li class="card flex justify-between"><span>Item A with Seller A</span><span class="status-badge status-enabled">Pending Admin Review</span></li>
-      <li class="card flex justify-between"><span>Item B with Buyer B</span><span class="status-badge status-enabled">Awaiting Payment</span></li>
+      <li class="card flex justify-between p-3"><span>Item A with Seller A</span><span class="badge badge-warning">Pending Review</span></li>
+      <li class="card flex justify-between p-3"><span>Item B with Buyer B</span><span class="badge badge-info">Awaiting Payment</span></li>
     </ul>
   </div>
 
-  <div class="enhanced-card">
+  <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
     <div class="section-title"><i class="fas fa-history text-blue-400"></i> Past</div>
     <ul class="space-y-2">
-      <li class="card flex justify-between"><span>Item C with Seller C</span><span class="status-badge status-disabled">Completed</span></li>
+      <li class="card flex justify-between p-3"><span>Item C with Seller C</span><span class="badge badge-success">Completed</span></li>
     </ul>
   </div>
 </div>

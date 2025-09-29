@@ -1,0 +1,1 @@
+Activate your PETio account\n\nThanks for signing up. Please confirm your email address to activate your account.\n\nActivation link: {{ activation_url }}\n\nIf you did not create an account, you can safely ignore this email.

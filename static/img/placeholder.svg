@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Simple scalable placeholder image for PETio Marketplace.
+  - Responsive via SVG viewBox
+  - Neutral background with subtle border
+  - Centered label text
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300" role="img" aria-label="Placeholder image">
+  <defs>
+    <style type="text/css">
+      .bg { fill: #e5e7eb; } /* Tailwind gray-200 */
+      .border { stroke: #cbd5e1; stroke-width: 2; } /* gray-300 */
+      .label { fill: #64748b; font-size: 24px; font-family: Arial, Helvetica, sans-serif; font-weight: 600; }
+      .sub { fill: #94a3b8; font-size: 14px; font-family: Arial, Helvetica, sans-serif; }
+    </style>
+  </defs>
+  <!-- Background -->
+  <rect x="1" y="1" width="398" height="298" class="bg border" rx="12" ry="12"/>
+  <!-- Content Icon -->
+  <g transform="translate(200,145)">
+    <circle r="38" fill="#cbd5e1" />
+    <path d="M -20 10 L -5 -5 L 10 15 L 30 -10 L 30 25 L -20 25 Z" fill="#94a3b8" />
+  </g>
+  <!-- Text -->
+  <text x="200" y="240" text-anchor="middle" class="label">Image Placeholder</text>
+  <text x="200" y="265" text-anchor="middle" class="sub">PETio Marketplace</text>
+</svg>

@@ -25,8 +25,8 @@ def control_panel(request):
 # New Class-Based Views for split UI pages
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class HomeView(TemplateView):
-    """Home page: manual feeding controls and quick schedule form."""
-    template_name = 'app/home.html'
+    """Landing page: marketing and login/signup."""
+    template_name = 'landing.html'
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class SchedulesView(TemplateView):
@@ -714,6 +714,18 @@ class FeedingScheduleViewSet(viewsets.ModelViewSet):
         for log in qs:
             writer.writerow([log.timestamp.isoformat(), f"{log.portion_dispensed}", log.source])
         return response
+
+    def update(self, request, *args, **kwargs):
+        """Treat PUT updates as partial to support UI that sends only changed fields (e.g., enabled toggle).
+        This fixes schedules CRUD where the frontend uses PUT for partial updates.
+        """
+        kwargs["partial"] = True
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        """Explicit partial update handler to ensure PATCH works as expected."""
+        kwargs["partial"] = True
+        return super().partial_update(request, *args, **kwargs)
 
 class PendingCommandViewSet(viewsets.ModelViewSet):
     queryset = PendingCommand.objects.all()

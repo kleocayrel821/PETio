@@ -1,6 +1,6 @@
-{% extends 'app/base.html' %}
+{% extends 'app/base_controller.html' %}
 {% block title %}Schedules - PETio{% endblock %}
-{% block content %}
+{% block app_content %}
 <div class="space-y-8">
     <!-- Page Header -->
     <div class="text-center">
@@ -633,6 +633,18 @@ function formatTime(timeString) {
     return `${displayHour}:${minutes} ${ampm}`;
 }
 
+// Helper: convert API time (HH:MM or HH:MM:SS) to input[type="time"] value (HH:MM)
+function timeToInputValue(timeString) {
+    if (!timeString || typeof timeString !== 'string') return '';
+    const parts = timeString.split(':');
+    if (parts.length >= 2) {
+        const h = parts[0].padStart(2, '0');
+        const m = parts[1].padStart(2, '0');
+        return `${h}:${m}`;
+    }
+    return timeString;
+}
+
 // Add new schedule
 document.getElementById('addScheduleForm').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -716,33 +728,33 @@ async function toggleSchedule(scheduleId, enabled) {
 function editSchedule(scheduleId) {
     const schedule = schedules.find(s => s.id === scheduleId);
     if (!schedule) return;
-    
+
     editingScheduleId = scheduleId;
-    
-    // Populate form
     document.getElementById('editScheduleId').value = scheduleId;
-    document.getElementById('editScheduleTime').value = schedule.time;
+    // Ensure the time input receives HH:MM (strip seconds if present)
+    document.getElementById('editScheduleTime').value = timeToInputValue(schedule.time);
     document.getElementById('editScheduleAmount').value = schedule.portion_size;
     document.getElementById('editScheduleLabel').value = schedule.label || '';
-    
+
     // Create days checkboxes
     const daysContainer = document.getElementById('editDaysContainer');
     const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const selectedAbbrs = schedule.days_of_week || [];
-    
+
     daysContainer.innerHTML = dayNames.map((day, index) => `
         <label class="day-toggle-large">
             <input type="checkbox" name="editDays" value="${day}" class="hidden" ${selectedAbbrs.includes(dayToAbbr[day]) ? 'checked' : ''}>
             <span class="day-label-large">${dayLabels[index]}</span>
         </label>
     `).join('');
-    
+
     // Show modal
     const modal = document.getElementById('editScheduleModal');
     modal.classList.remove('hidden');
     setTimeout(() => modal.classList.add('show'), 10);
 }
+
 
 // Close edit modal
 function closeEditModal() {

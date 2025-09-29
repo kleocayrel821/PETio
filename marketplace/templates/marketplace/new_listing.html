@@ -1,0 +1,628 @@
+{% extends "marketplace/base_marketplace.html" %}
+
+{% block marketplace_title %}Create New Listing{% endblock %}
+{% block marketplace_header %}Create New Listing{% endblock %}
+{% block marketplace_subtitle %}List your pet-related items for sale{% endblock %}
+
+{% block breadcrumbs %}
+<li class="text-primary">New Listing</li>
+{% endblock %}
+
+{% block marketplace_content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Marketplace Rules Alert -->
+    <div class="alert alert-warning mb-8">
+        <i class="fas fa-exclamation-triangle text-xl"></i>
+        <div>
+            <h3 class="font-bold">Important Marketplace Rules</h3>
+            <div class="text-sm mt-2 space-y-1">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-times text-error"></i>
+                    <span><strong>No live animals</strong> - Only pet-related products and accessories</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-times text-error"></i>
+                    <span><strong>No services</strong> - Physical items only (food, toys, accessories, etc.)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-check text-success"></i>
+                    <span><strong>PETio owners only</strong> - Verified device ownership required</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-check text-success"></i>
+                    <span><strong>Admin approval</strong> - All listings reviewed before going live</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Form -->
+    <div class="bg-base-200 rounded-xl p-8">
+        <form id="newListingForm" class="space-y-6" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- Product Title -->
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text font-semibold">Product Title <span class="text-error">*</span></span>
+                    <span class="label-text-alt text-base-content/60">0/100 characters</span>
+                </label>
+                <input type="text" 
+                       name="title" 
+                       id="titleInput"
+                       placeholder="e.g., Premium Automatic Pet Food Dispenser" 
+                       class="input input-bordered" 
+                       maxlength="100" 
+                       required>
+                <label class="label">
+                    <span class="label-text-alt text-base-content/60">
+                        Be descriptive and specific. Include brand, model, or key features.
+                    </span>
+                </label>
+            </div>
+
+            <!-- Category Selection -->
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text font-semibold">Category <span class="text-error">*</span></span>
+                </label>
+                <select name="category" id="categorySelect" class="select select-bordered" required>
+                    <option value="">Select a category...</option>
+                    <option value="food-treats">Food & Treats</option>
+                    <option value="toys">Toys & Entertainment</option>
+                    <option value="accessories">Accessories & Gear</option>
+                    <option value="health-grooming">Health & Grooming</option>
+                    <option value="feeding">Feeding & Watering</option>
+                    <option value="beds-furniture">Beds & Furniture</option>
+                    <option value="carriers-travel">Carriers & Travel</option>
+                    <option value="training">Training & Behavior</option>
+                    <option value="electronics">Pet Electronics</option>
+                    <option value="other">Other Pet Items</option>
+                </select>
+                <label class="label">
+                    <span class="label-text-alt text-base-content/60">
+                        Choose the most appropriate category for better visibility.
+                    </span>
+                </label>
+            </div>
+
+            <!-- Price and Quantity Row -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Price -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Price (PHP) <span class="text-error">*</span></span>
+                    </label>
+                    <div class="join">
+                        <span class="join-item btn btn-disabled">₱</span>
+                        <input type="number" 
+                               name="price" 
+                               id="priceInput"
+                               placeholder="0.00" 
+                               class="join-item input input-bordered flex-1" 
+                               min="0.01" 
+                               max="9999.99" 
+                               step="0.01" 
+                               required>
+                    </div>
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">
+                            Set a competitive price. Research similar items first.
+                        </span>
+                    </label>
+                </div>
+
+                <!-- Quantity -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Quantity Available <span class="text-error">*</span></span>
+                    </label>
+                    <input type="number" 
+                           name="quantity" 
+                           id="quantityInput"
+                           placeholder="1" 
+                           class="input input-bordered" 
+                           min="1" 
+                           max="999" 
+                           required>
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">
+                            How many units are you selling? (Auto-hide when sold out)
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Product Description -->
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text font-semibold">Description <span class="text-error">*</span></span>
+                    <span class="label-text-alt text-base-content/60">0/1000 characters</span>
+                </label>
+                <textarea name="description" 
+                          id="descriptionTextarea"
+                          class="textarea textarea-bordered h-32" 
+                          placeholder="Describe your item in detail. Include condition, age, features, and any defects. Be honest and thorough to build trust with buyers."
+                          maxlength="1000" 
+                          required></textarea>
+                <label class="label">
+                    <span class="label-text-alt text-base-content/60">
+                        Include condition, features, age, and any flaws. Detailed descriptions sell better!
+                    </span>
+                </label>
+            </div>
+
+            <!-- Image Upload -->
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text font-semibold">Product Image <span class="text-error">*</span></span>
+                </label>
+                
+                <!-- Upload Area -->
+                <div class="border-2 border-dashed border-base-300 rounded-xl p-8 text-center hover:border-primary transition-colors"
+                     id="uploadArea"
+                     ondrop="handleDrop(event)" 
+                     ondragover="handleDragOver(event)" 
+                     ondragleave="handleDragLeave(event)">
+                    
+                    <div id="uploadPrompt">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-base-content/40 mb-4"></i>
+                        <h3 class="text-lg font-semibold mb-2">Upload Product Image</h3>
+                        <p class="text-base-content/60 mb-4">
+                            Drag and drop your image here, or click to browse
+                        </p>
+                        <button type="button" class="btn btn-outline" onclick="document.getElementById('imageInput').click()">
+                            <i class="fas fa-folder-open mr-2"></i>
+                            Choose File
+                        </button>
+                        <input type="file" 
+                               name="image" 
+                               id="imageInput" 
+                               accept="image/*" 
+                               class="hidden" 
+                               required
+                               onchange="handleFileSelect(event)">
+                    </div>
+                    
+                    <!-- Image Preview -->
+                    <div id="imagePreview" class="hidden">
+                        <img id="previewImage" class="max-w-full max-h-64 mx-auto rounded-lg mb-4" alt="Preview">
+                        <div class="flex items-center justify-center gap-4">
+                            <span id="fileName" class="text-sm font-medium"></span>
+                            <button type="button" class="btn btn-sm btn-error" onclick="removeImage()">
+                                <i class="fas fa-trash mr-1"></i>
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <label class="label">
+                    <span class="label-text-alt text-base-content/60">
+                        <strong>Requirements:</strong> Maximum 1 image, 5MB limit. JPG, PNG, or WebP format. High-quality photos get more views!
+                    </span>
+                </label>
+            </div>
+
+            <!-- Additional Information -->
+            <div class="bg-base-100 rounded-xl p-6">
+                <h3 class="font-semibold mb-4">Additional Information (Optional)</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Condition -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">Condition</span>
+                        </label>
+                        <select name="condition" class="select select-bordered">
+                            <option value="">Select condition...</option>
+                            <option value="new">New - Never used</option>
+                            <option value="like-new">Like New - Barely used</option>
+                            <option value="excellent">Excellent - Minor wear</option>
+                            <option value="good">Good - Some wear</option>
+                            <option value="fair">Fair - Noticeable wear</option>
+                        </select>
+                    </div>
+
+                    <!-- Brand -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">Brand</span>
+                        </label>
+                        <input type="text" 
+                               name="brand" 
+                               placeholder="e.g., PetSafe, Kong, Hill's" 
+                               class="input input-bordered">
+                    </div>
+                </div>
+
+                <!-- Tags -->
+                <div class="form-control mt-4">
+                    <label class="label">
+                        <span class="label-text font-semibold">Tags</span>
+                    </label>
+                    <input type="text" 
+                           name="tags" 
+                           placeholder="e.g., automatic, programmable, LCD display (separate with commas)" 
+                           class="input input-bordered">
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">
+                            Add keywords to help buyers find your item. Separate with commas.
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Terms and Conditions -->
+            <div class="form-control">
+                <label class="cursor-pointer label justify-start gap-3">
+                    <input type="checkbox" id="termsCheckbox" class="checkbox checkbox-primary" required>
+                    <span class="label-text">
+                        I agree to the 
+                        <a href="#" class="link link-primary">Marketplace Terms of Service</a> 
+                        and confirm that this listing complies with all marketplace rules.
+                    </span>
+                </label>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 pt-6">
+                <button type="button" class="btn btn-ghost flex-1" onclick="saveDraft()">
+                    <i class="fas fa-save mr-2"></i>
+                    Save as Draft
+                </button>
+                <button type="submit" class="btn btn-primary flex-1">
+                    <i class="fas fa-paper-plane mr-2"></i>
+                    Submit for Review
+                </button>
+            </div>
+
+            <!-- Submission Info -->
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <div>
+                    <div class="font-semibold">What happens next?</div>
+                    <div class="text-sm mt-1">
+                        Your listing will be reviewed by our moderation team within 24 hours. 
+                        You'll receive a notification once it's approved and live on the marketplace.
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<dialog id="successModal" class="modal">
+    <div class="modal-box text-center">
+        <i class="fas fa-check-circle text-6xl text-success mb-4"></i>
+        <h3 class="font-bold text-xl mb-2">Listing Submitted!</h3>
+        <p class="mb-6">
+            Your listing has been submitted for review. You'll receive a notification 
+            within 24 hours once it's approved and live on the marketplace.
+        </p>
+        <div class="modal-action justify-center">
+            <button class="btn btn-primary" onclick="redirectToMyListings()">
+                View My Listings
+            </button>
+            <button class="btn btn-ghost" onclick="createAnother()">
+                Create Another
+            </button>
+        </div>
+    </div>
+</dialog>
+
+<!-- Draft Saved Modal -->
+<dialog id="draftModal" class="modal">
+    <div class="modal-box text-center">
+        <i class="fas fa-save text-6xl text-info mb-4"></i>
+        <h3 class="font-bold text-xl mb-2">Draft Saved!</h3>
+        <p class="mb-6">
+            Your listing has been saved as a draft. You can continue editing it later 
+            from your dashboard.
+        </p>
+        <div class="modal-action justify-center">
+            <button class="btn btn-primary" onclick="closeDraftModal()">
+                Continue Editing
+            </button>
+            <button class="btn btn-ghost" onclick="redirectToDashboard()">
+                Go to Dashboard
+            </button>
+        </div>
+    </div>
+</dialog>
+{% endblock %}
+
+{% block marketplace_scripts %}
+<script>
+/**
+ * New Listing Form JavaScript
+ * Handles form validation, image upload, character counting, and submission
+ */
+
+// Character counting
+function updateCharacterCount(inputId, countId, maxLength) {
+    const input = document.getElementById(inputId);
+    const counter = document.querySelector(`[for="${inputId}"] .label-text-alt`);
+    
+    if (input && counter) {
+        const currentLength = input.value.length;
+        counter.textContent = `${currentLength}/${maxLength} characters`;
+        
+        // Change color based on usage
+        if (currentLength > maxLength * 0.9) {
+            counter.classList.add('text-warning');
+        } else if (currentLength === maxLength) {
+            counter.classList.remove('text-warning');
+            counter.classList.add('text-error');
+        } else {
+            counter.classList.remove('text-warning', 'text-error');
+        }
+    }
+}
+
+// Image upload handling
+let selectedFile = null;
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.getElementById('uploadArea').classList.add('border-primary', 'bg-primary/5');
+}
+
+function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.getElementById('uploadArea').classList.remove('border-primary', 'bg-primary/5');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.getElementById('uploadArea').classList.remove('border-primary', 'bg-primary/5');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        handleFile(files[0]);
+    }
+}
+
+function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) {
+        handleFile(file);
+    }
+}
+
+function handleFile(file) {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        showMarketplaceToast('Please select an image file (JPG, PNG, or WebP)', 'error');
+        return;
+    }
+    
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+        showMarketplaceToast('Image size must be less than 5MB', 'error');
+        return;
+    }
+    
+    selectedFile = file;
+    
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('previewImage').src = e.target.result;
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('uploadPrompt').classList.add('hidden');
+        document.getElementById('imagePreview').classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeImage() {
+    selectedFile = null;
+    document.getElementById('imageInput').value = '';
+    document.getElementById('uploadPrompt').classList.remove('hidden');
+    document.getElementById('imagePreview').classList.add('hidden');
+}
+
+// Form validation
+function validateForm() {
+    const form = document.getElementById('newListingForm');
+    const formData = new FormData(form);
+    const errors = [];
+    
+    // Required field validation
+    if (!formData.get('title').trim()) {
+        errors.push('Product title is required');
+    }
+    
+    if (!formData.get('category')) {
+        errors.push('Please select a category');
+    }
+    
+    if (!formData.get('price') || parseFloat(formData.get('price')) <= 0) {
+        errors.push('Please enter a valid price');
+    }
+    
+    if (!formData.get('quantity') || parseInt(formData.get('quantity')) <= 0) {
+        errors.push('Please enter a valid quantity');
+    }
+    
+    if (!formData.get('description').trim()) {
+        errors.push('Product description is required');
+    }
+    
+    if (!selectedFile) {
+        errors.push('Product image is required');
+    }
+    
+    if (!document.getElementById('termsCheckbox').checked) {
+        errors.push('Please agree to the terms and conditions');
+    }
+    
+    // Title length validation
+    if (formData.get('title').length > 100) {
+        errors.push('Product title must be 100 characters or less');
+    }
+    
+    // Description length validation
+    if (formData.get('description').length > 1000) {
+        errors.push('Description must be 1000 characters or less');
+    }
+    
+    // Price range validation
+    const price = parseFloat(formData.get('price'));
+    if (price > 9999.99) {
+        errors.push('Price cannot exceed ₱9,999.99');
+    }
+    
+    return errors;
+}
+
+// Form submission
+function submitForm(isDraft = false) {
+    const errors = validateForm();
+    
+    if (errors.length > 0 && !isDraft) {
+        showMarketplaceToast(errors[0], 'error');
+        return false;
+    }
+    
+    // Simulate form submission
+    const formData = new FormData(document.getElementById('newListingForm'));
+    if (selectedFile) {
+        formData.append('image', selectedFile);
+    }
+    formData.append('is_draft', isDraft);
+    
+    // Show loading state
+    const submitBtn = document.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="loading loading-spinner loading-sm mr-2"></span>Submitting...';
+    submitBtn.disabled = true;
+    
+    // Simulate API call
+    setTimeout(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        if (isDraft) {
+            document.getElementById('draftModal').showModal();
+        } else {
+            document.getElementById('successModal').showModal();
+        }
+        
+        console.log('Form submitted:', Object.fromEntries(formData));
+    }, 2000);
+    
+    return false;
+}
+
+// Draft saving
+function saveDraft() {
+    submitForm(true);
+}
+
+// Modal actions
+function redirectToMyListings() {
+    window.location.href = '/marketplace/dashboard/';
+}
+
+function createAnother() {
+    document.getElementById('successModal').close();
+    document.getElementById('newListingForm').reset();
+    removeImage();
+    window.scrollTo(0, 0);
+}
+
+function closeDraftModal() {
+    document.getElementById('draftModal').close();
+}
+
+function redirectToDashboard() {
+    window.location.href = '/marketplace/dashboard/';
+}
+
+// Price formatting
+function formatPrice(input) {
+  // Format as numeric with 2 decimals; Peso symbol is rendered in adjacent prefix
+  const val = input.value.trim();
+  if (!val) return;
+  const num = parseFloat(val.replace(/[^0-9.]/g, ''));
+  if (!isNaN(num)) {
+    input.value = num.toFixed(2);
+  }
+}
+
+// Initialize form
+document.addEventListener('DOMContentLoaded', function() {
+    // Character counting setup
+    const titleInput = document.getElementById('titleInput');
+    const descriptionTextarea = document.getElementById('descriptionTextarea');
+    
+    titleInput.addEventListener('input', () => updateCharacterCount('titleInput', null, 100));
+    descriptionTextarea.addEventListener('input', () => updateCharacterCount('descriptionTextarea', null, 1000));
+    
+    // Price formatting
+    const priceInput = document.getElementById('priceInput');
+    priceInput.addEventListener('blur', () => formatPrice(priceInput));
+    
+    // Form submission
+    const form = document.getElementById('newListingForm');
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitForm(false);
+    });
+    
+    // Auto-save draft every 5 minutes
+    setInterval(() => {
+        const form = document.getElementById('newListingForm');
+        const formData = new FormData(form);
+        
+        // Only auto-save if there's some content
+        if (formData.get('title').trim() || formData.get('description').trim()) {
+            console.log('Auto-saving draft...');
+            // In a real implementation, you would save to localStorage or send to server
+        }
+    }, 5 * 60 * 1000); // 5 minutes
+    
+    // Load draft from localStorage if available
+    const savedDraft = localStorage.getItem('marketplace_draft');
+    if (savedDraft) {
+        try {
+            const draftData = JSON.parse(savedDraft);
+            // Populate form with saved data
+            Object.keys(draftData).forEach(key => {
+                const element = document.querySelector(`[name="${key}"]`);
+                if (element) {
+                    element.value = draftData[key];
+                }
+            });
+            
+            showMarketplaceToast('Draft loaded from previous session', 'info');
+        } catch (e) {
+            console.error('Error loading draft:', e);
+        }
+    }
+});
+
+// Save to localStorage on input
+function saveToLocalStorage() {
+    const form = document.getElementById('newListingForm');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+    localStorage.setItem('marketplace_draft', JSON.stringify(data));
+}
+
+// Add event listeners for auto-save
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('#newListingForm input, #newListingForm textarea, #newListingForm select');
+    inputs.forEach(input => {
+        input.addEventListener('change', saveToLocalStorage);
+        input.addEventListener('input', saveToLocalStorage);
+    });
+});
+</script>
+{% endblock %}

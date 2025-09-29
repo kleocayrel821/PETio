@@ -36,12 +36,18 @@
           <div class="container mx-auto px-0">
             <ul class="menu menu-horizontal px-1 text-sm gap-1 overflow-x-auto whitespace-nowrap">
               <li><a href="{% url 'marketplace:home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}"><i class="fas fa-store"></i> Listings</a></li>
-              <li><a href="{% url 'marketplace:create_listing' %}" class="nav-link {% if request.resolver_match.url_name == 'create_listing' %}active{% endif %}"><i class="fas fa-plus-square"></i> Create</a></li>
+              {% if request.user.is_authenticated %}
+              <li><a href="{% url 'marketplace:listing_create' %}" class="nav-link {% if request.resolver_match.url_name == 'listing_create' %}active{% endif %}"><i class="fas fa-plus-square"></i> Create</a></li>
               <li><a href="{% url 'marketplace:messages' %}" class="nav-link {% if request.resolver_match.url_name == 'messages' %}active{% endif %}"><i class="fas fa-comments"></i> Inbox</a></li>
               <li><a href="{% url 'marketplace:transactions' %}" class="nav-link {% if request.resolver_match.url_name == 'transactions' %}active{% endif %}"><i class="fas fa-handshake"></i> Transactions</a></li>
+              {% else %}
+              <li><a href="{% url 'login' %}?next={% url 'marketplace:listing_create' %}" class="nav-link"><i class="fas fa-plus-square"></i> Create</a></li>
+              <li><a href="{% url 'login' %}?next={% url 'marketplace:messages' %}" class="nav-link"><i class="fas fa-comments"></i> Inbox</a></li>
+              <li><a href="{% url 'login' %}?next={% url 'marketplace:transactions' %}" class="nav-link"><i class="fas fa-handshake"></i> Transactions</a></li>
+              {% endif %}
               <li><a href="{% url 'marketplace:dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
               {% if request.user.is_staff %}
-              <li><a href="{% url 'marketplace:admin_review' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_review' %}active{% endif %}"><i class="fas fa-shield-alt"></i> Admin Review</a></li>
+              
               {% endif %}
             </ul>
           </div>

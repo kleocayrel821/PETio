@@ -1,0 +1,493 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% load static %}
+
+{% block marketplace_title %}Product Details{% endblock %}
+{% block marketplace_header %}Product Details{% endblock %}
+{% block marketplace_subtitle %}View product information and contact seller{% endblock %}
+
+{% block breadcrumbs %}
+<li class="text-primary">Premium Pet Food Dispenser</li>
+{% endblock %}
+
+{% block marketplace_content %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <!-- Product Image Section -->
+    <div class="space-y-4">
+        <!-- Main Product Image -->
+        <div class="relative">
+            <figure class="bg-base-200 rounded-xl overflow-hidden">
+                <img src="{% static 'img/placeholder.svg' %}" alt="Premium Pet Food Dispenser" class="rounded-xl w-full h-96 object-cover">
+            </figure>
+            
+            <!-- Image Controls -->
+            <div class="absolute top-4 right-4 flex gap-2">
+                <button class="btn btn-circle btn-sm bg-base-100/80 hover:bg-base-100" 
+                        title="Zoom Image" 
+                        onclick="openImageModal()">
+                    <i class="fas fa-expand"></i>
+                </button>
+                <button class="btn btn-circle btn-sm bg-base-100/80 hover:bg-base-100" 
+                        title="Add to Wishlist">
+                    <i class="fas fa-heart text-error"></i>
+                </button>
+            </div>
+            
+            <!-- Stock Status Badge -->
+            <div class="badge badge-success absolute top-4 left-4">In Stock</div>
+        </div>
+        
+        <!-- Image Upload Note (for sellers) -->
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <div>
+                <div class="font-semibold">Image Policy</div>
+                <div class="text-sm">Maximum 1 image per listing, 5MB limit. High-quality photos help sell faster!</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Product Information Section -->
+    <div class="space-y-6">
+        <!-- Product Header -->
+        <div>
+            <div class="badge badge-outline mb-2">Pet Accessories</div>
+            <h1 class="text-3xl font-bold text-base-content mb-2">Premium Pet Food Dispenser</h1>
+            <div class="flex items-center gap-4 text-base-content/70">
+                <span class="text-sm">Listed 2 days ago</span>
+                <span class="text-sm">•</span>
+                <span class="text-sm">Product ID: #PF001</span>
+            </div>
+        </div>
+        
+        <!-- Price and Availability -->
+        <div class="bg-base-200 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="text-4xl font-bold text-primary">₱45.99</div>
+                <div class="text-right">
+                    <div class="text-lg font-semibold text-success">3 Available</div>
+                    <div class="text-sm text-base-content/70">Only a few left!</div>
+                </div>
+            </div>
+            
+            <!-- Quantity Selector -->
+            <div class="flex items-center gap-4 mb-4">
+                <label class="label">
+                    <span class="label-text font-semibold">Quantity:</span>
+                </label>
+                <div class="join">
+                    <button class="join-item btn btn-sm" onclick="decreaseQuantity()">-</button>
+                    <input type="number" value="1" min="1" max="3" 
+                           class="join-item input input-sm w-16 text-center" 
+                           id="quantityInput">
+                    <button class="join-item btn btn-sm" onclick="increaseQuantity()">+</button>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="space-y-3">
+                <button class="btn btn-primary btn-block" onclick="openMessageModal()">
+                    <i class="fas fa-envelope mr-2"></i>
+                    Message Seller
+                </button>
+                <div class="flex gap-2">
+                    <button class="btn btn-outline btn-error flex-1" onclick="openReportModal()">
+                        <i class="fas fa-flag mr-2"></i>
+                        Report Listing
+                    </button>
+                    <button class="btn btn-outline flex-1" onclick="shareProduct()">
+                        <i class="fas fa-share mr-2"></i>
+                        Share
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Seller Information -->
+        <div class="bg-base-200 rounded-xl p-6">
+            <h3 class="font-semibold mb-4">Seller Information</h3>
+            <div class="flex items-center gap-4">
+                <div class="avatar placeholder">
+                    <div class="bg-primary text-primary-content rounded-full w-12">
+                        <span class="text-lg">P</span>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="font-semibold">@petlover123</div>
+                    <div class="text-sm text-base-content/70">PETio owner since 2023</div>
+                    <div class="flex items-center gap-2 mt-1">
+                        <div class="rating rating-sm">
+                            <input type="radio" name="rating-seller" class="mask mask-star-2 bg-orange-400" disabled checked />
+                            <input type="radio" name="rating-seller" class="mask mask-star-2 bg-orange-400" disabled checked />
+                            <input type="radio" name="rating-seller" class="mask mask-star-2 bg-orange-400" disabled checked />
+                            <input type="radio" name="rating-seller" class="mask mask-star-2 bg-orange-400" disabled checked />
+                            <input type="radio" name="rating-seller" class="mask mask-star-2 bg-orange-400" disabled />
+                        </div>
+                        <span class="text-sm text-base-content/70">(4.2/5 from 18 reviews)</span>
+                    </div>
+                </div>
+                <button class="btn btn-ghost btn-sm">
+                    <i class="fas fa-user"></i>
+                    View Profile
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Product Description -->
+<div class="bg-base-200 rounded-xl p-6 mb-8">
+    <h2 class="text-2xl font-bold mb-4">Product Description</h2>
+    <div class="prose max-w-none">
+        <p class="text-base-content/80 leading-relaxed">
+            This premium automatic pet food dispenser is perfect for PETio owners who want to ensure their pets are fed on schedule. 
+            Features include programmable feeding times, portion control, and a sleek design that complements any home decor.
+        </p>
+        <br>
+        <p class="text-base-content/80 leading-relaxed">
+            The dispenser holds up to 4 cups of dry food and can be programmed for up to 4 meals per day. 
+            The LCD display shows feeding times and battery status. Runs on 4 AA batteries (included) or AC adapter (sold separately).
+        </p>
+        
+        <h3 class="text-lg font-semibold mt-6 mb-3">Key Features:</h3>
+        <ul class="list-disc list-inside space-y-1 text-base-content/80">
+            <li>Programmable feeding schedule (up to 4 meals/day)</li>
+            <li>Portion control (1/8 cup to 4 cups per meal)</li>
+            <li>LCD display with backlight</li>
+            <li>Battery or AC powered</li>
+            <li>Easy-clean removable food bowl</li>
+            <li>Low battery indicator</li>
+        </ul>
+        
+        <h3 class="text-lg font-semibold mt-6 mb-3">Condition:</h3>
+        <p class="text-base-content/80">
+            <span class="badge badge-success mr-2">Excellent</span>
+            Used for only 3 months. All original packaging and accessories included. No scratches or damage.
+        </p>
+    </div>
+</div>
+
+<!-- Product Specifications -->
+<div class="bg-base-200 rounded-xl p-6 mb-8">
+    <h2 class="text-2xl font-bold mb-4">Specifications</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-3">
+            <div class="flex justify-between">
+                <span class="font-semibold">Brand:</span>
+                <span>PetSafe</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="font-semibold">Model:</span>
+                <span>PFD-12</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="font-semibold">Capacity:</span>
+                <span>4 cups</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="font-semibold">Power:</span>
+                <span>4 AA batteries / AC adapter</span>
+            </div>
+        </div>
+        <div class="space-y-3">
+            <div class="flex justify-between">
+                <span class="font-semibold">Dimensions:</span>
+                <span>12" x 8" x 6"</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="font-semibold">Weight:</span>
+                <span>2.5 lbs</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="font-semibold">Material:</span>
+                <span>BPA-free plastic</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="font-semibold">Warranty:</span>
+                <span>6 months remaining</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reviews Section (Placeholder for future implementation) -->
+<div class="bg-base-200 rounded-xl p-6 mb-8">
+    <h2 class="text-2xl font-bold mb-4">Reviews & Ratings</h2>
+    <div class="text-center py-8">
+        <i class="fas fa-star text-4xl text-base-content/30 mb-4"></i>
+        <h3 class="text-lg font-semibold mb-2">Reviews Coming Soon</h3>
+        <p class="text-base-content/70">
+            The review system will be available in a future update. For now, you can message the seller directly for more information.
+        </p>
+    </div>
+</div>
+
+<!-- Similar Products -->
+<div class="mb-8">
+    <h2 class="text-2xl font-bold mb-6">Similar Products</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {% for i in "1234" %}
+        <div class="card bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300">
+            <figure>
+                <img src="{% static 'img/placeholder.svg' %}" 
+                     alt="Similar Product {{ forloop.counter }}" 
+                     class="w-full h-32 object-cover">
+            </figure>
+            <div class="card-body p-4">
+                <h3 class="card-title text-sm">
+                    {% cycle "Automatic Water Bowl" "Pet Treat Dispenser" "Smart Pet Camera" "Pet Activity Tracker" %}
+                </h3>
+                <div class="text-primary font-bold">
+                    ₱{% cycle "34.99" "52.99" "89.99" "24.99" %}
+                </div>
+                {% url 'marketplace:listing_detail' forloop.counter as sim_view_url %}
+                {% include 'marketplace/components/card_actions.html' with view_url=sim_view_url message_url=('#') view_label_long='View Details' view_label_short='View' %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Message Seller Modal -->
+<dialog id="messageModal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">Message Seller</h3>
+        <form method="dialog">
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Subject</span>
+                </label>
+                <input type="text" placeholder="Inquiry about Premium Pet Food Dispenser" 
+                       class="input input-bordered" value="Inquiry about Premium Pet Food Dispenser">
+            </div>
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Message</span>
+                </label>
+                <textarea class="textarea textarea-bordered h-24" 
+                          placeholder="Hi! I'm interested in your pet food dispenser. Is it still available?"></textarea>
+            </div>
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="closeMessageModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Send Message</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>
+
+<!-- Report Listing Modal -->
+<dialog id="reportModal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4 text-error">Report This Listing</h3>
+        <form method="dialog">
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Reason for reporting</span>
+                </label>
+                <select class="select select-bordered">
+                    <option>Select a reason...</option>
+                    <option>Inappropriate content</option>
+                    <option>Misleading information</option>
+                    <option>Prohibited item (live animal/service)</option>
+                    <option>Spam or duplicate listing</option>
+                    <option>Suspected fraud</option>
+                    <option>Other</option>
+                </select>
+            </div>
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Additional details (optional)</span>
+                </label>
+                <textarea class="textarea textarea-bordered h-20" 
+                          placeholder="Please provide more details about the issue..."></textarea>
+            </div>
+            <div class="alert alert-warning mb-4">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div class="text-sm">
+                    Reports are reviewed by our moderation team. False reports may result in account restrictions.
+                </div>
+            </div>
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="closeReportModal()">Cancel</button>
+                <button type="submit" class="btn btn-error">Submit Report</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>
+
+<!-- Image Zoom Modal -->
+<dialog id="imageModal" class="modal">
+    <div class="modal-box max-w-4xl">
+        <h3 class="font-bold text-lg mb-4">Product Image</h3>
+        <figure class="mb-4">
+            <img src="{% static 'img/placeholder.svg' %}" 
+                 alt="Premium Pet Food Dispenser - Full Size" 
+                 class="w-full rounded-lg">
+        </figure>
+        <div class="modal-action">
+            <button class="btn btn-ghost" onclick="closeImageModal()">Close</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>
+{% endblock %}
+
+{% block marketplace_scripts %}
+<script>
+/**
+ * Product Detail Page JavaScript
+ * Handles quantity selection, modals, and user interactions
+ */
+
+// Quantity management
+function increaseQuantity() {
+    const input = document.getElementById('quantityInput');
+    const max = parseInt(input.getAttribute('max'));
+    const current = parseInt(input.value);
+    
+    if (current < max) {
+        input.value = current + 1;
+    } else {
+        showMarketplaceToast('Maximum quantity available is ' + max, 'warning');
+    }
+}
+
+function decreaseQuantity() {
+    const input = document.getElementById('quantityInput');
+    const min = parseInt(input.getAttribute('min'));
+    const current = parseInt(input.value);
+    
+    if (current > min) {
+        input.value = current - 1;
+    }
+}
+
+// Modal management
+function openMessageModal() {
+    document.getElementById('messageModal').showModal();
+}
+
+function closeMessageModal() {
+    document.getElementById('messageModal').close();
+}
+
+function openReportModal() {
+    document.getElementById('reportModal').showModal();
+}
+
+function closeReportModal() {
+    document.getElementById('reportModal').close();
+}
+
+function openImageModal() {
+    document.getElementById('imageModal').showModal();
+}
+
+function closeImageModal() {
+    document.getElementById('imageModal').close();
+}
+
+// Share functionality
+function shareProduct() {
+    if (navigator.share) {
+        navigator.share({
+            title: 'Premium Pet Food Dispenser - PETio Marketplace',
+            text: 'Check out this pet food dispenser on PETio Marketplace!',
+            url: window.location.href
+        }).catch(console.error);
+    } else {
+        // Fallback: copy to clipboard
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            showMarketplaceToast('Product link copied to clipboard!', 'success');
+        }).catch(() => {
+            showMarketplaceToast('Unable to share. Please copy the URL manually.', 'error');
+        });
+    }
+}
+
+// Form submissions
+document.addEventListener('DOMContentLoaded', function() {
+    // Message form submission
+    const messageModal = document.getElementById('messageModal');
+    const messageForm = messageModal.querySelector('form');
+    
+    messageForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Simulate sending message
+        showMarketplaceToast('Message sent to seller!', 'success');
+        closeMessageModal();
+        
+        // In a real implementation, you would send the data to the server here
+        console.log('Message form submitted');
+    });
+    
+    // Report form submission
+    const reportModal = document.getElementById('reportModal');
+    const reportForm = reportModal.querySelector('form');
+    
+    reportForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const reason = reportForm.querySelector('select').value;
+        if (!reason || reason === 'Select a reason...') {
+            showMarketplaceToast('Please select a reason for reporting', 'error');
+            return;
+        }
+        
+        // Simulate submitting report
+        showMarketplaceToast('Report submitted. Thank you for helping keep our marketplace safe.', 'success');
+        closeReportModal();
+        
+        // In a real implementation, you would send the data to the server here
+        console.log('Report form submitted');
+    });
+    
+    // Quantity input validation
+    const quantityInput = document.getElementById('quantityInput');
+    quantityInput.addEventListener('change', function() {
+        const min = parseInt(this.getAttribute('min'));
+        const max = parseInt(this.getAttribute('max'));
+        let value = parseInt(this.value);
+        
+        if (isNaN(value) || value < min) {
+            this.value = min;
+        } else if (value > max) {
+            this.value = max;
+            showMarketplaceToast('Maximum quantity available is ' + max, 'warning');
+        }
+    });
+});
+
+// Wishlist functionality (placeholder)
+function toggleWishlist() {
+    const heartIcon = document.querySelector('.fa-heart');
+    const isWishlisted = heartIcon.classList.contains('fas');
+    
+    if (isWishlisted) {
+        heartIcon.classList.remove('fas');
+        heartIcon.classList.add('far');
+        showMarketplaceToast('Removed from wishlist', 'info');
+    } else {
+        heartIcon.classList.remove('far');
+        heartIcon.classList.add('fas');
+        showMarketplaceToast('Added to wishlist', 'success');
+    }
+}
+
+// Add click handler for wishlist button
+document.addEventListener('DOMContentLoaded', function() {
+    const wishlistBtn = document.querySelector('[title="Add to Wishlist"]');
+    if (wishlistBtn) {
+        wishlistBtn.addEventListener('click', toggleWishlist);
+    }
+});
+</script>
+{% endblock %}

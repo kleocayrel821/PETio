@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="petio">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -771,8 +771,10 @@
                      <i class="fas fa-bars text-lg"></i>
                  </label>
              </div>
-             <!-- Hide center links entirely -->
-             <div class="navbar-center hidden"></div>
+             <!-- App-specific navbar goes here -->
+             <div class="navbar-center">
+               {% block app_nav %}{% endblock %}
+             </div>
              <!-- Hide device status on the right -->
              <div class="navbar-end hidden"></div>
              </nav>
@@ -1383,7 +1385,8 @@
 })();
 </script>
 
-// Mobile Bottom Tab Bar (Option A)
+<!-- Mobile Bottom Tab Bar (Option A) -->
+{% load static %}
 {% if request.resolver_match and request.resolver_match.namespace != 'marketplace' %}
 {% with url_name=request.resolver_match.url_name %}
 <div id="mobile-tab-bar" class="btm-nav fixed bottom-0 left-0 right-0 z-50 bg-base-100 border-t border-base-300 lg:hidden">

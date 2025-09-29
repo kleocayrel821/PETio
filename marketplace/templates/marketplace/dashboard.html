@@ -1,103 +1,187 @@
-{% extends 'marketplace/base.html' %}
+{% extends 'marketplace/base_marketplace.html' %}
 {% block title %}Marketplace Dashboard{% endblock %}
+{% block marketplace_header %}My Listings Dashboard{% endblock %}
+{% block marketplace_subtitle %}Manage your listings, update status, and track performance{% endblock %}
 {% block marketplace_content %}
-<div class="space-y-8">
-  <!-- Welcome Section -->
-  <div class="text-center py-8">
-    <h1 class="text-4xl font-bold mb-2">🛒 Welcome to PETio Marketplace</h1>
-    <p class="text-lg opacity-70">Your pet supply trading hub</p>
+<div class="space-y-6">
+  <!-- Metrics Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="card bg-base-100 shadow p-6 flex items-center justify-between">
+      <div>
+        <div class="text-xs opacity-60">Total Products</div>
+        <div class="text-4xl font-bold text-indigo-600">{{ global_stats.total_products|default:0 }}</div>
+        <div class="text-xs opacity-60">{{ global_stats.new_products_week|default:0 }} new this week</div>
+      </div>
+      <div class="text-indigo-600 text-2xl">
+        <i class="fas fa-gift"></i>
+      </div>
+    </div>
+    <div class="card bg-base-100 shadow p-6 flex items-center justify-between">
+      <div>
+        <div class="text-xs opacity-60">Active Sellers</div>
+        <div class="text-4xl font-bold text-pink-500">{{ global_stats.active_sellers|default:0 }}</div>
+        <div class="text-xs opacity-60">{{ global_stats.new_sellers_week|default:0 }} new sellers</div>
+      </div>
+      <div class="text-pink-500 text-2xl">
+        <i class="fas fa-users"></i>
+      </div>
+    </div>
+    <div class="card bg-base-100 shadow p-6 flex items-center justify-between">
+      <div>
+        <div class="text-xs opacity-60">Categories</div>
+        <div class="text-4xl font-bold text-teal-500">{{ global_stats.categories|default:0 }}</div>
+        <div class="text-xs opacity-60">Pet products only</div>
+      </div>
+      <div class="text-teal-500 text-2xl">
+        <i class="fas fa-tags"></i>
+      </div>
+    </div>
   </div>
 
-  <!-- Main Feature Grid -->
-  <div class="responsive-grid">
-    <div class="enhanced-card">
-      <div class="section-title">
-        <i class="fas fa-plus-circle text-orange-400"></i> Create Listing
-      </div>
-      <p class="mb-4 opacity-70">List your pet supplies for sale or trade</p>
-      <div class="space-y-3">
-        <a class="btn btn-enhanced btn-primary-enhanced w-full" href="{% url 'marketplace:create_listing' %}">
-          <i class="fas fa-plus"></i> New Listing
+  <!-- Filters Bar -->
+  <div class="card bg-base-100 shadow p-4">
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="{% url 'marketplace:dashboard' %}" class="btn btn-sm {% if not status_filter %}btn-active{% endif %}">
+        All <span class="badge badge-outline ml-2">{{ base_count }}</span>
+      </a>
+      <a href="{% url 'marketplace:dashboard' %}?status=draft" class="btn btn-sm {% if status_filter == 'draft' %}btn-active{% endif %}">
+        Draft <span class="badge badge-outline ml-2">{{ status_counts.draft|default:0 }}</span>
+      </a>
+      <a href="{% url 'marketplace:dashboard' %}?status=pending" class="btn btn-sm {% if status_filter == 'pending' %}btn-active{% endif %}">
+        Pending <span class="badge badge-outline ml-2">{{ status_counts.pending|default:0 }}</span>
+      </a>
+      <a href="{% url 'marketplace:dashboard' %}?status=active" class="btn btn-sm {% if status_filter == 'active' %}btn-active{% endif %}">
+        Active <span class="badge badge-outline ml-2">{{ status_counts.active|default:0 }}</span>
+      </a>
+      <a href="{% url 'marketplace:dashboard' %}?status=sold" class="btn btn-sm {% if status_filter == 'sold' %}btn-active{% endif %}">
+        Sold <span class="badge badge-outline ml-2">{{ status_counts.sold|default:0 }}</span>
+      </a>
+      <a href="{% url 'marketplace:dashboard' %}?status=archived" class="btn btn-sm {% if status_filter == 'archived' %}btn-active{% endif %}">
+        Archived <span class="badge badge-outline ml-2">{{ status_counts.archived|default:0 }}</span>
+      </a>
+      <div class="ml-auto">
+        <a href="{% url 'marketplace:listing_create' %}" class="btn btn-primary btn-sm">
+          <i class="fas fa-plus"></i>
+          New Listing
         </a>
-        <div class="text-sm opacity-60">
-          <i class="fas fa-info-circle"></i> Quick and easy listing process
+      </div>
+    </div>
+  </div>
+
+  <!-- Listings Grid -->
+  {% if my_listings %}
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for listing in my_listings %}
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <div class="flex items-start gap-3">
+          <div class="flex-1">
+            <h3 class="card-title">
+              <a href="{% url 'marketplace:listing_detail' listing.pk %}" class="link link-hover">{{ listing.title }}</a>
+            </h3>
+            <div class="text-sm opacity-70">{{ listing.category.name|default:"Uncategorized" }}</div>
+          </div>
+          <div>
+            <span class="badge {% if listing.status == 'active' %}badge-success{% elif listing.status == 'pending' %}badge-warning{% elif listing.status == 'draft' %}badge-neutral{% elif listing.status == 'sold' %}badge-info{% else %}badge-outline{% endif %}">{{ listing.get_status_display }}</span>
+          </div>
+        </div>
+        <div class="mt-2 flex items-center justify-between">
+          <div class="text-lg font-semibold">${{ listing.price }}</div>
+          <div class="text-sm">{{ MarketplaceUtils.formatStock(listing.quantity) }}</div>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <!-- Inline action buttons: reserve, sell, complete -->
+          <button class="btn btn-sm" data-action="reserve" data-listing-id="{{ listing.id }}" {% if listing.status != 'active' %}disabled{% endif %}>
+            <i class="fas fa-handshake"></i>
+            Reserve
+          </button>
+          <button class="btn btn-sm" data-action="sell" data-listing-id="{{ listing.id }}" {% if listing.status != 'pending' %}disabled{% endif %}>
+            <i class="fas fa-money-bill-wave"></i>
+            Mark Sold
+          </button>
+          <button class="btn btn-sm" data-action="complete" data-listing-id="{{ listing.id }}" {% if listing.status != 'sold' %}disabled{% endif %}>
+            <i class="fas fa-check"></i>
+            Complete
+          </button>
         </div>
       </div>
     </div>
-
-    <div class="enhanced-card">
-      <div class="section-title">
-        <i class="fas fa-search text-teal-400"></i> Browse Items
-      </div>
-      <p class="mb-4 opacity-70">Find pet supplies from other users</p>
-      <div class="space-y-3">
-        <a class="btn btn-enhanced btn-secondary-enhanced w-full" href="{% url 'marketplace:home' %}">
-          <i class="fas fa-search"></i> Browse All
-        </a>
-        <div class="text-sm opacity-60">
-          <i class="fas fa-tags"></i> Filter by category and location
-        </div>
-      </div>
-    </div>
+    {% endfor %}
   </div>
 
-  <!-- Recent Activity Section -->
-  <div class="enhanced-card">
-    <div class="section-title">
-      <i class="fas fa-clock text-green-400"></i> Recent Marketplace Activity
-    </div>
-    <div class="overflow-x-auto">
-      <table class="table w-full">
-        <thead>
-          <tr>
-            <th><i class="fas fa-clock"></i> Time</th>
-            <th><i class="fas fa-tag"></i> Item</th>
-            <th><i class="fas fa-user"></i> User</th>
-            <th><i class="fas fa-info-circle"></i> Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>9/23/2025, 8:15:15 PM</td>
-            <td><i class="fas fa-bone"></i> Premium Dog Food</td>
-            <td>User123</td>
-            <td><span class="badge badge-success">Available</span></td>
-          </tr>
-          <tr>
-            <td>9/23/2025, 7:30:22 PM</td>
-            <td><i class="fas fa-toy-brick"></i> Cat Toy Set</td>
-            <td>PetLover</td>
-            <td><span class="badge badge-warning">Pending</span></td>
-          </tr>
-          <tr>
-            <td>9/23/2025, 6:45:10 PM</td>
-            <td><i class="fas fa-home"></i> Pet Carrier</td>
-            <td>AnimalFriend</td>
-            <td><span class="badge badge-success">Sold</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+  <!-- Pagination -->
+  {% if is_paginated %}
+  <div class="join mt-4">
+    {% if page_obj.has_previous %}
+      <a class="join-item btn" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}">« Prev</a>
+    {% else %}
+      <button class="join-item btn" disabled>« Prev</button>
+    {% endif %}
+    <button class="join-item btn">Page {{ page_obj.number }} of {{ paginator.num_pages }}</button>
+    {% if page_obj.has_next %}
+      <a class="join-item btn" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}">Next »</a>
+    {% else %}
+      <button class="join-item btn" disabled>Next »</button>
+    {% endif %}
   </div>
-
-  <!-- Quick Stats Cards -->
-  <div class="responsive-grid">
-    <div class="enhanced-card text-center">
-      <div class="text-3xl font-bold text-orange-400">5</div>
-      <div class="text-sm opacity-70">Active Listings</div>
+  {% endif %}
+  {% else %}
+    <div class="alert alert-info">
+      <i class="fas fa-info-circle"></i>
+      You have no listings yet. Create your first one!
     </div>
-    <div class="enhanced-card text-center">
-      <div class="text-3xl font-bold text-teal-400">12</div>
-      <div class="text-sm opacity-70">Total Transactions</div>
-    </div>
-    <div class="enhanced-card text-center">
-      <div class="text-3xl font-bold text-green-400">3</div>
-      <div class="text-sm opacity-70">Messages</div>
-    </div>
-    <div class="enhanced-card text-center">
-      <div class="text-3xl font-bold text-blue-400">4.8</div>
-      <div class="text-sm opacity-70">Rating</div>
-    </div>
-  </div>
+  {% endif %}
 </div>
+{% endblock %}
+
+{% block marketplace_scripts %}
+<script>
+// Helper to get CSRF token from cookie
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+}
+
+async function postJSON(url, payload = {}) {
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrftoken'),
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`HTTP ${resp.status}: ${text}`);
+  }
+  return resp.json().catch(() => ({}));
+}
+
+function bindInlineActions() {
+  document.querySelectorAll('button[data-action][data-listing-id]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const action = btn.getAttribute('data-action');
+      const listingId = btn.getAttribute('data-listing-id');
+      const endpoints = {
+        reserve: `{% url 'marketplace:api_listing_reserve' 0 %}`.replace('/0/', `/${listingId}/`),
+        sell: `{% url 'marketplace:api_listing_sell' 0 %}`.replace('/0/', `/${listingId}/`),
+        complete: `{% url 'marketplace:api_listing_complete' 0 %}`.replace('/0/', `/${listingId}/`),
+      };
+      try {
+        const data = await postJSON(endpoints[action], {});
+        showMarketplaceToast(`${action.charAt(0).toUpperCase() + action.slice(1)} succeeded`, 'success');
+        // Reload to reflect updated status
+        window.location.reload();
+      } catch (err) {
+        console.error(err);
+        showMarketplaceToast(`Action failed: ${err.message}`, 'error');
+      }
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', bindInlineActions);
+</script>
 {% endblock %}

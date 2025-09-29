@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% block marketplace_title %}PETio Marketplace{% endblock %} - PETio{% endblock %}
+
+{% block app_nav %}
+<div class="overflow-x-auto">
+  <div class="tabs tabs-boxed bg-transparent gap-2 py-1 whitespace-nowrap flex">
+    <a href="{% url 'marketplace:home' %}"
+       class="tab tab-sm md:tab-md lg:tab-lg shrink-0 {% if request.resolver_match.url_name == 'home' %}tab-active{% endif %}">
+        <i class="fas fa-home mr-2"></i>
+        Browse
+    </a>
+    <a href="{% url 'marketplace:dashboard' %}"
+       class="tab tab-sm md:tab-md lg:tab-lg shrink-0 {% if request.resolver_match.url_name == 'dashboard' %}tab-active{% endif %}">
+        <i class="fas fa-tachometer-alt mr-2"></i>
+        My Listings
+    </a>
+    <a href="{% url 'marketplace:messages' %}"
+       class="tab tab-sm md:tab-md lg:tab-lg shrink-0 {% if request.resolver_match.url_name == 'messages' %}tab-active{% endif %}">
+        <i class="fas fa-comments mr-2"></i>
+        Messages
+    </a>
+    <a href="{% url 'marketplace:transactions' %}"
+       class="tab tab-sm md:tab-md lg:tab-lg shrink-0 {% if request.resolver_match.url_name == 'transactions' %}tab-active{% endif %}">
+        <i class="fas fa-receipt mr-2"></i>
+        Transactions
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-base-100">
+     <!-- Marketplace Header Section -->
+     <div class="bg-gradient-to-r from-accent/10 to-accent/5 border-b border-base-300">
+         <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+             <!-- Marketplace Title & Navigation -->
+             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                 <div class="flex items-center gap-3">
+                     <div class="p-3 bg-accent/20 rounded-xl">
+                         <i class="fas fa-store text-accent text-2xl"></i>
+                     </div>
+                     <div>
+                         <h1 class="text-2xl lg:text-3xl font-bold text-base-content">
+                             {% block marketplace_header %}PETio Marketplace{% endblock %}
+                         </h1>
+                         <p class="text-base-content/70 text-sm lg:text-base">
+                             {% block marketplace_subtitle %}Pet products and accessories for PETio owners{% endblock %}
+                         </p>
+                     </div>
+                 </div>
+                 
+                 <!-- Marketplace Quick Actions -->
+                 <div class="flex items-center gap-2">
+                     {% block marketplace_actions %}
+                     {% if request.user.is_authenticated %}
+                     <a href="{% url 'marketplace:listing_create' %}" class="btn btn-primary btn-md lg:btn-lg">
+                         <i class="fas fa-plus"></i>
+                         <span class="hidden sm:inline">New Listing</span>
+                     </a>
+                     {% else %}
+                     <a href="{% url 'login' %}?next={% url 'marketplace:listing_create' %}" class="btn btn-primary btn-md lg:btn-lg">
+                         <i class="fas fa-sign-in-alt"></i>
+                         <span class="hidden sm:inline">Login to Create</span>
+                         <span class="sm:hidden">Login</span>
+                     </a>
+                     {% endif %}
+                     {% endblock %}
+                 </div>
+             </div>
+         </div>
+     </div>
+
+     <!-- Breadcrumbs -->
+     <div class="container mx-auto px-3 sm:px-4 py-2">
+         <div class="breadcrumbs text-sm">
+             <ul>
+                 <li><a href="{% url 'marketplace:home' %}">Marketplace</a></li>
+                 {% block breadcrumbs %}{% endblock %}
+             </ul>
+         </div>
+     </div>
+
+     <!-- Main Marketplace Content -->
+     <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+         {% block marketplace_content %}{% endblock %}
+     </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/**
+ * Marketplace utilities for formatting and client-side UX niceties.
+ * These are non-essential helpers used by multiple marketplace pages.
+ */
+const MarketplaceUtils = {
+    /**
+     * Format an integer quantity to a user-friendly stock string.
+     * @param {number} quantity
+     * @returns {string}
+     */
+    formatStock: function(quantity) {
+        if (quantity <= 0) return 'Out of stock';
+        if (quantity === 1) return '1 left';
+        if (quantity <= 5) return `Only ${quantity} left`;
+        return `${quantity} available`;
+    },
+    
+    /**
+     * Validate image file for upload
+     * @param {File} file - Image file to validate
+     * @returns {object} Validation result
+     */
+    validateImage: function(file) {
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        
+        if (!file) {
+            return { valid: false, message: 'Please select an image file.' };
+        }
+        
+        if (file.size > maxSize) {
+            return { valid: false, message: 'Image must be smaller than 5MB.' };
+        }
+        
+        if (!allowedTypes.includes(file.type)) {
+            return { valid: false, message: 'Only JPEG, PNG, and WebP images are allowed.' };
+        }
+        
+        return { valid: true, message: 'Image is valid.' };
+    }
+};
+
+// Make utilities globally available
+window.MarketplaceUtils = MarketplaceUtils;
+
+/**
+ * Show a toast notification using DaisyUI styles.
+ * Creates a top-right toast container if it does not exist.
+ * @param {string} message - The message text to display.
+ * @param {('info'|'success'|'warning'|'error')} level - Visual style level, defaults to 'info'.
+ */
+function showMarketplaceToast(message, level = 'info') {
+  let container = document.getElementById('marketplaceToastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'marketplaceToastContainer';
+    container.className = 'toast toast-top toast-end fixed right-4 top-4 z-50';
+    document.body.appendChild(container);
+  }
+  const alert = document.createElement('div');
+  alert.className = `alert alert-${level}`;
+  alert.innerHTML = `<span>${message}</span>`;
+  container.appendChild(alert);
+  // Auto-remove after 4 seconds
+  setTimeout(() => { if (alert && alert.parentNode) alert.parentNode.removeChild(alert); }, 4000);
+}
+</script>
+
+{% block marketplace_scripts %}
+ <!-- Child templates can add additional scripts here -->
+{% endblock %}
+{% endblock %}

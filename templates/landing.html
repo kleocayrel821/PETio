@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+{% block title %}Feed Smarter. Connect Better. Care Together. | PETio{% endblock %}
+
+{% block content %}
+<style>
+  .drawer-side { display: none !important; }
+  label[for="system-drawer-toggle"] { display: none !important; }
+  .drawer-content { width: 100% !important; }
+
+  /* --- TYPOGRAPHY HIERARCHY FIXES --- */
+  body, .drawer-content {
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    color: #2d3748;
+    background: #f8fafc;
+  }
+  .hero-section {
+    background: linear-gradient(90deg, #f8fafc 60%, #e0e7ef 100%);
+    padding: 64px 0 48px 0;
+    border-radius: 0 0 32px 32px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 48px;
+  }
+  .hero-content {
+    max-width: 480px;
+    flex: 1 1 320px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .hero-headline {
+    font-size: 2.8rem;
+    font-weight: 900;
+    line-height: 1.1;
+    color: #1e293b;
+    margin-bottom: 18px;
+    letter-spacing: -1px;
+  }
+  .hero-subtitle {
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: #475569;
+    margin-bottom: 32px;
+    line-height: 1.5;
+  }
+  .hero-cta {
+    margin-top: 18px;
+  }
+  .hero-cta a {
+    font-size: 1.15rem;
+    font-weight: 700;
+    padding: 12px 32px;
+    border-radius: 8px;
+    background: #4338ca;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(67,56,202,0.08);
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+  .hero-cta a:hover {
+    background: #2563eb;
+  }
+  .hero-image {
+    min-width: 220px;
+    max-width: 420px;
+    text-align: center;
+    flex: 1 1 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hero-image img {
+    width: 100%;
+    border-radius: 24px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    max-width: 420px;
+    height: auto;
+  }
+  .features-section {
+    margin: 56px auto 32px auto;
+    max-width: 900px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 32px;
+  }
+  .feature-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.03);
+    padding: 28px 20px;
+    text-align: left;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+  .feature-card h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #2563eb;
+    margin-bottom: 10px;
+    letter-spacing: -0.5px;
+  }
+  .feature-card p {
+    color: #475569;
+    font-size: 1.05rem;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+  .social-proof {
+    margin: 48px auto 32px auto;
+    max-width: 700px;
+    text-align: center;
+  }
+  .testimonial {
+    font-size: 1.15rem;
+    color: #334155;
+    margin-bottom: 18px;
+    font-style: italic;
+    font-weight: 500;
+  }
+  .brand-logos {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .brand-logo {
+    width: 80px;
+    height: 32px;
+    background: #e2e8f0;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    color: #64748b;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .signup-section {
+    background: #f1f5f9;
+    border-radius: 16px;
+    padding: 32px 24px;
+    margin: 48px auto 32px auto;
+    max-width: 420px;
+    text-align: center;
+  }
+  .signup-section h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 18px;
+    color: #2563eb;
+    letter-spacing: -0.5px;
+  }
+  .signup-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+  .signup-form input, .signup-form select {
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .signup-form button {
+    padding: 10px;
+    border-radius: 6px;
+    background: #2563eb;
+    color: #fff;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    margin-top: 8px;
+    width: 100%;
+    font-size: 1.05rem;
+  }
+  .faq-section {
+    max-width: 700px;
+    margin: 48px auto 32px auto;
+  }
+  .faq-section h3 {
+    font-size: 1.18rem;
+    font-weight: 700;
+    margin-bottom: 18px;
+    color: #2563eb;
+    letter-spacing: -0.5px;
+  }
+  .faq-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .faq-list li {
+    margin-bottom: 18px;
+    color: #475569;
+    font-size: 1.05rem;
+    line-height: 1.5;
+  }
+  .secondary-cta {
+    text-align: center;
+    margin: 32px auto 24px auto;
+  }
+  .secondary-cta button, .secondary-cta a {
+    padding: 12px 32px;
+    border-radius: 8px;
+    background: #22d3ee;
+    color: #fff;
+    font-weight: 700;
+    border: none;
+    font-size: 1.12rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    letter-spacing: -0.5px;
+  }
+  .footer {
+    background: #f8fafc;
+    padding: 32px 0 12px 0;
+    text-align: center;
+    font-size: 0.98rem;
+    color: #64748b;
+    border-top: 1px solid #e2e8f0;
+  }
+  .footer-links {
+    margin-bottom: 8px;
+  }
+  .footer-links a {
+    color: #2563eb;
+    margin: 0 8px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 1rem;
+  }
+  @media (max-width: 900px) {
+    .hero-section { flex-direction: column; gap: 24px; }
+    .features-section { grid-template-columns: 1fr; gap: 18px; }
+    .brand-logos { flex-direction: row; gap: 10px; flex-wrap: wrap; }
+    .hero-content, .hero-image { max-width: 100%; }
+  }
+  @media (max-width: 700px) {
+    .hero-section { flex-direction: column; gap: 18px; padding: 32px 0 24px 0; }
+    .hero-headline { font-size: 1.7rem; }
+    .hero-subtitle { font-size: 1.05rem; }
+    .features-section { grid-template-columns: 1fr; gap: 12px; }
+    .brand-logos { flex-direction: column; gap: 8px; }
+    .signup-section { padding: 18px 8px; }
+    .faq-section { padding: 0 8px; }
+    .footer { padding: 18px 0 8px 0; font-size: 0.88rem; }
+  }
+</style>
+
+<div class="hero-section container mx-auto">
+  <div class="hero-content">
+    <div class="hero-headline">Feed Smarter. Connect Better. Care Together.</div>
+    <div class="hero-subtitle">PETio is an all-in-one smart pet feeder and community platform. Automate feeding schedules, track nutrition, and join a supportive community of pet owners—all from one place.</div>
+    <div class="hero-cta">
+      <a href="{% url 'accounts:signup' %}">Get Started Today</a>
+    </div>
+  </div>
+  <div class="hero-image">
+    <img src="/static/img/hero-feeder.jpg" alt="Modern pet feeder dispensing food while a pet owner checks their phone" />
+    <!-- Placeholder: Replace with video or animation later -->
+  </div>
+</div>
+
+<div class="features-section">
+  <div class="feature-card">
+    <h3>Smart Feeding</h3>
+    <p>Schedule, portion, and monitor meals with precision.</p>
+  </div>
+  <div class="feature-card">
+    <h3>Remote Control</h3>
+    <p>Manage feeding anytime, anywhere from your phone.</p>
+  </div>
+  <div class="feature-card">
+    <h3>Pet Profiles</h3>
+    <p>Track nutrition, habits, and feeding history per pet.</p>
+  </div>
+  <div class="feature-card">
+    <h3>Community Platform</h3>
+    <p>Share tips, stories, and connect with other pet owners.</p>
+  </div>
+  <div class="feature-card">
+    <h3>Marketplace</h3>
+    <p>Buy, sell, and trade pet essentials in a trusted space.</p>
+  </div>
+</div>
+
+
+
+<div class="signup-section">
+  <h2>Join the PETio Community Today</h2>
+  <form class="signup-form space-y-4" method="post" action="{% url 'accounts:signup' %}">
+    {% csrf_token %}
+    <label class="block text-left font-medium" for="landing_id_username">Username</label>
+    <input id="landing_id_username" class="input input-bordered w-full form-control-enhanced" type="text" name="username" placeholder="Choose a username" autocomplete="username" required />
+
+    <label class="block text-left font-medium" for="landing_id_email">Email (optional)</label>
+    <input id="landing_id_email" class="input input-bordered w-full form-control-enhanced" type="email" name="email" placeholder="you@example.com" autocomplete="email" />
+
+    <label class="block text-left font-medium" for="landing_id_password1">Password</label>
+    <div class="relative">
+      <input id="landing_id_password1" class="input input-bordered w-full form-control-enhanced pr-16" type="password" name="password1" placeholder="Password" autocomplete="new-password" required />
+      <button type="button" id="toggle-password1" class="btn btn-ghost btn-xs absolute right-2 top-2">Show</button>
+    </div>
+
+    <label class="block text-left font-medium" for="landing_id_password2">Confirm Password</label>
+    <div class="relative">
+      <input id="landing_id_password2" class="input input-bordered w-full form-control-enhanced pr-16" type="password" name="password2" placeholder="Confirm password" autocomplete="new-password" required />
+      <button type="button" id="toggle-password2" class="btn btn-ghost btn-xs absolute right-2 top-2">Show</button>
+    </div>
+
+    <label class="block text-left font-medium" for="landing_id_mobile_number">Mobile number (optional)</label>
+    <input id="landing_id_mobile_number" class="input input-bordered w-full form-control-enhanced" type="tel" name="mobile_number" placeholder="Mobile number" autocomplete="tel" />
+
+    <label class="block text-left font-medium" for="landing_id_age">Age (optional)</label>
+    <input id="landing_id_age" class="input input-bordered w-full form-control-enhanced" type="number" name="age" placeholder="Age" min="0" />
+
+    <label for="landing_id_marketing_opt_in" class="flex items-center gap-2 text-left">
+      <input id="landing_id_marketing_opt_in" type="checkbox" name="marketing_opt_in" class="checkbox">
+      <span>Send me product updates and tips</span>
+    </label>
+
+    <button type="submit" class="btn btn-primary btn-enhanced w-full">Create Account</button>
+  </form>
+  <p style="margin-top: 12px; font-size: 0.9rem; color: #64748b;">
+    Already have an account? <a href="{% url 'login' %}" style="color: #2563eb; text-decoration: none;">Log in</a>
+  </p>
+</div>
+
+<script>
+(function(){
+  // Preserve next param if present
+  const form = document.querySelector('.signup-section form.signup-form');
+  if (form) {
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get('next');
+    if (next) {
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = 'next';
+      hidden.value = next;
+      form.appendChild(hidden);
+    }
+    // Add minimal validation hints and loading state
+    form.addEventListener('submit', function(e){
+      const pwd1 = form.querySelector('input[name="password1"]');
+      const pwd2 = form.querySelector('input[name="password2"]');
+      if (pwd1 && pwd2 && pwd1.value !== pwd2.value) {
+        e.preventDefault();
+        alert('Passwords do not match. Please re-enter.');
+        return false;
+      }
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (typeof window.setButtonLoading === 'function') {
+        window.setButtonLoading(submitBtn, true);
+      } else {
+        submitBtn.disabled = true;
+      }
+    });
+
+    // Toggle show/hide password fields
+    function togglePassword(inputId, btnId){
+      const input = document.getElementById(inputId);
+      const btn = document.getElementById(btnId);
+      if (!input || !btn) return;
+      btn.addEventListener('click', function(){
+        const isPassword = input.getAttribute('type') === 'password';
+        input.setAttribute('type', isPassword ? 'text' : 'password');
+        btn.textContent = isPassword ? 'Hide' : 'Show';
+      });
+    }
+    togglePassword('landing_id_password1','toggle-password1');
+    togglePassword('landing_id_password2','toggle-password2');
+  }
+})();
+</script>
+
+<div class="faq-section">
+  <h3>Frequently Asked Questions</h3>
+  <ul class="faq-list">
+    <li><strong>Q: Does PETio work offline?</strong><br>A: Yes, PETio feeders continue dispensing even without internet.</li>
+    <li><strong>Q: Can I manage multiple pets?</strong><br>A: Absolutely. Each pet gets a dedicated profile.</li>
+    <li><strong>Q: Is the community free to join?</strong><br>A: Yes, access is included with every feeder purchase.</li>
+  </ul>
+</div>
+
+<div class="secondary-cta">
+  <a href="/marketplace/">Order Your Smart Feeder Now</a>
+</div>
+
+<div class="footer">
+  <div class="footer-links">
+    <a href="#">Privacy Policy</a> |
+    <a href="#">Terms & Conditions</a> |
+    <a href="#">Support</a>
+  </div>
+  <div>Copyright © 2025 PETio</div>
+</div>
+{% endblock %}

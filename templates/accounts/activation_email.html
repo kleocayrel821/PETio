@@ -1,0 +1,21 @@
+<!-- Account Activation Email (HTML): Sent after registration to verify the user's email -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Activate your PETio account</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; color: #1e293b;">
+    <h2>Welcome to PETio!</h2>
+    <p>Thanks for signing up. Please confirm your email address to activate your account.</p>
+    <p>
+      <a href="{{ activation_url }}" style="display:inline-block;background:#3b82f6;color:#ffffff;padding:10px 16px;border-radius:6px;text-decoration:none;">
+        Activate Account
+      </a>
+    </p>
+    <p>If the button doesn’t work, copy and paste this link into your browser:</p>
+    <p><a href="{{ activation_url }}">{{ activation_url }}</a></p>
+    <hr />
+    <p style="font-size: 12px; color: #64748b;">If you did not create an account, you can safely ignore this email.</p>
+  </body>
+</html>

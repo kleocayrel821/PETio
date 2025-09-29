@@ -1,0 +1,27 @@
+<!-- Activation Confirmation Page: Shows success or failure of account activation -->
+{% extends "base.html" %}
+{% block title %}Account Activation - PETio{% endblock %}
+{% block content %}
+<div class="container mx-auto max-w-lg py-10">
+  {% if activated %}
+    <div class="alert alert-success shadow mb-6">
+      <i class="fas fa-check-circle mr-2"></i>
+      Your account has been activated. You can now use all features.
+    </div>
+    <div class="flex gap-2">
+      <a href="{% url 'login' %}" class="btn btn-primary">Log in</a>
+      <a href="/" class="btn btn-ghost">Home</a>
+    </div>
+  {% else %}
+    <div class="alert alert-error shadow mb-6">
+      <i class="fas fa-exclamation-triangle mr-2"></i>
+      Activation link is invalid or has expired.
+    </div>
+    <p class="mb-4">You can request a new activation email by resetting your password or signing up again.</p>
+    <div class="flex gap-2">
+      <a href="{% url 'password_reset' %}" class="btn">Reset Password</a>
+      <a href="{% url 'accounts:signup' %}" class="btn btn-ghost">Sign up</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

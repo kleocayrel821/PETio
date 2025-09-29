@@ -1,0 +1,317 @@
+<!-- Project Global Base Template -->
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}PETio{% endblock %}</title>
+  <!-- DaisyUI + Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Global CSS Variables and Enhanced UI Classes -->
+  <style>
+    :root {
+      /* Clean Light Color Palette */
+      --primary-blue: #3b82f6;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --success-green: #22c55e;
+      --warning-orange: #f97316;
+      --error-red: #ef4444;
+
+      /* Background Variations */
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f1f5f9;
+
+      /* Text Colors */
+      --text-primary: #1e293b;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+
+      /* Shadows */
+      --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      --shadow-card-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+      /* Transitions */
+      --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-fast: all 0.15s ease-in-out;
+      --transition-medium: all 0.25s ease-in-out;
+    }
+
+    body {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      min-height: 100vh;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      transition: var(--transition-smooth);
+    }
+
+    /* Typography Hierarchy */
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .subsection-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 0.75rem;
+    }
+
+    /* Enhanced Card Styling */
+    .enhanced-card {
+      background: var(--bg-card);
+      border-radius: 12px;
+      box-shadow: var(--shadow-card);
+      padding: 1.5rem;
+      transition: var(--transition-smooth);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .enhanced-card:hover {
+      box-shadow: var(--shadow-card-hover);
+      background: var(--bg-card-hover);
+      transform: translateY(-2px);
+    }
+
+    /* Button Enhancements */
+    .btn-enhanced {
+      transition: var(--transition-fast);
+      font-weight: 600;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-enhanced:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .btn-enhanced:active { transform: scale(0.96) translateY(1px); }
+    .btn-enhanced::before { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; border-radius: 50%; background: rgba(255,255,255,0.3); transform: translate(-50%,-50%); transition: width 0.6s, height 0.6s; }
+    .btn-enhanced:active::before { width: 300px; height: 300px; }
+
+    /* Form Enhancements */
+    .form-control-enhanced {
+      position: relative;
+      transition: var(--transition-medium);
+      background: var(--bg-secondary);
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: var(--text-primary);
+      padding: 0.75rem;
+    }
+    .form-control-enhanced:focus { border-color: var(--primary-blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); outline: none; transform: translateY(-2px); }
+
+    /* Table Enhancements */
+    .enhanced-table { background: var(--bg-card); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-card); }
+    .enhanced-table th { background: var(--bg-secondary); color: var(--text-primary); font-weight: 600; padding: 1rem; border-bottom: 2px solid rgba(255,255,255,0.1); }
+    .enhanced-table td { padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); transition: var(--transition-fast); }
+    .enhanced-table tbody tr { transition: var(--transition-fast); }
+    .enhanced-table tbody tr:hover { background: var(--bg-card-hover); transform: translateX(4px); box-shadow: 4px 0 12px rgba(0,0,0,0.1); }
+    .enhanced-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+
+    /* Status Badges */
+    .status-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; transition: var(--transition-fast); }
+    .status-badge:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .status-enabled { background: rgba(16,185,129,0.2); color: var(--success-green); border: 1px solid rgba(16,185,129,0.3); }
+    .status-disabled { background: rgba(156,163,175,0.2); color: var(--text-muted); border: 1px solid rgba(156,163,175,0.3); }
+
+    /* Responsive Grid */
+    .responsive-grid { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
+    @media (min-width: 768px) { .responsive-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    /* Slider Enhancements */
+    .range-enhanced { appearance: none; background: var(--bg-secondary); height: 8px; border-radius: 4px; outline: none; transition: var(--transition-fast); }
+    .range-enhanced::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--primary-blue); cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: var(--transition-fast); }
+    .range-enhanced::-webkit-slider-thumb:hover { transform: scale(1.1); box-shadow: 0 4px 8px rgba(0,0,0,0.4); }
+
+    /* Pagination Enhancements */
+    .pagination-enhanced .btn { margin: 0 0.125rem; border-radius: 6px; transition: var(--transition-fast); }
+    .pagination-enhanced .btn:hover { transform: translateY(-1px); }
+
+    /* Focus Visible for Accessibility */
+    .btn:focus-visible, .form-control-enhanced:focus-visible { outline: 2px solid var(--primary-blue); outline-offset: 2px; }
+
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="drawer lg:drawer-open">
+    <input id="system-drawer-toggle" type="checkbox" class="drawer-toggle" />
+    <div class="drawer-content flex flex-col">
+      <!-- Top Navbar with app-specific nav block -->
+      <nav class="navbar sticky top-0 z-40 bg-base-100 border-b border-base-300">
+        <div class="navbar-start">
+          <label for="system-drawer-toggle" class="btn btn-ghost lg:hidden mr-2" aria-label="Open system navigation">
+            <i class="fas fa-bars text-lg"></i>
+          </label>
+        </div>
+        <div class="navbar-center">
+          {% block app_nav %}{% endblock %}
+        </div>
+        <div class="navbar-end hidden"></div>
+      </nav>
+      {% if messages %}
+      <div class="container mx-auto px-4 pt-4">
+        <div class="space-y-2">
+          {% for message in messages %}
+          <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} shadow">
+            <span>{{ message }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <main class="container mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+
+    <!-- Global App Drawer -->
+    <div class="drawer-side">
+      <label for="system-drawer-toggle" aria-label="Close system navigation" class="drawer-overlay"></label>
+      <aside class="min-h-full w-80 bg-base-200 text-base-content flex flex-col">
+        <div class="p-4 border-b border-base-300">
+          <div class="flex items-center gap-3">
+            <div class="avatar placeholder">
+              <div class="bg-primary text-primary-content rounded-full w-10">
+                <span class="text-lg"><i class="fas fa-paw"></i></span>
+              </div>
+            </div>
+            <div>
+              <h2 class="font-bold text-lg">PETio System</h2>
+              <p class="text-sm opacity-70">IoT Pet Feeder</p>
+              {% if request.user.is_authenticated %}
+              <p class="text-sm opacity-80 mt-1"><i class="fas fa-user mr-1"></i>{{ request.user.username }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <nav class="flex-1 p-4">
+          <ul class="menu menu-lg w-full">
+            <li class="menu-title"><span>Applications</span></li>
+            <li>
+              <a href="/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors {% if not request.resolver_match or not request.resolver_match.namespace or request.resolver_match and not request.resolver_match.namespace and request.resolver_match.url_name == 'home' or request.resolver_match and not request.resolver_match.namespace and request.resolver_match.url_name == 'schedules_ui' or request.resolver_match and not request.resolver_match.namespace and request.resolver_match.url_name == 'history' or request.resolver_match and not request.resolver_match.namespace and request.resolver_match.url_name == 'control_panel' or request.resolver_match.namespace == 'accounts' or request.resolver_match.namespace == 'admin' %}bg-base-300 ring-1 ring-base-300{% endif %}">
+                <i class="fas fa-gamepad text-primary text-xl"></i>
+                <div>
+                  <div class="font-semibold">Controller</div>
+                  <div class="text-sm opacity-70">Feed & Schedule Management</div>
+                </div>
+              </a>
+            </li>
+            <li>
+              <a href="/social/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors {% if request.resolver_match and request.resolver_match.namespace == 'social' %}bg-base-300 ring-1 ring-base-300{% endif %}">
+                <i class="fas fa-users text-secondary text-xl"></i>
+                <div>
+                  <div class="font-semibold">Social</div>
+                  <div class="text-sm opacity-70">Community & Sharing</div>
+                </div>
+              </a>
+            </li>
+            <li>
+              <a href="/marketplace/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors {% if request.resolver_match and request.resolver_match.namespace == 'marketplace' %}bg-base-300 ring-1 ring-base-300{% endif %}">
+                <i class="fas fa-store text-accent text-xl"></i>
+                <div>
+                  <div class="font-semibold">Marketplace</div>
+                  <div class="text-sm opacity-70">Products & Services</div>
+                </div>
+              </a>
+            </li>
+          </ul>
+        </nav>
+        <div class="p-4 border-t border-base-300">
+          {% if request.user.is_authenticated %}
+          <div class="flex flex-col gap-2">
+            <a href="{% url 'accounts:profile' %}" class="btn btn-ghost btn-block justify-start gap-3">
+              <i class="fas fa-user text-primary"></i>
+              <span>Profile</span>
+            </a>
+            <a href="{% url 'logout' %}" class="btn btn-ghost btn-block justify-start gap-3">
+              <i class="fas fa-sign-out-alt text-error"></i>
+              <span>Logout</span>
+            </a>
+          </div>
+          {% else %}
+          <div class="flex flex-col gap-2">
+            <a href="{% url 'login' %}" class="btn btn-ghost btn-block justify-start gap-3">
+              <i class="fas fa-sign-in-alt text-success"></i>
+              <span>Log in</span>
+            </a>
+            <a href="{% url 'accounts:signup' %}" class="btn btn-ghost btn-block justify-start gap-3">
+              <i class="fas fa-user-plus text-secondary"></i>
+              <span>Sign up</span>
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </aside>
+    </div>
+  </div>
+  <script>
+  // Global helper utilities used across pages that extend base_controller.html
+  // Provides getCookie (for CSRF) and setButtonLoading (for button loading UX)
+  (function () {
+    // Get a cookie value by name (used for CSRF token retrieval)
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          // Does this cookie string begin with the name we want?
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+    // Expose globally if not already defined
+    if (typeof window.getCookie !== 'function') {
+      window.getCookie = getCookie;
+    }
+  
+    // Toggle a button into a loading state by disabling it and showing a spinner
+    function setButtonLoading(button, loading = true) {
+      if (!button) return;
+      try {
+        if (loading) {
+          button.disabled = true;
+          if (!button.dataset.originalHtml) {
+            button.dataset.originalHtml = button.innerHTML;
+          }
+          const originalText = (button.textContent || '').trim();
+          const label = originalText || 'Processing...';
+          button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${label}`;
+        } else {
+          button.disabled = false;
+          if (button.dataset.originalHtml) {
+            button.innerHTML = button.dataset.originalHtml;
+            delete button.dataset.originalHtml;
+          }
+        }
+      } catch (e) {
+        console.warn('setButtonLoading failed:', e);
+      }
+    }
+    // Expose globally if not already defined
+    if (typeof window.setButtonLoading !== 'function') {
+      window.setButtonLoading = setButtonLoading;
+    }
+  })();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

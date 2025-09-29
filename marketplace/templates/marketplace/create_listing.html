@@ -1,42 +1,83 @@
-{% extends 'marketplace/base.html' %}
+{% extends "marketplace/base_marketplace.html" %}
+{% load static %}
 {% block title %}Create Listing{% endblock %}
 {% block marketplace_content %}
 <div class="space-y-8">
   <div class="section-title"><i class="fas fa-plus-circle text-green-400"></i> Create New Listing</div>
 
-  <div class="enhanced-card">
-    <div class="responsive-grid">
-      <div>
-        <label class="subsection-title"><i class="fas fa-tag text-blue-400"></i> Title</label>
-        <input class="form-control-enhanced w-full" placeholder="Item title" />
-      </div>
-      <div>
-        <label class="subsection-title"><i class="fas fa-list text-purple-400"></i> Category</label>
-        <select class="form-control-enhanced w-full">
-          <option>Pet Food</option>
-          <option>Accessories</option>
-          <option>Devices</option>
-        </select>
-      </div>
-      <div>
-        <label class="subsection-title"><i class="fas fa-dollar-sign text-yellow-400"></i> Price</label>
-        <input class="form-control-enhanced w-full" placeholder="0.00" />
-      </div>
-    </div>
+  <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
+    <form method="post" enctype="multipart/form-data" novalidate role="form" aria-labelledby="create-listing-title">
+      {% csrf_token %}
 
-    <div class="mt-6">
-      <label class="subsection-title"><i class="fas fa-file-upload text-teal-400"></i> Photos</label>
-      <div class="card h-24 flex items-center justify-center text-gray-400">Upload area placeholder</div>
-    </div>
+      {% if form.non_field_errors %}
+      <div class="alert alert-error mb-4" role="alert" aria-live="polite">
+        <ul class="list-disc pl-5">
+          {% for err in form.non_field_errors %}
+          <li>{{ err }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
 
-    <div class="mt-6">
-      <label class="subsection-title"><i class="fas fa-align-left text-orange-400"></i> Description</label>
-      <textarea class="form-control-enhanced w-full" rows="4" placeholder="Describe your item"></textarea>
-    </div>
+      <!-- Top row: Title, Category, Price -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="min-w-0">
+          <label class="subsection-title" for="{{ form.title.id_for_label }}"><i class="fas fa-tag text-blue-400"></i> Title</label>
+          <div class="w-full">{{ form.title }}</div>
+          {% if form.title.errors %}
+          <label class="label" role="alert" aria-live="polite"><span class="label-text-alt text-error">{{ form.title.errors.0 }}</span></label>
+          {% endif %}
+        </div>
+        <div class="min-w-0">
+          <label class="subsection-title" for="{{ form.category.id_for_label }}"><i class="fas fa-list text-purple-400"></i> Category</label>
+          <div class="w-full">{{ form.category }}</div>
+          {% if form.category.errors %}
+          <label class="label" role="alert" aria-live="polite"><span class="label-text-alt text-error">{{ form.category.errors.0 }}</span></label>
+          {% endif %}
+        </div>
+        <div class="min-w-0">
+          <label class="subsection-title" for="{{ form.price.id_for_label }}"><i class="fas fa-peso-sign text-yellow-400"></i> Price</label>
+          <div class="w-full">{{ form.price }}</div>
+          {% if form.price.errors %}
+          <label class="label" role="alert" aria-live="polite"><span class="label-text-alt text-error">{{ form.price.errors.0 }}</span></label>
+          {% endif %}
+        </div>
+      </div>
 
-    <div class="mt-6 flex justify-end">
-      <button class="btn btn-enhanced btn-primary-enhanced"><i class="fas fa-save"></i> Submit for Review</button>
-    </div>
+      <!-- Second row: Quantity + Image -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <div class="min-w-0">
+          <label class="subsection-title" for="{{ form.quantity.id_for_label }}"><i class="fas fa-cubes text-pink-400"></i> Quantity</label>
+          <div class="w-full">{{ form.quantity }}</div>
+          {% if form.quantity.errors %}
+          <label class="label" role="alert" aria-live="polite"><span class="label-text-alt text-error">{{ form.quantity.errors.0 }}</span></label>
+          {% endif %}
+        </div>
+        <div class="min-w-0">
+          <label class="subsection-title" for="{{ form.main_image.id_for_label }}"><i class="fas fa-file-upload text-teal-400"></i> Main Image</label>
+          <div class="w-full">{{ form.main_image }}</div>
+          <label class="label"><span class="label-text-alt">Max 5 MB. JPG/PNG/WebP recommended.</span></label>
+          {% if form.main_image.errors %}
+          <label class="label" role="alert" aria-live="polite"><span class="label-text-alt text-error">{{ form.main_image.errors.0 }}</span></label>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="mt-6 min-w-0">
+        <label class="subsection-title" for="{{ form.description.id_for_label }}"><i class="fas fa-align-left text-orange-400"></i> Description</label>
+        <div class="w-full">{{ form.description }}</div>
+        {% if form.description.errors %}
+        <label class="label" role="alert" aria-live="polite"><span class="label-text-alt text-error">{{ form.description.errors.0 }}</span></label>
+        {% endif %}
+      </div>
+
+      <!-- Actions -->
+      <div class="mt-6 flex flex-col sm:flex-row justify-end gap-2">
+        <a href="{% url 'marketplace:home' %}" class="btn btn-ghost w-full sm:w-auto" aria-label="Cancel and go back">Cancel</a>
+        <button type="submit" class="btn btn-primary w-full sm:w-auto" aria-label="Submit new listing"><i class="fas fa-save"></i> Submit</button>
+      </div>
+    </form>
   </div>
 </div>
 {% endblock %}

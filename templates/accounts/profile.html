@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Your Profile - PETio{% endblock %}
+{% block content %}
+<div class="container mx-auto max-w-2xl py-10">
+  <h1 class="text-2xl font-bold mb-6">Your Profile</h1>
+  <div class="card bg-base-200 p-6">
+    <div class="flex items-center gap-4">
+      <div class="avatar placeholder">
+        <div class="bg-primary text-primary-content rounded-full w-16">
+          <span class="text-2xl"><i class="fas fa-user"></i></span>
+        </div>
+      </div>
+      <div>
+        <div class="font-semibold">{{ user_obj.username }}</div>
+        <div class="text-sm opacity-70">{{ user_obj.email }}</div>
+      </div>
+    </div>
+    <div class="mt-6">
+      <h2 class="font-semibold mb-2">Profile Details</h2>
+      <p>Display Name: {{ user_obj.profile.display_name|default:"(not set)" }}</p>
+      <p>Location: {{ user_obj.profile.location|default:"(not set)" }}</p>
+      <p>Phone: {{ user_obj.profile.phone|default:"(not set)" }}</p>
+      <p>Bio: {{ user_obj.profile.bio|default:"(not set)" }}</p>
+    </div>
+    <div class="mt-6 flex gap-2">
+      <a href="{% url 'accounts:profile_edit' %}" class="btn btn-primary">Edit Profile</a>
+      <a href="{% url 'logout' %}" class="btn">Logout</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
