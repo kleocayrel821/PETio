@@ -15,6 +15,14 @@
      - Sends messages as JSON POSTs
      Upgrade path: Replace polling with a WebSocket (Django Channels) to push updates in real-time.
 -->
+<div id="integrationBanner" class="alert alert-info hidden">
+  <div class="flex items-center gap-2">
+    <span id="integrationBannerText" class="text-sm">Discuss here or start a purchase request for this listing.</span>
+    <a id="ctaStartRequest" href="#" class="btn btn-primary btn-sm">Start Purchase Request</a>
+    <a id="ctaViewRequest" href="#" class="btn btn-outline btn-sm hidden">View Request</a>
+  </div>
+  <div class="text-xs text-base-content/60 mt-1">Compare general chat vs request-thread messaging.</div>
+</div>
 <div class="flex items-center gap-2 mb-2 lg:hidden">
   <button id="sidebarToggleBtn" class="btn btn-ghost btn-square" aria-label="Open sidebar" aria-controls="conversationSidebar" aria-expanded="false">
     <i class="fas fa-bars"></i>
@@ -55,7 +63,7 @@
         <div class="flex items-center justify-between">
           <div>
             <h3 class="font-semibold" id="chatUsername">Messages</h3>
-            <p class="text-sm text-base-content/70" id="chatProduct">Select a listing or pass ?listing_id= in the URL</p>
+<p class="text-sm text-base-content/70" id="chatProduct">No conversation selected. Choose a listing to start messaging.</p>
           </div>
         </div>
       </div>
@@ -77,6 +85,7 @@ let currentThreadId = null;
 let lastMessageId = 0;
 let currentUserId = {{ current_user_id|default:"null" }};
 let currentUsername = "{{ current_username|default:"" }}";
+let currentRequestId = null;
 
 /** Get CSRF token from cookie for safe POST requests */
 function getCSRFToken() {
@@ -97,15 +106,17 @@ function renderMessageBubble(msg) {
   const avatarBg = isMe ? 'bg-secondary text-secondary-content' : 'bg-primary text-primary-content';
   const headerName = isMe ? 'You' : `@${msg.sender_username || 'user'}`;
   const timeText = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+  const pendingClass = msg.pending ? 'opacity-70' : '';
+  const pendingSpinner = msg.pending ? '<span class="loading loading-spinner loading-xs ml-2"></span>' : '';
   return `
-    <div class="chat ${sideClass}">
+    <div class="chat ${sideClass}" data-temp-id="${msg.tempId || ''}">
       <div class="chat-image avatar">
         <div class="w-8 rounded-full ${avatarBg} flex items-center justify-center">
           <span class="text-xs">${(msg.sender_username || 'U')[0].toUpperCase()}</span>
         </div>
       </div>
       <div class="chat-header">${headerName}<time class="text-xs opacity-50 ml-2">${timeText}</time></div>
-      <div class="chat-bubble ${bubbleClass}">${msg.content}</div>
+      <div class="chat-bubble ${bubbleClass} ${pendingClass}">${msg.content}${pendingSpinner}</div>
     </div>`;
 }
 
@@ -121,6 +132,29 @@ function renderMessages(messages, {append = false} = {}) {
   area.scrollTop = area.scrollHeight;
 }
 
+/** Append an optimistic, pending message bubble to the DOM */
+function appendOptimisticMessage(tempId, content) {
+  const area = document.getElementById('messagesArea');
+  const msg = {
+    id: null,
+    tempId,
+    pending: true,
+    sender_id: currentUserId,
+    sender_username: currentUsername,
+    content,
+    created_at: new Date().toISOString()
+  };
+  area.innerHTML += renderMessageBubble(msg);
+  area.scrollTop = area.scrollHeight;
+}
+
+/** Remove a pending optimistic message by temp id */
+function removePendingMessage(tempId) {
+  const area = document.getElementById('messagesArea');
+  const el = area.querySelector(`[data-temp-id="${tempId}"]`);
+  if (el) el.remove();
+}
+
 /** Start or get a thread for a given listing_id */
 async function startOrGetThread(listingId) {
   const resp = await fetch('/marketplace/api/messages/thread/start/', {
@@ -131,8 +165,10 @@ async function startOrGetThread(listingId) {
   if (!resp.ok) { showMarketplaceToast('Failed to start conversation.', 'error'); return; }
   const data = await resp.json();
   currentThreadId = data.thread.id;
+  currentRequestId = data.thread && typeof data.thread.request_id !== 'undefined' ? data.thread.request_id : null;
   lastMessageId = 0;
   renderMessages(data.messages || [], {append: false});
+  updateIntegrationBanner(listingId);
 }
 
 /** Fetch messages for currentThreadId, optionally after a specific id */
@@ -142,6 +178,11 @@ async function fetchMessages(afterId = 0) {
   const resp = await fetch(url, {method: 'GET'});
   if (!resp.ok) return;
   const data = await resp.json();
+  if (typeof data.request_id !== 'undefined') {
+    currentRequestId = data.request_id;
+    // listingId unknown here; banner is already visible if applicable
+    updateIntegrationBanner();
+  }
   if (Array.isArray(data.messages) && data.messages.length) { renderMessages(data.messages, {append: true}); }
 }
 
@@ -151,17 +192,41 @@ function pollNewMessages() { fetchMessages(lastMessageId); }
 /** Send a message via JSON POST */
 async function sendMessage() {
   const messageInput = document.getElementById('messageInput');
+  const sendButton = document.getElementById('sendButton');
   const content = (messageInput.value || '').trim();
   if (!content) return;
   if (!currentThreadId) { showMarketplaceToast('No active conversation.', 'error'); return; }
-  const resp = await fetch(`/marketplace/api/messages/thread/${currentThreadId}/send/`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-    body: JSON.stringify({content})
-  });
-  if (!resp.ok) { showMarketplaceToast('Failed to send message.', 'error'); return; }
-  const data = await resp.json();
-  renderMessages([data.message], {append: true});
-  messageInput.value = ''; messageInput.style.height = 'auto'; document.getElementById('sendButton').disabled = true;
+  // Disable send to prevent double submits
+  sendButton.disabled = true;
+
+  // Add optimistic placeholder
+  const tempId = `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  appendOptimisticMessage(tempId, content);
+
+  try {
+    const resp = await fetch(`/marketplace/api/messages/thread/${currentThreadId}/send/`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+      body: JSON.stringify({content})
+    });
+    if (!resp.ok) {
+      removePendingMessage(tempId);
+      showMarketplaceToast('Failed to send message.', 'error');
+      return;
+    }
+    // Success toast and immediate fetch to render the new message without waiting for poller
+    showMarketplaceToast('Message sent', 'success');
+    try { await fetchMessages(lastMessageId); } catch (_) {}
+    removePendingMessage(tempId);
+    messageInput.value = '';
+    messageInput.style.height = 'auto';
+    sendButton.disabled = true;
+  } catch (e) {
+    removePendingMessage(tempId);
+    showMarketplaceToast('Network error sending message.', 'error');
+  } finally {
+    // Re-enable if input still has content
+    sendButton.disabled = !messageInput.value.trim();
+  }
 }
 
 /** Initialize messaging based on URL query params */
@@ -170,7 +235,37 @@ function initThreadFromQuery() {
   const listingId = params.get('listing_id');
   const threadId = params.get('thread_id');
   if (threadId) { currentThreadId = parseInt(threadId, 10); lastMessageId = 0; fetchMessages(0); return; }
-  if (listingId) { startOrGetThread(listingId); return; }
+  if (listingId) {
+    startOrGetThread(listingId);
+    // Set initial banner state for listing context
+    const banner = document.getElementById('integrationBanner');
+    if (banner) banner.classList.remove('hidden');
+    return;
+  }
+}
+
+/** Update integration banner copy and CTAs based on whether a request exists */
+function updateIntegrationBanner(listingId = null) {
+  const banner = document.getElementById('integrationBanner');
+  const text = document.getElementById('integrationBannerText');
+  const ctaStart = document.getElementById('ctaStartRequest');
+  const ctaView = document.getElementById('ctaViewRequest');
+  if (!banner || !text || !ctaStart || !ctaView) return;
+  // Default start request link goes to listing page where user can open request UI
+  if (listingId) {
+    ctaStart.href = `/marketplace/listing/${parseInt(listingId, 10)}/`;
+  }
+  if (currentRequestId) {
+    text.textContent = 'This conversation is tied to a purchase request.';
+    ctaView.href = `/marketplace/request/${currentRequestId}/`;
+    ctaView.classList.remove('hidden');
+    ctaStart.classList.add('hidden');
+  } else {
+    text.textContent = 'Discuss here or start a purchase request for this listing.';
+    ctaView.classList.add('hidden');
+    ctaStart.classList.remove('hidden');
+  }
+  banner.classList.remove('hidden');
 }
 
 // Hook initialization and polling
@@ -181,12 +276,98 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('messageInput').addEventListener('input', function() { autoResize(this); });
   // Initialize thread from URL
   initThreadFromQuery();
-  // Start polling every 3 seconds
-  setInterval(() => { pollNewMessages(); }, 3000);
+  // Start smart poller
+  startPoller(3000);
+
+  // Visibility-based backoff
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      updatePoller(15000);
+    } else {
+      updatePoller(3000);
+      // Fetch immediately when returning to the tab
+      fetchMessages(lastMessageId);
+    }
+  });
+
+  // Idle detection: reduce polling after inactivity
+  setupIdleDetection();
 });
 
 // Placeholder sidebar helpers
 function refreshConversations() { /* fetch and render conversation list later */ }
 function filterConversations() { /* client-side filter later */ }
+</script>
+<script>
+  // Poller management and idle detection utilities
+  let pollTimer = null;
+  let currentPollInterval = 3000;
+  function startPoller(intervalMs) {
+    currentPollInterval = intervalMs;
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(() => { pollNewMessages(); }, currentPollInterval);
+  }
+  function updatePoller(intervalMs) {
+    if (intervalMs === currentPollInterval) return;
+    startPoller(intervalMs);
+  }
+
+  let idleTimer = null;
+  const idleThresholdMs = 60000; // 60s of inactivity
+  function resetIdleTimer() {
+    if (idleTimer) clearTimeout(idleTimer);
+    // Active user: normal polling (or hidden backoff)
+    updatePoller(document.hidden ? 15000 : 3000);
+    idleTimer = setTimeout(() => {
+      if (!document.hidden) {
+        // Back off slightly when idle but visible
+        updatePoller(6000);
+      }
+    }, idleThresholdMs);
+  }
+  function setupIdleDetection() {
+    ['mousemove', 'keydown', 'touchstart'].forEach(evt => {
+      document.addEventListener(evt, resetIdleTimer);
+    });
+    resetIdleTimer();
+  }
+  // Mobile sidebar toggle behavior for Messages page
+  (function() {
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+    const overlay = document.getElementById('sidebarOverlay');
+    const sidebar = document.getElementById('conversationSidebar');
+
+    if (!toggleBtn || !overlay || !sidebar) return;
+
+    const openSidebar = () => {
+      sidebar.classList.remove('-translate-x-full');
+      overlay.classList.remove('opacity-0', 'pointer-events-none');
+      overlay.classList.add('opacity-100');
+      toggleBtn.setAttribute('aria-expanded', 'true');
+    };
+
+    const closeSidebar = () => {
+      sidebar.classList.add('-translate-x-full');
+      overlay.classList.add('opacity-0', 'pointer-events-none');
+      overlay.classList.remove('opacity-100');
+      toggleBtn.setAttribute('aria-expanded', 'false');
+    };
+
+    toggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (window.matchMedia('(max-width: 1023px)').matches) {
+        const isOpen = toggleBtn.getAttribute('aria-expanded') === 'true';
+        if (isOpen) {
+          closeSidebar();
+        } else {
+          openSidebar();
+        }
+      }
+    });
+
+    overlay.addEventListener('click', closeSidebar);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSidebar(); });
+    window.addEventListener('resize', () => { if (window.matchMedia('(min-width: 1024px)').matches) closeSidebar(); });
+  })();
 </script>
 {% endblock %}

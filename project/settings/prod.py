@@ -21,7 +21,8 @@ if not SECRET_KEY:
     raise RuntimeError('DJANGO_SECRET_KEY environment variable is required in production')
 
 # Allowed hosts and CSRF trusted origins
-ALLOWED_HOSTS = environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if environ.get('DJANGO_ALLOWED_HOSTS') else []
+# Default to '*' for local preview; set DJANGO_ALLOWED_HOSTS in real deployments.
+ALLOWED_HOSTS = environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
 CSRF_TRUSTED_ORIGINS = environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if environ.get('DJANGO_CSRF_TRUSTED_ORIGINS') else []
 
 # Database: PostgreSQL via environment
@@ -35,6 +36,16 @@ DATABASES = {
         'PORT': environ.get('POSTGRES_PORT', '5432'),
     }
 }
+
+# Local fallback: if PostgreSQL env vars are missing, use SQLite to allow
+# production-style runs (Whitenoise, security headers) without a DB server.
+if not environ.get('POSTGRES_DB'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Email: SMTP
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

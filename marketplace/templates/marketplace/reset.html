@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Marketplace Reset{% endblock %}
+{% block content %}
+<section class="container mx-auto max-w-3xl py-16">
+  <div class="card bg-base-100 shadow-xl">
+    <div class="card-body">
+      <h1 class="card-title text-2xl">Marketplace Reset In Progress</h1>
+      <p class="opacity-80">We’re resetting the Marketplace app (frontend and backend).</p>
+      <p class="opacity-80">During this time, browsing, listings, messages, and transactions are unavailable.</p>
+      <div class="mt-6">
+        <a href="/" class="btn btn-primary">Go to Home</a>
+      </div>
+    </div>
+  </div>
+  <div class="text-sm mt-4 opacity-60">If you’re an admin or developer, disable reset mode by setting MARKETPLACE_RESET=false and restarting the server.</div>
+</section>
+{% endblock %}

@@ -1,0 +1,193 @@
+{% comment %}Listings tab: renders table and uses AJAX to fetch/approve/reject.{% endcomment %}
+<h3 class="text-xl font-semibold mb-3">Pending Listings</h3>
+
+<div class="overflow-x-auto">
+  <table id="listings-table" class="table table-zebra w-full">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Title</th>
+        <th>Seller</th>
+        <th>Price</th>
+        <th>Submitted</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in pending_listings %}
+      <tr>
+        <td>{{ l.id }}</td>
+        <td>{{ l.title }}</td>
+        <td>{{ l.seller.username }}</td>
+        <td>₱{{ l.price|floatformat:2 }}</td>
+        <td>{{ l.created_at|date:"Y-m-d H:i" }}</td>
+        <td class="flex gap-2">
+          <button class="btn btn-primary btn-xs" data-action="approve" data-id="{{ l.id }}">Approve</button>
+          <button class="btn btn-error btn-xs" data-action="reject" data-id="{{ l.id }}">Reject</button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="text-center">No pending listings.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div id="reject-modal" class="modal hidden">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg">Reject Listing</h3>
+    <div class="py-2">
+      <input id="reject-reason" class="input input-bordered w-full" placeholder="Reason (optional)" />
+    </div>
+    <div class="py-2">
+      <select id="reject-reason-code" class="select select-bordered w-full">
+        <option value="">Select reason code</option>
+        {% for code,label in rejection_reason_choices %}
+          <option value="{{ code }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="modal-action">
+      <button id="reject-confirm" class="btn btn-error">Confirm Reject</button>
+      <button id="reject-cancel" class="btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  const csrftoken = getCookie('csrftoken');
+
+  async function fetchListings() {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('format', 'json');
+      const res = await fetch(url.toString(), { headers: { 'X-CSRFToken': csrftoken } });
+      const data = await res.json();
+      if (data.status !== 'ok') throw new Error(data.message || 'Failed');
+      renderListings(data.listings);
+    } catch (e) {
+      console.error('Failed to fetch listings', e);
+    }
+  }
+
+  function renderListings(listings) {
+    const tbody = document.querySelector('#listings-table tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!listings || listings.length === 0) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="6" class="text-center">No pending listings.</td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+    for (const l of listings) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${l.id}</td>
+        <td>${l.title}</td>
+        <td>${l.seller}</td>
+        <td>₱${Number(l.price).toFixed(2)}</td>
+        <td>${l.submitted}</td>
+        <td class="flex gap-2">
+          <button class="btn btn-primary btn-xs" data-action="approve" data-id="${l.id}">Approve</button>
+          <button class="btn btn-error btn-xs" data-action="reject" data-id="${l.id}">Reject</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  async function postAction(url, body) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': csrftoken,
+        'Accept': 'application/json',
+      },
+      body: new URLSearchParams(body).toString(),
+    });
+    return res.json();
+  }
+
+  let pendingRejectId = null;
+
+  function openRejectModal(listingId) {
+    pendingRejectId = listingId;
+    document.getElementById('reject-reason').value = '';
+    document.getElementById('reject-reason-code').value = '';
+    document.getElementById('reject-modal').classList.remove('hidden');
+  }
+
+  function closeRejectModal() {
+    document.getElementById('reject-modal').classList.add('hidden');
+    pendingRejectId = null;
+  }
+
+  async function handleApprove(listingId) {
+    const url = `{% url 'marketplace_admin:approve_listing' 0 %}`.replace('/0/', `/${listingId}/`);
+    const data = await postAction(url, {});
+    if (data.status === 'ok') {
+      await fetchListings();
+    } else {
+      alert(data.message || 'Approve failed');
+    }
+  }
+
+  async function handleRejectConfirm() {
+    if (!pendingRejectId) return closeRejectModal();
+    const url = `{% url 'marketplace_admin:reject_listing' 0 %}`.replace('/0/', `/${pendingRejectId}/`);
+    const reason = document.getElementById('reject-reason').value || '';
+    const reason_code = document.getElementById('reject-reason-code').value || '';
+    const data = await postAction(url, { reason, reason_code });
+    if (data.status === 'ok') {
+      closeRejectModal();
+      await fetchListings();
+    } else {
+      alert(data.message || 'Reject failed');
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const action = btn.getAttribute('data-action');
+    const id = btn.getAttribute('data-id');
+    if (action === 'approve' && id) {
+      e.preventDefault();
+      handleApprove(id);
+    } else if (action === 'reject' && id) {
+      e.preventDefault();
+      openRejectModal(id);
+    }
+  });
+
+  document.getElementById('reject-confirm').addEventListener('click', (e) => {
+    e.preventDefault();
+    handleRejectConfirm();
+  });
+  document.getElementById('reject-cancel').addEventListener('click', (e) => {
+    e.preventDefault();
+    closeRejectModal();
+  });
+
+  // Initial refresh to ensure table sync
+  fetchListings();
+</script>

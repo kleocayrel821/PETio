@@ -1,0 +1,458 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% load tz %}
+
+{% block marketplace_title %}Request Detail{% endblock %}
+{% block marketplace_header %}Purchase Request{% endblock %}
+{% block marketplace_subtitle %}View conversation and status for this request{% endblock %}
+
+{% block breadcrumbs %}
+<li><a href="{% url 'marketplace:buyer_dashboard' %}">My Requests</a></li>
+<li>Request #{{ request_obj.id }}</li>
+{% endblock %}
+
+{% block marketplace_content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Summary -->
+  <div class="card bg-base-100 shadow col-span-1">
+    <div class="card-body">
+      <h2 class="card-title">Summary</h2>
+      <div class="space-y-2 text-sm">
+        <div><span class="font-semibold">Item:</span> <a href="{% url 'marketplace:listing_detail' request_obj.listing.id %}" class="link">{{ request_obj.listing.title }}</a></div>
+        <div><span class="font-semibold">Status:</span> {{ request_obj.get_status_display }}</div>
+        <div><span class="font-semibold">Buyer:</span> {{ request_obj.buyer.username }}</div>
+        <div><span class="font-semibold">Seller:</span> {{ request_obj.seller.username }}</div>
+        {% if request_obj.transaction %}
+        <div><span class="font-semibold">Transaction:</span> #{{ request_obj.transaction.id }} ({{ request_obj.transaction.get_status_display }})</div>
+        {% endif %}
+        {% if request_obj.message %}
+        <div class="mt-2"><span class="font-semibold">Initial note:</span> {{ request_obj.message }}</div>
+        {% endif %}
+        {% if request_obj.status == 'pending' or request_obj.status == 'negotiating' %}
+        <div class="mt-3">
+          {% if request.user.is_staff or request.user.is_superuser %}
+          <form method="post" action="{% url 'marketplace:buyer_cancel_request' request_obj.id %}" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-start">
+            {% csrf_token %}
+            <input name="reason" class="input input-bordered w-full sm:w-64" placeholder="Cancel reason (optional)" />
+            <button class="btn btn-outline sm:btn-sm w-full sm:w-auto">Cancel as Buyer</button>
+          </form>
+          <form method="post" action="{% url 'marketplace:seller_cancel_request' request_obj.id %}" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-start mt-2">
+            {% csrf_token %}
+            <input name="reason" class="input input-bordered w-full sm:w-64" placeholder="Cancel reason (optional)" />
+            <button class="btn btn-outline sm:btn-sm w-full sm:w-auto">Cancel as Seller</button>
+          </form>
+          {% elif request.user.id == request_obj.buyer.id %}
+          <form method="post" action="{% url 'marketplace:buyer_cancel_request' request_obj.id %}" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-start">
+            {% csrf_token %}
+            <input name="reason" class="input input-bordered w-full sm:w-64" placeholder="Cancel reason (optional)" />
+            <button class="btn btn-outline sm:btn-sm w-full sm:w-auto">Cancel Request</button>
+          </form>
+          {% elif request.user.id == request_obj.seller.id %}
+          <form method="post" action="{% url 'marketplace:seller_cancel_request' request_obj.id %}" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-start">
+            {% csrf_token %}
+            <input name="reason" class="input input-bordered w-full sm:w-64" placeholder="Cancel reason (optional)" />
+            <button class="btn btn-outline sm:btn-sm w-full sm:w-auto">Cancel Request</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Negotiation -->
+        <div class="mt-4 space-y-2">
+          <h3 class="font-semibold">Negotiation</h3>
+          {% if current_offer_price or current_counter_offer %}
+          <div class="text-sm space-y-1">
+            {% if current_offer_price %}
+            <div><span class="font-semibold">Buyer offer:</span> {{ current_quantity }} × {{ current_offer_price }}</div>
+            {% endif %}
+            {% if current_counter_offer %}
+            <div><span class="font-semibold">Seller counter:</span> {{ current_counter_offer }}</div>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          {% if can_submit_offer %}
+          <form method="post" action="{% url 'marketplace:submit_offer' request_obj.id %}" class="flex flex-col sm:flex-row gap-2">
+            {% csrf_token %}
+            <input type="number" step="0.01" min="0.01" name="offer_price" class="input input-bordered w-full sm:w-32" placeholder="Offer price" />
+            <input type="number" step="1" min="1" name="quantity" class="input input-bordered w-full sm:w-24" placeholder="Qty" />
+            <button class="btn btn-primary btn-sm">Submit Offer</button>
+          </form>
+          {% endif %}
+
+          {% if can_respond_offer %}
+          <form method="post" action="{% url 'marketplace:respond_offer' request_obj.id %}" class="flex flex-col sm:flex-row gap-2">
+            {% csrf_token %}
+            <select id="respond-action" name="action" class="select select-bordered w-full sm:w-40">
+              <option value="accept">Accept</option>
+              <option value="reject">Reject</option>
+              <option value="counter">Counter</option>
+            </select>
+            <input id="counter-price" type="number" step="0.01" min="0.01" name="counter_offer" class="input input-bordered w-full sm:w-32" placeholder="Counter price (if counter)" />
+            <button class="btn btn-outline btn-sm">Respond</button>
+          </form>
+          {% endif %}
+
+          <div class="mt-2">
+            <h4 class="font-semibold text-sm">Negotiation History</h4>
+            <div class="space-y-3">
+              {% for log in negotiation_logs %}
+              <div class="relative pl-6">
+                <div class="absolute left-0 top-1 w-2 h-2 rounded-full bg-primary"></div>
+                <div class="text-xs">
+                  <span class="font-semibold">{{ log.get_action_display }}</span>
+                  · {{ log.actor.username }} · {{ log.created_at|date:"Y-m-d H:i" }}
+                </div>
+                {% if log.note %}
+                <div class="text-xs opacity-80">Details: {{ log.note }}</div>
+                {% endif %}
+              </div>
+              {% empty %}
+              <div class="text-base-content/70 text-xs">No negotiation activity yet.</div>
+              {% endfor %}
+              <div class="border-l ml-1 pl-5"></div>
+            </div>
+          </div>
+
+          <!-- Link back to general inbox (Messages) -->
+          <div class="mt-2">
+            <a class="btn btn-ghost btn-sm" href="{% url 'marketplace:messages' %}">
+              <i class="fas fa-comments mr-1"></i>
+              Continue in Messages
+            </a>
+          </div>
+        </div>
+
+        {% if can_mark_completed %}
+        <div class="mt-3">
+          <div class="alert alert-success mb-2">
+            Meetup confirmed and payment recorded. You can mark this completed.
+          </div>
+          <form method="post" action="{% url 'marketplace:mark_request_completed' request_obj.id %}" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-start">
+            {% csrf_token %}
+            <input name="note" class="input input-bordered w-full sm:w-64" placeholder="Completion note (optional)" />
+            <button class="btn btn-success btn-lg w-full sm:w-auto">Mark Completed</button>
+          </form>
+        </div>
+        {% endif %}
+
+        <!-- Meetup & Logistics -->
+        {% if meetup_details %}
+        <div id="meetupDetails" class="mt-4 space-y-1">
+          <h3 class="font-semibold">Meetup Details</h3>
+          <div><span class="font-semibold">Time:</span> <span id="meetupTimeText">{{ meetup_details.meetup_time|date:"Y-m-d H:i" }}</span></div>
+          <div><span class="font-semibold">Place:</span> <span id="meetupPlaceText">{{ meetup_details.meetup_place }}</span></div>
+          {% if meetup_details.meetup_timezone %}
+          <div class="text-xs text-base-content/70">Timezone: {{ meetup_details.meetup_timezone }}</div>
+          {% endif %}
+          {% if meetup_confirmed %}
+          <div class="mt-2 flex flex-wrap gap-2 items-center">
+            <a class="btn btn-ghost btn-sm" href="{% url 'marketplace:request_meetup_ics' request_obj.id %}">
+              <i class="fas fa-calendar-plus mr-1"></i>
+              Download ICS Invite
+            </a>
+            {% if can_mark_completed %}
+            <form method="post" action="{% url 'marketplace:mark_request_completed' request_obj.id %}">
+              {% csrf_token %}
+              <button class="btn btn-success btn-sm">Mark Completed</button>
+            </form>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if can_propose_meetup or can_update_meetup %}
+        <div class="mt-3">
+          <h3 class="font-semibold">{% if can_propose_meetup %}Propose Meetup{% else %}Update Meetup{% endif %}</h3>
+          <form id="meetupForm" method="post" action="{% if can_propose_meetup %}{% url 'marketplace:propose_meetup' request_obj.id %}{% else %}{% url 'marketplace:update_meetup' request_obj.id %}{% endif %}" class="flex flex-col sm:flex-row gap-2">
+            {% csrf_token %}
+            <input type="datetime-local" name="meetup_time" class="input input-bordered w-full sm:w-56" value="{% if meetup_form.initial.meetup_time %}{{ meetup_form.initial.meetup_time|date:'Y-m-d\TH:i' }}{% endif %}" />
+            {% get_current_timezone as TIME_ZONE %}
+            <div class="text-xs text-base-content/70">Local timezone: {{ TIME_ZONE }}</div>
+            <select name="meetup_timezone" class="select select-bordered w-full sm:w-48">
+              <option value="">Use local timezone</option>
+              <option value="UTC" {% if meetup_form.initial.meetup_timezone == 'UTC' %}selected{% endif %}>UTC</option>
+              <option value="US/Eastern" {% if meetup_form.initial.meetup_timezone == 'US/Eastern' %}selected{% endif %}>US/Eastern</option>
+              <option value="US/Central" {% if meetup_form.initial.meetup_timezone == 'US/Central' %}selected{% endif %}>US/Central</option>
+              <option value="US/Mountain" {% if meetup_form.initial.meetup_timezone == 'US/Mountain' %}selected{% endif %}>US/Mountain</option>
+              <option value="US/Pacific" {% if meetup_form.initial.meetup_timezone == 'US/Pacific' %}selected{% endif %}>US/Pacific</option>
+              <option value="Europe/London" {% if meetup_form.initial.meetup_timezone == 'Europe/London' %}selected{% endif %}>Europe/London</option>
+              <option value="Europe/Paris" {% if meetup_form.initial.meetup_timezone == 'Europe/Paris' %}selected{% endif %}>Europe/Paris</option>
+              <option value="Asia/Singapore" {% if meetup_form.initial.meetup_timezone == 'Asia/Singapore' %}selected{% endif %}>Asia/Singapore</option>
+            </select>
+            <input type="text" name="meetup_place" class="input input-bordered w-full sm:w-64" placeholder="Place (e.g., cafe, park)" value="{{ meetup_form.initial.meetup_place }}" />
+            {% if can_update_meetup %}
+            <input type="text" name="reschedule_reason" class="input input-bordered w-full sm:w-64" placeholder="Reschedule reason (optional)" value="{{ meetup_form.initial.reschedule_reason }}" />
+            {% endif %}
+            <button id="meetupSubmit" class="btn btn-primary btn-sm">{% if can_propose_meetup %}Propose{% else %}Update{% endif %}</button>
+          </form>
+        </div>
+        {% endif %}
+
+        {% if can_confirm_meetup %}
+        <div class="mt-2">
+          <form id="confirmForm" method="post" action="{% url 'marketplace:confirm_meetup' request_obj.id %}">
+            {% csrf_token %}
+            <button id="confirmSubmit" class="btn btn-outline btn-sm">Confirm Meetup</button>
+          </form>
+        </div>
+        {% endif %}
+
+        {% if request_obj.status == 'completed' and request.user.id == request_obj.buyer.id %}
+        <div class="mt-4">
+          <h3 class="font-semibold">Rate Seller</h3>
+          {% if can_rate %}
+          <form method="post" action="{% url 'marketplace:post_seller_rating' request_obj.id %}" class="space-y-3">
+            {% csrf_token %}
+            <div class="form-control">
+              <label class="label"><span class="label-text">Score</span></label>
+              <div class="flex gap-3">
+                {% for val,label in rating_form.fields.score.choices %}
+                <label class="label cursor-pointer">
+                  <span class="label-text mr-2">{{ label }}</span>
+                  <input type="radio" name="score" value="{{ val }}" class="radio radio-primary" {% if forloop.first %}checked{% endif %} />
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="form-control">
+              <label class="label"><span class="label-text">Comment (optional)</span></label>
+              <textarea name="comment" rows="3" class="textarea textarea-bordered" placeholder="Share your experience"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Submit Rating</button>
+          </form>
+          {% else %}
+          {% if existing_rating %}
+          <div class="alert alert-success mt-2">
+            <span class="font-semibold">Your rating:</span> {{ existing_rating.score }}/5
+            {% if existing_rating.comment %}<div class="mt-1">“{{ existing_rating.comment }}”</div>{% endif %}
+          </div>
+          {% else %}
+          <div class="text-base-content/70">Rating not available.</div>
+          {% endif %}
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Thread -->
+  <div class="card bg-base-100 shadow col-span-2">
+    <div class="card-body">
+      <h2 class="card-title">
+        Messages
+        {% if thread_unread_count and thread_unread_count > 0 %}
+        <span class="badge badge-warning ml-2">Unread {{ thread_unread_count }}</span>
+        {% endif %}
+      </h2>
+      <div class="space-y-3 md:space-y-4 max-h-[60vh] overflow-y-auto px-2 md:px-4">
+        {% for m in thread_messages %}
+        <div class="chat {% if m.author_id == request.user.id %}chat-end{% else %}chat-start{% endif %}">
+          <div class="chat-header mb-1">
+            {{ m.author.username }}
+            <time class="text-xs opacity-50">{{ m.created_at|date:"Y-m-d H:i" }}</time>
+          </div>
+          <div class="chat-bubble mt-1">{{ m.content }}</div>
+        </div>
+        {% empty %}
+        <div class="text-base-content/70">No messages yet. Start the conversation below.</div>
+        {% endfor %}
+      </div>
+      {% if request_obj.status != 'completed' and request_obj.status != 'canceled' %}
+      <form method="post" action="{% url 'marketplace:request_message_post' request_obj.id %}" class="mt-3">
+        {% csrf_token %}
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">New message</span>
+          </label>
+          <textarea name="content" rows="4" class="textarea textarea-bordered w-full" placeholder="Type your message"></textarea>
+        </div>
+        <div class="mt-2 flex justify-end">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-paper-plane mr-2"></i>
+            Send
+          </button>
+        </div>
+      </form>
+      {% else %}
+      <div class="alert alert-info mt-4">
+        <i class="fas fa-info-circle mr-2"></i>
+        Messaging is closed because this request is {{ request_obj.get_status_display|lower }}.
+      </div>
+      {% endif %}
+  </div>
+</div>
+{% block marketplace_scripts %}
+<script>
+// Intercept meetup propose/update to submit via fetch JSON and show toasts
+document.addEventListener('DOMContentLoaded', () => {
+  const meetupForm = document.getElementById('meetupForm');
+  const meetupBtn = document.getElementById('meetupSubmit');
+  const confirmForm = document.getElementById('confirmForm');
+  const confirmBtn = document.getElementById('confirmSubmit');
+  const meetupDetails = document.getElementById('meetupDetails');
+  const meetupTimeText = document.getElementById('meetupTimeText');
+  const meetupPlaceText = document.getElementById('meetupPlaceText');
+
+  function getCSRFToken() {
+    const name = 'csrftoken=';
+    const cookies = document.cookie.split(';');
+    for (const c of cookies) {
+      const cookie = c.trim();
+      if (cookie.startsWith(name)) return decodeURIComponent(cookie.substring(name.length));
+    }
+    return '';
+  }
+
+  function clearInlineErrors(formEl) {
+    if (!formEl) return;
+    const errs = formEl.querySelectorAll('.field-error, .form-error');
+    errs.forEach(el => el.remove());
+  }
+
+  function formatLocalDateTime(isoString) {
+    try {
+      const d = new Date(isoString);
+      const pad = (n) => String(n).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      const mm = pad(d.getMonth() + 1);
+      const dd = pad(d.getDate());
+      const hh = pad(d.getHours());
+      const min = pad(d.getMinutes());
+      return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+    } catch (_) { return isoString; }
+  }
+
+  function ensureMeetupDetailsContainer(place, isoTime, tzName) {
+    let container = document.getElementById('meetupDetails');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'meetupDetails';
+      container.className = 'mt-4 space-y-1';
+      const title = document.createElement('h3');
+      title.className = 'font-semibold';
+      title.textContent = 'Meetup Details';
+      const timeRow = document.createElement('div');
+      timeRow.innerHTML = `<span class="font-semibold">Time:</span> <span id="meetupTimeText"></span>`;
+      const placeRow = document.createElement('div');
+      placeRow.innerHTML = `<span class="font-semibold">Place:</span> <span id="meetupPlaceText"></span>`;
+      const tzRow = document.createElement('div');
+      tzRow.id = 'meetupTimezoneTextRow';
+      tzRow.className = 'text-xs text-base-content/70';
+      tzRow.innerHTML = `Timezone: <span id="meetupTimezoneText"></span>`;
+      container.appendChild(title);
+      container.appendChild(timeRow);
+      container.appendChild(placeRow);
+      container.appendChild(tzRow);
+      // Insert just above the form block
+      if (meetupForm && meetupForm.parentElement) {
+        meetupForm.parentElement.parentElement.insertBefore(container, meetupForm.parentElement);
+      } else {
+        // Fallback: append to the main card body
+        const cardBodies = document.querySelectorAll('.card-body');
+        if (cardBodies.length) cardBodies[0].appendChild(container);
+      }
+    }
+    const timeEl = container.querySelector('#meetupTimeText');
+    const placeEl = container.querySelector('#meetupPlaceText');
+    const tzEl = container.querySelector('#meetupTimezoneText');
+    if (timeEl) timeEl.textContent = formatLocalDateTime(isoTime);
+    if (placeEl) placeEl.textContent = place;
+    if (tzEl) tzEl.textContent = tzName || '';
+  }
+
+  function injectInlineErrors(formEl, fieldErrors) {
+    if (!formEl) return;
+    const entries = Object.entries(fieldErrors || {});
+    if (entries.length === 0) return;
+    let firstErrorInput = null;
+    for (const [field, msgs] of entries) {
+      const input = formEl.querySelector(`[name="${field}"]`);
+      const text = Array.isArray(msgs) ? msgs.join(', ') : msgs;
+      if (input) {
+        let errEl = input.nextElementSibling;
+        const validExisting = errEl && errEl.classList && errEl.classList.contains('field-error');
+        if (!validExisting) {
+          errEl = document.createElement('div');
+          errEl.className = 'field-error text-error text-xs mt-1';
+          input.insertAdjacentElement('afterend', errEl);
+        }
+        errEl.textContent = text;
+        if (!firstErrorInput) firstErrorInput = input;
+      } else {
+        let gErr = formEl.querySelector('.form-error');
+        if (!gErr) {
+          gErr = document.createElement('div');
+          gErr.className = 'form-error text-error text-xs mt-2';
+          formEl.appendChild(gErr);
+        }
+        gErr.textContent = text;
+      }
+    }
+    if (firstErrorInput && typeof firstErrorInput.focus === 'function') {
+      firstErrorInput.focus();
+      try { firstErrorInput.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+    }
+  }
+
+  async function submitFormJSON(formEl, submitBtn) {
+    if (!formEl || !submitBtn) return;
+    submitBtn.disabled = true;
+    try {
+      clearInlineErrors(formEl);
+      const fd = new FormData(formEl);
+      const url = formEl.getAttribute('action');
+      const resp = await fetch(url + '?format=json', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCSRFToken() },
+        body: fd,
+      });
+      let data = {};
+      try { data = await resp.json(); } catch (_) {}
+      if (!resp.ok || data.status === 'error') {
+        const msg = data.message || 'Action failed';
+        const fe = data.field_errors || {};
+        injectInlineErrors(formEl, fe);
+        showMarketplaceToast(msg, 'error');
+        return;
+      }
+      showMarketplaceToast(data.message || 'Success', 'success');
+      const tx = data.data && data.data.transaction ? data.data.transaction : null;
+      if (tx) {
+        ensureMeetupDetailsContainer(tx.meetup_place, tx.meetup_time, tx.meetup_timezone);
+      }
+    } catch (err) {
+      console.error(err);
+      showMarketplaceToast('Network error. Please try again.', 'error');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  }
+
+  if (meetupForm && meetupBtn) {
+    meetupForm.addEventListener('submit', (e) => { e.preventDefault(); submitFormJSON(meetupForm, meetupBtn); });
+  }
+  if (confirmForm && confirmBtn) {
+    confirmForm.addEventListener('submit', (e) => { e.preventDefault(); submitFormJSON(confirmForm, confirmBtn); });
+  }
+});
+</script>
+{% endblock %}
+</div>
+<script>
+  (function() {
+    const actionSel = document.getElementById('respond-action');
+    const counterInput = document.getElementById('counter-price');
+    if (actionSel && counterInput) {
+      const toggle = () => {
+        const isCounter = actionSel.value === 'counter';
+        counterInput.disabled = !isCounter;
+        counterInput.required = isCounter;
+      };
+      actionSel.addEventListener('change', toggle);
+      toggle();
+    }
+  })();
+</script>
+{% endblock %}

@@ -104,10 +104,13 @@
 
         <!-- Sidebar Footer -->
         <div class="p-4 border-t border-base-300">
-          <a href="/logout/" class="btn btn-ghost btn-block justify-start gap-3">
-            <i class="fas fa-sign-out-alt text-error"></i>
-            <span>Logout</span>
-          </a>
+          <form method="post" action="{% url 'logout' %}" class="btn btn-ghost btn-block justify-start gap-3">
+            {% csrf_token %}
+            <button type="submit" class="flex items-center gap-3 w-full justify-start text-left">
+              <i class="fas fa-sign-out-alt text-error"></i>
+              <span>Logout</span>
+            </button>
+          </form>
         </div>
       </aside>
     </div>

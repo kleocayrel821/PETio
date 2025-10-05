@@ -1,0 +1,165 @@
+{% comment %}Users tab partial: renders table with AJAX toggle and search{% endcomment %}
+<h3 class="text-xl font-semibold mb-3">User Management</h3>
+
+<div class="flex flex-wrap items-center gap-3 mb-3">
+  <div class="join">
+    <input id="users-search" class="input input-bordered join-item" placeholder="Search username or email" value="{{ users_search_query|default:'' }}" />
+    <select id="users-role" class="select select-bordered join-item">
+      <option value="" {% if not users_role %}selected{% endif %}>All roles</option>
+      <option value="seller" {% if users_role == 'seller' %}selected{% endif %}>Seller</option>
+      <option value="buyer" {% if users_role == 'buyer' %}selected{% endif %}>Buyer</option>
+    </select>
+    <button id="users-apply" class="btn btn-primary join-item">Apply</button>
+  </div>
+</div>
+
+<div class="overflow-x-auto">
+  <table id="users-table" class="table table-zebra w-full">
+    <thead>
+      <tr>
+        <th>User ID</th>
+        <th>Username</th>
+        <th>Role</th>
+        <th>Active</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      {# Role is inferred server-side in JSON; for initial render, basic inference by activity counts can be skipped #}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.username }}</td>
+        <td>
+          {# Placeholder role for initial render; AJAX will refresh #}
+          <span class="badge">—</span>
+        </td>
+        <td>
+          {% if u.is_active %}<span class="badge badge-success">Active{% else %}<span class="badge badge-error">Inactive{% endif %}</span>
+        </td>
+        <td>
+          <button class="btn btn-xs" data-action="toggle" data-id="{{ u.id }}">Toggle Active</button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-base-content/60">No users found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  // CSRF helper copied from other admin tabs
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  function buildUsersUrl() {
+    const url = new URL(window.location.href);
+    const q = document.getElementById('users-search')?.value || '';
+    const role = document.getElementById('users-role')?.value || '';
+    url.searchParams.set('format', 'json');
+    if (q) url.searchParams.set('q', q);
+    else url.searchParams.delete('q');
+    if (role) url.searchParams.set('role', role);
+    else url.searchParams.delete('role');
+    return url;
+  }
+
+  async function fetchUsers() {
+    try {
+      const url = buildUsersUrl();
+      const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+      const data = await res.json();
+      if (data.status !== 'ok') throw new Error(data.message || 'Failed');
+      renderUsers(data.users);
+    } catch (e) {
+      console.error('Failed to fetch users', e);
+    }
+  }
+
+  function renderUsers(users) {
+    const tbody = document.querySelector('#users-table tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!users || users.length === 0) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="5" class="text-base-content/60">No users found.</td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+    for (const u of users) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${u.id}</td>
+        <td>${u.username}</td>
+        <td><span class="badge badge-outline">${u.role || '—'}</span></td>
+        <td>${u.active ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-error">Inactive</span>'}</td>
+        <td>
+          <button class="btn btn-xs" data-action="toggle" data-id="${u.id}">${u.active ? 'Deactivate' : 'Activate'}</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  async function postAction(url, body) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': csrftoken,
+        'Accept': 'application/json',
+      },
+      body: new URLSearchParams(body).toString(),
+    });
+    return res.json();
+  }
+
+  async function handleToggle(userId) {
+    const url = `{% url 'marketplace_admin:toggle_user_active' 0 %}`.replace('/0/', `/${userId}/`);
+    try {
+      const data = await postAction(url, {});
+      if (data.status === 'ok') {
+        showMarketplaceToast('User status updated', 'success');
+        await fetchUsers();
+      } else {
+        showMarketplaceToast(data.message || 'Update failed', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showMarketplaceToast('Network error updating user', 'error');
+    }
+  }
+
+  document.getElementById('users-apply')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    fetchUsers();
+  });
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const action = btn.getAttribute('data-action');
+    const id = btn.getAttribute('data-id');
+    if (action === 'toggle' && id) {
+      e.preventDefault();
+      handleToggle(id);
+    }
+  });
+
+  // Initial refresh to ensure table sync
+  fetchUsers();
+</script>

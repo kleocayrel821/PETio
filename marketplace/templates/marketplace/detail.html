@@ -1,12 +1,12 @@
 {% extends "marketplace/base_marketplace.html" %}
 {% load static %}
 
-{% block marketplace_title %}Product Details{% endblock %}
-{% block marketplace_header %}Product Details{% endblock %}
+{% block marketplace_title %}{{ listing.title|default:"Product Details" }}{% endblock %}
+{% block marketplace_header %}{{ listing.title|default:"Product Details" }}{% endblock %}
 {% block marketplace_subtitle %}View product information and contact seller{% endblock %}
 
 {% block breadcrumbs %}
-<li class="text-primary">Premium Pet Food Dispenser</li>
+<li class="text-primary">{{ listing.title }}</li>
 {% endblock %}
 
 {% block marketplace_content %}
@@ -15,9 +15,16 @@
     <div class="space-y-4">
         <!-- Main Product Image -->
         <div class="relative">
-            <figure class="bg-base-200 rounded-xl overflow-hidden">
-                <img src="{% static 'img/placeholder.svg' %}" alt="Premium Pet Food Dispenser" class="rounded-xl w-full h-96 object-cover">
-            </figure>
+            <div class="carousel w-full rounded-xl bg-base-200 overflow-hidden">
+                <div id="slide1" class="carousel-item w-full">
+                    {% if listing.main_image %}
+                    <img src="{{ listing.main_image.url }}" alt="{{ listing.title }}" class="w-full h-96 object-cover">
+                    {% else %}
+                    <img src="{% static 'img/placeholder.svg' %}" alt="{{ listing.title }}" class="w-full h-96 object-cover">
+                    {% endif %}
+                </div>
+                <!-- Future slides: additional images when available -->
+            </div>
             
             <!-- Image Controls -->
             <div class="absolute top-4 right-4 flex gap-2">
@@ -33,7 +40,9 @@
             </div>
             
             <!-- Stock Status Badge -->
-            <div class="badge badge-success absolute top-4 left-4">In Stock</div>
+            <div class="badge {% if listing.quantity > 0 %}badge-success{% else %}badge-error{% endif %} absolute top-4 left-4">
+                {% if listing.quantity > 0 %}In Stock{% else %}Out of Stock{% endif %}
+            </div>
         </div>
         
         <!-- Image Upload Note (for sellers) -->
@@ -48,24 +57,28 @@
     
     <!-- Product Information Section -->
     <div class="space-y-6">
-        <!-- Product Header -->
+        <!-- Product Header (dynamic) -->
         <div>
-            <div class="badge badge-outline mb-2">Pet Accessories</div>
-            <h1 class="text-3xl font-bold text-base-content mb-2">Premium Pet Food Dispenser</h1>
-            <div class="flex items-center gap-4 text-base-content/70">
-                <span class="text-sm">Listed 2 days ago</span>
+            <div class="badge badge-outline mb-2">{% if listing.category %}{{ listing.category.name }}{% else %}Uncategorized{% endif %}</div>
+            <h1 class="text-3xl font-bold text-base-content mb-2">{{ listing.title }}</h1>
+            <div class="flex items-center gap-2 text-base-content/70">
+                <span class="text-sm">Listed {{ listing.created_at|timesince }} ago</span>
                 <span class="text-sm">•</span>
-                <span class="text-sm">Product ID: #PF001</span>
+                <span class="text-sm">ID: #{{ listing.pk }}</span>
             </div>
         </div>
         
         <!-- Price and Availability -->
         <div class="bg-base-200 rounded-xl p-6">
             <div class="flex items-center justify-between mb-4">
-                <div class="text-4xl font-bold text-primary">₱45.99</div>
+                <div class="text-4xl font-bold text-primary">₱{{ listing.price }}</div>
                 <div class="text-right">
-                    <div class="text-lg font-semibold text-success">3 Available</div>
+                    <div class="text-lg font-semibold {% if listing.quantity > 0 %}text-success{% else %}text-error{% endif %}">
+                        {{ listing.quantity }} Available
+                    </div>
+                    {% if listing.quantity > 0 and listing.quantity <= 3 %}
                     <div class="text-sm text-base-content/70">Only a few left!</div>
+                    {% endif %}
                 </div>
             </div>
             
@@ -85,7 +98,14 @@
             
             <!-- Action Buttons -->
             <div class="space-y-3">
-                <button class="btn btn-primary btn-block" onclick="openMessageModal()">
+                <form method="post" action="{% url 'marketplace:request_purchase' listing.pk %}">
+                    {% csrf_token %}
+                    <button class="btn btn-primary btn-block">
+                        <i class="fas fa-shopping-cart mr-2"></i>
+                        Request to Purchase
+                    </button>
+                </form>
+                <button class="btn btn-ghost btn-block" onclick="openMessageModal()">
                     <i class="fas fa-envelope mr-2"></i>
                     Message Seller
                 </button>
@@ -108,106 +128,44 @@
             <div class="flex items-center gap-4">
                 <div class="avatar placeholder">
                     <div class="bg-primary text-primary-content rounded-full w-12">
-                        <span class="text-lg">P</span>
+                        <span class="text-lg">{{ listing.seller.username|first|upper }}</span>
                     </div>
                 </div>
                 <div class="flex-1">
-                    <div class="font-semibold">@petlover123</div>
-                    <div class="text-sm text-base-content/70">PETio owner since 2023</div>
+                    <div class="font-semibold">@{{ listing.seller.username }}</div>
+                    <div class="text-sm text-base-content/70">PETio seller</div>
                     <div class="flex items-center gap-2 mt-1">
+                        {% if seller_rating_count %}
                         <div class="rating rating-sm">
-                            <input type="radio" name="rating-seller" class="mask mask-star-2 bg-orange-400" disabled checked />
-                            <input type="radio" name="rating-seller" class="mask mask-star-2 bg-orange-400" disabled checked />
-                            <input type="radio" name="rating-seller" class="mask mask-star-2 bg-orange-400" disabled checked />
-                            <input type="radio" name="rating-seller" class="mask mask-star-2 bg-orange-400" disabled checked />
-                            <input type="radio" name="rating-seller" class="mask mask-star-2 bg-orange-400" disabled />
+                            <!-- simplistic stars based on avg rating -->
+                            <span class="badge badge-outline">{{ seller_rating_avg|floatformat:1 }}/5 • {{ seller_rating_count }} reviews</span>
                         </div>
-                        <span class="text-sm text-base-content/70">(4.2/5 from 18 reviews)</span>
+                        {% else %}
+                        <span class="text-sm text-base-content/70">No ratings yet</span>
+                        {% endif %}
                     </div>
                 </div>
-                <button class="btn btn-ghost btn-sm">
+                {% url 'accounts:profile' as seller_profile_url %}
+                <a class="btn btn-ghost btn-sm" href="{{ seller_profile_url }}">
                     <i class="fas fa-user"></i>
-                    View Profile
-                </button>
+                    Seller Profile
+                </a>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Product Description -->
+<!-- Product Description (dynamic) -->
+{% if listing.description %}
 <div class="bg-base-200 rounded-xl p-6 mb-8">
     <h2 class="text-2xl font-bold mb-4">Product Description</h2>
     <div class="prose max-w-none">
-        <p class="text-base-content/80 leading-relaxed">
-            This premium automatic pet food dispenser is perfect for PETio owners who want to ensure their pets are fed on schedule. 
-            Features include programmable feeding times, portion control, and a sleek design that complements any home decor.
-        </p>
-        <br>
-        <p class="text-base-content/80 leading-relaxed">
-            The dispenser holds up to 4 cups of dry food and can be programmed for up to 4 meals per day. 
-            The LCD display shows feeding times and battery status. Runs on 4 AA batteries (included) or AC adapter (sold separately).
-        </p>
-        
-        <h3 class="text-lg font-semibold mt-6 mb-3">Key Features:</h3>
-        <ul class="list-disc list-inside space-y-1 text-base-content/80">
-            <li>Programmable feeding schedule (up to 4 meals/day)</li>
-            <li>Portion control (1/8 cup to 4 cups per meal)</li>
-            <li>LCD display with backlight</li>
-            <li>Battery or AC powered</li>
-            <li>Easy-clean removable food bowl</li>
-            <li>Low battery indicator</li>
-        </ul>
-        
-        <h3 class="text-lg font-semibold mt-6 mb-3">Condition:</h3>
-        <p class="text-base-content/80">
-            <span class="badge badge-success mr-2">Excellent</span>
-            Used for only 3 months. All original packaging and accessories included. No scratches or damage.
-        </p>
+        <p class="text-base-content/80 leading-relaxed">{{ listing.description|linebreaksbr }}</p>
     </div>
 </div>
+{% endif %}
 
-<!-- Product Specifications -->
-<div class="bg-base-200 rounded-xl p-6 mb-8">
-    <h2 class="text-2xl font-bold mb-4">Specifications</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="space-y-3">
-            <div class="flex justify-between">
-                <span class="font-semibold">Brand:</span>
-                <span>PetSafe</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="font-semibold">Model:</span>
-                <span>PFD-12</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="font-semibold">Capacity:</span>
-                <span>4 cups</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="font-semibold">Power:</span>
-                <span>4 AA batteries / AC adapter</span>
-            </div>
-        </div>
-        <div class="space-y-3">
-            <div class="flex justify-between">
-                <span class="font-semibold">Dimensions:</span>
-                <span>12" x 8" x 6"</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="font-semibold">Weight:</span>
-                <span>2.5 lbs</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="font-semibold">Material:</span>
-                <span>BPA-free plastic</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="font-semibold">Warranty:</span>
-                <span>6 months remaining</span>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Specifications section removed; show when real structured specs exist -->
 
 <!-- Reviews Section (Placeholder for future implementation) -->
 <div class="bg-base-200 rounded-xl p-6 mb-8">
@@ -221,31 +179,39 @@
     </div>
 </div>
 
-<!-- Similar Products -->
+<!-- Similar Products (dynamic by category) -->
+{% if similar_listings %}
 <div class="mb-8">
     <h2 class="text-2xl font-bold mb-6">Similar Products</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {% for i in "1234" %}
+        {% for item in similar_listings %}
         <div class="card bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300">
-            <figure>
-                <img src="{% static 'img/placeholder.svg' %}" 
-                     alt="Similar Product {{ forloop.counter }}" 
-                     class="w-full h-32 object-cover">
+            <figure class="relative">
+                {% if item.main_image %}
+                <img src="{{ item.main_image.url }}" alt="{{ item.title }}" class="w-full h-32 object-cover">
+                {% else %}
+                <img src="{% static 'img/placeholder.svg' %}" alt="{{ item.title }}" class="w-full h-32 object-cover">
+                {% endif %}
+                {% if item.quantity == 0 %}
+                <div class="badge badge-error absolute top-2 right-2">Out of Stock</div>
+                {% elif item.quantity <= 2 %}
+                <div class="badge badge-warning absolute top-2 right-2">Only {{ item.quantity }} left</div>
+                {% else %}
+                <div class="badge badge-success absolute top-2 right-2">In Stock</div>
+                {% endif %}
             </figure>
             <div class="card-body p-4">
-                <h3 class="card-title text-sm">
-                    {% cycle "Automatic Water Bowl" "Pet Treat Dispenser" "Smart Pet Camera" "Pet Activity Tracker" %}
-                </h3>
-                <div class="text-primary font-bold">
-                    ₱{% cycle "34.99" "52.99" "89.99" "24.99" %}
-                </div>
-                {% url 'marketplace:listing_detail' forloop.counter as sim_view_url %}
-                {% include 'marketplace/components/card_actions.html' with view_url=sim_view_url message_url=('#') view_label_long='View Details' view_label_short='View' %}
+                <h3 class="card-title text-sm line-clamp-2">{{ item.title }}</h3>
+                <div class="text-primary font-bold">₱{{ item.price }}</div>
+                {% url 'marketplace:listing_detail' item.pk as view_url_local %}
+                {% url 'marketplace:messages' as message_url_local %}
+                {% include 'marketplace/components/card_actions.html' with view_url=view_url_local message_url=message_url_local view_label_long='View Details' view_label_short='View' %}
             </div>
         </div>
         {% endfor %}
     </div>
 </div>
+{% endif %}
 
 <!-- Message Seller Modal -->
 <dialog id="messageModal" class="modal">
@@ -256,8 +222,8 @@
                 <label class="label">
                     <span class="label-text">Subject</span>
                 </label>
-                <input type="text" placeholder="Inquiry about Premium Pet Food Dispenser" 
-                       class="input input-bordered" value="Inquiry about Premium Pet Food Dispenser">
+                <input type="text" placeholder="Inquiry about {{ listing.title }}" 
+                       class="input input-bordered" value="Inquiry about {{ listing.title }}">
             </div>
             <div class="form-control mb-4">
                 <label class="label">
@@ -326,7 +292,7 @@
         <h3 class="font-bold text-lg mb-4">Product Image</h3>
         <figure class="mb-4">
             <img src="{% static 'img/placeholder.svg' %}" 
-                 alt="Premium Pet Food Dispenser - Full Size" 
+                 alt="{{ listing.title }} - Full Size" 
                  class="w-full rounded-lg">
         </figure>
         <div class="modal-action">
@@ -398,7 +364,7 @@ function closeImageModal() {
 function shareProduct() {
     if (navigator.share) {
         navigator.share({
-            title: 'Premium Pet Food Dispenser - PETio Marketplace',
+            title: '{{ listing.title }} - PETio Marketplace',
             text: 'Check out this pet food dispenser on PETio Marketplace!',
             url: window.location.href
         }).catch(console.error);

@@ -22,6 +22,49 @@
       <p>Phone: {{ user_obj.profile.phone|default:"(not set)" }}</p>
       <p>Bio: {{ user_obj.profile.bio|default:"(not set)" }}</p>
     </div>
+    <div class="mt-6">
+      <h2 class="font-semibold mb-2">Seller Ratings</h2>
+      <div class="flex items-center gap-4">
+        <div class="badge badge-primary badge-outline">
+          <i class="fas fa-star text-warning"></i>
+          <span class="ml-2">Avg: {{ seller_rating_avg|floatformat:1 }}</span>
+        </div>
+        <div class="badge badge-ghost">
+          <i class="fas fa-comments"></i>
+          <span class="ml-2">Total: {{ seller_rating_count }}</span>
+        </div>
+      </div>
+      {% if seller_rating_count > 0 %}
+        <div class="mt-4">
+          <h3 class="font-semibold mb-2">Recent Reviews</h3>
+          <ul class="space-y-3">
+            {% for r in recent_ratings %}
+              <li class="p-3 rounded bg-base-300">
+                <div class="flex justify-between items-center">
+                  <div class="font-medium">
+                    {{ r.buyer.username }}
+                    <span class="ml-2 text-sm opacity-70">rated</span>
+                  </div>
+                  <div class="font-semibold">
+                    <i class="fas fa-star text-warning"></i>
+                    {{ r.score }}/5
+                  </div>
+                </div>
+                {% if r.listing %}
+                  <div class="text-sm opacity-70 mt-1">Listing: {{ r.listing.title }}</div>
+                {% endif %}
+                {% if r.comment %}
+                  <div class="mt-2 text-sm">"{{ r.comment }}"</div>
+                {% endif %}
+                <div class="text-xs opacity-60 mt-1">{{ r.created_at|date:"M d, Y" }}</div>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% else %}
+        <p class="mt-2 text-sm opacity-70">No reviews yet.</p>
+      {% endif %}
+    </div>
     <div class="mt-6 flex gap-2">
       <a href="{% url 'accounts:profile_edit' %}" class="btn btn-primary">Edit Profile</a>
       <a href="{% url 'logout' %}" class="btn">Logout</a>

@@ -1,0 +1,127 @@
+{% comment %}Notifications tab partial: broadcast form + history{% endcomment %}
+<h3 id="notifications-title" class="text-xl font-semibold mb-3">Broadcast Notification</h3>
+<form id="notifications-form" role="form" aria-labelledby="notifications-title" method="post" action="{% url 'marketplace_admin:notifications_broadcast' %}">
+  {% csrf_token %}
+  <div class="form-control mb-3">
+    <label class="label" for="broadcast-title">Title</label>
+    <input id="broadcast-title" name="title" class="input input-bordered" placeholder="Announcement title" aria-label="Broadcast title" />
+  </div>
+  <div class="form-control mb-3">
+    <label class="label" for="broadcast-body">Body</label>
+    <textarea id="broadcast-body" name="body" class="textarea textarea-bordered" rows="4" placeholder="Announcement details" aria-label="Broadcast message"></textarea>
+  </div>
+<button id="broadcast-send" formaction="{% url 'marketplace_admin:notifications_broadcast' %}" formmethod="post" class="btn btn-primary" aria-label="Send broadcast">Send Broadcast</button>
+</form>
+
+<div class="mt-6">
+  <h4 class="text-lg font-semibold mb-2">Recent Broadcasts</h4>
+  <div id="notifications-history-empty" class="text-sm text-gray-500 {% if recent_broadcasts %}hidden{% endif %}">No broadcasts yet.</div>
+  <div class="overflow-x-auto">
+    <table id="notifications-history-table" class="table table-compact w-full">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Body</th>
+          <th>Sent At</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in recent_broadcasts %}
+        <tr>
+          <td class="font-medium">{{ item.title }}</td>
+          <td>{{ item.body|default:"" }}</td>
+          <td>{{ item.created_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// CSRF helper (reused pattern)
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+async function postBroadcast(title, body) {
+const url = '{% url "marketplace_admin:notifications_broadcast" %}';
+  const formData = new URLSearchParams();
+  formData.append('title', title || '');
+  formData.append('body', body || '');
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRFToken': getCookie('csrftoken'),
+      'Accept': 'application/json'
+    },
+    body: formData.toString()
+  });
+  const data = await resp.json().catch(() => ({ status: 'error', message: 'Invalid JSON' }));
+  if (!resp.ok || data.status !== 'ok') {
+    throw new Error(data.message || 'Broadcast failed');
+  }
+  return data;
+}
+
+function prependHistoryRow(title, body) {
+  const table = document.getElementById('notifications-history-table');
+  const empty = document.getElementById('notifications-history-empty');
+  if (empty) empty.classList.add('hidden');
+  if (!table) return;
+  const tbody = table.querySelector('tbody');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  const tdTitle = document.createElement('td'); tdTitle.className = 'font-medium'; tdTitle.textContent = title || 'Announcement';
+  const tdBody = document.createElement('td'); tdBody.textContent = body || '';
+  const tdTime = document.createElement('td'); tdTime.textContent = new Date().toLocaleString();
+  tr.appendChild(tdTitle); tr.appendChild(tdBody); tr.appendChild(tdTime);
+  // Prepend row
+  if (tbody.firstChild) {
+    tbody.insertBefore(tr, tbody.firstChild);
+  } else {
+    tbody.appendChild(tr);
+  }
+  // Limit to recent 10 rows
+  while (tbody.children.length > 10) {
+    tbody.removeChild(tbody.lastElementChild);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('notifications-form');
+  const btn = document.getElementById('broadcast-send');
+  const titleInput = document.getElementById('broadcast-title');
+  const bodyInput = document.getElementById('broadcast-body');
+  const handler = async (ev) => {
+    ev.preventDefault();
+    try {
+      const title = (titleInput.value || '').trim();
+      const body = (bodyInput.value || '').trim();
+      const data = await postBroadcast(title, body);
+      showMarketplaceToast('Notification sent', 'success');
+      // Clear inputs
+      titleInput.value = '';
+      bodyInput.value = '';
+      // Update history table optimistically
+      prependHistoryRow(title || 'Announcement', body || '');
+    } catch (err) {
+      showMarketplaceToast(err.message || 'Broadcast failed', 'error');
+    }
+  };
+  if (form) form.addEventListener('submit', handler);
+  if (btn) btn.addEventListener('click', handler);
+});
+</script>

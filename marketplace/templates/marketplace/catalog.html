@@ -6,6 +6,7 @@
 {% block marketplace_subtitle %}Discover pet products from the PETio community{% endblock %}
 
 {% block breadcrumbs %}
+<li>Browse</li>
 {% endblock %}
 
 {% block marketplace_content %}
@@ -28,12 +29,13 @@
             </div>
         </div>
         
-        <!-- Filters trigger -->
-        <div class="lg:col-span-6 flex lg:justify-end">
+        <!-- Filters trigger + Clear -->
+        <div class="lg:col-span-6 flex lg:justify-end gap-2">
             <button type="button" id="openFilters" class="btn btn-outline w-full sm:w-auto touch-target">
                 <i class="fas fa-sliders-h"></i>
                 <span class="hidden sm:inline ml-1">Filters</span>
             </button>
+            <a href="{% url 'marketplace:catalog' %}" class="btn btn-ghost touch-target">Clear Filters</a>
         </div>
     </div>
     
@@ -66,6 +68,12 @@
                 {% endfor %}
             </select>
           </div>
+          <!-- Near (Seller Location) -->
+          <div class="form-control">
+            <label class="label"><span class="label-text">Near</span></label>
+            <input type="text" class="input input-bordered w-full" id="nearFilter" name="near" value="{{ near }}" placeholder="City or area">
+            <div class="text-xs opacity-60 mt-1">Matches seller profile location.</div>
+          </div>
           <!-- Price Range -->
           <div class="form-control">
             <label class="label"><span class="label-text">Price</span></label>
@@ -79,6 +87,16 @@
                 <option value="50-100" {% if price_min == '50' and price_max == '100' %}selected{% endif %}>₱50 - ₱100</option>
                 <option value="100+" {% if price_min == '100' %}{% if not price_max %}selected{% endif %}{% endif %}>Over ₱100</option>
             </select>
+          </div>
+          <!-- Condition -->
+          <div class="form-control">
+            <label class="label"><span class="label-text">Condition</span></label>
+            <select class="select select-bordered w-full" id="conditionFilter" name="condition">
+                <option value="" {% if not condition %}selected{% endif %}>Any Condition</option>
+                <option value="new" {% if condition == 'new' %}selected{% endif %}>New</option>
+                <option value="used" {% if condition == 'used' %}selected{% endif %}>Used</option>
+            </select>
+            <div class="text-xs opacity-60 mt-1">Applied when listings include condition.</div>
           </div>
           <!-- Sort By -->
           <div class="form-control">
@@ -176,6 +194,15 @@
                     </div>
                 </div>
                 <span>@{{ item.seller.username }}</span>
+                {% if item.seller_rating_count %}
+                <span class="ml-2 flex items-center gap-1">
+                    <i class="fas fa-star text-yellow-400"></i>
+                    <span>{{ item.seller_avg_rating|floatformat:1 }}</span>
+                    <span class="opacity-60">({{ item.seller_rating_count }})</span>
+                </span>
+                {% else %}
+                <span class="ml-2 opacity-60">No ratings yet</span>
+                {% endif %}
             </div>
             {% url 'marketplace:listing_detail' item.pk as view_url_local %}
             {% url 'marketplace:messages' as message_url_local %}
@@ -189,7 +216,7 @@
 <div class="flex justify-center mt-8">
     <div class="join">
         {% if page_obj.has_previous %}
-            <a class="join-item btn touch-target" href="?q={{ q }}&category={{ category_slug }}&sort={{ sort }}&price_min={{ price_min }}&price_max={{ price_max }}&page={{ page_obj.previous_page_number }}">
+            <a class="join-item btn touch-target" href="?{{ qs_no_page }}&page={{ page_obj.previous_page_number }}">
                 <i class="fas fa-chevron-left"></i>
             </a>
         {% else %}
@@ -199,7 +226,7 @@
         {% endif %}
         <span class="join-item btn btn-active touch-target">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
         {% if page_obj.has_next %}
-            <a class="join-item btn touch-target" href="?q={{ q }}&category={{ category_slug }}&sort={{ sort }}&price_min={{ price_min }}&price_max={{ price_max }}&page={{ page_obj.next_page_number }}">
+            <a class="join-item btn touch-target" href="?{{ qs_no_page }}&page={{ page_obj.next_page_number }}">
                 <i class="fas fa-chevron-right"></i>
             </a>
         {% else %}
@@ -244,8 +271,8 @@
             <i class="fas fa-box text-2xl"></i>
         </div>
         <div class="stat-title">Total Products</div>
-        <div class="stat-value text-primary">156</div>
-        <div class="stat-desc">12 new this week</div>
+        <div class="stat-value text-primary">{{ global_stats.total_products|default:0 }}</div>
+        <div class="stat-desc">{{ global_stats.new_products_week|default:0 }} new this week</div>
     </div>
     
     <div class="stat">
@@ -253,8 +280,8 @@
             <i class="fas fa-users text-2xl"></i>
         </div>
         <div class="stat-title">Active Sellers</div>
-        <div class="stat-value text-secondary">43</div>
-        <div class="stat-desc">3 new sellers</div>
+        <div class="stat-value text-secondary">{{ global_stats.active_sellers|default:0 }}</div>
+        <div class="stat-desc">{{ global_stats.new_sellers_week|default:0 }} new sellers</div>
     </div>
     
     <div class="stat">
@@ -262,7 +289,7 @@
             <i class="fas fa-tags text-2xl"></i>
         </div>
         <div class="stat-title">Categories</div>
-        <div class="stat-value text-accent">4</div>
+        <div class="stat-value text-accent">{{ global_stats.categories|default:0 }}</div>
         <div class="stat-desc">Pet products only</div>
     </div>
 </div>
@@ -298,6 +325,8 @@ class MarketplaceCatalog {
         const categoryEl = document.getElementById('categoryFilter');
         const priceEl = document.getElementById('priceFilter');
         const sortEl = document.getElementById('sortFilter');
+        const conditionEl = document.getElementById('conditionFilter');
+        const nearEl = document.getElementById('nearFilter');
         if (categoryEl) categoryEl.addEventListener('change', () => { if (getForm) getForm.submit(); });
         if (priceEl) priceEl.addEventListener('change', (e) => {
             const v = e.target.value;
@@ -314,6 +343,12 @@ class MarketplaceCatalog {
             if (getForm) getForm.submit();
         });
         if (sortEl) sortEl.addEventListener('change', () => { if (getForm) getForm.submit(); });
+        if (conditionEl) conditionEl.addEventListener('change', () => { if (getForm) getForm.submit(); });
+        if (nearEl) {
+            // Submit on Enter; allow manual closing otherwise
+            nearEl.addEventListener('keypress', (e) => { if (e.key === 'Enter') { /* native submit */ } });
+            nearEl.addEventListener('change', () => { if (getForm) getForm.submit(); });
+        }
         // View switching (cosmetic only)
         const gridBtn = document.getElementById('gridView');
         const listBtn = document.getElementById('listView');
@@ -354,6 +389,8 @@ class MarketplaceCatalog {
         const cat = document.getElementById('categoryFilter');
         const price = document.getElementById('priceFilter');
         const sort = document.getElementById('sortFilter');
+        const condition = document.getElementById('conditionFilter');
+        const nearInput = document.getElementById('nearFilter');
         const minInput = document.getElementById('priceMinInput');
         const maxInput = document.getElementById('priceMaxInput');
         const searchInput = document.getElementById('searchInput');
@@ -363,6 +400,8 @@ class MarketplaceCatalog {
         if (minInput) minInput.value = '';
         if (maxInput) maxInput.value = '';
         if (searchInput) searchInput.value = '';
+        if (condition) condition.value = '';
+        if (nearInput) nearInput.value = '';
     }
     /** Toggle layout (cosmetic only) */
     switchView(viewType, productGrid, gridBtn, listBtn) {

@@ -59,6 +59,18 @@
   enhanceInput('id_username', 'Enter your username', 'username');
   enhanceInput('id_password', 'Enter your password', 'current-password');
 
+  // Prefill username from signup redirect (?username=...) if present
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const preset = params.get('username');
+    const uname = document.getElementById('id_username');
+    if (preset && uname && !uname.value) {
+      uname.value = preset;
+    }
+  } catch (e) {
+    // no-op
+  }
+
   const pwdInput = document.getElementById('id_password');
   const toggleBtn = document.getElementById('toggle-password');
   const form = document.getElementById('login-form');

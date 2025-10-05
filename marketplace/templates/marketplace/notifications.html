@@ -1,0 +1,143 @@
+{% extends "marketplace/base_marketplace.html" %}
+
+{% block marketplace_title %}Notifications{% endblock %}
+{% block marketplace_header %}Notifications{% endblock %}
+{% block marketplace_subtitle %}Updates on your requests and messages{% endblock %}
+
+{% block breadcrumbs %}
+<li>Notifications</li>
+{% endblock %}
+
+{% block marketplace_content %}
+<div class="card bg-base-100 shadow">
+  <div class="card-body">
+    <div class="flex items-center justify-between">
+      <h2 class="card-title">Your Notifications{% if unread_notifications %} <span class="badge badge-primary ml-2">{{ unread_notifications }} unread</span>{% endif %}</h2>
+      <form method="post" action="{% url 'marketplace:notifications_mark_all' %}">
+        {% csrf_token %}
+        <button class="btn btn-sm">Mark all as read</button>
+      </form>
+    </div>
+    <div class="divide-y">
+      {% for n in notifications %}
+      <div class="py-3 flex items-start gap-3">
+        <div class="mt-1">
+          {% if n.type == 'request_created' %}
+            <i class="fas fa-envelope text-info"></i>
+          {% elif n.type == 'status_changed' %}
+            <i class="fas fa-sync-alt text-warning"></i>
+          {% elif n.type == 'message_posted' %}
+            <i class="fas fa-comment-dots text-success"></i>
+          {% else %}
+            <i class="fas fa-bell"></i>
+          {% endif %}
+        </div>
+        <div class="flex-1">
+          <div class="text-sm">
+            <a href="{% url 'marketplace:notification_open' n.id %}" class="{% if n.unread %}font-bold{% else %}font-normal{% endif %}">{{ n.title }}</a>
+            {% if n.related_listing %}
+            on <a class="link" href="{% url 'marketplace:listing_detail' n.related_listing.id %}">{{ n.related_listing.title }}</a>
+            {% endif %}
+            {% if n.related_request %}
+            — <a class="link" href="{% url 'marketplace:request_detail' n.related_request.id %}">Purchase Request by @{{ n.related_request.buyer.username }}</a>
+            {% endif %}
+          </div>
+          {# Hide chat content bodies for message notifications; keep notifications concise #}
+          {% if n.body and n.type != 'message_posted' %}
+          {% if n.type == 'system_broadcast' and n.body|length > 240 %}
+          <div class="text-base-content/70 text-sm break-words break-all">{{ n.body|truncatechars:240 }}</div>
+          <div class="mt-2">
+            <button
+              class="btn btn-xs open-broadcast"
+              data-id="{{ n.id }}"
+              data-title="{{ n.title }}"
+              data-body="{{ n.body }}"
+              data-unread="{{ n.unread|yesno:"1,0" }}"
+            >View full</button>
+          </div>
+          {% else %}
+          <div class="text-base-content/70 text-sm break-words break-all">{{ n.body }}</div>
+          {% endif %}
+          {% endif %}
+          <div class="text-xs text-base-content/50">{{ n.created_at|date:"Y-m-d H:i" }}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="badge {% if n.unread %}badge-primary{% else %}badge-ghost{% endif %}">{% if n.unread %}Unread{% else %}Read{% endif %}</span>
+          <button class="btn btn-ghost btn-xs toggle-read" data-id="{{ n.id }}">{% if n.unread %}Mark read{% else %}Mark unread{% endif %}</button>
+        </div>
+      </div>
+      {% empty %}
+      <div class="py-6 text-base-content/70">No notifications yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+ </div>
+  
+  <!-- Broadcast modal for long content -->
+  <dialog id="notifModal" class="modal">
+    <form method="dialog" class="modal-box">
+      <h3 id="notifModalTitle" class="font-bold text-lg"></h3>
+      <div id="notifModalBody" class="py-3 whitespace-pre-wrap break-words break-all text-sm"></div>
+      <div class="modal-action">
+        <button class="btn">Close</button>
+      </div>
+    </form>
+    <form method="dialog" class="modal-backdrop">
+      <button>Close</button>
+    </form>
+  </dialog>
+<script>
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+  }
+  const csrftoken = getCookie('csrftoken');
+  document.querySelectorAll('.toggle-read').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      try {
+        const res = await fetch(`{% url 'marketplace:notification_toggle_read' 0 %}`.replace('0', id), {
+          method: 'POST',
+          headers: {'X-CSRFToken': csrftoken}
+        });
+        if (res.ok) {
+          location.reload();
+        }
+      } catch (e) {}
+    });
+  });
+
+  // Open modal for long broadcast content and mark as read if currently unread
+  (function() {
+    const modal = document.getElementById('notifModal');
+    const titleEl = document.getElementById('notifModalTitle');
+    const bodyEl = document.getElementById('notifModalBody');
+    document.querySelectorAll('.open-broadcast').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const title = btn.getAttribute('data-title') || 'Announcement';
+        const body = btn.getAttribute('data-body') || '';
+        titleEl.textContent = title;
+        bodyEl.textContent = body;
+        if (modal && typeof modal.showModal === 'function') {
+          modal.showModal();
+        } else {
+          modal.classList.add('modal-open');
+        }
+        // If currently unread, mark as read via toggle endpoint (one-way)
+        const unread = btn.getAttribute('data-unread') === '1';
+        const id = btn.getAttribute('data-id');
+        if (unread && id) {
+          try {
+            await fetch(`{% url 'marketplace:notification_toggle_read' 0 %}`.replace('0', id), {
+              method: 'POST',
+              headers: {'X-CSRFToken': csrftoken}
+            });
+            btn.setAttribute('data-unread', '0');
+          } catch (e) {}
+        }
+      });
+    });
+  })();
+</script>
+{% endblock %}

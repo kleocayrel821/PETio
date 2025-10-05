@@ -1,0 +1,136 @@
+{% comment %}Reports tab partial: expects reports, close_action_name{% endcomment %}
+<h3 class="text-xl font-semibold mb-3">Open Reports</h3>
+
+<div class="overflow-x-auto">
+  <table id="reports-table" class="table w-full">
+    <thead>
+      <tr>
+        <th>Report ID</th>
+        <th>Type</th>
+        <th>Target</th>
+        <th>Submitted</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reports %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td>Listing</td>
+        <td><a href="{% url 'marketplace:listing_detail' r.listing_id %}" target="_blank">Listing #{{ r.listing_id }}</a></td>
+        <td>{{ r.created_at|date:"Y-m-d H:i" }}</td>
+        <td>
+          {% if r.status != 'closed' %}
+          <button class="btn btn-xs btn-success" data-action="close" data-id="{{ r.id }}">Close Report</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" id="reports-empty-state" class="text-base-content/60">No open reports.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  const csrftoken = getCookie('csrftoken');
+
+  async function fetchReports() {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('format', 'json');
+      const res = await fetch(url.toString(), { headers: { 'X-CSRFToken': csrftoken, 'Accept': 'application/json' } });
+      const data = await res.json();
+      if (data.status !== 'ok') throw new Error(data.message || 'Failed');
+      renderReports(data.reports);
+    } catch (e) {
+      console.error('Failed to fetch reports', e);
+    }
+  }
+
+  function renderReports(reports) {
+    const tbody = document.querySelector('#reports-table tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!reports || reports.length === 0) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="5" id="reports-empty-state" class="text-base-content/60">No open reports.</td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+    for (const r of reports) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${r.id}</td>
+        <td>${r.type}</td>
+        <td><a href="${buildListingUrlFromTarget(r.target)}" target="_blank">${r.target}</a></td>
+        <td>${r.submitted}</td>
+        <td>
+          <button class="btn btn-xs btn-success" data-action="close" data-id="${r.id}">Close Report</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  function buildListingUrlFromTarget(targetText) {
+    // targetText like "Listing #123" -> extract id
+    const m = /Listing\s+#(\d+)/.exec(targetText);
+    const id = m ? m[1] : null;
+    if (!id) return '#';
+    // Use server-generated URL pattern with placeholder replacement
+    return `{% url 'marketplace:listing_detail' 0 %}`.replace('/0/', `/${id}/`);
+  }
+
+  async function postAction(url, body) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': csrftoken,
+        'Accept': 'application/json',
+      },
+      body: new URLSearchParams(body).toString(),
+    });
+    return res.json();
+  }
+
+  async function handleClose(reportId) {
+    const url = `{% url close_action_name 0 %}`.replace('/0/', `/${reportId}/`);
+    const data = await postAction(url, {});
+    if (data.status === 'ok') {
+      await fetchReports();
+    } else {
+      alert(data.message || 'Close failed');
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const action = btn.getAttribute('data-action');
+    const id = btn.getAttribute('data-id');
+    if (action === 'close' && id) {
+      e.preventDefault();
+      handleClose(id);
+    }
+  });
+
+  // Initial refresh to ensure table sync
+  fetchReports();
+</script>

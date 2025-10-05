@@ -1,0 +1,31 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% block marketplace_title %}Access Denied{% endblock %}
+{% block marketplace_header %}Access Denied (403){% endblock %}
+{% block marketplace_subtitle %}You don’t have permission to view this page.{% endblock %}
+
+{% block marketplace_content %}
+<div class="max-w-2xl mx-auto">
+  <div class="alert alert-error mb-6" role="alert">
+    <i class="fas fa-ban"></i>
+    <div>
+      <h3 class="font-bold">Permission Required</h3>
+      <div class="text-sm">
+        {{ message|default:"Marketplace Admin access is required for this action." }}
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <p class="mb-4">If you believe this is an error, contact your administrator or try logging in with an account that has the appropriate permissions.</p>
+      <div class="flex gap-2">
+        <a href="/accounts/login/?next={{ request.path }}" class="btn btn-primary">
+          <i class="fas fa-sign-in-alt mr-2"></i>
+          Login
+        </a>
+        <a href="/marketplace/" class="btn btn-ghost">Back to Marketplace</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

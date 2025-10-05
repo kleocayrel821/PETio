@@ -2,6 +2,9 @@
 {% block title %}Marketplace Dashboard{% endblock %}
 {% block marketplace_header %}My Listings Dashboard{% endblock %}
 {% block marketplace_subtitle %}Manage your listings, update status, and track performance{% endblock %}
+{% block breadcrumbs %}
+<li>My Listings</li>
+{% endblock %}
 {% block marketplace_content %}
 <div class="space-y-6">
   <!-- Metrics Cards -->
@@ -87,19 +90,35 @@
         </div>
         <div class="mt-2 flex items-center justify-between">
           <div class="text-lg font-semibold">${{ listing.price }}</div>
-          <div class="text-sm">{{ MarketplaceUtils.formatStock(listing.quantity) }}</div>
+          <div class="text-sm">
+            {% if listing.quantity <= 0 %}
+              Out of stock
+            {% elif listing.quantity == 1 %}
+              1 left
+            {% elif listing.quantity <= 5 %}
+              Only {{ listing.quantity }} left
+            {% else %}
+              {{ listing.quantity }} available
+            {% endif %}
+          </div>
         </div>
+        {% if listing.latest_txn %}
+        <div class="mt-2 text-sm flex items-center gap-2">
+          <span class="opacity-70">Txn:</span>
+          <span class="badge {% if listing.latest_txn.status == 'awaiting_payment' %}badge-warning{% elif listing.latest_txn.status == 'paid' %}badge-info{% elif listing.latest_txn.status == 'completed' %}badge-success{% else %}badge-outline{% endif %}">{{ listing.latest_txn.get_status_display }}</span>
+        </div>
+        {% endif %}
         <div class="mt-4 flex flex-wrap gap-2">
           <!-- Inline action buttons: reserve, sell, complete -->
           <button class="btn btn-sm" data-action="reserve" data-listing-id="{{ listing.id }}" {% if listing.status != 'active' %}disabled{% endif %}>
             <i class="fas fa-handshake"></i>
             Reserve
           </button>
-          <button class="btn btn-sm" data-action="sell" data-listing-id="{{ listing.id }}" {% if listing.status != 'pending' %}disabled{% endif %}>
+          <button class="btn btn-sm" data-action="sell" data-listing-id="{{ listing.id }}" {% if listing.status != 'pending' or not listing.latest_txn or listing.latest_txn.status != 'awaiting_payment' %}disabled{% endif %}>
             <i class="fas fa-money-bill-wave"></i>
             Mark Sold
           </button>
-          <button class="btn btn-sm" data-action="complete" data-listing-id="{{ listing.id }}" {% if listing.status != 'sold' %}disabled{% endif %}>
+          <button class="btn btn-sm" data-action="complete" data-listing-id="{{ listing.id }}" {% if not listing.latest_txn or listing.latest_txn.status != 'paid' %}disabled{% endif %}>
             <i class="fas fa-check"></i>
             Complete
           </button>
@@ -170,10 +189,13 @@ function bindInlineActions() {
         complete: `{% url 'marketplace:api_listing_complete' 0 %}`.replace('/0/', `/${listingId}/`),
       };
       try {
-        const data = await postJSON(endpoints[action], {});
-        showMarketplaceToast(`${action.charAt(0).toUpperCase() + action.slice(1)} succeeded`, 'success');
-        // Reload to reflect updated status
-        window.location.reload();
+        if (action === 'sell') {
+          openPaymentForm(btn, endpoints[action]);
+        } else {
+          const data = await postJSON(endpoints[action], {});
+          showMarketplaceToast(`${action.charAt(0).toUpperCase() + action.slice(1)} succeeded`, 'success');
+          window.location.reload();
+        }
       } catch (err) {
         console.error(err);
         showMarketplaceToast(`Action failed: ${err.message}`, 'error');
@@ -183,5 +205,74 @@ function bindInlineActions() {
 }
 
 document.addEventListener('DOMContentLoaded', bindInlineActions);
+
+// Render an inline payment capture form next to the clicked button
+function openPaymentForm(anchorBtn, submitUrl) {
+  // Avoid duplicating forms
+  const existing = anchorBtn.parentElement.querySelector('.payment-form');
+  if (existing) { existing.remove(); }
+  const wrapper = document.createElement('div');
+  wrapper.className = 'payment-form mt-3 p-3 border rounded bg-base-200';
+  wrapper.innerHTML = `
+    <div class="flex flex-col gap-2">
+      <div class="text-sm font-semibold">Record Payment</div>
+      <div class="flex gap-2 items-center">
+        <label class="text-sm w-28">Method</label>
+        <select name="payment_method" class="select select-bordered select-sm w-40">
+          <option value="cash">Cash</option>
+          <option value="bank_transfer">Bank Transfer</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="flex gap-2 items-center">
+        <label class="text-sm w-28">Amount Paid</label>
+        <input name="amount_paid" type="number" step="0.01" min="0" class="input input-bordered input-sm w-40" />
+      </div>
+      <div class="flex gap-2 items-center">
+        <label class="text-sm w-28">Proof (optional)</label>
+        <input name="payment_proof" type="file" class="file-input file-input-bordered file-input-sm w-64" />
+      </div>
+      <div class="flex gap-2 mt-2">
+        <button type="button" class="btn btn-primary btn-sm" data-role="submit-payment">Submit</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-role="cancel-payment">Cancel</button>
+      </div>
+    </div>
+  `;
+  anchorBtn.parentElement.appendChild(wrapper);
+
+  const submitBtn = wrapper.querySelector('[data-role="submit-payment"]');
+  const cancelBtn = wrapper.querySelector('[data-role="cancel-payment"]');
+  submitBtn.addEventListener('click', async () => {
+    const formData = new FormData();
+    const method = wrapper.querySelector('select[name="payment_method"]').value;
+    const amount = wrapper.querySelector('input[name="amount_paid"]').value;
+    const proof = wrapper.querySelector('input[name="payment_proof"]').files[0];
+    formData.append('payment_method', method);
+    if (amount) formData.append('amount_paid', amount);
+    if (proof) formData.append('payment_proof', proof);
+    try {
+      const resp = await fetch(submitUrl, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData,
+      });
+      if (!resp.ok) {
+        let data = {};
+        try { data = await resp.json(); } catch (_) {}
+        const msg = data.error || 'Failed to record payment';
+        const fe = data.field_errors || {};
+        const details = Object.entries(fe).map(([k,v]) => `${k}: ${v}`).join(', ');
+        showMarketplaceToast(details ? `${msg} — ${details}` : msg, 'error');
+        return;
+      }
+      showMarketplaceToast('Payment recorded', 'success');
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      showMarketplaceToast('Failed to record payment', 'error');
+    }
+  });
+  cancelBtn.addEventListener('click', () => wrapper.remove());
+}
 </script>
 {% endblock %}

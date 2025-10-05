@@ -32,3 +32,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Dev cache location
 CACHES['default']['LOCATION'] = 'petio-dev-cache'
+
+# Run Celery tasks eagerly in dev to simplify local testing
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True

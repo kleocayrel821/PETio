@@ -33,6 +33,46 @@
         {% endif %}
       </div>
 
+      <div class="divider my-6">In-app notifications</div>
+      <div class="form-control mb-2">
+        <label class="cursor-pointer label">
+          <span class="label-text">Show marketplace notifications</span>
+          <input type="checkbox" name="notify_marketplace_notifications" class="toggle toggle-primary" {% if request.user.notify_marketplace_notifications %}checked{% endif %} />
+        </label>
+      </div>
+      <div class="form-control mb-2">
+        <label class="cursor-pointer label">
+          <span class="label-text">Notify on request updates</span>
+          <input type="checkbox" name="notify_on_request_updates" class="toggle toggle-primary" {% if request.user.notify_on_request_updates %}checked{% endif %} />
+        </label>
+      </div>
+      <div class="form-control mb-6">
+        <label class="cursor-pointer label">
+          <span class="label-text">Notify on new request messages</span>
+          <input type="checkbox" name="notify_on_messages" class="toggle toggle-primary" {% if request.user.notify_on_messages %}checked{% endif %} />
+        </label>
+      </div>
+
+      <div class="divider my-6">Email notifications</div>
+      <div class="form-control mb-2">
+        <label class="cursor-pointer label">
+          <span class="label-text">Receive marketplace emails</span>
+          <input type="checkbox" name="email_marketplace_notifications" class="toggle toggle-primary" {% if request.user.email_marketplace_notifications %}checked{% endif %} />
+        </label>
+      </div>
+      <div class="form-control mb-2">
+        <label class="cursor-pointer label">
+          <span class="label-text">Emails on request updates (create/accept/reject/meetup/cancel/complete)</span>
+          <input type="checkbox" name="email_on_request_updates" class="toggle toggle-primary" {% if request.user.email_on_request_updates %}checked{% endif %} />
+        </label>
+      </div>
+      <div class="form-control mb-6">
+        <label class="cursor-pointer label">
+          <span class="label-text">Emails on new request messages</span>
+          <input type="checkbox" name="email_on_messages" class="toggle toggle-primary" {% if request.user.email_on_messages %}checked{% endif %} />
+        </label>
+      </div>
+
       <div class="mt-6 flex gap-2">
         <button type="submit" class="btn btn-primary">Save Changes</button>
         <a href="{% url 'accounts:profile' %}" class="btn">Cancel</a>

@@ -15,10 +15,41 @@ class UserAdmin(DjangoUserAdmin):
     Reuses Django's built-in UserAdmin for consistency, adding extra fields.
     """
     fieldsets = DjangoUserAdmin.fieldsets + (
-        ("Additional info", {"fields": ("mobile_number", "age", "marketing_opt_in")}),
+        (
+            "Additional info",
+            {
+                "fields": (
+                    "mobile_number",
+                    "age",
+                    "marketing_opt_in",
+                    "email_marketplace_notifications",
+                    "email_on_request_updates",
+                    "email_on_messages",
+                    "notify_marketplace_notifications",
+                    "notify_on_request_updates",
+                    "notify_on_messages",
+                )
+            },
+        ),
     )
     add_fieldsets = DjangoUserAdmin.add_fieldsets + (
-        ("Additional info", {"fields": ("email", "mobile_number", "age", "marketing_opt_in")}),
+        (
+            "Additional info",
+            {
+                "fields": (
+                    "email",
+                    "mobile_number",
+                    "age",
+                    "marketing_opt_in",
+                    "email_marketplace_notifications",
+                    "email_on_request_updates",
+                    "email_on_messages",
+                    "notify_marketplace_notifications",
+                    "notify_on_request_updates",
+                    "notify_on_messages",
+                )
+            },
+        ),
     )
     list_display = ("username", "email", "is_active", "is_staff", "mobile_number", "age", "date_joined")
     list_filter = DjangoUserAdmin.list_filter + ("marketing_opt_in",)

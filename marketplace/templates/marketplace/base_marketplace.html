@@ -26,6 +26,14 @@
         <i class="fas fa-receipt mr-2"></i>
         Transactions
     </a>
+    <a href="{% url 'marketplace:notifications' %}"
+       class="tab tab-sm md:tab-md lg:tab-lg shrink-0 {% if request.resolver_match.url_name == 'notifications' %}tab-active{% endif %}">
+        <i class="fas fa-bell mr-2"></i>
+        Notifications
+        {% if unread_notifications %}
+        <span class="badge badge-primary badge-sm ml-2">{{ unread_notifications }}</span>
+        {% endif %}
+    </a>
   </div>
 </div>
 {% endblock %}
@@ -84,6 +92,15 @@
 
      <!-- Main Marketplace Content -->
      <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+         {% if messages %}
+         <div id="marketplaceMessages" class="space-y-2 mb-4">
+             {% for message in messages %}
+             <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %}">
+                 <span>{{ message }}</span>
+             </div>
+             {% endfor %}
+         </div>
+         {% endif %}
          {% block marketplace_content %}{% endblock %}
      </div>
 </div>
@@ -151,8 +168,13 @@ function showMarketplaceToast(message, level = 'info') {
     document.body.appendChild(container);
   }
   const alert = document.createElement('div');
-  alert.className = `alert alert-${level}`;
-  alert.innerHTML = `<span>${message}</span>`;
+  const levelClass = ['info','success','warning','error'].includes(level) ? level : 'info';
+  alert.className = `alert alert-${levelClass}`;
+  alert.setAttribute('role', 'alert');
+  alert.innerHTML = `
+    <i class="fas ${levelClass === 'success' ? 'fa-check-circle' : levelClass === 'error' ? 'fa-exclamation-circle' : levelClass === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i>
+    <span>${message}</span>
+  `;
   container.appendChild(alert);
   // Auto-remove after 4 seconds
   setTimeout(() => { if (alert && alert.parentNode) alert.parentNode.removeChild(alert); }, 4000);

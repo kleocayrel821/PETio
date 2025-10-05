@@ -1,0 +1,61 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% block marketplace_title %}Seller Dashboard{% endblock %}
+{% block marketplace_header %}Incoming Purchase Requests{% endblock %}
+{% block marketplace_subtitle %}Accept, reject, or negotiate requests{% endblock %}
+
+{% block marketplace_content %}
+<div class="container mx-auto px-4 py-6">
+  <div class="grid gap-4">
+    {% for r in incoming %}
+    <div class="card bg-base-100 shadow-md p-4">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="font-semibold flex items-center gap-2">
+            {{ r.listing.title }} • Buyer: {{ r.buyer.username }}
+            {% if r.unread_count %}
+            <span class="badge badge-primary">{{ r.unread_count }} new</span>
+            {% endif %}
+          </div>
+          <div class="text-sm text-base-content/60">Status: {{ r.get_status_display }}</div>
+          {% if r.message %}
+          <div class="mt-1 text-sm">Buyer message: {{ r.message }}</div>
+          {% endif %}
+        </div>
+        <div class="flex flex-col gap-2">
+          {% if r.status == 'pending' or r.status == 'negotiating' %}
+          <form method="post" action="{% url 'marketplace:seller_accept_request' r.id %}">
+            {% csrf_token %}
+            <button class="btn btn-primary btn-sm">Accept</button>
+          </form>
+          <form method="post" action="{% url 'marketplace:seller_reject_request' r.id %}">
+            {% csrf_token %}
+            <button class="btn btn-error btn-sm">Reject</button>
+          </form>
+          <form method="post" action="{% url 'marketplace:seller_negotiate_request' r.id %}" class="flex gap-2">
+            {% csrf_token %}
+            <input name="note" class="input input-bordered w-48" placeholder="Negotiation note" />
+            <button class="btn btn-warning btn-sm">Negotiate</button>
+          </form>
+          <form method="post" action="{% url 'marketplace:seller_cancel_request' r.id %}" class="flex gap-2">
+            {% csrf_token %}
+            <input name="reason" class="input input-bordered w-48" placeholder="Cancel reason (optional)" />
+            <button class="btn btn-outline btn-sm">Cancel</button>
+          </form>
+          {% elif r.status == 'accepted' %}
+          <span class="badge badge-success">Accepted • Listing reserved</span>
+          {% elif r.status == 'rejected' %}
+          <span class="badge badge-error">Rejected</span>
+          {% elif r.status == 'completed' %}
+          <span class="badge badge-neutral">Completed</span>
+          {% endif %}
+          <a class="btn btn-ghost btn-sm" href="{% url 'marketplace:listing_detail' r.listing.id %}">View Listing</a>
+          <a class="btn btn-ghost btn-sm" href="{% url 'marketplace:request_detail' r.id %}">Open Thread</a>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+      <div class="alert">No incoming requests yet.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

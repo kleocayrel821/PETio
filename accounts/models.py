@@ -19,6 +19,33 @@ class User(AbstractUser):
     mobile_number = models.CharField(max_length=32, blank=True, help_text="E.164 format, e.g., +1 555 123 4567")
     age = models.PositiveIntegerField(blank=True, null=True, help_text="Age in years")
     marketing_opt_in = models.BooleanField(default=False, help_text="User agreed to receive marketing updates")
+    # Marketplace email notification preferences (beyond marketing updates)
+    email_marketplace_notifications = models.BooleanField(
+        default=True,
+        help_text="Receive marketplace-related emails (requests, status changes, messages)",
+    )
+    email_on_request_updates = models.BooleanField(
+        default=True,
+        help_text="Receive emails for request-created/accepted/rejected/negotiated/meetup/complete/cancel",
+    )
+    email_on_messages = models.BooleanField(
+        default=True,
+        help_text="Receive emails when new messages are posted on a request",
+    )
+
+    # In-app notification preferences
+    notify_marketplace_notifications = models.BooleanField(
+        default=True,
+        help_text="Show marketplace notifications in the notifications page",
+    )
+    notify_on_request_updates = models.BooleanField(
+        default=True,
+        help_text="Show notifications for request-created/accepted/rejected/meetup/complete/cancel",
+    )
+    notify_on_messages = models.BooleanField(
+        default=True,
+        help_text="Show notifications when new messages are posted on a request",
+    )
 
     class Meta:
         ordering = ["username"]
@@ -26,6 +53,17 @@ class User(AbstractUser):
     def __str__(self) -> str:
         """Return a human-readable representation of the user."""
         return f"User({self.username})"
+
+    def save(self, *args, **kwargs):
+        # Ensure email uniqueness: if blank/empty, assign a deterministic fallback
+        if not self.email:
+            # Use username-based fallback to guarantee uniqueness across users
+            proposed = f"{self.username}@example.com"
+            # If a user already holds this email (unlikely due to unique username), timestamp-suffix it
+            if type(self).objects.filter(email=proposed).exclude(pk=self.pk).exists():
+                proposed = f"{self.username}.{int(timezone.now().timestamp())}@example.com"
+            self.email = proposed
+        super().save(*args, **kwargs)
 
 class Profile(models.Model):
     """User profile linked 1:1 with the custom User model.

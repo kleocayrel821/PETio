@@ -1,0 +1,48 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% block marketplace_title %}Buyer Dashboard{% endblock %}
+{% block marketplace_header %}Your Purchase Requests{% endblock %}
+{% block marketplace_subtitle %}Track statuses and communicate with sellers{% endblock %}
+
+{% block marketplace_content %}
+<div class="container mx-auto px-4 py-6">
+  <div class="grid gap-4">
+    {% for r in requests %}
+    <div class="card bg-base-100 shadow-md p-4">
+      <div class="flex justify-between items-center">
+        <div>
+          <div class="font-semibold flex items-center gap-2">
+            {{ r.listing.title }}
+            {% if r.unread_count %}
+            <span class="badge badge-primary">{{ r.unread_count }} new</span>
+            {% endif %}
+          </div>
+          <div class="text-sm text-base-content/60">Seller: {{ r.seller.username }} • Status: {{ r.get_status_display }}</div>
+          {% if r.message %}
+          <div class="mt-1 text-sm">Your message: {{ r.message }}</div>
+          {% endif %}
+        </div>
+        <div class="flex gap-2">
+          {% if r.status == 'pending' or r.status == 'negotiating' %}
+          <form method="post" action="{% url 'marketplace:buyer_cancel_request' r.id %}" class="flex gap-2">
+            {% csrf_token %}
+            <input name="reason" class="input input-bordered w-48" placeholder="Cancel reason (optional)" />
+            <button class="btn btn-outline btn-sm">Cancel</button>
+          </form>
+          {% endif %}
+          {% if r.status == 'accepted' %}
+          <form method="post" action="{% url 'marketplace:mark_request_completed' r.id %}">
+            {% csrf_token %}
+            <button class="btn btn-success btn-sm">Mark Completed</button>
+          </form>
+          {% endif %}
+          <a class="btn btn-ghost btn-sm" href="{% url 'marketplace:listing_detail' r.listing.id %}">View Listing</a>
+          <a class="btn btn-ghost btn-sm" href="{% url 'marketplace:request_detail' r.id %}">Open Thread</a>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+      <div class="alert">No purchase requests yet.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

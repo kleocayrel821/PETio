@@ -1,0 +1,110 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% block marketplace_title %}Moderator Dashboard{% endblock %}
+{% block marketplace_header %}Approvals & Analytics{% endblock %}
+{% block marketplace_subtitle %}Review pending listings and overview stats{% endblock %}
+
+{% block marketplace_content %}
+<div class="container mx-auto px-4 py-6">
+  <div class="mb-6 flex items-center gap-3">
+    <a class="btn btn-sm {% if filter.range == '7' %}btn-primary{% else %}btn-ghost{% endif %}" href="?range=7">Last 7 days</a>
+    <a class="btn btn-sm {% if filter.range == '30' %}btn-primary{% else %}btn-ghost{% endif %}" href="?range=30">Last 30 days</a>
+    <form method="get" class="flex items-center gap-2">
+      <input type="date" name="start" value="{{ filter.start }}" class="input input-bordered input-sm" />
+      <span>to</span>
+      <input type="date" name="end" value="{{ filter.end }}" class="input input-bordered input-sm" />
+      <button class="btn btn-sm">Apply</button>
+    </form>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="stat">
+      <div class="stat-title">Total Listings</div>
+      <div class="stat-value">{{ analytics.total_listings }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Active Listings</div>
+      <div class="stat-value">{{ analytics.active_listings }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Pending Listings</div>
+      <div class="stat-value">{{ analytics.pending_listings }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Total Requests</div>
+      <div class="stat-value">{{ analytics.total_requests }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Accepted Requests</div>
+      <div class="stat-value">{{ analytics.accepted_requests }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Completed Requests</div>
+      <div class="stat-value">{{ analytics.completed_requests }}</div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h3 class="card-title">Listings Created Over Time</h3>
+        <canvas id="chartListings" height="120"></canvas>
+      </div>
+    </div>
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h3 class="card-title">Requests by Status</h3>
+        <canvas id="chartRequests" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="text-xl font-semibold mb-3">Top Sellers (Completed Requests)</h3>
+  <div class="overflow-x-auto mb-8">
+    <table class="table table-zebra w-full">
+      <thead>
+        <tr><th>Seller</th><th>Completed Requests</th></tr>
+      </thead>
+      <tbody>
+        {% for s in top_sellers %}
+        <tr>
+          <td>{{ s.seller__username }} (ID: {{ s.seller_id }})</td>
+          <td>{{ s.count }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="2" class="text-base-content/60">No completed requests in range.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% include "marketplace/admin/_admin_listings_tab.html" with pending_listings=pending_listings approve_action_name='marketplace:moderator_approve_listing' reject_action_name='marketplace:moderator_reject_listing' %}
+
+  <div class="mt-10">
+    {% include "marketplace/admin/_admin_reports_tab.html" with reports=open_reports close_action_name='marketplace:moderator_close_report' %}
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const listingsLabels = {{ listings_labels_json|safe }};
+  const listingsData = {{ listings_data_json|safe }};
+  const reqLabels = {{ requests_labels_json|safe }};
+  const reqData = {{ requests_data_json|safe }};
+  const ctxL = document.getElementById('chartListings').getContext('2d');
+  new Chart(ctxL, {
+    type: 'line',
+    data: {
+      labels: listingsLabels,
+      datasets: [{ label: 'Listings', data: listingsData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.2)' }]
+    },
+    options: { scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+  });
+  const ctxR = document.getElementById('chartRequests').getContext('2d');
+  new Chart(ctxR, {
+    type: 'bar',
+    data: {
+      labels: reqLabels,
+      datasets: [{ label: 'Requests', data: reqData, backgroundColor: ['#a3e635','#22c55e','#ef4444','#3b82f6'] }]
+    },
+    options: { scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+  });
+</script>
+{% endblock %}

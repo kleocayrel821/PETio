@@ -4,19 +4,243 @@
 <div class="space-y-8">
   <div class="section-title"><i class="fas fa-handshake text-teal-400"></i> Transactions</div>
 
-  <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
-    <div class="section-title"><i class="fas fa-list-alt text-yellow-400"></i> Active</div>
-    <ul class="space-y-2">
-      <li class="card flex justify-between p-3"><span>Item A with Seller A</span><span class="badge badge-warning">Pending Review</span></li>
-      <li class="card flex justify-between p-3"><span>Item B with Buyer B</span><span class="badge badge-info">Awaiting Payment</span></li>
-    </ul>
-  </div>
+  <!-- Filters Toolbar -->
+  <form method="get" class="card bg-base-100 shadow-sm p-4 rounded-xl flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+    <div>
+      <label class="label"><span class="label-text">Role</span></label>
+      <select name="role" class="select select-bordered select-sm">
+        <option value="" {% if not active_role %}selected{% endif %}>All</option>
+        <option value="buyer" {% if active_role == 'buyer' %}selected{% endif %}>Buyer</option>
+        <option value="seller" {% if active_role == 'seller' %}selected{% endif %}>Seller</option>
+      </select>
+    </div>
+    <div>
+      <label class="label"><span class="label-text">Status</span></label>
+      <select name="status" class="select select-bordered select-sm">
+        <option value="" {% if not active_status %}selected{% endif %}>All</option>
+        <option value="proposed" {% if active_status == 'proposed' %}selected{% endif %}>Proposed</option>
+        <option value="confirmed" {% if active_status == 'confirmed' %}selected{% endif %}>Confirmed</option>
+        <option value="completed" {% if active_status == 'completed' %}selected{% endif %}>Completed</option>
+        <option value="canceled" {% if active_status == 'canceled' %}selected{% endif %}>Canceled</option>
+      </select>
+    </div>
+    <div>
+      <label class="label"><span class="label-text">Search</span></label>
+      <input type="text" name="q" value="{{ query }}" placeholder="Listing or user" class="input input-bordered input-sm w-56" />
+    </div>
+    <div>
+      <label class="label"><span class="label-text">Sort</span></label>
+      <select name="sort" class="select select-bordered select-sm">
+        <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest</option>
+        <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest</option>
+      </select>
+    </div>
+    <div class="ml-auto">
+      <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+      <a href="{% url 'marketplace:transactions' %}" class="btn btn-sm btn-ghost">Clear</a>
+    </div>
+    <div class="text-xs opacity-70">Results: Proposed {{ counts.proposed }} · Confirmed {{ counts.confirmed }} · Completed {{ counts.completed }} · Canceled {{ counts.canceled }}</div>
+  </form>
 
+  {# Proposed group #}
+  {% if not active_status or active_status == 'proposed' %}
   <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
-    <div class="section-title"><i class="fas fa-history text-blue-400"></i> Past</div>
+    <div class="section-title"><i class="fas fa-lightbulb text-yellow-400"></i> Proposed</div>
+    {% if grouped.proposed %}
     <ul class="space-y-2">
-      <li class="card flex justify-between p-3"><span>Item C with Seller C</span><span class="badge badge-success">Completed</span></li>
+      {% for txn in grouped.proposed %}
+        <li class="card p-3">
+          <div class="flex justify-between items-center">
+            <div class="font-medium">
+              {{ txn.listing.title }}
+              <span class="opacity-70">with</span>
+              {% if txn.buyer_id == user.id %}
+                {{ txn.seller.username }}
+              {% else %}
+                {{ txn.buyer.username }}
+              {% endif %}
+            </div>
+            <span class="badge badge-warning">Proposed</span>
+          </div>
+          <div class="text-xs opacity-70 mt-1">You are {% if txn.buyer_id == user.id %}the buyer{% else %}the seller{% endif %} · Created {{ txn.created_at|date:"M j, Y g:i a" }}</div>
+          {% if txn.meetup_place or txn.meetup_time %}
+            <div class="text-xs mt-1">Meetup: {{ txn.meetup_place }} {% if txn.meetup_time %}· {{ txn.meetup_time|date:"M j, Y g:i a" }}{% endif %}</div>
+          {% endif %}
+          {% if txn.purchase_request %}
+            <div class="mt-2"><a href="{% url 'marketplace:request_detail' txn.purchase_request.id %}" class="btn btn-xs btn-outline">View Request</a></div>
+            {% if txn.purchase_request.status == 'pending' or txn.purchase_request.status == 'negotiating' %}
+              <div class="mt-2 flex gap-2">
+                {% if user.is_staff or user.is_superuser %}
+                  <form method="post" action="{% url 'marketplace:buyer_cancel_request' request_id=txn.purchase_request.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline btn-error">Cancel as Buyer</button>
+                  </form>
+                  <form method="post" action="{% url 'marketplace:seller_cancel_request' request_id=txn.purchase_request.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline btn-error">Cancel as Seller</button>
+                  </form>
+                {% elif user.id == txn.buyer_id %}
+                  <form method="post" action="{% url 'marketplace:buyer_cancel_request' request_id=txn.purchase_request.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline btn-error">Cancel</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="{% url 'marketplace:seller_cancel_request' request_id=txn.purchase_request.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline btn-error">Cancel</button>
+                  </form>
+                {% endif %}
+              </div>
+            {% endif %}
+          {% endif %}
+        </li>
+      {% endfor %}
     </ul>
+    {% else %}
+      <div class="opacity-60">No proposed transactions.</div>
+    {% endif %}
   </div>
+  {% endif %}
+
+  {# Confirmed group (includes awaiting_payment and paid) #}
+  {% if not active_status or active_status == 'confirmed' %}
+  <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
+    <div class="section-title"><i class="fas fa-check-circle text-green-400"></i> Confirmed</div>
+    {% if grouped.confirmed %}
+    <ul class="space-y-2">
+      {% for txn in grouped.confirmed %}
+        <li class="card p-3">
+          <div class="flex justify-between items-center">
+            <div class="font-medium">
+              {{ txn.listing.title }}
+              <span class="opacity-70">with</span>
+              {% if txn.buyer_id == user.id %}
+                {{ txn.seller.username }}
+              {% else %}
+                {{ txn.buyer.username }}
+              {% endif %}
+            </div>
+            <span class="badge
+              {% if txn.status == 'awaiting_payment' %}badge-info
+              {% elif txn.status == 'paid' %}badge-success
+              {% elif txn.status == 'confirmed' %}badge-primary
+              {% else %}badge-neutral{% endif %}">
+              {% if txn.status == 'awaiting_payment' %}Awaiting Payment{% elif txn.status == 'paid' %}Paid{% else %}Confirmed{% endif %}
+            </span>
+          </div>
+          <div class="text-xs opacity-70 mt-1">You are {% if txn.buyer_id == user.id %}the buyer{% else %}the seller{% endif %} · Created {{ txn.created_at|date:"M j, Y g:i a" }}</div>
+          {% if txn.meetup_place or txn.meetup_time %}
+            <div class="text-xs mt-1">Meetup: {{ txn.meetup_place }} {% if txn.meetup_time %}· {{ txn.meetup_time|date:"M j, Y g:i a" }}{% endif %}</div>
+          {% endif %}
+          {% if txn.amount_paid %}
+            <div class="text-xs mt-1">Paid: {{ txn.amount_paid }} {% if txn.payment_method %}via {{ txn.payment_method }}{% endif %}</div>
+          {% endif %}
+          {% if txn.purchase_request %}
+            <div class="mt-2"><a href="{% url 'marketplace:request_detail' txn.purchase_request.id %}" class="btn btn-xs btn-outline">View Request</a></div>
+          {% endif %}
+          <div class="mt-2 flex gap-2 items-center">
+            {# Cancel allowed while request is still pending/negotiating #}
+            {% if txn.purchase_request %}
+              {% if txn.purchase_request.status == 'pending' or txn.purchase_request.status == 'negotiating' %}
+                {% if user.is_staff or user.is_superuser %}
+                  <form method="post" action="{% url 'marketplace:buyer_cancel_request' request_id=txn.purchase_request.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline btn-error">Cancel as Buyer</button>
+                  </form>
+                  <form method="post" action="{% url 'marketplace:seller_cancel_request' request_id=txn.purchase_request.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline btn-error">Cancel as Seller</button>
+                  </form>
+                {% elif user.id == txn.buyer_id %}
+                  <form method="post" action="{% url 'marketplace:buyer_cancel_request' request_id=txn.purchase_request.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline btn-error">Cancel</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="{% url 'marketplace:seller_cancel_request' request_id=txn.purchase_request.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline btn-error">Cancel</button>
+                  </form>
+                {% endif %}
+              {% endif %}
+            {% endif %}
+
+            {# Complete allowed when paid and accepted; buyer or moderator/admin can act #}
+            {% if txn.status == 'paid' and txn.purchase_request and txn.purchase_request.status == 'accepted' %}
+              {% if user.id == txn.buyer_id or user.is_staff or user.is_superuser %}
+                <form method="post" action="{% url 'marketplace:mark_request_completed' request_id=txn.purchase_request.id %}" class="flex gap-2 items-center">
+                  {% csrf_token %}
+                  <input type="text" name="note" placeholder="Completion note (optional)" class="input input-bordered input-xs w-64" />
+                  <button type="submit" class="btn btn-sm btn-success">Complete</button>
+                </form>
+              {% endif %}
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      <div class="opacity-60">No confirmed transactions.</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# Completed group #}
+  {% if not active_status or active_status == 'completed' %}
+  <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
+    <div class="section-title"><i class="fas fa-history text-blue-400"></i> Completed</div>
+    {% if grouped.completed %}
+    <ul class="space-y-2">
+      {% for txn in grouped.completed %}
+        <li class="card p-3">
+          <div class="flex justify-between items-center">
+            <div class="font-medium">
+              {{ txn.listing.title }}
+              <span class="opacity-70">with</span>
+              {% if txn.buyer_id == user.id %}
+                {{ txn.seller.username }}
+              {% else %}
+                {{ txn.buyer.username }}
+              {% endif %}
+            </div>
+            <span class="badge badge-success">Completed</span>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      <div class="opacity-60">No completed transactions.</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# Canceled group #}
+  {% if not active_status or active_status == 'canceled' %}
+  <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
+    <div class="section-title"><i class="fas fa-ban text-red-400"></i> Canceled</div>
+    {% if grouped.canceled %}
+    <ul class="space-y-2">
+      {% for txn in grouped.canceled %}
+        <li class="card p-3">
+          <div class="flex justify-between items-center">
+            <div class="font-medium">
+              {{ txn.listing.title }}
+              <span class="opacity-70">with</span>
+              {% if txn.buyer_id == user.id %}
+                {{ txn.seller.username }}
+              {% else %}
+                {{ txn.buyer.username }}
+              {% endif %}
+            </div>
+            <span class="badge badge-error">Canceled</span>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      <div class="opacity-60">No canceled transactions.</div>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

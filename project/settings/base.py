@@ -24,11 +24,13 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'project.middleware.AdminSessionCookieMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'project.middleware.DisableAuthMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -45,6 +47,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'project.context_processors.resolve_logout_url_name',
             ],
         },
     },
@@ -120,3 +123,26 @@ LOGGING = {
 LOGIN_REDIRECT_URL = 'accounts:profile'
 LOGOUT_REDIRECT_URL = 'home'
 LOGIN_URL = 'login'
+
+# Feature flags
+# Disable authentication globally when set in environment (for demos/tests only)
+DISABLE_AUTH = os.environ.get('DJANGO_DISABLE_AUTH', 'false').lower() == 'true'
+ 
+# Admin session isolation (used by AdminSessionCookieMiddleware)
+# These control the separate cookie used only for /admin/ paths in dev.
+ADMIN_SESSION_COOKIE_NAME = os.environ.get('DJANGO_ADMIN_SESSION_COOKIE_NAME', 'adminid')
+ADMIN_SESSION_COOKIE_PATH = os.environ.get('DJANGO_ADMIN_SESSION_COOKIE_PATH', '/admin')
+
+# Account activation requirement (email confirmation)
+# In dev, default to False so users can log in immediately after signup.
+ACCOUNT_ACTIVATION_REQUIRED = os.environ.get('DJANGO_ACCOUNT_ACTIVATION_REQUIRED', 'false').lower() == 'true'
+MARKETPLACE_RESET = os.environ.get('MARKETPLACE_RESET', 'false').lower() == 'true'
+
+# Celery configuration (defaults suitable for local dev; override via env)
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_TASK_ROUTES = {
+    'marketplace.tasks.send_notification_email': {'queue': 'notifications'},
+}
+CELERY_TASK_DEFAULT_QUEUE = 'default'
+CELERY_TASK_ANNOTATIONS = {'*': {'rate_limit': '10/s'}}

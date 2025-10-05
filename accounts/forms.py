@@ -23,10 +23,24 @@ class CustomUserCreationForm(UserCreationForm):
     mobile_number = forms.CharField(required=False, max_length=32)
     age = forms.IntegerField(required=False, min_value=0)
     marketing_opt_in = forms.BooleanField(required=False)
+    email_marketplace_notifications = forms.BooleanField(required=False, initial=True, label="Marketplace emails")
+    email_on_request_updates = forms.BooleanField(required=False, initial=True, label="Emails on request updates")
+    email_on_messages = forms.BooleanField(required=False, initial=True, label="Emails on new messages")
 
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = ("username", "email", "password1", "password2", "mobile_number", "age", "marketing_opt_in")
+        fields = (
+            "username",
+            "email",
+            "password1",
+            "password2",
+            "mobile_number",
+            "age",
+            "marketing_opt_in",
+            "email_marketplace_notifications",
+            "email_on_request_updates",
+            "email_on_messages",
+        )
 
 class ProfileForm(forms.ModelForm):
     """ModelForm for editing Profile fields.

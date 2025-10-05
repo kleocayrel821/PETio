@@ -20,7 +20,8 @@ from rest_framework.decorators import action
 
 # Web UI views
 def control_panel(request):
-    return render(request, 'app/control_panel.html')
+    # Render the original control panel located at app/templates/app/home.html
+    return render(request, 'app/home.html')
 
 # New Class-Based Views for split UI pages
 @method_decorator(ensure_csrf_cookie, name='dispatch')
