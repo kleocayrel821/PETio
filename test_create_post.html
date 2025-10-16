@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Post Modal Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Create Post Modal Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Instructions</h2>
+        <p>This page will help you test the create post modal functionality:</p>
+        <ol>
+            <li>Open the <a href="http://127.0.0.1:8000/social/feed/" target="_blank">IOsocial Feed</a></li>
+            <li>Look for the green "✓ Create Post Modal Ready" indicator in the top-right corner</li>
+            <li>Click the "Share Your Story" button to open the modal</li>
+            <li>Test the following features:</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>Modal Features to Test</h2>
+        
+        <h3>1. Modal Opening/Closing</h3>
+        <ul>
+            <li>✓ Modal opens when clicking "Share Your Story"</li>
+            <li>✓ Modal closes when clicking the X button</li>
+            <li>✓ Modal closes when clicking outside the modal</li>
+            <li>✓ Modal closes when pressing Escape key</li>
+        </ul>
+
+        <h3>2. Form Validation</h3>
+        <ul>
+            <li>✓ Title validation (minimum 5 characters)</li>
+            <li>✓ Content validation (minimum 20 characters)</li>
+            <li>✓ Character counters update in real-time</li>
+            <li>✓ Error messages appear for invalid inputs</li>
+            <li>✓ Submit button is disabled when form is invalid</li>
+        </ul>
+
+        <h3>3. Image Upload</h3>
+        <ul>
+            <li>✓ Image preview appears when file is selected</li>
+            <li>✓ Only JPEG/PNG files are accepted</li>
+            <li>✓ File size limit (3MB) is enforced</li>
+            <li>✓ Image can be removed after selection</li>
+        </ul>
+
+        <h3>4. Post Creation</h3>
+        <ul>
+            <li>✓ Valid posts are saved to localStorage</li>
+            <li>✓ New posts appear immediately in the feed</li>
+            <li>✓ Success message is shown after creation</li>
+            <li>✓ Form is reset after successful submission</li>
+        </ul>
+
+        <h3>5. Accessibility</h3>
+        <ul>
+            <li>✓ Modal has proper ARIA labels</li>
+            <li>✓ Focus is trapped within the modal</li>
+            <li>✓ Focus returns to trigger button when closed</li>
+            <li>✓ Screen reader announcements work</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Data</h2>
+        <p>Use this sample data for testing:</p>
+        
+        <div class="info test-result">
+            <strong>Valid Test Post:</strong><br>
+            Title: "My Amazing Pet Adventure"<br>
+            Content: "Today I took my dog to the park and we had the most wonderful time playing fetch and meeting other pet owners. The weather was perfect and my dog made so many new friends!"<br>
+            Category: General Discussion
+        </div>
+
+        <div class="error test-result">
+            <strong>Invalid Test Cases:</strong><br>
+            Title too short: "Hi" (should show error)<br>
+            Content too short: "Short post" (should show error)<br>
+            Large image: Upload a file > 3MB (should show error)
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>localStorage Verification</h2>
+        <p>To verify posts are saved correctly:</p>
+        <button class="test-button" onclick="checkLocalStorage()">Check localStorage</button>
+        <button class="test-button" onclick="clearLocalStorage()">Clear localStorage</button>
+        <div id="localStorage-result"></div>
+    </div>
+
+    <script>
+        function checkLocalStorage() {
+            const posts = localStorage.getItem('community_posts');
+            const resultDiv = document.getElementById('localStorage-result');
+            
+            if (posts) {
+                const parsedPosts = JSON.parse(posts);
+                resultDiv.innerHTML = `
+                    <div class="success test-result">
+                        <strong>localStorage Data Found:</strong><br>
+                        ${parsedPosts.length} posts stored<br>
+                        <pre>${JSON.stringify(parsedPosts, null, 2)}</pre>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="info test-result">
+                        <strong>No localStorage data found.</strong><br>
+                        Create a post first to see data here.
+                    </div>
+                `;
+            }
+        }
+
+        function clearLocalStorage() {
+            localStorage.removeItem('community_posts');
+            document.getElementById('localStorage-result').innerHTML = `
+                <div class="success test-result">
+                    <strong>localStorage cleared!</strong><br>
+                    Refresh the feed page to see the change.
+                </div>
+            `;
+        }
+
+        // Auto-check localStorage on page load
+        window.addEventListener('load', checkLocalStorage);
+    </script>
+</body>
+</html>

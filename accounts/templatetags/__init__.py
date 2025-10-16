@@ -1,0 +1,1 @@
+"""Templatetags package for accounts app."""

@@ -1,0 +1,293 @@
+{% extends 'social/base_social.html' %}
+
+{% block social_title %}My Dashboard - IOsocial{% endblock %}
+
+{% block social_content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold mb-2">My Dashboard</h1>
+        <p class="text-base-content/60">Manage your posts and track your community engagement</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="card bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg">
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-2xl font-bold">{{ user_stats.total_posts }}</h3>
+                        <p class="opacity-90">Total Posts</p>
+                    </div>
+                    <i class="fas fa-file-alt text-3xl opacity-80"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg">
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-2xl font-bold">{{ user_stats.total_likes }}</h3>
+                        <p class="opacity-90">Total Likes</p>
+                    </div>
+                    <i class="fas fa-heart text-3xl opacity-80"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg">
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-2xl font-bold">{{ user_stats.total_comments }}</h3>
+                        <p class="opacity-90">Total Comments</p>
+                    </div>
+                    <i class="fas fa-comments text-3xl opacity-80"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg">
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-2xl font-bold">{{ user_stats.followers_count }}</h3>
+                        <p class="opacity-90">Followers</p>
+                    </div>
+                    <i class="fas fa-users text-3xl opacity-80"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Quick Actions -->
+            <div class="card bg-base-100 shadow-lg">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">Quick Actions</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <a href="{% url 'social:create_post' %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> New Post
+                        </a>
+                        <a href="{% url 'social:edit_profile' %}" class="btn btn-outline">
+                            <i class="fas fa-user"></i> Edit Profile
+                        </a>
+                        <a href="{% url 'social:notifications' %}" class="btn btn-outline">
+                            <i class="fas fa-bell"></i> Notifications
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Posts -->
+            <div class="card bg-base-100 shadow-lg">
+                <div class="card-body">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="card-title">My Recent Posts</h2>
+                        <a href="{% url 'social:my_profile' %}" class="btn btn-ghost btn-sm">View All</a>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        {% for post in recent_posts %}
+                        <div class="border border-base-300 rounded-lg p-4">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <h3 class="font-semibold mb-1">
+                                        <a href="{% url 'social:post_detail' post.pk %}" class="hover:text-primary">
+                                            {{ post.title }}
+                                        </a>
+                                    </h3>
+                                    <p class="text-sm text-base-content/60 mb-2">{{ post.content|truncatewords:20 }}</p>
+                                    <div class="flex items-center space-x-4 text-sm text-base-content/60">
+                                        <span><i class="fas fa-heart"></i> {{ post.like_count }}</span>
+                                        <span><i class="fas fa-comment"></i> {{ post.comment_count }}</span>
+                                        <span><i class="fas fa-clock"></i> {{ post.created_at|timesince }} ago</span>
+                                    </div>
+                                </div>
+                                <div class="dropdown dropdown-end">
+                                    <label tabindex="0" class="btn btn-ghost btn-sm">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </label>
+                                    <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                                        <li><a href="{% url 'social:edit_post' post.pk %}"><i class="fas fa-edit"></i> Edit</a></li>
+                                        <li><a href="{% url 'social:post_detail' post.pk %}"><i class="fas fa-eye"></i> View</a></li>
+                                        <li>
+                                            <form method="POST" action="{% url 'social:delete_post' post.pk %}" 
+                                                  onsubmit="return confirm('Are you sure?')">
+                                                {% csrf_token %}
+                                                <button type="submit" class="text-red-500">
+                                                    <i class="fas fa-trash"></i> Delete
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-8">
+                            <i class="fas fa-file-alt text-4xl text-base-content/30 mb-4"></i>
+                            <p class="text-base-content/60 mb-4">You haven't created any posts yet</p>
+                            <a href="{% url 'social:create_post' %}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Create Your First Post
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Chart -->
+            <div class="card bg-base-100 shadow-lg">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">Activity Overview</h2>
+                    <div class="h-64 flex items-center justify-center bg-base-200 rounded-lg">
+                        <div class="text-center">
+                            <i class="fas fa-chart-line text-4xl text-base-content/30 mb-4"></i>
+                            <p class="text-base-content/60">Activity chart coming soon</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Profile Summary -->
+            <div class="card bg-base-100 shadow-lg">
+                <div class="card-body text-center">
+                    <div class="avatar mb-4">
+                        <div class="w-20 rounded-full">
+                            <img src="https://ui-avatars.com/api/?name={{ user.get_full_name|default:user.username }}&background=3B82F6&color=fff&size=80" alt="Your Avatar" />
+                        </div>
+                    </div>
+                    <h3 class="font-bold text-lg">{{ user.get_full_name|default:user.username }}</h3>
+                    <p class="text-base-content/60 mb-4">@{{ user.username }}</p>
+                    {% if profile.bio %}
+                        <p class="text-sm mb-4">{{ profile.bio|truncatewords:20 }}</p>
+                    {% endif %}
+                    <div class="flex justify-center space-x-4 text-sm">
+                        <div class="text-center">
+                            <div class="font-bold">{{ user_stats.following_count }}</div>
+                            <div class="text-base-content/60">Following</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold">{{ user_stats.followers_count }}</div>
+                            <div class="text-base-content/60">Followers</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Notifications -->
+            <div class="card bg-base-100 shadow-lg">
+                <div class="card-body">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="card-title">Recent Notifications</h3>
+                        <a href="{% url 'social:notifications' %}" class="btn btn-ghost btn-sm">View All</a>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        {% for notification in recent_notifications %}
+                        <div class="flex items-start space-x-3 p-2 rounded hover:bg-base-200 transition-colors">
+                            <div class="avatar">
+                                <div class="w-8 rounded-full">
+                                    <img src="https://ui-avatars.com/api/?name={{ notification.sender.username }}&background=3B82F6&color=fff&size=32" alt="{{ notification.sender.username }}" />
+                                </div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm">
+                                    <span class="font-semibold">{{ notification.sender.username }}</span>
+                                    {{ notification.message }}
+                                </p>
+                                <p class="text-xs text-base-content/60">{{ notification.created_at|timesince }} ago</p>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-bell text-2xl text-base-content/30 mb-2"></i>
+                            <p class="text-sm text-base-content/60">No notifications yet</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Popular Posts -->
+            <div class="card bg-base-100 shadow-lg">
+                <div class="card-body">
+                    <h3 class="card-title mb-4">Your Popular Posts</h3>
+                    
+                    <div class="space-y-3">
+                        {% for post in popular_posts %}
+                        <div class="border-l-4 border-primary pl-3">
+                            <h4 class="font-semibold text-sm">
+                                <a href="{% url 'social:post_detail' post.pk %}" class="hover:text-primary">
+                                    {{ post.title|truncatewords:8 }}
+                                </a>
+                            </h4>
+                            <div class="flex items-center space-x-3 text-xs text-base-content/60 mt-1">
+                                <span><i class="fas fa-heart"></i> {{ post.like_count }}</span>
+                                <span><i class="fas fa-comment"></i> {{ post.comment_count }}</span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-star text-2xl text-base-content/30 mb-2"></i>
+                            <p class="text-sm text-base-content/60">No popular posts yet</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="card bg-base-100 shadow-lg">
+                <div class="card-body">
+                    <h3 class="card-title mb-4">This Week</h3>
+                    
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-sm">Posts Created</span>
+                            <span class="font-bold">{{ weekly_stats.posts }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm">Likes Received</span>
+                            <span class="font-bold">{{ weekly_stats.likes }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm">Comments Received</span>
+                            <span class="font-bold">{{ weekly_stats.comments }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm">New Followers</span>
+                            <span class="font-bold">{{ weekly_stats.followers }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh notifications
+setInterval(function() {
+    fetch('/social/notifications/count/')
+        .then(response => response.json())
+        .then(data => {
+            const badge = document.querySelector('.notification-badge');
+            if (badge && data.count > 0) {
+                badge.textContent = data.count;
+                badge.classList.remove('hidden');
+            }
+        })
+        .catch(error => console.error('Error fetching notifications:', error));
+}, 30000); // Check every 30 seconds
+</script>
+{% endblock extra_js %}

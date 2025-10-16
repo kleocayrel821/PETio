@@ -1,0 +1,361 @@
+{% extends 'social/base_social.html' %}
+{% load static %}
+
+{% block title %}Edit Profile - PETio Social{% endblock %}
+
+{% block extra_head %}
+<style>
+    .edit-profile-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .profile-edit-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    
+    .profile-edit-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .profile-edit-header h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 600;
+    }
+    
+    .profile-edit-header p {
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+    }
+    
+    .form-container {
+        padding: 2rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .form-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: #f9fafb;
+    }
+    
+    .form-input:focus {
+        outline: none;
+        border-color: #667eea;
+        background: white;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .form-textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
+    
+    .form-file {
+        padding: 0.5rem;
+        background: white;
+    }
+    
+    .form-checkbox-container {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: #f3f4f6;
+        border-radius: 12px;
+        border: 2px solid #e5e7eb;
+        transition: all 0.3s ease;
+    }
+    
+    .form-checkbox-container:hover {
+        background: #e5e7eb;
+    }
+    
+    .form-checkbox {
+        width: 20px;
+        height: 20px;
+        accent-color: #667eea;
+    }
+    
+    .checkbox-label {
+        font-weight: 500;
+        color: #374151;
+        margin: 0;
+    }
+    
+    .checkbox-description {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin: 0.25rem 0 0 0;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        padding-top: 2rem;
+        border-top: 1px solid #e5e7eb;
+        margin-top: 2rem;
+    }
+    
+    .btn {
+        padding: 0.75rem 2rem;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-secondary {
+        background: #f3f4f6;
+        color: #374151;
+        border: 2px solid #e5e7eb;
+    }
+    
+    .btn-secondary:hover {
+        background: #e5e7eb;
+        color: #1f2937;
+    }
+    
+    .current-avatar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: #f9fafb;
+        border-radius: 12px;
+        border: 2px solid #e5e7eb;
+    }
+    
+    .current-avatar img {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    
+    .avatar-placeholder {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    
+    .error-message {
+        color: #dc2626;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+    
+    .help-text {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 0.5rem;
+    }
+    
+    @media (max-width: 768px) {
+        .edit-profile-container {
+            padding: 1rem;
+        }
+        
+        .form-container {
+            padding: 1.5rem;
+        }
+        
+        .form-actions {
+            flex-direction: column;
+        }
+        
+        .btn {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-profile-container">
+    <div class="profile-edit-card">
+        <div class="profile-edit-header">
+            <h1>Edit Your Profile</h1>
+            <p>Update your information and customize your profile</p>
+        </div>
+        
+        <div class="form-container">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <!-- Avatar Section -->
+                <div class="form-group">
+                    <label class="form-label">Profile Picture</label>
+                    {% if profile.avatar %}
+                        <div class="current-avatar">
+                            <img src="{{ profile.avatar.url }}" alt="Current avatar">
+                            <div>
+                                <p style="margin: 0; font-weight: 600;">Current Profile Picture</p>
+                                <p style="margin: 0; font-size: 0.875rem; color: #6b7280;">Upload a new image to replace</p>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="current-avatar">
+                            <div class="avatar-placeholder">
+                                {{ user.username|first|upper }}
+                            </div>
+                            <div>
+                                <p style="margin: 0; font-weight: 600;">No Profile Picture</p>
+                                <p style="margin: 0; font-size: 0.875rem; color: #6b7280;">Upload an image to set your profile picture</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                    {{ form.avatar }}
+                    {% if form.avatar.errors %}
+                        <div class="error-message">{{ form.avatar.errors.0 }}</div>
+                    {% endif %}
+                    <div class="help-text">Recommended: Square image, at least 200x200 pixels</div>
+                </div>
+                
+                <!-- Bio Section -->
+                <div class="form-group">
+                    <label for="{{ form.bio.id_for_label }}" class="form-label">Bio</label>
+                    <textarea 
+                        name="{{ form.bio.name }}" 
+                        id="{{ form.bio.id_for_label }}"
+                        class="form-input form-textarea"
+                        placeholder="Tell people about yourself..."
+                        maxlength="500"
+                    >{{ form.bio.value|default_if_none:"" }}</textarea>
+                    {% if form.bio.errors %}
+                        <div class="error-message">{{ form.bio.errors.0 }}</div>
+                    {% endif %}
+                    <div class="help-text">Maximum 500 characters</div>
+                </div>
+                
+                <!-- Location Section -->
+                <div class="form-group">
+                    <label for="{{ form.location.id_for_label }}" class="form-label">Location</label>
+                    <input 
+                        type="text" 
+                        name="{{ form.location.name }}" 
+                        id="{{ form.location.id_for_label }}"
+                        class="form-input"
+                        placeholder="City, Country"
+                        value="{{ form.location.value|default_if_none:"" }}"
+                    >
+                    {% if form.location.errors %}
+                        <div class="error-message">{{ form.location.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Website Section -->
+                <div class="form-group">
+                    <label for="{{ form.website.id_for_label }}" class="form-label">Website</label>
+                    <input 
+                        type="url" 
+                        name="{{ form.website.name }}" 
+                        id="{{ form.website.id_for_label }}"
+                        class="form-input"
+                        placeholder="https://example.com"
+                        value="{{ form.website.value|default_if_none:"" }}"
+                    >
+                    {% if form.website.errors %}
+                        <div class="error-message">{{ form.website.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Birth Date Section -->
+                <div class="form-group">
+                    <label for="{{ form.birth_date.id_for_label }}" class="form-label">Birth Date</label>
+                    <input 
+                        type="date" 
+                        name="{{ form.birth_date.name }}" 
+                        id="{{ form.birth_date.id_for_label }}"
+                        class="form-input"
+                        value="{{ form.birth_date.value|default_if_none:"" }}"
+                    >
+                    {% if form.birth_date.errors %}
+                        <div class="error-message">{{ form.birth_date.errors.0 }}</div>
+                    {% endif %}
+                    <div class="help-text">Optional - used to show your age on your profile</div>
+                </div>
+                
+                <!-- Privacy Section -->
+                <div class="form-group">
+                    <label class="form-label">Privacy Settings</label>
+                    <div class="form-checkbox-container">
+                        <input 
+                            type="checkbox" 
+                            name="{{ form.is_private.name }}" 
+                            id="{{ form.is_private.id_for_label }}"
+                            class="form-checkbox"
+                            {% if form.is_private.value %}checked{% endif %}
+                        >
+                        <div>
+                            <label for="{{ form.is_private.id_for_label }}" class="checkbox-label">Private Profile</label>
+                            <p class="checkbox-description">Only approved followers can see your posts and profile information</p>
+                        </div>
+                    </div>
+                    {% if form.is_private.errors %}
+                        <div class="error-message">{{ form.is_private.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <a href="{% url 'social:profile' user.username %}" class="btn btn-secondary">
+                        Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

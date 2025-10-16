@@ -1,0 +1,335 @@
+{% extends 'social/base_social.html' %}
+{% load avatar %}
+
+{% block social_title %}{{ post.title }} - IOsocial{% endblock %}
+
+{% block social_content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Back Button -->
+    <div class="mb-6">
+        <a href="{% url 'social:feed' %}" class="btn btn-ghost btn-sm">
+            <i class="fas fa-arrow-left"></i> Back to Feed
+        </a>
+    </div>
+
+    <!-- Main Post -->
+    <div class="card bg-base-100 shadow-lg mb-6">
+        <div class="card-body">
+            <div class="flex items-start space-x-3">
+                <div class="avatar">
+                    <div class="w-12 rounded-full">
+                        <a href="{% url 'social:profile' post.author.username %}" class="block">
+                            <img src="{% avatar_url post.author 96 %}" alt="{{ post.author.username }}" />
+                        </a>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center space-x-2 mb-2">
+                        <h4 class="font-semibold">
+                            <a href="{% url 'social:profile' post.author.username %}" class="hover:text-primary">
+                                {{ post.author.get_full_name|default:post.author.username }}
+                            </a>
+                        </h4>
+                        {% if post.category %}
+                            <span class="badge badge-primary badge-sm">{{ post.category.name }}</span>
+                        {% endif %}
+                        {% if post.is_pinned %}
+                            <span class="badge badge-warning badge-sm">
+                                <i class="fas fa-thumbtack mr-1"></i> Pinned
+                            </span>
+                        {% endif %}
+                        <span class="text-sm text-base-content/60">{{ post.created_at|date:"M d, Y \a\t g:i A" }}</span>
+                    </div>
+                    
+                    <h1 class="text-2xl font-bold mb-4">{{ post.title }}</h1>
+                    
+                    <div class="prose max-w-none mb-4">
+                        {{ post.content|linebreaks }}
+                    </div>
+                    
+                    {% if post.image %}
+                    <div class="mb-4">
+                        <img src="{{ post.image.url }}" alt="{{ post.title }}" 
+                             class="rounded-lg w-full max-h-96 object-cover" />
+                    </div>
+                    {% endif %}
+                    
+                    <div class="flex items-center justify-between">
+                        <div class="flex space-x-4">
+                            {% if user.is_authenticated %}
+                            <button class="btn btn-ghost btn-sm like-btn" data-post-id="{{ post.pk }}">
+                                <i class="fas fa-heart {% if user in post.likes.all %}text-red-500{% endif %}"></i> 
+                                <span class="like-count">{{ post.like_count }}</span>
+                            </button>
+                            {% else %}
+                            <span class="btn btn-ghost btn-sm">
+                                <i class="fas fa-heart"></i> {{ post.like_count }}
+                            </span>
+                            {% endif %}
+                            
+                            <span class="btn btn-ghost btn-sm">
+                                <i class="fas fa-comment"></i> {{ post.comment_count }}
+                            </span>
+                            
+                            <button class="btn btn-ghost btn-sm" onclick="sharePost()">
+                                <i class="fas fa-share"></i> Share
+                            </button>
+                        </div>
+                        
+                        {% if user == post.author %}
+                        <div class="dropdown dropdown-end">
+                            <label tabindex="0" class="btn btn-ghost btn-sm">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </label>
+                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                                <li><a href="{% url 'social:edit_post' post.pk %}"><i class="fas fa-edit"></i> Edit</a></li>
+                                <li>
+                                    <form method="POST" action="{% url 'social:delete_post' post.pk %}" 
+                                          onsubmit="return confirm('Are you sure you want to delete this post?')">
+                                        {% csrf_token %}
+                                        <button type="submit" class="text-red-500">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comments Section -->
+    <div class="card bg-base-100 shadow-lg">
+        <div class="card-body">
+            <h2 class="card-title mb-6">
+                Comments ({{ post.comment_count }})
+            </h2>
+
+            <!-- Add Comment Form -->
+            {% if user.is_authenticated %}
+            <form method="POST" class="mb-6">
+                {% csrf_token %}
+                <div class="flex items-start space-x-3">
+                    <div class="avatar">
+                        <div class="w-10 rounded-full">
+                            <a href="{% url 'social:my_profile' %}" class="block">
+                                <img src="{% avatar_url user 64 %}" alt="{{ user.username }}" />
+                            </a>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <textarea name="content" placeholder="Write a comment..." 
+                                  class="textarea textarea-bordered w-full mb-3" 
+                                  rows="3" required></textarea>
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-paper-plane"></i> Post Comment
+                        </button>
+                    </div>
+                </div>
+            </form>
+            {% else %}
+            <div class="alert alert-info mb-6">
+                <i class="fas fa-info-circle"></i>
+                <span>Please <a href="{% url 'login' %}" class="link">login</a> to post a comment.</span>
+            </div>
+            {% endif %}
+
+            <!-- Comments List -->
+            <div class="space-y-4">
+                {% for comment in comments %}
+                <div class="border-l-4 border-base-300 pl-4">
+                    <div class="flex items-start space-x-3">
+                        <div class="avatar">
+                            <div class="w-10 rounded-full">
+                                <a href="{% url 'social:profile' comment.author.username %}" class="block">
+                                    <img src="{% avatar_url comment.author 64 %}" alt="{{ comment.author.username }}" />
+                                </a>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 mb-1">
+                                <h5 class="font-semibold">
+                                    <a href="{% url 'social:profile' comment.author.username %}" class="hover:text-primary">
+                                        {{ comment.author.get_full_name|default:comment.author.username }}
+                                    </a>
+                                </h5>
+                                <span class="text-sm text-base-content/60">{{ comment.created_at|timesince }} ago</span>
+                            </div>
+                            <p class="text-sm">{{ comment.content|linebreaks }}</p>
+                            
+                            <div class="flex items-center space-x-3 mt-2">
+                                {% if user.is_authenticated %}
+                                <button class="btn btn-ghost btn-xs">
+                                    <i class="fas fa-thumbs-up"></i> Like
+                                </button>
+                                <button class="btn btn-ghost btn-xs">
+                                    <i class="fas fa-reply"></i> Reply
+                                </button>
+                                {% endif %}
+                                
+                                {% if user == comment.author %}
+                                <div class="dropdown dropdown-end">
+                                    <label tabindex="0" class="btn btn-ghost btn-xs">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </label>
+                                    <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40">
+                                        <li><a href="#" class="text-sm"><i class="fas fa-edit"></i> Edit</a></li>
+                                        <li><a href="#" class="text-sm text-red-500"><i class="fas fa-trash"></i> Delete</a></li>
+                                    </ul>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-8">
+                    <i class="fas fa-comments text-4xl text-base-content/30 mb-4"></i>
+                    <h3 class="text-lg font-semibold mb-2">No comments yet</h3>
+                    <p class="text-base-content/60">Be the first to share your thoughts!</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Load More Comments -->
+            {% if comments.has_next %}
+            <div class="text-center mt-6">
+                <a href="?page={{ comments.next_page_number }}" class="btn btn-outline">
+                    Load More Comments
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Related Posts -->
+    {% if related_posts %}
+    <div class="card bg-base-100 shadow-lg mt-6">
+        <div class="card-body">
+            <h2 class="card-title mb-4">Related Posts</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for related_post in related_posts %}
+                <div class="border border-base-300 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <h3 class="font-semibold mb-2">
+                        <a href="{% url 'social:post_detail' related_post.pk %}" class="hover:text-primary">
+                            {{ related_post.title|truncatewords:10 }}
+                        </a>
+                    </h3>
+                    <p class="text-sm text-base-content/60 mb-2">{{ related_post.content|truncatewords:15 }}</p>
+                    <div class="flex items-center space-x-3 text-xs text-base-content/60">
+                        <span><i class="fas fa-heart"></i> {{ related_post.like_count }}</span>
+                        <span><i class="fas fa-comment"></i> {{ related_post.comment_count }}</span>
+                        <span><i class="fas fa-clock"></i> {{ related_post.created_at|timesince }} ago</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Like functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const likeButton = document.querySelector('.like-btn');
+    
+    if (likeButton) {
+        likeButton.addEventListener('click', function() {
+            const postId = this.dataset.postId;
+            const likeCount = this.querySelector('.like-count');
+            const heartIcon = this.querySelector('i');
+            
+            fetch(`/social/post/${postId}/like/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                likeCount.textContent = data.like_count;
+                if (data.liked) {
+                    heartIcon.classList.add('text-red-500');
+                } else {
+                    heartIcon.classList.remove('text-red-500');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    }
+});
+
+// Share functionality
+function sharePost() {
+    if (navigator.share) {
+        navigator.share({
+            title: '{{ post.title }}',
+            text: '{{ post.content|truncatewords:20 }}',
+            url: window.location.href
+        });
+    } else {
+        // Fallback: copy to clipboard
+        navigator.clipboard.writeText(window.location.href).then(function() {
+            // Show success message
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success fixed top-4 right-4 w-auto z-50';
+            alert.innerHTML = '<i class="fas fa-check"></i> Link copied to clipboard!';
+            document.body.appendChild(alert);
+            
+            setTimeout(() => alert.remove(), 3000);
+        });
+    }
+}
+
+// Auto-expand textarea
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.querySelector('textarea[name="content"]');
+    if (textarea) {
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+    }
+});
+
+// Comment form validation
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const textarea = document.querySelector('textarea[name="content"]');
+    
+    if (form && textarea) {
+        form.addEventListener('submit', function(e) {
+            const content = textarea.value.trim();
+            if (content.length < 3) {
+                e.preventDefault();
+                textarea.classList.add('textarea-error');
+                
+                // Show error message
+                let errorMsg = textarea.parentElement.querySelector('.error-message');
+                if (!errorMsg) {
+                    errorMsg = document.createElement('div');
+                    errorMsg.className = 'error-message text-error text-sm mt-1';
+                    textarea.parentElement.appendChild(errorMsg);
+                }
+                errorMsg.textContent = 'Comment must be at least 3 characters long.';
+            }
+        });
+        
+        textarea.addEventListener('input', function() {
+            this.classList.remove('textarea-error');
+            const errorMsg = this.parentElement.querySelector('.error-message');
+            if (errorMsg) {
+                errorMsg.remove();
+            }
+        });
+    }
+});
+</script>
+{% endblock extra_js %}
