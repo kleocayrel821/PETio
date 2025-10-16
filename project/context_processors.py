@@ -5,6 +5,11 @@ Provides:
 - resolve_logout_url_name: picks the appropriate logout URL name based on configured routes.
 """
 from django.urls import reverse, NoReverseMatch
+from django.contrib.auth.models import AnonymousUser
+try:
+    from social.models import Notification
+except Exception:
+    Notification = None
 
 
 def resolve_logout_url_name(request):
@@ -27,3 +32,18 @@ def resolve_logout_url_name(request):
     except NoReverseMatch:
         # No known logout route; omit the link
         return {"logout_url_name": None}
+
+
+def unread_notifications_count(request):
+    """Provide unread notifications count for the navbar badge.
+
+    Returns 0 if user is anonymous or notifications app/model is unavailable.
+    """
+    user = getattr(request, 'user', None)
+    if Notification is None or not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
+        return {"unread_notifications_count": 0}
+    try:
+        count = Notification.objects.filter(recipient=user, is_read=False).count()
+    except Exception:
+        count = 0
+    return {"unread_notifications_count": count}
