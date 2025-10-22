@@ -36,3 +36,6 @@ CACHES['default']['LOCATION'] = 'petio-dev-cache'
 # Run Celery tasks eagerly in dev to simplify local testing
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
+
+# Device API key used by controller/device_api.py to authenticate firmware requests
+PETIO_DEVICE_API_KEY = os.getenv('PETIO_DEVICE_API_KEY', 'CHANGE_ME')

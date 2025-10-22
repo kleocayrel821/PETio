@@ -327,9 +327,12 @@ async function feedNow() {
         });
         
         const data = await response.json();
-        
-        if (response.ok) {
-            showToast(`Fed ${portionSize}g successfully!`, 'success');
+        // Treat 409 Conflict (already pending) as soft success
+        if (response.ok || response.status === 409) {
+            const msg = (response.status === 409)
+              ? `Feed command already queued${data && data.command_id ? ` (#${data.command_id})` : ''}.`
+              : `Fed ${portionSize}g successfully!`;
+            showToast(msg, 'success');
             loadRecentActivity();
             loadStats();
             updateLastFedTime();

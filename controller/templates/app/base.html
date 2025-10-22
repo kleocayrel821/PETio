@@ -1294,6 +1294,19 @@
   const drawerToggle = document.getElementById('system-drawer-toggle');
   const drawerOverlay = document.querySelector('.drawer-overlay');
   const sidebar = document.querySelector('.drawer-side aside');
+
+  // Ensure the overlay never blocks clicks when drawer is closed
+  function syncOverlayPointerEvents() {
+    if (!drawerOverlay) return;
+    const isOpen = !!(drawerToggle && drawerToggle.checked);
+    drawerOverlay.style.pointerEvents = isOpen ? 'auto' : 'none';
+  }
+  // Initial state
+  syncOverlayPointerEvents();
+  // React to drawer toggle changes
+  if (drawerToggle) {
+    drawerToggle.addEventListener('change', syncOverlayPointerEvents);
+  }
   
   // ESC key to close drawer
   document.addEventListener('keydown', function(e) {
@@ -1304,6 +1317,8 @@
       if (toggleButton) {
         toggleButton.focus();
       }
+      // Update overlay pointer-events after closing
+      syncOverlayPointerEvents();
     }
   });
   
