@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
+from . import device_api
 
 # Set up DRF routers
 router = DefaultRouter()
@@ -30,6 +31,13 @@ urlpatterns = [
     path("api/remote-command/", views.remote_command, name="remote_command"),
     path("api/stop-feeding/", views.stop_feeding, name="stop_feeding"),
     path("api/calibrate/", views.calibrate, name="calibrate"),
+
+    # New REST-style device endpoints for firmware
+    path("api/device/config/", device_api.device_config, name="device_config"),
+    path("api/device/feed-command/", device_api.device_feed_command, name="device_feed_command"),
+    path("api/device/logs/", device_api.device_logs, name="device_logs"),
+    path("api/device/status/", device_api.device_status_heartbeat, name="device_status_heartbeat"),
+    path("api/device/acknowledge/", device_api.device_acknowledge, name="device_acknowledge"),
 
     # DRF API endpoints
     path('', include(router.urls)),          # legacy: /logs/, /schedules/, ...

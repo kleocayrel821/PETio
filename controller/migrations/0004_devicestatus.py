@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('app', '0003_feedingschedule_days_of_week_feedingschedule_label_and_more'),
+        ('controller', '0003_feedingschedule_days_of_week_feedingschedule_label_and_more'),
     ]
 
     operations = [

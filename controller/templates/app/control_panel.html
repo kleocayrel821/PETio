@@ -823,6 +823,10 @@
             .then(async (response) => {
                 let data = null;
                 try { data = await response.json(); } catch (_) {}
+                // Treat 409 Conflict (already pending) as a soft success
+                if (response.status === 409) {
+                    return Object.assign({ status: 'already_pending' }, data || {});
+                }
                 if (!response.ok) {
                     const msg = (data && (data.message || data.error || data.detail)) || `Request failed (${response.status})`;
                     throw new Error(msg);
@@ -830,9 +834,12 @@
                 return data;
             })
             .then(data => {
-                if (data && data.status === 'ok') {
+                if (data && (data.status === 'ok' || data.status === 'already_pending')) {
                     feedNowBtn.innerHTML = '<div><i class="fas fa-check"></i><div>Success!</div></div>';
-                    showToast(`Successfully queued ${data.portion_size}g feed command.`, 'success');
+                    const msg = (data.status === 'already_pending')
+                      ? `Feed command already queued (command #${data.command_id || ''}).`
+                      : `Successfully queued ${data.portion_size}g feed command.`;
+                    showToast(msg, 'success');
                     setTimeout(() => {
                         feedNowBtn.disabled = false;
                         feedNowBtn.innerHTML = '<div><i class="fas fa-utensils"></i><div>Feed Now</div></div>';
