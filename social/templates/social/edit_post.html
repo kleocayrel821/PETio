@@ -1,0 +1,257 @@
+{% extends 'social/base_social.html' %}
+
+{% block social_title %}Edit Post - IOsocial{% endblock %}
+
+{% block social_content %}
+<div class="max-w-4xl mx-auto">
+    <div class="card bg-base-100 shadow-lg">
+        <div class="card-body">
+            <div class="flex items-center space-x-3 mb-6">
+                <a href="{% url 'social:post_detail' post.pk %}" class="btn btn-ghost btn-sm">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="text-2xl font-bold">Edit Post</h1>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data" class="space-y-6">
+                {% csrf_token %}
+                
+                <!-- Author Info -->
+                <div class="flex items-center space-x-3 p-4 bg-base-200 rounded-lg">
+                    <div class="avatar">
+                        <div class="w-12 rounded-full">
+                            <img src="https://ui-avatars.com/api/?name={{ user.get_full_name|default:user.username }}&background=3B82F6&color=fff" alt="Your Avatar" />
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold">{{ user.get_full_name|default:user.username }}</h3>
+                        <p class="text-sm text-base-content/60">Editing post</p>
+                    </div>
+                </div>
+
+                <!-- Title -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Post Title *</span>
+                    </label>
+                    <input type="text" name="title" placeholder="What's your post about?" 
+                           class="input input-bordered w-full {% if form.title.errors %}input-error{% endif %}" 
+                           value="{{ post.title }}" required>
+                    {% if form.title.errors %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ form.title.errors.0 }}</span>
+                        </label>
+                    {% endif %}
+                </div>
+
+                <!-- Content -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Content *</span>
+                    </label>
+                    <textarea name="content" placeholder="Share your thoughts with the community..." 
+                              class="textarea textarea-bordered h-32 {% if form.content.errors %}textarea-error{% endif %}" 
+                              required>{{ post.content }}</textarea>
+                    {% if form.content.errors %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ form.content.errors.0 }}</span>
+                        </label>
+                    {% endif %}
+                    <label class="label">
+                        <span class="label-text-alt">Minimum 10 characters</span>
+                    </label>
+                </div>
+
+                <!-- Category -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Category</span>
+                    </label>
+                    <select name="category" class="select select-bordered {% if form.category.errors %}select-error{% endif %}">
+                        <option value="">Select a category (optional)</option>
+                        {% for category in categories %}
+                            <option value="{{ category.pk }}" 
+                                    {% if post.category.pk == category.pk %}selected{% endif %}>
+                                {{ category.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if form.category.errors %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ form.category.errors.0 }}</span>
+                        </label>
+                    {% endif %}
+                </div>
+
+                <!-- Current Image Display -->
+                {% if post.image %}
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Current Image</span>
+                    </label>
+                    <div class="card bg-base-200">
+                        <div class="card-body">
+                            <img src="{{ post.image.url }}" alt="Current post image" class="max-w-full h-48 object-cover rounded-lg">
+                            <div class="form-control mt-4">
+                                <label class="label cursor-pointer">
+                                    <span class="label-text">Remove current image</span>
+                                    <input type="checkbox" name="image-clear" class="checkbox checkbox-error">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Image Upload -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">{% if post.image %}Replace Image{% else %}Add Image{% endif %} (Optional)</span>
+                    </label>
+                    <div class="border-2 border-dashed border-base-300 rounded-lg p-6 text-center hover:border-primary transition-colors">
+                        <input type="file" name="image" accept="image/*" class="file-input file-input-bordered w-full max-w-xs" 
+                               onchange="previewImage(this)">
+                        <div class="mt-2">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-base-content/30"></i>
+                            <p class="text-sm text-base-content/60 mt-2">Click to upload or drag and drop</p>
+                            <p class="text-xs text-base-content/40">PNG, JPG, GIF up to 10MB</p>
+                        </div>
+                    </div>
+                    {% if form.image.errors %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ form.image.errors.0 }}</span>
+                        </label>
+                    {% endif %}
+                    
+                    <!-- Image Preview -->
+                    <div id="imagePreview" class="mt-4 hidden">
+                        <img id="previewImg" class="max-w-full h-48 object-cover rounded-lg" />
+                        <button type="button" onclick="removeImage()" class="btn btn-sm btn-error mt-2">
+                            <i class="fas fa-trash"></i> Remove Image
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-4 pt-6">
+                    <button type="submit" class="btn btn-primary flex-1">
+                        <i class="fas fa-save"></i>
+                        Update Post
+                    </button>
+                    
+                    <a href="{% url 'social:post_detail' post.pk %}" class="btn btn-ghost">
+                        <i class="fas fa-times"></i>
+                        Cancel
+                    </a>
+                </div>
+
+                <!-- Preview Mode -->
+                <div class="divider">Preview</div>
+                <div class="card bg-base-200">
+                    <div class="card-body">
+                        <h3 class="card-title text-lg mb-4">Post Preview</h3>
+                        <div id="postPreview" class="card bg-base-100 shadow">
+                            <div class="card-body">
+                                <div class="flex items-start space-x-3">
+                                    <div class="avatar">
+                                        <div class="w-12 rounded-full">
+                                            <img src="https://ui-avatars.com/api/?name={{ user.get_full_name|default:user.username }}&background=3B82F6&color=fff" alt="Your Avatar" />
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center space-x-2 mb-2">
+                                            <h4 class="font-semibold">{{ user.get_full_name|default:user.username }}</h4>
+                                            <span id="previewCategory" class="badge badge-primary badge-sm {% if not post.category %}hidden{% endif %}">
+                                                {% if post.category %}{{ post.category.name }}{% endif %}
+                                            </span>
+                                            <span class="text-sm text-base-content/60">{{ post.created_at|timesince }} ago</span>
+                                        </div>
+                                        <h3 id="previewTitle" class="text-lg font-bold mb-2">{{ post.title }}</h3>
+                                        <p id="previewContent">{{ post.content }}</p>
+                                        {% if post.image %}
+                                        <div id="previewImageContainer" class="mt-4">
+                                            <img id="previewPostImage" src="{{ post.image.url }}" class="rounded-lg w-full max-h-96 object-cover" />
+                                        </div>
+                                        {% endif %}
+                                        <div class="flex items-center space-x-4 mt-4">
+                                            <span class="btn btn-ghost btn-sm">
+                                                <i class="fas fa-heart"></i> {{ post.like_count }}
+                                            </span>
+                                            <span class="btn btn-ghost btn-sm">
+                                                <i class="fas fa-comment"></i> {{ post.comment_count }}
+                                            </span>
+                                            <span class="btn btn-ghost btn-sm">
+                                                <i class="fas fa-share"></i> Share
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function previewImage(input) {
+    const preview = document.getElementById('imagePreview');
+    const previewImg = document.getElementById('previewImg');
+    const previewPostImage = document.getElementById('previewPostImage');
+    const previewImageContainer = document.getElementById('previewImageContainer');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            previewPostImage.src = e.target.result;
+            preview.classList.remove('hidden');
+            previewImageContainer.classList.remove('hidden');
+        }
+        
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function removeImage() {
+    const preview = document.getElementById('imagePreview');
+    const previewImageContainer = document.getElementById('previewImageContainer');
+    const fileInput = document.querySelector('input[name="image"]');
+    
+    preview.classList.add('hidden');
+    previewImageContainer.classList.add('hidden');
+    fileInput.value = '';
+}
+
+// Live preview updates
+document.addEventListener('DOMContentLoaded', function() {
+    const titleInput = document.querySelector('input[name="title"]');
+    const contentInput = document.querySelector('textarea[name="content"]');
+    const categorySelect = document.querySelector('select[name="category"]');
+    const previewTitle = document.getElementById('previewTitle');
+    const previewContent = document.getElementById('previewContent');
+    const previewCategory = document.getElementById('previewCategory');
+
+    titleInput.addEventListener('input', function() {
+        previewTitle.textContent = this.value || '{{ post.title }}';
+    });
+
+    contentInput.addEventListener('input', function() {
+        previewContent.textContent = this.value || '{{ post.content }}';
+    });
+
+    categorySelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (this.value) {
+            previewCategory.textContent = selectedOption.text;
+            previewCategory.classList.remove('hidden');
+        } else {
+            previewCategory.classList.add('hidden');
+        }
+    });
+});
+</script>
+{% endblock social_content %}

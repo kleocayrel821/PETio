@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IOsocial - Community Feed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-base-200">
+    <!-- Main Container -->
+    <div class="flex min-h-screen">
+        <!-- Sidebar Navigation -->
+        <div class="w-64 bg-base-100 shadow-lg hidden lg:block">
+            <div class="p-4">
+                <h1 class="text-2xl font-bold text-primary">PETio</h1>
+            </div>
+            <ul class="menu p-4 space-y-2">
+                <li><a href="#" class="flex items-center space-x-3"><i class="fas fa-utensils"></i><span>IOFeeder</span></a></li>
+                <li><a href="#" class="flex items-center space-x-3 bg-primary text-primary-content"><i class="fas fa-users"></i><span>IOsocial</span></a></li>
+                <li><a href="#" class="flex items-center space-x-3"><i class="fas fa-store"></i><span>IOMarketplace</span></a></li>
+            </ul>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col">
+            <!-- Top Navbar -->
+            <div class="navbar bg-base-100 shadow-sm border-b">
+                <div class="navbar-start">
+                    <!-- Mobile menu button -->
+                    <div class="dropdown lg:hidden">
+                        <label tabindex="0" class="btn btn-ghost btn-circle">
+                            <i class="fas fa-bars"></i>
+                        </label>
+                        <!-- Mobile menu dropdown - opens on click -->
+                        <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                            <li><a><i class="fas fa-utensils"></i>IOFeeder</a></li>
+                            <li><a class="active"><i class="fas fa-users"></i>IOsocial</a></li>
+                            <li><a><i class="fas fa-store"></i>IOMarketplace</a></li>
+                        </ul>
+                    </div>
+                    <span class="text-xl font-semibold lg:hidden">IOsocial</span>
+                </div>
+                <div class="navbar-center hidden lg:flex">
+                    <ul class="menu menu-horizontal px-1 space-x-2">
+                        <li><a class="btn btn-ghost btn-active">Home</a></li>
+                        <li><a class="btn btn-ghost">Feed</a></li>
+                        <li><a class="btn btn-ghost">Create Post</a></li>
+                        <li><a class="btn btn-ghost">Dashboard</a></li>
+                    </ul>
+                </div>
+                <div class="navbar-end">
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost btn-circle avatar">
+                            <div class="w-10 rounded-full">
+                                <img src="https://via.placeholder.com/40x40/4F46E5/FFFFFF?text=U" alt="User Avatar" />
+                            </div>
+                        </label>
+                        <!-- User dropdown menu - opens on click -->
+                        <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                            <li><a>Profile</a></li>
+                            <li><a>Settings</a></li>
+                            <li><a>Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 p-4 lg:p-6">
+                <div class="max-w-7xl mx-auto">
+                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        <!-- Main Feed Column -->
+                        <div class="lg:col-span-3 space-y-6">
+                            <!-- Pinned Announcements -->
+                            <div class="card bg-warning text-warning-content shadow-lg">
+                                <div class="card-body">
+                                    <div class="flex items-center space-x-2">
+                                        <i class="fas fa-thumbtack"></i>
+                                        <h3 class="card-title">Pinned Announcement</h3>
+                                    </div>
+                                    <p>Welcome to IOsocial! Share your pet stories, connect with other pet owners, and discover amazing pet care tips from our community.</p>
+                                    <!-- Click to expand/collapse announcement -->
+                                </div>
+                            </div>
+
+                            <!-- Activity Feed -->
+                            <div class="card bg-base-100 shadow-lg">
+                                <div class="card-body">
+                                    <h3 class="card-title mb-4">Recent Activity</h3>
+                                    <div class="space-y-3">
+                                        <div class="flex items-center space-x-3 p-3 bg-base-200 rounded-lg">
+                                            <div class="avatar">
+                                                <div class="w-8 rounded-full">
+                                                    <img src="https://via.placeholder.com/32x32/10B981/FFFFFF?text=A" alt="User" />
+                                                </div>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-sm"><span class="font-semibold">Alice</span> liked your post about "Golden Retriever Training Tips"</p>
+                                                <p class="text-xs text-base-content/60">2 minutes ago</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center space-x-3 p-3 bg-base-200 rounded-lg">
+                                            <div class="avatar">
+                                                <div class="w-8 rounded-full">
+                                                    <img src="https://via.placeholder.com/32x32/F59E0B/FFFFFF?text=B" alt="User" />
+                                                </div>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-sm"><span class="font-semibold">Bob</span> commented on "Best Cat Food Brands"</p>
+                                                <p class="text-xs text-base-content/60">15 minutes ago</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Post Cards -->
+                            <div class="space-y-6">
+                                <!-- Post Card 1 -->
+                                <div class="card bg-base-100 shadow-lg">
+                                    <div class="card-body">
+                                        <div class="flex items-start space-x-3">
+                                            <div class="avatar">
+                                                <div class="w-12 rounded-full">
+                                                    <img src="https://via.placeholder.com/48x48/EF4444/FFFFFF?text=J" alt="User" />
+                                                </div>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="flex items-center space-x-2 mb-2">
+                                                    <h4 class="font-semibold">John Doe</h4>
+                                                    <span class="badge badge-primary badge-sm">Dog Owner</span>
+                                                    <span class="text-sm text-base-content/60">2 hours ago</span>
+                                                </div>
+                                                <h3 class="text-lg font-bold mb-2">My Golden Retriever's First Swimming Lesson!</h3>
+                                                <p class="mb-4">Today was such an amazing day! Max finally overcame his fear of water and had his first swimming lesson. The progress he made was incredible...</p>
+                                                <!-- Image preview - click to open modal -->
+                                                <div class="mb-4">
+                                                    <img src="https://via.placeholder.com/600x300/3B82F6/FFFFFF?text=Swimming+Dog" alt="Dog Swimming" class="rounded-lg w-full cursor-pointer hover:opacity-90 transition-opacity" />
+                                                </div>
+                                                <div class="flex items-center justify-between">
+                                                    <div class="flex space-x-4">
+                                                        <button class="btn btn-ghost btn-sm">
+                                                            <i class="fas fa-heart"></i> 24
+                                                        </button>
+                                                        <button class="btn btn-ghost btn-sm">
+                                                            <i class="fas fa-comment"></i> 8
+                                                        </button>
+                                                        <button class="btn btn-ghost btn-sm">
+                                                            <i class="fas fa-share"></i> Share
+                                                        </button>
+                                                    </div>
+                                                    <div class="dropdown dropdown-end">
+                                                        <label tabindex="0" class="btn btn-ghost btn-sm">
+                                                            <i class="fas fa-ellipsis-h"></i>
+                                                        </label>
+                                                        <!-- Post options dropdown -->
+                                                        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52">
+                                                            <li><a>Save Post</a></li>
+                                                            <li><a>Report</a></li>
+                                                            <li><a>Hide</a></li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Post Card 2 -->
+                                <div class="card bg-base-100 shadow-lg">
+                                    <div class="card-body">
+                                        <div class="flex items-start space-x-3">
+                                            <div class="avatar">
+                                                <div class="w-12 rounded-full">
+                                                    <img src="https://via.placeholder.com/48x48/8B5CF6/FFFFFF?text=S" alt="User" />
+                                                </div>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="flex items-center space-x-2 mb-2">
+                                                    <h4 class="font-semibold">Sarah Wilson</h4>
+                                                    <span class="badge badge-secondary badge-sm">Cat Owner</span>
+                                                    <span class="text-sm text-base-content/60">4 hours ago</span>
+                                                </div>
+                                                <h3 class="text-lg font-bold mb-2">Question: Best Indoor Plants Safe for Cats?</h3>
+                                                <p class="mb-4">I'm looking to add some greenery to my apartment but want to make sure they're safe for my curious cat, Whiskers. Any recommendations?</p>
+                                                <div class="flex items-center justify-between">
+                                                    <div class="flex space-x-4">
+                                                        <button class="btn btn-ghost btn-sm">
+                                                            <i class="fas fa-heart"></i> 12
+                                                        </button>
+                                                        <button class="btn btn-ghost btn-sm">
+                                                            <i class="fas fa-comment"></i> 15
+                                                        </button>
+                                                        <button class="btn btn-ghost btn-sm">
+                                                            <i class="fas fa-share"></i> Share
+                                                        </button>
+                                                    </div>
+                                                    <div class="dropdown dropdown-end">
+                                                        <label tabindex="0" class="btn btn-ghost btn-sm">
+                                                            <i class="fas fa-ellipsis-h"></i>
+                                                        </label>
+                                                        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52">
+                                                            <li><a>Save Post</a></li>
+                                                            <li><a>Report</a></li>
+                                                            <li><a>Hide</a></li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Load More Button -->
+                            <div class="text-center">
+                                <button class="btn btn-outline btn-wide">Load More Posts</button>
+                            </div>
+                        </div>
+
+                        <!-- Right Sidebar Widgets -->
+                        <div class="space-y-6">
+                            <!-- Quick Actions Widget -->
+                            <div class="card bg-base-100 shadow-lg">
+                                <div class="card-body">
+                                    <h3 class="card-title mb-4">Quick Actions</h3>
+                                    <div class="space-y-2">
+                                        <button class="btn btn-primary btn-block btn-sm">
+                                            <i class="fas fa-plus"></i> Create Post
+                                        </button>
+                                        <button class="btn btn-outline btn-block btn-sm">
+                                            <i class="fas fa-camera"></i> Share Photo
+                                        </button>
+                                        <button class="btn btn-outline btn-block btn-sm">
+                                            <i class="fas fa-question"></i> Ask Question
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Popular Topics Widget -->
+                            <div class="card bg-base-100 shadow-lg">
+                                <div class="card-body">
+                                    <h3 class="card-title mb-4">Trending Topics</h3>
+                                    <div class="space-y-2">
+                                        <div class="badge badge-outline badge-lg">#DogTraining</div>
+                                        <div class="badge badge-outline badge-lg">#CatCare</div>
+                                        <div class="badge badge-outline badge-lg">#PetHealth</div>
+                                        <div class="badge badge-outline badge-lg">#Adoption</div>
+                                        <div class="badge badge-outline badge-lg">#PetPhotography</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Community Stats Widget -->
+                            <div class="card bg-base-100 shadow-lg">
+                                <div class="card-body">
+                                    <h3 class="card-title mb-4">Community Stats</h3>
+                                    <div class="stats stats-vertical shadow">
+                                        <div class="stat">
+                                            <div class="stat-title">Active Members</div>
+                                            <div class="stat-value text-primary">1,247</div>
+                                        </div>
+                                        <div class="stat">
+                                            <div class="stat-title">Posts Today</div>
+                                            <div class="stat-value text-secondary">89</div>
+                                        </div>
+                                        <div class="stat">
+                                            <div class="stat-title">New Members</div>
+                                            <div class="stat-value text-accent">23</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Suggested Friends Widget -->
+                            <div class="card bg-base-100 shadow-lg">
+                                <div class="card-body">
+                                    <h3 class="card-title mb-4">Suggested Connections</h3>
+                                    <div class="space-y-3">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="avatar">
+                                                <div class="w-10 rounded-full">
+                                                    <img src="https://via.placeholder.com/40x40/F97316/FFFFFF?text=M" alt="User" />
+                                                </div>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="font-semibold text-sm">Mike Chen</p>
+                                                <p class="text-xs text-base-content/60">Dog Trainer</p>
+                                            </div>
+                                            <button class="btn btn-primary btn-xs">Follow</button>
+                                        </div>
+                                        <div class="flex items-center space-x-3">
+                                            <div class="avatar">
+                                                <div class="w-10 rounded-full">
+                                                    <img src="https://via.placeholder.com/40x40/EC4899/FFFFFF?text=L" alt="User" />
+                                                </div>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="font-semibold text-sm">Lisa Park</p>
+                                                <p class="text-xs text-base-content/60">Veterinarian</p>
+                                            </div>
+                                            <button class="btn btn-primary btn-xs">Follow</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Bottom Navigation (visible on mobile only) -->
+    <div class="btm-nav lg:hidden">
+        <button class="active">
+            <i class="fas fa-home"></i>
+            <span class="btm-nav-label">Home</span>
+        </button>
+        <button>
+            <i class="fas fa-rss"></i>
+            <span class="btm-nav-label">Feed</span>
+        </button>
+        <button>
+            <i class="fas fa-plus"></i>
+            <span class="btm-nav-label">Create</span>
+        </button>
+        <button>
+            <i class="fas fa-user"></i>
+            <span class="btm-nav-label">Profile</span>
+        </button>
+    </div>
+</body>
+</html>
+
+<!-- 
+UX Rationale: The community feed layout prioritizes content discovery and engagement through a three-column design that balances information density with readability. The left sidebar provides clear app navigation, while the main feed uses card-based layouts that make posts easily scannable. The right sidebar widgets offer quick actions and community insights without overwhelming the main content. The responsive design collapses to a mobile-first approach with bottom navigation, ensuring accessibility across devices while maintaining the social media feel that encourages user interaction and community building.
+-->

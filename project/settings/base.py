@@ -43,11 +43,16 @@ TEMPLATES = [
         'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
+            # Explicitly register custom template tag libraries so {% load avatar %} works reliably
+            'libraries': {
+                'avatar': 'accounts.templatetags.avatar',
+            },
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'project.context_processors.resolve_logout_url_name',
+                'project.context_processors.unread_notifications_count',
             ],
         },
     },

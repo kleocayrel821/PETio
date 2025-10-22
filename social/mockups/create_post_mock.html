@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IOsocial - Create Post</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-base-200">
+    <!-- Main Container -->
+    <div class="flex min-h-screen">
+        <!-- Sidebar Navigation -->
+        <div class="w-64 bg-base-100 shadow-lg hidden lg:block">
+            <div class="p-4">
+                <h1 class="text-2xl font-bold text-primary">PETio</h1>
+            </div>
+            <ul class="menu p-4 space-y-2">
+                <li><a href="#" class="flex items-center space-x-3"><i class="fas fa-utensils"></i><span>IOFeeder</span></a></li>
+                <li><a href="#" class="flex items-center space-x-3 bg-primary text-primary-content"><i class="fas fa-users"></i><span>IOsocial</span></a></li>
+                <li><a href="#" class="flex items-center space-x-3"><i class="fas fa-store"></i><span>IOMarketplace</span></a></li>
+            </ul>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col">
+            <!-- Top Navbar -->
+            <div class="navbar bg-base-100 shadow-sm border-b">
+                <div class="navbar-start">
+                    <!-- Mobile menu button -->
+                    <div class="dropdown lg:hidden">
+                        <label tabindex="0" class="btn btn-ghost btn-circle">
+                            <i class="fas fa-bars"></i>
+                        </label>
+                        <!-- Mobile menu dropdown - opens on click -->
+                        <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                            <li><a><i class="fas fa-utensils"></i>IOFeeder</a></li>
+                            <li><a class="active"><i class="fas fa-users"></i>IOsocial</a></li>
+                            <li><a><i class="fas fa-store"></i>IOMarketplace</a></li>
+                        </ul>
+                    </div>
+                    <span class="text-xl font-semibold lg:hidden">IOsocial</span>
+                </div>
+                <div class="navbar-center hidden lg:flex">
+                    <ul class="menu menu-horizontal px-1 space-x-2">
+                        <li><a class="btn btn-ghost">Home</a></li>
+                        <li><a class="btn btn-ghost">Feed</a></li>
+                        <li><a class="btn btn-ghost btn-active">Create Post</a></li>
+                        <li><a class="btn btn-ghost">Dashboard</a></li>
+                    </ul>
+                </div>
+                <div class="navbar-end">
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost btn-circle avatar">
+                            <div class="w-10 rounded-full">
+                                <img src="https://via.placeholder.com/40x40/4F46E5/FFFFFF?text=U" alt="User Avatar" />
+                            </div>
+                        </label>
+                        <!-- User dropdown menu - opens on click -->
+                        <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                            <li><a>Profile</a></li>
+                            <li><a>Settings</a></li>
+                            <li><a>Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 p-4 lg:p-6">
+                <div class="max-w-4xl mx-auto">
+                    <!-- Page Header -->
+                    <div class="mb-8">
+                        <h1 class="text-3xl font-bold mb-2">Create New Post</h1>
+                        <p class="text-base-content/70">Share your pet's story, ask questions, or connect with the community</p>
+                    </div>
+
+                    <!-- Create Post Form -->
+                    <div class="card bg-base-100 shadow-lg">
+                        <div class="card-body">
+                            <form class="space-y-6">
+                                <!-- Post Type Selection -->
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text font-semibold">Post Type</span>
+                                    </label>
+                                    <div class="flex flex-wrap gap-3">
+                                        <input type="radio" name="post_type" class="btn" aria-label="Story" value="story" checked />
+                                        <input type="radio" name="post_type" class="btn" aria-label="Question" value="question" />
+                                        <input type="radio" name="post_type" class="btn" aria-label="Photo Share" value="photo" />
+                                        <input type="radio" name="post_type" class="btn" aria-label="Tip/Advice" value="tip" />
+                                    </div>
+                                </div>
+
+                                <!-- Pet Selection -->
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text font-semibold">Select Pet (Optional)</span>
+                                        <span class="label-text-alt">
+                                            <button type="button" class="link link-primary text-sm">+ Add New Pet</button>
+                                        </span>
+                                    </label>
+                                    <!-- Pet selector dropdown opens on click -->
+                                    <select class="select select-bordered w-full">
+                                        <option disabled selected>Choose a pet to feature in this post</option>
+                                        <option value="max">🐕 Max (Golden Retriever)</option>
+                                        <option value="whiskers">🐱 Whiskers (Maine Coon)</option>
+                                        <option value="buddy">🐕 Buddy (Labrador)</option>
+                                        <option value="none">No specific pet</option>
+                                    </select>
+                                </div>
+
+                                <!-- Post Title -->
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text font-semibold">Post Title</span>
+                                        <span class="label-text-alt text-error">Required</span>
+                                    </label>
+                                    <input type="text" placeholder="Give your post a catchy title..." class="input input-bordered w-full" maxlength="100" />
+                                    <label class="label">
+                                        <span class="label-text-alt">0/100 characters</span>
+                                    </label>
+                                </div>
+
+                                <!-- Category Selection -->
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text font-semibold">Category</span>
+                                        <span class="label-text-alt text-error">Required</span>
+                                    </label>
+                                    <!-- Category dropdown opens on click -->
+                                    <select class="select select-bordered w-full">
+                                        <option disabled selected>Select a category</option>
+                                        <option value="training">🎓 Training & Behavior</option>
+                                        <option value="health">🏥 Health & Wellness</option>
+                                        <option value="nutrition">🍽️ Nutrition & Diet</option>
+                                        <option value="grooming">✂️ Grooming & Care</option>
+                                        <option value="playtime">🎾 Play & Exercise</option>
+                                        <option value="stories">📖 Pet Stories</option>
+                                        <option value="photos">📸 Photo Sharing</option>
+                                        <option value="questions">❓ Questions & Help</option>
+                                        <option value="products">🛍️ Product Reviews</option>
+                                        <option value="general">💬 General Discussion</option>
+                                    </select>
+                                </div>
+
+                                <!-- Post Content -->
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text font-semibold">Post Content</span>
+                                        <span class="label-text-alt text-error">Required</span>
+                                    </label>
+                                    <textarea class="textarea textarea-bordered h-40 resize-none" placeholder="Share your story, ask your question, or provide helpful tips...
+
+Some ideas to get you started:
+• What happened and how did it make you feel?
+• What specific advice or help are you looking for?
+• What tips have worked well for you?
+• Include relevant details about your pet's breed, age, or personality"></textarea>
+                                    <label class="label">
+                                        <span class="label-text-alt">0/2000 characters</span>
+                                        <span class="label-text-alt">
+                                            <button type="button" class="link link-primary text-sm">Formatting Help</button>
+                                        </span>
+                                    </label>
+                                </div>
+
+                                <!-- Image Upload Section -->
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text font-semibold">Add Photos (Optional)</span>
+                                        <span class="label-text-alt">Max 5 images, 10MB each</span>
+                                    </label>
+                                    
+                                    <!-- Image Upload Area -->
+                                    <div class="border-2 border-dashed border-base-300 rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
+                                        <div class="space-y-4">
+                                            <div class="text-4xl text-base-content/40">
+                                                <i class="fas fa-cloud-upload-alt"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-lg font-medium">Drop images here or click to browse</p>
+                                                <p class="text-sm text-base-content/60">Supports JPG, PNG, GIF up to 10MB</p>
+                                            </div>
+                                            <button type="button" class="btn btn-outline btn-primary">
+                                                <i class="fas fa-plus"></i> Choose Files
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Image Preview Area (shows after upload) -->
+                                    <div class="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 hidden" id="image-preview-area">
+                                        <!-- Sample preview items - would be populated dynamically -->
+                                        <div class="relative group">
+                                            <img src="https://via.placeholder.com/200x200/3B82F6/FFFFFF?text=Image+1" alt="Preview" class="w-full h-32 object-cover rounded-lg" />
+                                            <button type="button" class="absolute top-2 right-2 btn btn-circle btn-sm btn-error opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                            <!-- Click to open image editor modal -->
+                                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
+                                                <button type="button" class="btn btn-sm btn-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="relative group">
+                                            <img src="https://via.placeholder.com/200x200/10B981/FFFFFF?text=Image+2" alt="Preview" class="w-full h-32 object-cover rounded-lg" />
+                                            <button type="button" class="absolute top-2 right-2 btn btn-circle btn-sm btn-error opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
+                                                <button type="button" class="btn btn-sm btn-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Tags Section -->
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text font-semibold">Tags (Optional)</span>
+                                        <span class="label-text-alt">Help others find your post</span>
+                                    </label>
+                                    <input type="text" placeholder="Type tags and press Enter (e.g., #dogtraining #goldenretriever)" class="input input-bordered w-full" />
+                                    <label class="label">
+                                        <span class="label-text-alt">Popular tags: #dogtraining #catcare #pethealth #puppylife #adoption</span>
+                                    </label>
+                                    
+                                    <!-- Tag Display Area -->
+                                    <div class="flex flex-wrap gap-2 mt-2">
+                                        <span class="badge badge-primary badge-lg">
+                                            #dogtraining
+                                            <button type="button" class="ml-1 text-xs">×</button>
+                                        </span>
+                                        <span class="badge badge-primary badge-lg">
+                                            #goldenretriever
+                                            <button type="button" class="ml-1 text-xs">×</button>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Post Settings -->
+                                <div class="card bg-base-200">
+                                    <div class="card-body">
+                                        <h4 class="card-title text-lg">Post Settings</h4>
+                                        <div class="space-y-4">
+                                            <!-- Privacy Settings -->
+                                            <div class="form-control">
+                                                <label class="label">
+                                                    <span class="label-text font-medium">Who can see this post?</span>
+                                                </label>
+                                                <div class="flex flex-wrap gap-3">
+                                                    <label class="label cursor-pointer">
+                                                        <input type="radio" name="privacy" class="radio radio-primary" value="public" checked />
+                                                        <span class="label-text ml-2">
+                                                            <i class="fas fa-globe"></i> Public
+                                                        </span>
+                                                    </label>
+                                                    <label class="label cursor-pointer">
+                                                        <input type="radio" name="privacy" class="radio radio-primary" value="followers" />
+                                                        <span class="label-text ml-2">
+                                                            <i class="fas fa-users"></i> Followers Only
+                                                        </span>
+                                                    </label>
+                                                    <label class="label cursor-pointer">
+                                                        <input type="radio" name="privacy" class="radio radio-primary" value="private" />
+                                                        <span class="label-text ml-2">
+                                                            <i class="fas fa-lock"></i> Private
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            <!-- Comment Settings -->
+                                            <div class="form-control">
+                                                <label class="label cursor-pointer">
+                                                    <span class="label-text font-medium">Allow comments</span>
+                                                    <input type="checkbox" class="toggle toggle-primary" checked />
+                                                </label>
+                                            </div>
+
+                                            <!-- Notification Settings -->
+                                            <div class="form-control">
+                                                <label class="label cursor-pointer">
+                                                    <span class="label-text font-medium">Notify me of comments and reactions</span>
+                                                    <input type="checkbox" class="toggle toggle-primary" checked />
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t">
+                                    <button type="button" class="btn btn-outline flex-1 sm:flex-none">
+                                        <i class="fas fa-save"></i> Save as Draft
+                                    </button>
+                                    <button type="button" class="btn btn-ghost flex-1 sm:flex-none">
+                                        <i class="fas fa-eye"></i> Preview
+                                    </button>
+                                    <div class="flex-1"></div>
+                                    <button type="button" class="btn btn-outline flex-1 sm:flex-none">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                    <button type="submit" class="btn btn-primary flex-1 sm:flex-none">
+                                        <i class="fas fa-paper-plane"></i> Publish Post
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Tips Sidebar (Desktop) -->
+                    <div class="hidden lg:block fixed right-6 top-1/2 transform -translate-y-1/2 w-80">
+                        <div class="card bg-base-100 shadow-lg">
+                            <div class="card-body">
+                                <h3 class="card-title text-lg">
+                                    <i class="fas fa-lightbulb text-yellow-500"></i>
+                                    Posting Tips
+                                </h3>
+                                <div class="space-y-3 text-sm">
+                                    <div class="flex items-start space-x-2">
+                                        <i class="fas fa-check text-green-500 mt-1"></i>
+                                        <p>Use clear, descriptive titles that tell readers what to expect</p>
+                                    </div>
+                                    <div class="flex items-start space-x-2">
+                                        <i class="fas fa-check text-green-500 mt-1"></i>
+                                        <p>Include relevant details about your pet's breed, age, and personality</p>
+                                    </div>
+                                    <div class="flex items-start space-x-2">
+                                        <i class="fas fa-check text-green-500 mt-1"></i>
+                                        <p>Add high-quality photos to make your post more engaging</p>
+                                    </div>
+                                    <div class="flex items-start space-x-2">
+                                        <i class="fas fa-check text-green-500 mt-1"></i>
+                                        <p>Use tags to help others discover your content</p>
+                                    </div>
+                                    <div class="flex items-start space-x-2">
+                                        <i class="fas fa-check text-green-500 mt-1"></i>
+                                        <p>Be respectful and follow community guidelines</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Bottom Navigation (visible on mobile only) -->
+    <div class="btm-nav lg:hidden">
+        <button>
+            <i class="fas fa-home"></i>
+            <span class="btm-nav-label">Home</span>
+        </button>
+        <button>
+            <i class="fas fa-rss"></i>
+            <span class="btm-nav-label">Feed</span>
+        </button>
+        <button class="active">
+            <i class="fas fa-plus"></i>
+            <span class="btm-nav-label">Create</span>
+        </button>
+        <button>
+            <i class="fas fa-user"></i>
+            <span class="btm-nav-label">Profile</span>
+        </button>
+    </div>
+
+    <!-- Image Editor Modal (opens when editing uploaded images) -->
+    <div class="modal" id="image-editor-modal">
+        <div class="modal-box w-11/12 max-w-5xl">
+            <h3 class="font-bold text-lg mb-4">Edit Image</h3>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <div class="bg-base-200 rounded-lg p-4 aspect-video flex items-center justify-center">
+                        <img src="https://via.placeholder.com/600x400/3B82F6/FFFFFF?text=Image+Editor" alt="Image to edit" class="max-w-full max-h-full object-contain" />
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Brightness</span>
+                        </label>
+                        <input type="range" min="0" max="200" value="100" class="range range-primary" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Contrast</span>
+                        </label>
+                        <input type="range" min="0" max="200" value="100" class="range range-primary" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Saturation</span>
+                        </label>
+                        <input type="range" min="0" max="200" value="100" class="range range-primary" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Crop</span>
+                        </label>
+                        <div class="btn-group">
+                            <button class="btn btn-sm">Square</button>
+                            <button class="btn btn-sm">16:9</button>
+                            <button class="btn btn-sm">4:3</button>
+                            <button class="btn btn-sm">Free</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-action">
+                <button class="btn btn-outline">Cancel</button>
+                <button class="btn btn-primary">Apply Changes</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
+<!-- 
+UX Rationale: The create post interface prioritizes user guidance and content quality through a structured form design that breaks complex post creation into manageable sections. The pet selector and category system help organize content for better discoverability, while the image upload area with preview and editing capabilities encourages visual storytelling. The progressive disclosure of settings and the helpful tips sidebar reduce cognitive load while ensuring users have access to all necessary features. The mobile-responsive design maintains functionality across devices while the draft and preview options provide safety nets for content creators.
+-->

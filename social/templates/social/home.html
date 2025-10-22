@@ -1,0 +1,98 @@
+{% extends 'social/base_social.html' %}
+
+{% block social_title %}Home - IOsocial{% endblock %}
+
+{% block social_content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Hero Section -->
+    <div class="hero min-h-96 bg-gradient-to-r from-primary to-secondary rounded-lg mb-8">
+        <div class="hero-content text-center text-primary-content">
+            <div class="max-w-md">
+                <h1 class="mb-5 text-5xl font-bold">Welcome to IOsocial</h1>
+                <p class="mb-5">Connect, share, and engage with your community. Discover amazing content and build meaningful relationships.</p>
+                <a href="{% url 'social:feed' %}" class="btn btn-accent">Explore Feed</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="stat bg-base-100 shadow-lg rounded-lg">
+            <div class="stat-figure text-primary">
+                <i class="fas fa-users text-3xl"></i>
+            </div>
+            <div class="stat-title">Community Members</div>
+            <div class="stat-value text-primary">{{ total_users|default:"1K+" }}</div>
+            <div class="stat-desc">Growing every day</div>
+        </div>
+        
+        <div class="stat bg-base-100 shadow-lg rounded-lg">
+            <div class="stat-figure text-secondary">
+                <i class="fas fa-newspaper text-3xl"></i>
+            </div>
+            <div class="stat-title">Posts Shared</div>
+            <div class="stat-value text-secondary">{{ total_posts|default:"5K+" }}</div>
+            <div class="stat-desc">Stories and updates</div>
+        </div>
+        
+        <div class="stat bg-base-100 shadow-lg rounded-lg">
+            <div class="stat-figure text-accent">
+                <i class="fas fa-heart text-3xl"></i>
+            </div>
+            <div class="stat-title">Interactions</div>
+            <div class="stat-value text-accent">{{ total_interactions|default:"25K+" }}</div>
+            <div class="stat-desc">Likes and comments</div>
+        </div>
+    </div>
+
+    <!-- Features -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div class="card bg-base-100 shadow-lg">
+            <div class="card-body text-center">
+                <i class="fas fa-stream text-4xl text-primary mb-4"></i>
+                <h2 class="card-title justify-center">Community Feed</h2>
+                <p>Stay updated with the latest posts from your community members.</p>
+                <div class="card-actions justify-center">
+                    <a href="{% url 'social:feed' %}" class="btn btn-primary">View Feed</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card bg-base-100 shadow-lg">
+            <div class="card-body text-center">
+                <i class="fas fa-plus-circle text-4xl text-secondary mb-4"></i>
+                <h2 class="card-title justify-center">Share Your Story</h2>
+                <p>Create and share posts with images, videos, and rich content.</p>
+                <div class="card-actions justify-center">
+                    <a href="{% url 'social:create_post' %}" class="btn btn-secondary">Create Post</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card bg-base-100 shadow-lg">
+            <div class="card-body text-center">
+                <i class="fas fa-tachometer-alt text-4xl text-accent mb-4"></i>
+                <h2 class="card-title justify-center">Your Dashboard</h2>
+                <p>Track your posts, engagement, and manage your social presence.</p>
+                <div class="card-actions justify-center">
+                    <a href="{% url 'social:dashboard' %}" class="btn btn-accent">View Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if not user.is_authenticated %}
+    <!-- Call to Action for Non-authenticated Users -->
+    <div class="card bg-base-100 shadow-lg">
+        <div class="card-body text-center">
+            <h2 class="card-title justify-center text-2xl mb-4">Join Our Community Today!</h2>
+            <p class="mb-6">Sign up to start sharing, connecting, and engaging with amazing people.</p>
+            <div class="card-actions justify-center gap-4">
+                <a href="{% url 'accounts:signup' %}" class="btn btn-primary">Sign Up</a>
+                <a href="{% url 'login' %}" class="btn btn-outline">Login</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock social_content %}

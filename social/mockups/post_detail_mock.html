@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IOsocial - Post Detail</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-base-200">
+    <!-- Main Container -->
+    <div class="flex min-h-screen">
+        <!-- Sidebar Navigation -->
+        <div class="w-64 bg-base-100 shadow-lg hidden lg:block">
+            <div class="p-4">
+                <h1 class="text-2xl font-bold text-primary">PETio</h1>
+            </div>
+            <ul class="menu p-4 space-y-2">
+                <li><a href="#" class="flex items-center space-x-3"><i class="fas fa-utensils"></i><span>IOFeeder</span></a></li>
+                <li><a href="#" class="flex items-center space-x-3 bg-primary text-primary-content"><i class="fas fa-users"></i><span>IOsocial</span></a></li>
+                <li><a href="#" class="flex items-center space-x-3"><i class="fas fa-store"></i><span>IOMarketplace</span></a></li>
+            </ul>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col">
+            <!-- Top Navbar -->
+            <div class="navbar bg-base-100 shadow-sm border-b">
+                <div class="navbar-start">
+                    <!-- Mobile menu button -->
+                    <div class="dropdown lg:hidden">
+                        <label tabindex="0" class="btn btn-ghost btn-circle">
+                            <i class="fas fa-bars"></i>
+                        </label>
+                        <!-- Mobile menu dropdown - opens on click -->
+                        <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                            <li><a><i class="fas fa-utensils"></i>IOFeeder</a></li>
+                            <li><a class="active"><i class="fas fa-users"></i>IOsocial</a></li>
+                            <li><a><i class="fas fa-store"></i>IOMarketplace</a></li>
+                        </ul>
+                    </div>
+                    <span class="text-xl font-semibold lg:hidden">IOsocial</span>
+                </div>
+                <div class="navbar-center hidden lg:flex">
+                    <ul class="menu menu-horizontal px-1 space-x-2">
+                        <li><a class="btn btn-ghost">Home</a></li>
+                        <li><a class="btn btn-ghost btn-active">Feed</a></li>
+                        <li><a class="btn btn-ghost">Create Post</a></li>
+                        <li><a class="btn btn-ghost">Dashboard</a></li>
+                    </ul>
+                </div>
+                <div class="navbar-end">
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost btn-circle avatar">
+                            <div class="w-10 rounded-full">
+                                <img src="https://via.placeholder.com/40x40/4F46E5/FFFFFF?text=U" alt="User Avatar" />
+                            </div>
+                        </label>
+                        <!-- User dropdown menu - opens on click -->
+                        <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                            <li><a>Profile</a></li>
+                            <li><a>Settings</a></li>
+                            <li><a>Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 p-4 lg:p-6">
+                <div class="max-w-4xl mx-auto">
+                    <!-- Breadcrumb Navigation -->
+                    <div class="breadcrumbs text-sm mb-6">
+                        <ul>
+                            <li><a href="#" class="link link-hover">Home</a></li>
+                            <li><a href="#" class="link link-hover">Feed</a></li>
+                            <li>Post Detail</li>
+                        </ul>
+                    </div>
+
+                    <!-- Main Post -->
+                    <div class="card bg-base-100 shadow-lg mb-8">
+                        <div class="card-body">
+                            <div class="flex items-start space-x-4">
+                                <div class="avatar">
+                                    <div class="w-16 rounded-full">
+                                        <img src="https://via.placeholder.com/64x64/EF4444/FFFFFF?text=J" alt="User" />
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-3 mb-3">
+                                        <h4 class="text-xl font-bold">John Doe</h4>
+                                        <span class="badge badge-primary">Dog Owner</span>
+                                        <span class="text-sm text-base-content/60">2 hours ago</span>
+                                    </div>
+                                    <h1 class="text-3xl font-bold mb-4">My Golden Retriever's First Swimming Lesson!</h1>
+                                    
+                                    <!-- Post Content -->
+                                    <div class="prose max-w-none mb-6">
+                                        <p>Today was such an amazing day! Max finally overcame his fear of water and had his first swimming lesson. The progress he made was incredible, and I wanted to share this milestone with everyone.</p>
+                                        
+                                        <p>We started slowly at the shallow end of the lake. Max was hesitant at first, but with some encouragement and his favorite treats, he gradually got more comfortable. The breakthrough moment came when he saw another dog swimming and decided to follow!</p>
+                                        
+                                        <p>Here are some tips that helped us:</p>
+                                        <ul>
+                                            <li>Start in shallow water</li>
+                                            <li>Bring high-value treats</li>
+                                            <li>Let them go at their own pace</li>
+                                            <li>Stay calm and positive</li>
+                                            <li>Consider a life jacket for safety</li>
+                                        </ul>
+                                        
+                                        <p>I'm so proud of Max's progress! Swimming is great exercise for dogs and can be especially helpful for older dogs with joint issues.</p>
+                                    </div>
+
+                                    <!-- Post Images -->
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                        <!-- Click to open image modal -->
+                                        <img src="https://via.placeholder.com/400x300/3B82F6/FFFFFF?text=Max+at+Shore" alt="Dog at shore" class="rounded-lg cursor-pointer hover:opacity-90 transition-opacity" />
+                                        <img src="https://via.placeholder.com/400x300/10B981/FFFFFF?text=Max+Swimming" alt="Dog swimming" class="rounded-lg cursor-pointer hover:opacity-90 transition-opacity" />
+                                    </div>
+
+                                    <!-- Post Tags -->
+                                    <div class="flex flex-wrap gap-2 mb-6">
+                                        <span class="badge badge-outline">#DogTraining</span>
+                                        <span class="badge badge-outline">#Swimming</span>
+                                        <span class="badge badge-outline">#GoldenRetriever</span>
+                                        <span class="badge badge-outline">#PetMilestones</span>
+                                    </div>
+
+                                    <!-- Post Actions -->
+                                    <div class="flex items-center justify-between border-t pt-4">
+                                        <div class="flex space-x-6">
+                                            <button class="btn btn-ghost btn-sm text-red-500 hover:bg-red-50">
+                                                <i class="fas fa-heart"></i> 
+                                                <span class="ml-1">24 Likes</span>
+                                            </button>
+                                            <button class="btn btn-ghost btn-sm">
+                                                <i class="fas fa-comment"></i> 
+                                                <span class="ml-1">8 Comments</span>
+                                            </button>
+                                            <button class="btn btn-ghost btn-sm">
+                                                <i class="fas fa-share"></i> 
+                                                <span class="ml-1">Share</span>
+                                            </button>
+                                            <button class="btn btn-ghost btn-sm">
+                                                <i class="fas fa-bookmark"></i> 
+                                                <span class="ml-1">Save</span>
+                                            </button>
+                                        </div>
+                                        <div class="dropdown dropdown-end">
+                                            <label tabindex="0" class="btn btn-ghost btn-sm">
+                                                <i class="fas fa-ellipsis-h"></i>
+                                            </label>
+                                            <!-- Post options dropdown -->
+                                            <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52">
+                                                <li><a>Edit Post</a></li>
+                                                <li><a>Report</a></li>
+                                                <li><a>Hide</a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comments Section -->
+                    <div class="card bg-base-100 shadow-lg">
+                        <div class="card-body">
+                            <h3 class="text-2xl font-bold mb-6">Comments (8)</h3>
+
+                            <!-- Add Comment Form -->
+                            <div class="mb-8">
+                                <div class="flex space-x-4">
+                                    <div class="avatar">
+                                        <div class="w-12 rounded-full">
+                                            <img src="https://via.placeholder.com/48x48/4F46E5/FFFFFF?text=U" alt="Current User" />
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <!-- Comment form expands on focus -->
+                                        <textarea class="textarea textarea-bordered w-full" placeholder="Write a comment..." rows="3"></textarea>
+                                        <div class="flex justify-between items-center mt-2">
+                                            <div class="flex space-x-2">
+                                                <button class="btn btn-ghost btn-sm">
+                                                    <i class="fas fa-image"></i>
+                                                </button>
+                                                <button class="btn btn-ghost btn-sm">
+                                                    <i class="fas fa-smile"></i>
+                                                </button>
+                                            </div>
+                                            <button class="btn btn-primary btn-sm">Post Comment</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Comments Thread -->
+                            <div class="space-y-6">
+                                <!-- Top Level Comment 1 -->
+                                <div class="flex space-x-4">
+                                    <div class="avatar">
+                                        <div class="w-12 rounded-full">
+                                            <img src="https://via.placeholder.com/48x48/10B981/FFFFFF?text=A" alt="User" />
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="bg-base-200 rounded-lg p-4">
+                                            <div class="flex items-center space-x-2 mb-2">
+                                                <h5 class="font-semibold">Alice Johnson</h5>
+                                                <span class="badge badge-sm badge-outline">Verified Pet Trainer</span>
+                                                <span class="text-sm text-base-content/60">1 hour ago</span>
+                                            </div>
+                                            <p>This is amazing progress! Swimming is such great exercise for dogs. I love how patient you were with Max. The tips you shared are spot on - especially about letting them go at their own pace.</p>
+                                        </div>
+                                        <div class="flex items-center space-x-4 mt-2 ml-4">
+                                            <button class="btn btn-ghost btn-xs">
+                                                <i class="fas fa-heart"></i> 5
+                                            </button>
+                                            <button class="btn btn-ghost btn-xs">Reply</button>
+                                            <button class="btn btn-ghost btn-xs">
+                                                <i class="fas fa-flag"></i>
+                                            </button>
+                                        </div>
+
+                                        <!-- Nested Reply -->
+                                        <div class="ml-8 mt-4 flex space-x-4">
+                                            <div class="avatar">
+                                                <div class="w-10 rounded-full">
+                                                    <img src="https://via.placeholder.com/40x40/EF4444/FFFFFF?text=J" alt="User" />
+                                                </div>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="bg-base-200 rounded-lg p-3">
+                                                    <div class="flex items-center space-x-2 mb-2">
+                                                        <h6 class="font-semibold text-sm">John Doe</h6>
+                                                        <span class="text-xs text-base-content/60">45 min ago</span>
+                                                    </div>
+                                                    <p class="text-sm">@Alice Thanks so much! Your training videos actually helped inspire this approach. Max has come such a long way!</p>
+                                                </div>
+                                                <div class="flex items-center space-x-4 mt-2 ml-3">
+                                                    <button class="btn btn-ghost btn-xs">
+                                                        <i class="fas fa-heart"></i> 2
+                                                    </button>
+                                                    <button class="btn btn-ghost btn-xs">Reply</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Top Level Comment 2 -->
+                                <div class="flex space-x-4">
+                                    <div class="avatar">
+                                        <div class="w-12 rounded-full">
+                                            <img src="https://via.placeholder.com/48x48/F59E0B/FFFFFF?text=M" alt="User" />
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="bg-base-200 rounded-lg p-4">
+                                            <div class="flex items-center space-x-2 mb-2">
+                                                <h5 class="font-semibold">Mike Chen</h5>
+                                                <span class="text-sm text-base-content/60">2 hours ago</span>
+                                            </div>
+                                            <p>My lab was the same way! It took weeks of patience but now he's a water dog. The life jacket tip is crucial - safety first! 🏊‍♂️</p>
+                                        </div>
+                                        <div class="flex items-center space-x-4 mt-2 ml-4">
+                                            <button class="btn btn-ghost btn-xs">
+                                                <i class="fas fa-heart"></i> 8
+                                            </button>
+                                            <button class="btn btn-ghost btn-xs">Reply</button>
+                                            <button class="btn btn-ghost btn-xs">
+                                                <i class="fas fa-flag"></i>
+                                            </button>
+                                        </div>
+
+                                        <!-- Nested Replies -->
+                                        <div class="ml-8 mt-4 space-y-4">
+                                            <div class="flex space-x-4">
+                                                <div class="avatar">
+                                                    <div class="w-10 rounded-full">
+                                                        <img src="https://via.placeholder.com/40x40/8B5CF6/FFFFFF?text=S" alt="User" />
+                                                    </div>
+                                                </div>
+                                                <div class="flex-1">
+                                                    <div class="bg-base-200 rounded-lg p-3">
+                                                        <div class="flex items-center space-x-2 mb-2">
+                                                            <h6 class="font-semibold text-sm">Sarah Wilson</h6>
+                                                            <span class="text-xs text-base-content/60">1 hour ago</span>
+                                                        </div>
+                                                        <p class="text-sm">Which life jacket brand do you recommend? Looking to get one for my golden too!</p>
+                                                    </div>
+                                                    <div class="flex items-center space-x-4 mt-2 ml-3">
+                                                        <button class="btn btn-ghost btn-xs">
+                                                            <i class="fas fa-heart"></i> 1
+                                                        </button>
+                                                        <button class="btn btn-ghost btn-xs">Reply</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex space-x-4">
+                                                <div class="avatar">
+                                                    <div class="w-10 rounded-full">
+                                                        <img src="https://via.placeholder.com/40x40/F59E0B/FFFFFF?text=M" alt="User" />
+                                                    </div>
+                                                </div>
+                                                <div class="flex-1">
+                                                    <div class="bg-base-200 rounded-lg p-3">
+                                                        <div class="flex items-center space-x-2 mb-2">
+                                                            <h6 class="font-semibold text-sm">Mike Chen</h6>
+                                                            <span class="text-xs text-base-content/60">30 min ago</span>
+                                                        </div>
+                                                        <p class="text-sm">@Sarah I use the Ruffwear Float Coat - great quality and adjustable fit. Worth the investment!</p>
+                                                    </div>
+                                                    <div class="flex items-center space-x-4 mt-2 ml-3">
+                                                        <button class="btn btn-ghost btn-xs">
+                                                            <i class="fas fa-heart"></i> 3
+                                                        </button>
+                                                        <button class="btn btn-ghost btn-xs">Reply</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Top Level Comment 3 -->
+                                <div class="flex space-x-4">
+                                    <div class="avatar">
+                                        <div class="w-12 rounded-full">
+                                            <img src="https://via.placeholder.com/48x48/EC4899/FFFFFF?text=L" alt="User" />
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="bg-base-200 rounded-lg p-4">
+                                            <div class="flex items-center space-x-2 mb-2">
+                                                <h5 class="font-semibold">Lisa Park</h5>
+                                                <span class="badge badge-sm badge-secondary">Veterinarian</span>
+                                                <span class="text-sm text-base-content/60">3 hours ago</span>
+                                            </div>
+                                            <p>From a vet perspective, swimming is excellent low-impact exercise! Just make sure to rinse Max's ears after swimming to prevent infections. Great job on the gradual introduction! 🐕</p>
+                                        </div>
+                                        <div class="flex items-center space-x-4 mt-2 ml-4">
+                                            <button class="btn btn-ghost btn-xs">
+                                                <i class="fas fa-heart"></i> 12
+                                            </button>
+                                            <button class="btn btn-ghost btn-xs">Reply</button>
+                                            <button class="btn btn-ghost btn-xs">
+                                                <i class="fas fa-flag"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Load More Comments -->
+                            <div class="text-center mt-8">
+                                <button class="btn btn-outline">Load More Comments</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Bottom Navigation (visible on mobile only) -->
+    <div class="btm-nav lg:hidden">
+        <button>
+            <i class="fas fa-home"></i>
+            <span class="btm-nav-label">Home</span>
+        </button>
+        <button class="active">
+            <i class="fas fa-rss"></i>
+            <span class="btm-nav-label">Feed</span>
+        </button>
+        <button>
+            <i class="fas fa-plus"></i>
+            <span class="btm-nav-label">Create</span>
+        </button>
+        <button>
+            <i class="fas fa-user"></i>
+            <span class="btm-nav-label">Profile</span>
+        </button>
+    </div>
+</body>
+</html>
+
+<!-- 
+UX Rationale: The post detail layout focuses on content readability and community engagement through a single-column design that gives the main post prominent placement while facilitating meaningful discussions. The threaded comment system with visual indentation makes conversation flows easy to follow, while the expanded post content area allows for rich media and detailed storytelling. The comment form is prominently placed to encourage participation, and the nested reply structure supports natural conversation threading that builds community connections around shared pet experiences.
+-->
