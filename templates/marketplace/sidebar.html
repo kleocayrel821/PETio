@@ -1,0 +1,27 @@
+{% comment %}
+Marketplace app contextual sidebar
+Expects: view_name set to one of: browse, my_listings, messages, transactions, notifications
+{% endcomment %}
+<div class="section-title">Marketplace</div>
+<nav>
+  <a href="{% url 'marketplace:catalog' %}" class="sidebar-item {% if view_name == 'browse' %}active{% endif %}">
+    <i class="fas fa-store"></i>
+    <span>Browse</span>
+  </a>
+  <a href="{% url 'marketplace:dashboard' %}" class="sidebar-item {% if view_name == 'my_listings' %}active{% endif %}">
+    <i class="fas fa-list"></i>
+    <span>My Listings</span>
+  </a>
+  <a href="{% url 'marketplace:messages' %}" class="sidebar-item {% if view_name == 'messages' %}active{% endif %}">
+    <i class="fas fa-envelope"></i>
+    <span>Messages</span>
+  </a>
+  <a href="{% url 'marketplace:transactions' %}" class="sidebar-item {% if view_name == 'transactions' %}active{% endif %}">
+    <i class="fas fa-exchange-alt"></i>
+    <span>Transactions</span>
+  </a>
+  <a href="{% url 'marketplace:notifications' %}" class="sidebar-item {% if view_name == 'notifications' %}active{% endif %}">
+    <i class="fas fa-bell"></i>
+    <span>Notifications</span>
+  </a>
+</nav>

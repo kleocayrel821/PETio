@@ -1,10 +1,12 @@
 <!-- Project Global Base Template -->
+{% load static %}
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PETio{% endblock %}</title>
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <!-- DaisyUI + Tailwind CSS -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.tailwindcss.com"></script>
@@ -144,181 +146,118 @@
     /* Reduced Motion */
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
   </style>
+  <!-- Unified navigation stylesheet -->
+  <link rel="stylesheet" href="{% static 'css/navigation.css' %}">
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+  {% block extra_css %}{% endblock %}
   {% block extra_head %}{% endblock %}
 </head>
 <body{% block body_class %}{% endblock %}>
-  <div class="drawer">
-    <input id="system-drawer-toggle" type="checkbox" class="drawer-toggle" />
-    <div class="drawer-content flex flex-col">
-      <!-- Top Navbar with app-specific nav block -->
-      <nav class="navbar sticky top-0 z-40 bg-base-100 border-b border-base-300">
-        <div class="navbar-start">
-          <label for="system-drawer-toggle" class="btn btn-ghost mr-2" aria-label="Open system navigation">
-            <i class="fas fa-bars text-lg"></i>
-          </label>
-        </div>
-        <div class="navbar-center">
-          {% block app_nav %}{% endblock %}
-        </div>
-        <div class="navbar-end hidden"></div>
-      </nav>
-      {% if messages %}
-      <div class="container mx-auto px-4 pt-4">
-        <div class="space-y-2">
-          {% for message in messages %}
-          <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} shadow">
-            <span>{{ message }}</span>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-
-      <main class="container mx-auto px-4 py-6">
-        {% block content %}{% endblock %}
-      </main>
+  <!-- Unified Global Navbar -->
+  <nav class="top-navbar">
+    <div class="nav-left">
+      <a href="{% url 'home' %}" class="logo" aria-label="PETio Home">
+        <img src="{{ MEDIA_URL }}logo/logoPETIO-removebg-preview.png" alt="PETio logo" />
+      </a>
     </div>
-
-    <!-- Global App Drawer -->
-    {% block global_sidebar %}
-    <div class="drawer-side">
-      <label for="system-drawer-toggle" aria-label="Close system navigation" class="drawer-overlay"></label>
-      <aside class="min-h-full w-80 bg-base-200 text-base-content flex flex-col">
-        <div class="p-4 border-b border-base-300">
-          <div class="flex items-center gap-3">
-            {% load avatar %}
-            <div class="avatar">
-              <div class="rounded-full w-10">
-                <img src="{% avatar_url request.user 64 %}" alt="{{ request.user.username|default:'Guest' }}" />
-              </div>
-            </div>
-            <div>
-              <h2 class="font-bold text-lg">PETio System</h2>
-              <p class="text-sm opacity-70">IoT Pet Feeder</p>
-              {% if request.user.is_authenticated %}
-              <p class="text-sm opacity-80 mt-1"><i class="fas fa-user mr-1"></i>{{ request.user.username }}</p>
+    <div class="nav-center">
+      {% if user.is_authenticated %}
+        {% include 'components/app_switcher.html' %}
+      {% endif %}
+      <!-- Keep legacy app_nav block hidden during migration -->
+      <div style="display:none;">
+        {% block app_nav %}{% endblock %}
+      </div>
+    </div>
+    <div class="nav-right">
+      {% if user.is_authenticated %}
+        {% if current_app == 'social' or current_app == 'marketplace' %}
+          {# Notifications link: only visible for Social and Marketplace #}
+          <a
+            class="icon-btn notifications-btn"
+            aria-label="Notifications"
+            href="{% if current_app == 'social' %}{% url 'social:notifications' %}{% elif current_app == 'marketplace' %}{% url 'marketplace:notifications' %}{% endif %}"
+          >
+            <i class="fas fa-bell"></i>
+            <span
+              id="notificationBadge"
+              class="notification-badge"
+              data-count="{{ unread_notifications_count|default:0 }}"
+              data-app="{{ current_app }}"
+              {% if current_app == 'social' %}
+                data-badge-count-url="{% url 'social:notification_count' %}"
+              {% elif current_app == 'marketplace' %}
+                data-badge-count-url="{% url 'marketplace:notifications_count' %}"
               {% endif %}
-            </div>
-          </div>
-        </div>
-        <nav class="flex-1 p-4">
-          <ul class="menu menu-lg w-full">
-            <li class="menu-title"><span>Applications</span></li>
-            <li>
-              <a href="/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors {% if not request.resolver_match or not request.resolver_match.namespace or request.resolver_match and not request.resolver_match.namespace and request.resolver_match.url_name == 'home' or request.resolver_match and not request.resolver_match.namespace and request.resolver_match.url_name == 'schedules_ui' or request.resolver_match and not request.resolver_match.namespace and request.resolver_match.url_name == 'history' or request.resolver_match and not request.resolver_match.namespace and request.resolver_match.url_name == 'control_panel' or request.resolver_match.namespace == 'accounts' or request.resolver_match.namespace == 'admin' %}bg-base-300 ring-1 ring-base-300{% endif %}">
-                <i class="fas fa-gamepad text-primary text-xl"></i>
-                <div>
-                  <div class="font-semibold">Controller</div>
-                  <div class="text-sm opacity-70">Feed & Schedule Management</div>
-                </div>
-              </a>
-            </li>
-            <li>
-              <a href="/social/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors {% if request.resolver_match and request.resolver_match.namespace == 'social' %}bg-base-300 ring-1 ring-base-300{% endif %}">
-                <i class="fas fa-users text-secondary text-xl"></i>
-                <div>
-                  <div class="font-semibold">Social</div>
-                  <div class="text-sm opacity-70">Community & Sharing</div>
-                </div>
-              </a>
-            </li>
-            <li>
-              <a href="/marketplace/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors {% if request.resolver_match and request.resolver_match.namespace == 'marketplace' %}bg-base-300 ring-1 ring-base-300{% endif %}">
-                <i class="fas fa-store text-accent text-xl"></i>
-                <div>
-                  <div class="font-semibold">Marketplace</div>
-                  <div class="text-sm opacity-70">Products & Services</div>
-                </div>
-              </a>
-            </li>
-          </ul>
-        </nav>
-        <div class="p-4 border-t border-base-300">
-          {% if request.user.is_authenticated %}
-          <div class="flex flex-col gap-2">
-            <a href="{% url 'accounts:profile' %}" class="btn btn-ghost btn-block justify-start gap-3">
-              <i class="fas fa-user text-primary"></i>
-              <span>Profile</span>
+            ></span>
+          </a>
+
+          {# Create action: only visible for Social and Marketplace #}
+          <a
+            class="btn-create"
+            aria-label="Create"
+            href="{% if current_app == 'social' %}{% url 'social:create_post' %}{% elif current_app == 'marketplace' %}{% url 'marketplace:listing_create' %}{% endif %}"
+          >+ Create</a>
+        {% endif %}
+
+        {# Profile dropdown #}
+        <div class="profile-menu">
+          <button id="profileToggle" class="icon-btn profile-btn" aria-haspopup="true" aria-expanded="false">
+            <i class="fas fa-user-circle"></i>
+            <span class="profile-name">{{ user.get_short_name|default:user.username }}</span>
+            <i class="fas fa-chevron-down"></i>
+          </button>
+          <div id="profileDropdown" class="profile-dropdown" role="menu" aria-labelledby="profileToggle">
+            <a href="{% url 'accounts:profile' %}" class="profile-item" role="menuitem">
+              <i class="fas fa-id-badge"></i>
+              <span>View Profile</span>
             </a>
-            <form method="post" action="{% url 'logout' %}" class="btn btn-ghost btn-block justify-start gap-3">
+            <a href="{% url 'accounts:profile_edit' %}" class="profile-item" role="menuitem">
+              <i class="fas fa-cog"></i>
+              <span>Settings</span>
+            </a>
+            <form method="post" action="{% url 'logout' %}" class="profile-item" role="menuitem">
               {% csrf_token %}
-              <button type="submit" class="flex items-center gap-3 w-full justify-start text-left">
-                <i class="fas fa-sign-out-alt text-error"></i>
-                <span>Logout</span>
+              <button type="submit" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Log out</span>
               </button>
             </form>
           </div>
-          {% else %}
-          <div class="flex flex-col gap-2">
-            <a href="{% url 'login' %}" class="btn btn-ghost btn-block justify-start gap-3">
-              <i class="fas fa-sign-in-alt text-success"></i>
-              <span>Log in</span>
-            </a>
-            <a href="{% url 'accounts:signup' %}" class="btn btn-ghost btn-block justify-start gap-3">
-              <i class="fas fa-user-plus text-secondary"></i>
-              <span>Sign up</span>
-            </a>
-          </div>
-          {% endif %}
         </div>
-      </aside>
+      {% else %}
+        <a href="{% url 'login' %}" class="icon-btn" aria-label="Log in">
+          <i class="fas fa-sign-in-alt"></i>
+          <span class="ml-1">Log in</span>
+        </a>
+        <a href="{% url 'accounts:signup' %}" class="btn-create" aria-label="Sign up">Sign up</a>
+      {% endif %}
     </div>
-    {% endblock %}
-  </div>
-  <script>
-  // Global helper utilities used across pages that extend base_controller.html
-  // Provides getCookie (for CSRF) and setButtonLoading (for button loading UX)
-  (function () {
-    // Get a cookie value by name (used for CSRF token retrieval)
-    function getCookie(name) {
-      let cookieValue = null;
-      if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-          const cookie = cookies[i].trim();
-          // Does this cookie string begin with the name we want?
-          if (cookie.substring(0, name.length + 1) === (name + '=')) {
-            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-            break;
-          }
-        }
-      }
-      return cookieValue;
-    }
-    // Expose globally if not already defined
-    if (typeof window.getCookie !== 'function') {
-      window.getCookie = getCookie;
-    }
-  
-    // Toggle a button into a loading state by disabling it and showing a spinner
-    function setButtonLoading(button, loading = true) {
-      if (!button) return;
-      try {
-        if (loading) {
-          button.disabled = true;
-          if (!button.dataset.originalHtml) {
-            button.dataset.originalHtml = button.innerHTML;
-          }
-          const originalText = (button.textContent || '').trim();
-          const label = originalText || 'Processing...';
-          button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${label}`;
-        } else {
-          button.disabled = false;
-          if (button.dataset.originalHtml) {
-            button.innerHTML = button.dataset.originalHtml;
-            delete button.dataset.originalHtml;
-          }
-        }
-      } catch (e) {
-        console.warn('setButtonLoading failed:', e);
-      }
-    }
-    // Expose globally if not already defined
-    if (typeof window.setButtonLoading !== 'function') {
-      window.setButtonLoading = setButtonLoading;
-    }
-  })();
-  </script>
+  </nav>
+
+  <!-- Contextual Sidebar: always one block; use CSS class to hide when suppressed -->
+  <aside class="sidebar {% if not user.is_authenticated %}sidebar--hidden{% else %}{% if request.resolver_match %}{% if request.resolver_match.url_name == 'profile' or request.resolver_match.url_name == 'profile_edit' or request.resolver_match.url_name == 'login' or request.resolver_match.url_name == 'logout' or request.resolver_match.url_name == 'signup' %}sidebar--hidden{% endif %}{% endif %}{% endif %}">
+    {% block sidebar %}{% endblock %}
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="main-content {% if not user.is_authenticated %}no-sidebar{% else %}{% if request.resolver_match %}{% if request.resolver_match.url_name == 'profile' or request.resolver_match.url_name == 'profile_edit' or request.resolver_match.url_name == 'login' or request.resolver_match.url_name == 'logout' or request.resolver_match.url_name == 'signup' %}no-sidebar{% endif %}{% endif %}{% endif %}">
+    {% if messages %}
+    <div class="mb-4">
+      {% for message in messages %}
+      <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %}">
+        <span>{{ message }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Unified Navigation Scripts -->
+  <script src="{% static 'js/navigation.js' %}"></script>
+  {% block extra_js %}{% endblock %}
   {% block scripts %}{% endblock %}
 </body>
 </html>

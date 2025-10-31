@@ -53,6 +53,10 @@ else:
         path("notifications/<int:notif_id>/toggle_read/", views.toggle_notification_read, name="notification_toggle_read"),
         path("notifications/<int:notif_id>/open/", views.open_notification, name="notification_open"),
 
+        # Badge count endpoints
+        path("notifications/count/", views.notifications_count, name="notifications_count"),
+        path("messages/count/", views.messages_count, name="messages_count"),
+
         # Dashboards
         path("buyer/", views.BuyerDashboardView.as_view(), name="buyer_dashboard"),
         path("seller/", views.SellerDashboardView.as_view(), name="seller_dashboard"),

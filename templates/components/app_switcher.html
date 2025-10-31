@@ -1,0 +1,33 @@
+{% load static %}
+<!-- App Switcher Dropdown Component -->
+<div class="app-switcher" data-current-app="{{ current_app|default:'' }}">
+  <button id="appSwitcherToggle" class="app-switcher__toggle" aria-haspopup="true" aria-expanded="false" aria-label="Switch application">
+    <span class="app-switcher__icon">{{ current_app_icon|default:"🐾" }}</span>
+    <span class="app-switcher__label">{{ current_app_name|default:"PETio" }}</span>
+    <i class="fas fa-chevron-down app-switcher__chevron" aria-hidden="true"></i>
+  </button>
+
+  <div id="appSwitcherDropdown" class="app-dropdown" role="menu" aria-labelledby="appSwitcherToggle">
+    <a href="{% url 'home' %}" class="app-dropdown__item {% if current_app == 'controller' or current_app is None %}active{% endif %}" role="menuitem">
+      <span class="app-dropdown__icon">🎮</span>
+      <div class="app-dropdown__meta">
+        <div class="app-dropdown__title">Controller</div>
+        <div class="app-dropdown__desc">Feed & Schedule Management</div>
+      </div>
+    </a>
+    <a href="{% url 'social:feed' %}" class="app-dropdown__item {% if current_app == 'social' %}active{% endif %}" role="menuitem">
+      <span class="app-dropdown__icon">👥</span>
+      <div class="app-dropdown__meta">
+        <div class="app-dropdown__title">Social</div>
+        <div class="app-dropdown__desc">Community & Sharing</div>
+      </div>
+    </a>
+    <a href="{% url 'marketplace:home' %}" class="app-dropdown__item {% if current_app == 'marketplace' %}active{% endif %}" role="menuitem">
+      <span class="app-dropdown__icon">🛒</span>
+      <div class="app-dropdown__meta">
+        <div class="app-dropdown__title">Marketplace</div>
+        <div class="app-dropdown__desc">Products & Services</div>
+      </div>
+    </a>
+  </div>
+</div>

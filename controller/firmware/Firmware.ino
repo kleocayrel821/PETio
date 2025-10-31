@@ -202,7 +202,7 @@ public:
   void update() { if (isConfigMode()) handleConfigMode(); else handleWiFiConnection(); }
 
 private:
-  void setupConfigServer() { webServer.on("/", [this]() { handleConfigRoot(); }); webServer.on("/save", HTTP_POST, [this]() { handleConfigSave(); }); webServer.onNotFound([this]() { handleConfigRoot(); }); webServer.begin(); }
+  void setupConfigServer() { webServer.on("/", [this]() { handleConfigRoot(); }); webServer.on("/save", HTTP_POST, [this]() { handleConfigSave(); }); webServer.on("/ping", HTTP_GET, [this]() { webServer.send(200, "text/plain", "OK"); }); webServer.onNotFound([this]() { handleConfigRoot(); }); webServer.begin(); }
   void handleConfigRoot() { webServer.send(200, "text/html", getConfigPage()); }
   void handleConfigSave() { if (webServer.hasArg("ssid") && webServer.hasArg("password")) { wifiSSID = webServer.arg("ssid"); wifiPassword = webServer.arg("password"); Serial.print("Received SSID: "); Serial.println(wifiSSID); saveConfiguration(); webServer.send(200, "text/html", "Configuration saved! Device will restart..."); delay(2000); ESP.restart(); } else { webServer.send(400, "text/plain", "Missing parameters"); } }
   String getConfigPage() {

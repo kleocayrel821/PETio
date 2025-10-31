@@ -1,0 +1,38 @@
+flowchart TD
+  subgraph Feeding_Command_Queue
+    CREATE[Create PendingCommand]
+    DEDUP[Dedup Check]
+    PROCESS[Mark processing]
+    EXECUTE[Device executes]
+    COMPLETE[Mark completed]
+    ERROR[Mark error]
+
+    UI_FEED[UI feed_now] --> CREATE
+    CREATE --> DEDUP
+    DEDUP -->|conflict| CONFLICT[409 Response]
+    DEDUP -->|ok| PROCESS
+    PROCESS --> FETCH[GET /api/device/command/]
+    FETCH --> EXECUTE
+    EXECUTE --> ACK_OK[POST /ack completed]
+    EXECUTE --> ACK_ERR[POST /ack error]
+    ACK_OK --> COMPLETE
+    ACK_ERR --> ERROR
+  end
+
+  subgraph Connectivity_Monitor
+    HEARTBEAT[POST /api/device/status/]
+    LAST_SEEN[Update last_seen]
+    TTL_EVAL[Evaluate TTL]
+    ONLINE[is_online=true]
+    OFFLINE[is_online=false]
+
+    HEARTBEAT --> LAST_SEEN
+    TTL_EVAL -->|<= TTL| ONLINE
+    TTL_EVAL -->|> TTL| OFFLINE
+  end
+
+  subgraph Error_Handling_Flow
+    OFFLINE --> OFFLINE_RESP[503 Service Unavailable]
+    CONFLICT --> CONFLICT_TOAST[UI toast: duplicate feed]
+    ERROR --> ERROR_TOAST[UI toast: device error]
+  end

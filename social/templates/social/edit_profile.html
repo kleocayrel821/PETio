@@ -1,4 +1,4 @@
-{% extends 'social/base_social.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Edit Profile - PETio Social{% endblock %}
@@ -217,6 +217,10 @@
         }
     }
 </style>
+{% endblock %}
+
+{% block sidebar %}
+  {% include 'social/sidebar.html' with view_name='dashboard' %}
 {% endblock %}
 
 {% block content %}

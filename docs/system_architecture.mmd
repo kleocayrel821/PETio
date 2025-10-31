@@ -1,0 +1,43 @@
+flowchart TB
+  subgraph Frontend_Layer
+    TPL[Django Templates]
+    JS[Controller UI JS]
+  end
+
+  subgraph Backend_Layer
+    VIEWS[Django Views]
+    DRF[REST Endpoints]
+    DEVICE_API[Device API]
+    TASKS[Celery Tasks (optional)]
+  end
+
+  subgraph Database_Layer
+    ORM[ORM Models]
+    DB[(SQLite/PostgreSQL)]
+  end
+
+  subgraph Hardware_Layer
+    MCU[ESP8266]
+    SERVO[MG996R Servo]
+    LED[LED Indicators]
+  end
+
+  subgraph Communication_Layer
+    HTTP[HTTP Polling/Ack/Health]
+  end
+
+  subgraph Optional_Services
+    FIREBASE[Firebase Notifications]
+    ANALYTICS[Admin Analytics]
+  end
+
+  TPL --> JS
+  JS -->|feed_now, status poll| VIEWS
+  VIEWS --> DRF
+  DRF --> DEVICE_API
+  DEVICE_API -->|normalized responses + API key validation| MCU
+  DEVICE_API --> ORM
+  ORM --> DB
+  MCU -->|command fetch, ack, logs, heartbeat| DEVICE_API
+  DEVICE_API -->|events| FIREBASE
+  VIEWS --> ANALYTICS

@@ -1,0 +1,70 @@
+erDiagram
+  DEVICE {
+    string device_id PK
+  }
+  PENDINGCOMMAND {
+    int id PK
+    string command
+    decimal portion_size
+    string status
+    datetime created_at
+    datetime processed_at
+    text error_message
+    string device_id FK
+  }
+  COMMANDEVENT {
+    int id PK
+    string from_status
+    string to_status
+    string changed_by
+    datetime created_at
+    json details
+    int command_id FK
+  }
+  FEEDINGLOG {
+    int id PK
+    string pet_name
+    decimal portion_size
+    datetime executed_at
+    string status
+    string device_id FK
+    text details
+  }
+  DEVICESTATUS {
+    int id PK
+    string device_id FK
+    datetime last_seen
+    boolean is_online
+    float battery_level
+    string firmware_version
+    text notes
+  }
+  FEEDINGSCHEDULE {
+    int id PK
+    time time
+    decimal portion_size
+    boolean enabled
+    string label
+    string days_of_week
+    datetime last_executed
+  }
+  PETPROFILE {
+    int id PK
+    string name
+    decimal weight
+    boolean active
+    json preferences
+  }
+  USER {
+    int id PK
+    string username
+    string role
+  }
+
+  DEVICE ||--o{ PENDINGCOMMAND : "scopes"
+  DEVICE ||--o{ FEEDINGLOG : "produces"
+  DEVICE ||--o{ DEVICESTATUS : "reports"
+  PENDINGCOMMAND ||--o{ COMMANDEVENT : "emits"
+  USER ||--o{ PENDINGCOMMAND : "triggers"
+  USER ||--o{ FEEDINGSCHEDULE : "manages"
+  FEEDINGSCHEDULE ||--o{ PENDINGCOMMAND : "generates"

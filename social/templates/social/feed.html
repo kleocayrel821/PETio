@@ -1,15 +1,19 @@
-{% extends 'social/base_social.html' %}
+{% extends 'base.html' %}
 {% load avatar %}
 
-{% block social_title %}Community Feed - IOsocial{% endblock %}
+{% block title %}Community Feed - PETio Social{% endblock %}
 
-{% block social_content %}
+{% block sidebar %}
+  {% include 'social/sidebar.html' with view_name='feed' %}
+{% endblock %}
+
+{% block content %}
 <div class="max-w-7xl mx-auto">
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <!-- Main Feed Column -->
         <div class="lg:col-span-3 space-y-6">
             <!-- Filter Bar -->
-            <div class="card bg-base-100 shadow-lg">
+            <div class="card bg-base-500 shadow-lg">
                 <div class="card-body">
                     <form method="GET" class="flex flex-wrap gap-4 items-center">
                         <!-- Search -->
@@ -268,7 +272,7 @@
         </div>
     </div>
 </div>
-{% endblock social_content %}
+{% endblock content %}
 
 {% block social_scripts %}
 <script>

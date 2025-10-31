@@ -1,8 +1,12 @@
-{% extends 'social/base_social.html' %}
+{% extends 'base.html' %}
 
-{% block social_title %}Home - IOsocial{% endblock %}
+{% block title %}Home - IOsocial{% endblock %}
 
-{% block social_content %}
+{% block sidebar %}
+  {% include 'social/sidebar.html' with view_name='feed' %}
+{% endblock %}
+
+{% block content %}
 <div class="max-w-7xl mx-auto">
     <!-- Hero Section -->
     <div class="hero min-h-96 bg-gradient-to-r from-primary to-secondary rounded-lg mb-8">
@@ -95,4 +99,4 @@
     </div>
     {% endif %}
 </div>
-{% endblock social_content %}
+{% endblock %}

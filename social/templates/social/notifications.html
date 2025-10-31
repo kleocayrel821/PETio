@@ -1,9 +1,13 @@
-{% extends 'social/base_social.html' %}
+{% extends 'base.html' %}
 {% load avatar %}
 
-{% block social_title %}Notifications - IOsocial{% endblock %}
+{% block title %}Notifications - PETio Social{% endblock %}
 
-{% block social_content %}
+{% block sidebar %}
+  {% include 'social/sidebar.html' with view_name='notifications' %}
+{% endblock %}
+
+{% block content %}
 <div class="max-w-4xl mx-auto">
     <div class="card bg-base-100 shadow-lg">
         <div class="card-body">
@@ -197,4 +201,4 @@
         </div>
     </div>
 </div>
-{% endblock social_content %}
+{% endblock content %}

@@ -818,7 +818,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
-                body: JSON.stringify({ portion_size: portionSize })
+                body: JSON.stringify({ portion_size: portionSize, device_id: (window.DEVICE_ID || '{{ DEVICE_ID }}') })
             })
             .then(async (response) => {
                 let data = null;
@@ -828,12 +828,23 @@
                     return Object.assign({ status: 'already_pending' }, data || {});
                 }
                 if (!response.ok) {
+                    // If backend provided structured error, surface it
+                    if (data && data.success === false) {
+                        return data;
+                    }
                     const msg = (data && (data.message || data.error || data.detail)) || `Request failed (${response.status})`;
                     throw new Error(msg);
                 }
                 return data;
             })
             .then(data => {
+                // Explicit offline handling
+                if (data && data.success === false) {
+                    alert(data.error || 'Device not connected. Please check Wi-Fi or power.');
+                    feedNowBtn.disabled = false;
+                    feedNowBtn.innerHTML = '<div><i class="fas fa-utensils"></i><div>Feed Now</div></div>';
+                    return;
+                }
                 if (data && (data.status === 'ok' || data.status === 'already_pending')) {
                     feedNowBtn.innerHTML = '<div><i class="fas fa-check"></i><div>Success!</div></div>';
                     const msg = (data.status === 'already_pending')
@@ -856,7 +867,7 @@
                 console.error('Feed Now error:', error);
                 feedNowBtn.disabled = false;
                 feedNowBtn.innerHTML = '<div><i class="fas fa-utensils"></i><div>Feed Now</div></div>';
-                showToast(error.message || 'Failed to dispatch feed command. Please try again.', 'danger');
+                alert('Server unreachable.');
             });
         });
 

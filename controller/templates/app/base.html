@@ -1228,22 +1228,23 @@
         });
     </script>
 <script>
-// Device status polling for navbar indicator
+// Controller realtime + error handling + retry (Phase 1)
 (function() {
+  if (window.__petioRealtimeInit) return; // avoid duplication
+  window.__petioRealtimeInit = true;
+
   const STATUS_ENDPOINT = '/api/device-status/';
-  const DEVICE_ID = 'feeder-1'; // TODO: if you have multiple devices, pass via template context
+  const DEVICE_ID = '{{ DEVICE_ID }}';
   const statusIcon = document.getElementById('device-status-icon');
   const statusText = document.getElementById('device-status-text');
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const WS_DEVICE_STATUS_URL = wsProtocol + '://' + window.location.host + '/ws/device-status/';
+  const WS_FEEDING_LOGS_URL = wsProtocol + '://' + window.location.host + '/ws/feeding-logs/';
 
-  /**
-   * Update the navbar indicator classes/text based on status
-   * @param {string} status - one of 'online', 'offline', 'unknown'
-   */
+  // Navbar indicator updater
   function updateIndicator(status) {
     if (!statusIcon || !statusText) return;
-    // Reset classes
     statusIcon.classList.remove('text-green-400', 'text-red-400', 'text-gray-400');
-
     switch (status) {
       case 'online':
         statusIcon.classList.add('text-green-400');
@@ -1260,20 +1261,68 @@
     }
   }
 
-  /**
-   * Poll server for device status. Returns online/offline.
-   * The existing backend device_status endpoint accepts POSTs from device.
-   * For UI polling, we treat absence of recent heartbeat as offline.
-   */
+  // Reusable fetch with exponential backoff (1s, 2s, 4s)
+  if (!window.fetchWithRetry) {
+    window.fetchWithRetry = async function(url, options = {}, retries = 3) {
+      const headers = options.headers || {};
+      if (!('X-CSRFToken' in headers) && typeof getCookie === 'function') {
+        headers['X-CSRFToken'] = getCookie('csrftoken') || '';
+      }
+      options.headers = headers;
+      const backoffs = [1000, 2000, 4000];
+      for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+          const res = await fetch(url, options);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res;
+        } catch (err) {
+          if (attempt === retries - 1) throw err;
+          await new Promise(r => setTimeout(r, backoffs[attempt] || backoffs[backoffs.length - 1]));
+        }
+      }
+    }
+  }
+
+  // ErrorBoundary: capture window errors and rejections; report only (toast already handled globally)
+  class ErrorBoundary {
+    constructor(endpoint) { this.endpoint = endpoint; this.install(); }
+    install() {
+      window.addEventListener('error', e => {
+        this.report({ type: 'error', message: e.message || e.error?.message || 'Unknown error', stack: e.error?.stack || null });
+      });
+      window.addEventListener('unhandledrejection', e => {
+        const msg = e.reason?.message || String(e.reason || 'Unhandled rejection');
+        this.report({ type: 'unhandledrejection', message: msg, stack: e.reason?.stack || null });
+      });
+    }
+    async report(payload) {
+      try {
+        await window.fetchWithRetry('/api/client-errors/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            timestamp: new Date().toISOString(),
+            url: window.location.href,
+            userAgent: navigator.userAgent,
+            ...payload,
+          })
+        }, 3);
+      } catch (err) {
+        console.warn('ErrorBoundary: failed to report', err);
+      }
+    }
+  }
+  if (!window.__petioErrorBoundary) {
+    window.__petioErrorBoundary = new ErrorBoundary('/api/client-errors/');
+  }
+
+  // HTTP polling fallback (used when WebSocket unavailable or disconnected)
   async function pollStatus() {
     try {
-      const res = await fetch(STATUS_ENDPOINT + '?device_id=' + encodeURIComponent(DEVICE_ID), {
+      const res = await window.fetchWithRetry(STATUS_ENDPOINT + '?device_id=' + encodeURIComponent(DEVICE_ID), {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
-      if (!res.ok) throw new Error('Status HTTP ' + res.status);
+        headers: { 'Accept': 'application/json' }
+      }, 3);
       const data = await res.json();
       const status = data?.status === 'online' ? 'online' : (data?.status === 'offline' ? 'offline' : 'unknown');
       updateIndicator(status);
@@ -1282,10 +1331,78 @@
     }
   }
 
+  // Device status realtime via WebSocket
+  function connectDeviceStatusWS() {
+    if (!('WebSocket' in window)) {
+      console.log('WebSocket not supported; falling back to polling.');
+      return;
+    }
+    let socket = new WebSocket(WS_DEVICE_STATUS_URL);
+    socket.addEventListener('open', () => { window.__deviceStatusWSConnected = true; });
+    socket.addEventListener('message', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const s = data?.status === 'online' ? 'online' : (data?.status === 'offline' ? 'offline' : 'unknown');
+        updateIndicator(s);
+      } catch (err) {
+        console.warn('DeviceStatus WS parse error', err);
+      }
+    });
+    socket.addEventListener('close', () => {
+      window.__deviceStatusWSConnected = false;
+      setTimeout(connectDeviceStatusWS, 3000);
+    });
+    socket.addEventListener('error', (e) => {
+      console.warn('DeviceStatus WS error', e);
+      try { socket.close(); } catch (_) {}
+    });
+  }
+
+  // Feeding logs realtime via WebSocket
+  function connectFeedingLogsWS() {
+    if (!('WebSocket' in window)) return;
+    let socket = new WebSocket(WS_FEEDING_LOGS_URL);
+    socket.addEventListener('message', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const portion = data?.amount ?? data?.portion_dispensed ?? 0;
+        const feedType = data?.feed_type ?? data?.source ?? 'feed';
+        const success = data?.success ?? (portion > 0);
+        const deviceId = data?.device_id ?? DEVICE_ID;
+        const ts = data?.timestamp ? new Date(data.timestamp).toLocaleString() : '';
+        if (typeof toastManager !== 'undefined') {
+          if (success) toastManager.success(`Feeding complete: ${portion}g via ${feedType} ${ts ? '(' + ts + ')' : ''}`);
+          else toastManager.error(`Feeding failed via ${feedType}. Check device ${deviceId}`);
+        } else {
+          console.log('Feeding event', data);
+        }
+        const evt = new CustomEvent('feeding-log-event', { detail: data });
+        window.dispatchEvent(evt);
+      } catch (err) {
+        console.warn('FeedingLogs WS parse error', err);
+      }
+    });
+    socket.addEventListener('close', () => { setTimeout(connectFeedingLogsWS, 5000); });
+    socket.addEventListener('error', (e) => { console.warn('FeedingLogs WS error', e); try { socket.close(); } catch (_) {} });
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
-    // Initial poll and then every 30s
+    connectDeviceStatusWS();
+    connectFeedingLogsWS();
+    // Initial poll and then every 30s as fallback
     pollStatus();
-    setInterval(pollStatus, 30000);
+    setInterval(function() { if (!window.__deviceStatusWSConnected) pollStatus(); }, 30000);
+    
+    // Ensure service worker registration still functions (registered elsewhere or here)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (!reg) {
+          navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW registration failed', err));
+        }
+      }).catch(() => {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW registration failed', err));
+      });
+    }
   });
 })();
 

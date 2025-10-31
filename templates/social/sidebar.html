@@ -1,0 +1,23 @@
+{% comment %}
+Social app contextual sidebar
+Expects: view_name set to one of: feed, dashboard, notifications, create_post
+{% endcomment %}
+<div class="section-title">Social</div>
+<nav>
+  <a href="{% url 'social:feed' %}" class="sidebar-item {% if view_name == 'feed' %}active{% endif %}">
+    <i class="fas fa-home"></i>
+    <span>Feed</span>
+  </a>
+  <a href="{% url 'social:dashboard' %}" class="sidebar-item {% if view_name == 'dashboard' %}active{% endif %}">
+    <i class="fas fa-tachometer-alt"></i>
+    <span>Dashboard</span>
+  </a>
+  <a href="{% url 'social:notifications' %}" class="sidebar-item {% if view_name == 'notifications' %}active{% endif %}">
+    <i class="fas fa-bell"></i>
+    <span>Notifications</span>
+  </a>
+  <a href="{% url 'social:create_post' %}" class="sidebar-item {% if view_name == 'create_post' %}active{% endif %}">
+    <i class="fas fa-plus"></i>
+    <span>Create Post</span>
+  </a>
+</nav>

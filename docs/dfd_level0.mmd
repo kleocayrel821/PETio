@@ -1,0 +1,21 @@
+flowchart LR
+  ext[ESP8266 Firmware]
+  ctrl[Django Controller App]
+  ui[End-User Web Interface]
+  admin[Admin/Moderator Dashboard]
+  fb[Firebase Notifications]
+  db[(Database)]
+
+  ext -->|poll command| ctrl
+  ext -->|ack command| ctrl
+  ext -->|push logs| ctrl
+  ext -->|heartbeat status| ctrl
+
+  ui -->|feed_now| ctrl
+  ui -->|device_status| ctrl
+
+  admin -->|manage schedules & review logs| ctrl
+
+  ctrl -->|persist commands/logs/status| db
+  ctrl -->|notify events (optional)| fb
+  ctrl -->|normalized responses + API key validation| ext

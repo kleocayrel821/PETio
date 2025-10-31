@@ -7,7 +7,7 @@ from pathlib import Path
 import os
 
 # Paths
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Core Django settings
 INSTALLED_APPS = [
@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Third-party
     'rest_framework',
+    'channels',
     # Local apps
     'accounts',
     'controller',
@@ -34,6 +35,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'controller.middleware.request_id.RequestIDMiddleware',
 ]
 
 ROOT_URLCONF = 'project.urls'
@@ -50,8 +52,11 @@ TEMPLATES = [
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
+                'django.template.context_processors.media',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'project.context_processors.device_id_context',
+                'project.context_processors.app_context',
             ],
         },
     }
@@ -77,6 +82,9 @@ USE_TZ = True
 # Static & Media
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -91,6 +99,10 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
+    'DEFAULT_THROTTLE_RATES': {
+        'feed_now': '5/minute',
+        'device_status': '120/minute',
+    },
 }
 
 # Cache: local memory by default; dev overrides LOCATION
@@ -114,3 +126,7 @@ CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:63
 CELERY_TASK_ROUTES = {
     'marketplace.tasks.send_notification_email': {'queue': 'notifications'},
 }
+# Device/API settings
+PETIO_DEVICE_API_KEY = os.getenv('PETIO_DEVICE_API_KEY')
+DEVICE_ID = os.getenv('DEVICE_ID', 'feeder-1')
+DEVICE_HEARTBEAT_TTL = int(os.getenv('DEVICE_HEARTBEAT_TTL', '90'))

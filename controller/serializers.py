@@ -64,14 +64,14 @@ class FeedingLogSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FeedingLog
-        fields = ["id", "timestamp", "source", "portion_dispensed", "amount", "action", "success", "feed_type"]
+        fields = ["id", "timestamp", "source", "portion_dispensed", "amount", "action", "success", "feed_type", "device_id"]
 
 
 class PendingCommandSerializer(serializers.ModelSerializer):
     class Meta:
         model = PendingCommand
         fields = ["id", "command", "portion_size", "status", "created_at", 
-                 "processed_at", "error_message"]
+                 "processed_at", "error_message", "device_id"]
         read_only_fields = ["id", "created_at", "processed_at"]
 
 
