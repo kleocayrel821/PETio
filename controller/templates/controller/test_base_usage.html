@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Base Layout Test - Controller{% endblock %}
+
+{% block sidebar %}
+  {% with view_name=request.resolver_match.url_name %}
+    {% include 'controller/sidebar.html' with current_app='controller' view_name=view_name %}
+  {% endwith %}
+{% endblock %}
+
+{% block content %}
+<div class="enhanced-card">
+  <h2 class="section-title">
+    <i class="fas fa-flask"></i>
+    Base Layout Test Page
+  </h2>
+  <p class="text-base-content/70">
+    This page verifies the unified navbar, app switcher, profile dropdown, and contextual sidebar render correctly within the Controller app.
+  </p>
+  <div class="mt-4 flex gap-2">
+    <a href="{% url 'home' %}" class="btn btn-primary btn-enhanced">Go to Home</a>
+    <a href="{% url 'social:feed' %}" class="btn btn-ghost btn-enhanced">Go to Social</a>
+    <a href="{% url 'marketplace:catalog' %}" class="btn btn-ghost btn-enhanced">Go to Marketplace</a>
+  </div>
+</div>
+{% endblock %}

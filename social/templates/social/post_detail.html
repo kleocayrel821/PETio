@@ -1,9 +1,13 @@
-{% extends 'social/base_social.html' %}
+{% extends 'base.html' %}
 {% load avatar %}
 
-{% block social_title %}{{ post.title }} - IOsocial{% endblock %}
+{% block title %}{{ post.title }} - IOsocial{% endblock %}
 
-{% block social_content %}
+{% block sidebar %}
+  {% include 'social/sidebar.html' with view_name='feed' %}
+{% endblock %}
+
+{% block content %}
 <div class="max-w-4xl mx-auto">
     <!-- Back Button -->
     <div class="mb-6">

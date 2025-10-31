@@ -1,6 +1,7 @@
 """
-Base settings shared by all environments.
-Import this module in dev.py/prod.py and override environment-specific values.
+Base settings for the Petio Django project.
+Shared configuration for dev and prod. Environment-specific overrides live in
+`project/settings/dev.py` and `project/settings/prod.py`.
 """
 from pathlib import Path
 import os
@@ -16,79 +17,95 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Third-party
+    'rest_framework',
+    'channels',
+    # Local apps
+    'accounts',
     'controller',
     'marketplace',
     'social',
-    'rest_framework',
-    'accounts.apps.AccountsConfig',
 ]
 
 MIDDLEWARE = [
-    'project.middleware.AdminSessionCookieMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'project.middleware.DisableAuthMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'controller.middleware.request_id.RequestIDMiddleware',
 ]
 
 ROOT_URLCONF = 'project.urls'
+WSGI_APPLICATION = 'project.wsgi.application'
+ASGI_APPLICATION = 'project.asgi.application'
 
+# Templates
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
-            # Explicitly register custom template tag libraries so {% load avatar %} works reliably
-            'libraries': {
-                'avatar': 'accounts.templatetags.avatar',
-            },
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
+                'django.template.context_processors.media',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'project.context_processors.resolve_logout_url_name',
-                'project.context_processors.unread_notifications_count',
+                'project.context_processors.device_id_context',
+                'project.context_processors.app_context',
             ],
         },
-    },
+    }
 ]
 
-WSGI_APPLICATION = 'project.wsgi.application'
-ASGI_APPLICATION = 'project.asgi.application'
-
-# Channels (in-memory by default; dev overrides may keep this)
-CHANNEL_LAYERS = {
+# Database: leave to environment-specific files; default SQLite fallback
+DATABASES = {
     'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-    },
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
+
+# Authentication
+AUTH_USER_MODEL = 'accounts.User'
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Asia/Manila'
+TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static & media
+# Static & Media
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-MEDIA_URL = '/media/'
+MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Auth & defaults
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-AUTH_USER_MODEL = 'accounts.User'
 
-# Caches (simple default; dev can keep locmem)
+# DRF (keep simple defaults; apps enforce auth in views/tests)
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'feed_now': '5/minute',
+        'device_status': '120/minute',
+    },
+}
+
+# Cache: local memory by default; dev overrides LOCATION
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -96,58 +113,20 @@ CACHES = {
     }
 }
 
-# Logging (baseline)
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        'app': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'app.views': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'django': {
-            'handlers': ['console'],
-            'level': 'WARNING',
-            'propagate': True,
-        },
-    },
+# Channels: in-memory layer for local/dev usage
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    }
 }
 
-# Authentication redirects
-LOGIN_REDIRECT_URL = 'accounts:profile'
-LOGOUT_REDIRECT_URL = 'home'
-LOGIN_URL = 'login'
-
-# Feature flags
-# Disable authentication globally when set in environment (for demos/tests only)
-DISABLE_AUTH = os.environ.get('DJANGO_DISABLE_AUTH', 'false').lower() == 'true'
- 
-# Admin session isolation (used by AdminSessionCookieMiddleware)
-# These control the separate cookie used only for /admin/ paths in dev.
-ADMIN_SESSION_COOKIE_NAME = os.environ.get('DJANGO_ADMIN_SESSION_COOKIE_NAME', 'adminid')
-ADMIN_SESSION_COOKIE_PATH = os.environ.get('DJANGO_ADMIN_SESSION_COOKIE_PATH', '/admin')
-
-# Account activation requirement (email confirmation)
-# In dev, default to False so users can log in immediately after signup.
-ACCOUNT_ACTIVATION_REQUIRED = os.environ.get('DJANGO_ACCOUNT_ACTIVATION_REQUIRED', 'false').lower() == 'true'
-MARKETPLACE_RESET = os.environ.get('MARKETPLACE_RESET', 'false').lower() == 'true'
-
-# Celery configuration (defaults suitable for local dev; override via env)
-CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+# Celery configuration; dev may run tasks eagerly
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/1')
 CELERY_TASK_ROUTES = {
     'marketplace.tasks.send_notification_email': {'queue': 'notifications'},
 }
-CELERY_TASK_DEFAULT_QUEUE = 'default'
-CELERY_TASK_ANNOTATIONS = {'*': {'rate_limit': '10/s'}}
+# Device/API settings
+PETIO_DEVICE_API_KEY = os.getenv('PETIO_DEVICE_API_KEY')
+DEVICE_ID = os.getenv('DEVICE_ID', 'feeder-1')
+DEVICE_HEARTBEAT_TTL = int(os.getenv('DEVICE_HEARTBEAT_TTL', '90'))

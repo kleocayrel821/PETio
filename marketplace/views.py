@@ -22,6 +22,7 @@ from .models import (
     TransactionLog,
     LogAction,
     RequestMessage,
+    Message,
     Notification,
     NotificationType,
  )
@@ -217,6 +218,56 @@ def _unread_count(user):
         return Notification.objects.filter(user=user, read_at__isnull=True).count()
     except Exception:
         return 0
+
+
+# -----------------------------
+# Lightweight count endpoints for badges
+# -----------------------------
+@login_required
+@require_http_methods(["GET"])
+def notifications_count(request):
+    """Return unread marketplace notification count as { count: <number> }."""
+    try:
+        count = _unread_count(request.user)
+    except Exception:
+        count = 0
+    return JsonResponse({"count": int(count)})
+
+
+@login_required
+@require_http_methods(["GET"])
+def messages_count(request):
+    """Return unread message count (thread messages + request messages) for current user.
+
+    Unread criteria:
+    - Message.read_at IS NULL and message is from the other party in a thread the user participates in
+    - RequestMessage.read_at IS NULL and authored by the other party on a request where the user is buyer or seller
+    """
+    user = request.user
+    try:
+        unread_thread_msgs = (
+            Message.objects
+            .filter(read_at__isnull=True)
+            .filter(Q(thread__buyer=user) | Q(thread__seller=user))
+            .exclude(sender=user)
+            .count()
+        )
+    except Exception:
+        unread_thread_msgs = 0
+
+    try:
+        unread_req_msgs = (
+            RequestMessage.objects
+            .filter(read_at__isnull=True)
+            .filter(Q(request__buyer=user) | Q(request__seller=user))
+            .exclude(author=user)
+            .count()
+        )
+    except Exception:
+        unread_req_msgs = 0
+
+    total = int(unread_thread_msgs) + int(unread_req_msgs)
+    return JsonResponse({"count": total})
 
 # DRF imports for RESTful Marketplace endpoints
 from rest_framework import viewsets

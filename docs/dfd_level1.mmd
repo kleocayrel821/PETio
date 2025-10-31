@@ -1,0 +1,52 @@
+flowchart TD
+  subgraph Feeding_Command_Management
+    UI[Web UI feed_now]
+    PC[(PendingCommand Store)]
+    DF[Device Fetch]
+    ACK[Device Ack]
+
+    UI -->|POST /feed_now (device_id)| PC
+    DF -->|GET /api/device/command/| PC
+    DF -->|returns next pending, marks processing| ACK
+    ACK -->|POST /api/device/command/ack/| PC
+  end
+
+  subgraph Device_Connectivity_Status_Update
+    HB[Heartbeat]
+    DS[(DeviceStatus Store)]
+    TTL[TTL Fallback]
+
+    HB -->|POST /api/device/status/| DS
+    TTL -->|GET /api/device-status/| DS
+  end
+
+  subgraph User_Scheduling_Control_Interface
+    SCHED_UI[Schedules UI]
+    FS[(FeedingSchedule Store)]
+    GEN_CMD[Generate Commands]
+
+    SCHED_UI -->|CRUD| FS
+    FS --> GEN_CMD
+    GEN_CMD --> PC
+  end
+
+  subgraph Feeding_Log_Sync
+    DEV_LOGS[Device Logs]
+    FL[(FeedingLog Store)]
+    UI_LOGS[History UI]
+
+    DEV_LOGS -->|POST /api/device/logs/| FL
+    UI_LOGS -->|GET /history| FL
+  end
+
+  subgraph Authentication_API_Key_Validation
+    KEY[API Key]
+    VALIDATE[_device_api_key_valid]
+
+    KEY --> VALIDATE
+    VALIDATE --> DF
+    VALIDATE --> ACK
+    VALIDATE --> HB
+    VALIDATE --> DEV_LOGS
+    VALIDATE --> CONFIG[GET /api/device/config/]
+  end

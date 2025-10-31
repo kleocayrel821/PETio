@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes, throttle_classes
 from rest_framework.response import Response
 from rest_framework import viewsets, status
 from django.db import transaction
@@ -16,6 +16,18 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from rest_framework.filters import OrderingFilter
 from rest_framework.decorators import action
+from rest_framework.throttling import SimpleRateThrottle
+
+class FeedNowThrottle(SimpleRateThrottle):
+    scope = "feed_now"
+
+class DeviceStatusThrottle(SimpleRateThrottle):
+    scope = "device_status"
+
+# Connectivity check and settings
+from django.conf import settings
+import os
+from .utils import check_device_connection
 
 
 # Web UI views
@@ -38,6 +50,11 @@ class SchedulesView(TemplateView):
 class HistoryView(TemplateView):
     """Feeding logs page with filters and pagination."""
     template_name = 'app/history.html'
+
+
+# Test page to validate unified base and sidebar rendering in Controller
+def test_base(request):
+    return render(request, 'controller/test_base_usage.html')
 
 
 # API views for ESP8266 communication
@@ -78,63 +95,79 @@ def get_command(request):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @authentication_classes([])
+@throttle_classes([FeedNowThrottle])
 @csrf_exempt
 def feed_now(request):
     """Trigger immediate feeding - Database-backed system
     CSRF-exempt to allow frontend fetch without CSRF cookie issues.
     Logs the request for diagnostics.
+    Performs hardware connectivity check before queuing the command.
     """
     try:
         portion_size = request.data.get("portion_size")
         logger.info(f"feed_now: received request portion_size={portion_size}")
         if portion_size is None:
-            # Use default from first pet profile if available
             try:
                 pet = PetProfile.objects.first()
                 portion_size = pet.portion_size if pet else 10.0
-            except:
-                portion_size = 10.0  # Default fallback
-        
-        # Create new pending command in database
+            except Exception:
+                portion_size = 10.0
+
+        device_id = request.data.get("device_id") or getattr(settings, "DEVICE_ID", "feeder-1")
+        device_ip = request.data.get("device_ip") or getattr(settings, "PETIO_DEVICE_IP", os.getenv("PETIO_DEVICE_IP"))
+
+        # Connectivity check with TTL fallback
+        is_connected = True
+        if device_ip:
+            try:
+                is_connected = bool(check_device_connection(device_ip))
+            except Exception:
+                is_connected = False
+        if not is_connected:
+            from django.utils import timezone
+            from datetime import timedelta
+            ttl = getattr(settings, "DEVICE_HEARTBEAT_TTL", 90)
+            try:
+                ds = DeviceStatus.objects.get(device_id=device_id)
+                recently_seen = bool(ds.last_seen and (timezone.now() - ds.last_seen) <= timedelta(seconds=ttl))
+                if not recently_seen:
+                    logger.warning(f"feed_now: device not connected via ping or TTL; id={device_id} ip={device_ip}")
+                    return Response(
+                        {"status": "error", "message": "Device not connected. Please check Wi-Fi or power.", "success": False, "error": "Device not connected."},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE
+                    )
+            except DeviceStatus.DoesNotExist:
+                return Response(
+                    {"status": "error", "message": "Device not connected. Please check Wi-Fi or power.", "success": False, "error": "Device not connected."},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+
+        # Deduplicate feed_now within 10 seconds
+        from django.utils import timezone
+        from datetime import timedelta
+        recent_window = timezone.now() - timedelta(seconds=10)
+        if PendingCommand.objects.filter(command='feed_now', created_at__gte=recent_window).exists():
+            return Response({"status": "conflict", "message": "Duplicate feed request.", "success": False}, status=status.HTTP_409_CONFLICT)
+
+        # Create new pending command in database with device scoping
         with transaction.atomic():
-            # Check if there's already a pending feed command to prevent duplicates
             existing_command = PendingCommand.objects.filter(
                 command='feed_now',
-                status__in=['pending', 'processing']
-            ).first()
-            
+                status__in=['pending', 'processing'],
+                device_id=device_id,
+            ).order_by('created_at').first()
             if existing_command:
                 logger.info(f"feed_now: conflict existing pending command id={existing_command.id} portion={existing_command.portion_size}")
                 return Response(
-                    {
-                        "status": "warning",
-                        "message": "Feed command already pending",
-                        "command_id": existing_command.id,
-                        "portion_size": existing_command.portion_size
-                    },
+                    {"status": "conflict", "message": "Feed command already pending", "success": False, "command_id": existing_command.id, "portion_size": existing_command.portion_size},
                     status=status.HTTP_409_CONFLICT
                 )
-            
-            # Create new command
-            command = PendingCommand.objects.create(
-                command='feed_now',
-                portion_size=float(portion_size)
-            )
-            logger.info(f"feed_now: queued command id={command.id} portion={command.portion_size}")
-            
-            return Response({
-                "status": "ok",
-                "message": "Feed command queued",
-                "command_id": command.id,
-                "portion_size": command.portion_size
-            })
-            
+            command = PendingCommand.objects.create(command='feed_now', portion_size=float(portion_size), device_id=device_id)
+            logger.info(f"feed_now: queued command id={command.id} portion={command.portion_size} device_id={device_id}")
+            return Response({"status": "ok", "message": "Feed command queued", "success": True, "command_id": command.id, "portion_size": command.portion_size})
     except Exception as e:
         logger.exception("feed_now: error")
-        return Response(
-            {"error": f"Failed to queue feed command: {str(e)}"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({"status": "error", "message": f"Failed to queue feed command: {str(e)}", "success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(["POST"])
@@ -305,6 +338,7 @@ def check_schedule(request):
 @api_view(["POST", "GET"])
 @permission_classes([AllowAny])
 @authentication_classes([])
+@throttle_classes([DeviceStatusThrottle])
 def device_status(request):
     """Device status endpoint.
     - POST: Heartbeat from ESP8266 with telemetry. Persists to DeviceStatus and marks online.
@@ -314,7 +348,7 @@ def device_status(request):
         from django.utils import timezone
         from datetime import timedelta
 
-        TTL_SECONDS = 70  # consider device offline if last_seen is older than this
+        TTL_SECONDS = getattr(settings, "DEVICE_HEARTBEAT_TTL", 90)
 
         if request.method == 'GET':
             device_id = request.query_params.get('device_id') or request.GET.get('device_id')
@@ -740,3 +774,47 @@ class PendingCommandViewSet(viewsets.ModelViewSet):
         if status_filter is not None:
             queryset = queryset.filter(status=status_filter)
         return queryset
+
+@api_view(["GET"]) 
+@permission_classes([AllowAny])
+@authentication_classes([])
+def health(request):
+    from django.db import connections
+    from django.db.utils import OperationalError
+    from django.utils import timezone
+    from datetime import timedelta
+    db_status = "connected"
+    try:
+        conn = connections['default']
+        conn.ensure_connection()
+    except OperationalError:
+        db_status = "error"
+    ttl = getattr(settings, "DEVICE_HEARTBEAT_TTL", 90)
+    now = timezone.now()
+    online = DeviceStatus.objects.filter(last_seen__gte=now - timedelta(seconds=ttl)).count()
+    offline = DeviceStatus.objects.exclude(last_seen__gte=now - timedelta(seconds=ttl)).count()
+    return Response({"status": "ok", "db": db_status, "device_summary": {"online": online, "offline": offline}})
+
+
+@api_view(["POST"]) 
+@permission_classes([AllowAny])
+@authentication_classes([])
+@csrf_exempt
+def client_error_log(request):
+    """POST /api/client-errors/
+    Accepts client-side error reports and logs them server-side.
+    Does not persist to DB per Non_Scope; returns 204.
+    """
+    try:
+        payload = request.data or {}
+        # Include request meta for debugging
+        logger.error("ClientError", extra={
+            "path": request.path,
+            "user": str(getattr(request, 'user', None)),
+            "payload": payload,
+            "headers": {k: v for k, v in request.headers.items() if k.lower() in ("user-agent", "referer")},
+        })
+        return Response({}, status=204)
+    except Exception:
+        logger.exception("client_error_log failed")
+        return Response({"status": "error"}, status=500)

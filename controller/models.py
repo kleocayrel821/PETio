@@ -1,6 +1,9 @@
 from django.db import models
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def default_days_of_week():
@@ -34,33 +37,47 @@ class PendingCommand(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     processed_at = models.DateTimeField(null=True, blank=True)
     error_message = models.TextField(blank=True)
+    # New: scope commands to device
+    device_id = models.CharField(max_length=64, db_index=True, default='feeder-1')
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'created_at'])
+        ]
     
     def __str__(self):
         return f"{self.command} - {self.status} ({self.created_at})"
     
     def mark_processing(self):
         """Mark command as being processed"""
+        prev = self.status
         self.status = 'processing'
         self.processed_at = timezone.now()
         self.save()
+        CommandEvent.objects.create(command=self, from_status=prev, to_status=self.status, device_id=self.device_id)
+        logger.info("Command transitioned", extra={"device_id": self.device_id, "command_id": self.id, "status": self.status})
 
     def mark_completed(self):
         """Mark command as completed"""
+        prev = self.status
         self.status = 'completed'
         if not self.processed_at:
             self.processed_at = timezone.now()
         self.save()
+        CommandEvent.objects.create(command=self, from_status=prev, to_status=self.status, device_id=self.device_id)
+        logger.info("Command transitioned", extra={"device_id": self.device_id, "command_id": self.id, "status": self.status})
     
     def mark_failed(self, error_message=""):
         """Mark command as failed with optional error message"""
+        prev = self.status
         self.status = 'failed'
         self.error_message = error_message
         if not self.processed_at:
             self.processed_at = timezone.now()
         self.save()
+        CommandEvent.objects.create(command=self, from_status=prev, to_status=self.status, device_id=self.device_id)
+        logger.info("Command transitioned", extra={"device_id": self.device_id, "command_id": self.id, "status": self.status})
 
 
 class PetProfile(models.Model):
@@ -76,6 +93,8 @@ class FeedingLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     portion_dispensed = models.FloatField()
     source = models.CharField(max_length=50)  # e.g. "button", "web"
+    # New: scope logs to device
+    device_id = models.CharField(max_length=64, db_index=True, default='feeder-1')
     
     def __str__(self):
         return f"{self.timestamp} - {self.source} - {self.portion_dispensed}g"
@@ -128,3 +147,21 @@ class DeviceStatus(models.Model):
 
     def __str__(self):
         return f"{self.device_id} - {self.status} ({self.last_seen})"
+
+
+# New: CommandEvent for lifecycle auditing
+class CommandEvent(models.Model):
+    command = models.ForeignKey(PendingCommand, on_delete=models.CASCADE, related_name='events')
+    from_status = models.CharField(max_length=20, blank=True, default='')
+    to_status = models.CharField(max_length=20)
+    device_id = models.CharField(max_length=64, db_index=True, default='feeder-1')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['command', 'to_status', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"cmd={self.command_id} {self.from_status}->{self.to_status} @ {self.created_at}"

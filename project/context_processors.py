@@ -10,6 +10,11 @@ try:
     from social.models import Notification
 except Exception:
     Notification = None
+from django.conf import settings
+
+def device_id_context(request):
+    """Expose DEVICE_ID to templates for dynamic UI references."""
+    return {"DEVICE_ID": getattr(settings, 'DEVICE_ID', 'feeder-1')}
 
 
 def resolve_logout_url_name(request):
@@ -32,6 +37,46 @@ def resolve_logout_url_name(request):
     except NoReverseMatch:
         # No known logout route; omit the link
         return {"logout_url_name": None}
+
+
+def app_context(request):
+    """
+    Detect which app the user is in based on URL path and
+    provide contextual variables for templates (navbar, sidebar).
+
+    Falls back to PETio platform defaults when at root or unknown paths.
+    """
+    path = request.path or ""
+
+    if path.startswith('/marketplace/'):
+        return {
+            'current_app': 'marketplace',
+            'current_app_name': 'Marketplace',
+            'current_app_icon': '🛒',
+            'current_app_description': 'Products & Services',
+        }
+    if path.startswith('/social/'):
+        return {
+            'current_app': 'social',
+            'current_app_name': 'Social',
+            'current_app_icon': '👥',
+            'current_app_description': 'Community & Sharing',
+        }
+    # Controller lives at site root ("/") and under controller-specific paths
+    if path.startswith('/controller/') or path == '/' or path.startswith('/schedules') or path.startswith('/history'):
+        return {
+            'current_app': 'controller',
+            'current_app_name': 'Controller',
+            'current_app_icon': '🎮',
+            'current_app_description': 'Feed & Schedule Management',
+        }
+
+    return {
+        'current_app': None,
+        'current_app_name': 'PETio',
+        'current_app_icon': '🐾',
+        'current_app_description': 'Pet Care Platform',
+    }
 
 
 def unread_notifications_count(request):

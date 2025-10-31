@@ -1,8 +1,12 @@
-{% extends 'social/base_social.html' %}
+{% extends 'base.html' %}
 
-{% block social_title %}Create Post - IOsocial{% endblock %}
+{% block title %}Create Post - IOsocial{% endblock %}
 
-{% block social_content %}
+{% block sidebar %}
+  {% include 'social/sidebar.html' with view_name='create_post' %}
+{% endblock %}
+
+{% block content %}
 <div class="max-w-4xl mx-auto">
     <div class="card bg-base-100 shadow-lg">
         <div class="card-body">

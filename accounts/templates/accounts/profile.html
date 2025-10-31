@@ -1,48 +1,143 @@
 {% extends "base.html" %}
-{% block title %}My Profile{% endblock %}
+{% load static %}
+{% block title %}My Profile • PETio{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6">
-  <div class="card bg-base-100 shadow-md p-6">
-    <h2 class="text-2xl font-bold mb-4">@{{ user_obj.username }}</h2>
-    <div class="text-base-content/70 mb-4">Member since {{ user_obj.date_joined|date:"M d, Y" }}</div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <h3 class="font-semibold mb-2">Seller Ratings</h3>
-        {% if seller_rating_count %}
-          <div class="flex items-center gap-2 text-sm">
-            <i class="fas fa-star text-yellow-400"></i>
-            <span class="font-semibold">{{ seller_rating_avg|floatformat:1 }}</span>
-            <span class="opacity-60">({{ seller_rating_count }} reviews)</span>
-          </div>
+<div class="profile-content container mx-auto max-w-4xl py-8">
+  <div class="enhanced-card card-gradient card-accent mb-4">
+    <div class="flex items-center gap-5">
+      <div class="avatar-120 rounded-full overflow-hidden border">
+        {% if user_obj.profile.avatar %}
+          <img class="profile-avatar w-full h-full object-cover" src="{{ user_obj.profile.avatar.url }}" alt="{{ user_obj.username }} avatar">
         {% else %}
-          <div class="text-sm opacity-60">No ratings yet</div>
+          <img class="profile-avatar w-full h-full object-cover" src="{% static 'img/placeholder.svg' %}" alt="avatar placeholder">
         {% endif %}
       </div>
-
-      <div>
-        <h3 class="font-semibold mb-2">Recent Reviews</h3>
-        {% if recent_ratings %}
-          <ul class="space-y-2">
-            {% for r in recent_ratings %}
-            <li class="text-sm">
-              <span class="mr-2"><i class="fas fa-star text-yellow-400"></i> {{ r.score }}</span>
-              <span class="mr-2">by @{{ r.buyer.username }}</span>
-              {% if r.listing %}<span class="opacity-70">on {{ r.listing.title }}</span>{% endif %}
-              {% if r.comment %}<div class="mt-1 opacity-80">“{{ r.comment }}”</div>{% endif %}
-            </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <div class="text-sm opacity-60">No recent reviews</div>
-        {% endif %}
+      <div class="flex-1">
+        <div class="section-title"><i class="fas fa-id-badge"></i> @{{ user_obj.username }}</div>
+        <div class="text-sm text-gray-500">{{ user_obj.email }}</div>
+        <div class="text-sm text-gray-500">Member since {{ user_obj.date_joined|date:"M d, Y" }}</div>
       </div>
-    </div>
-
-    <div class="mt-6">
-      <a href="{% url 'accounts:profile_edit' %}" class="btn btn-primary btn-sm">Edit Profile</a>
+      <div class="flex items-center gap-2">
+        <a href="{% url 'accounts:profile_edit' %}" class="btn btn-primary btn-sm btn-enhanced"><i class="fas fa-cog"></i> Edit Profile</a>
+        <a href="{% url 'social:profile' user_obj.username %}" class="btn btn-ghost btn-sm btn-enhanced"><i class="fas fa-user"></i> Social Profile</a>
+        <button type="button" class="btn btn-ghost btn-sm btn-enhanced avatar-upload-btn"><i class="fas fa-upload"></i> Upload Avatar</button>
+      </div>
     </div>
   </div>
- </div>
+
+  <div class="responsive-grid mb-4">
+    <div class="stat-item">
+      <i class="stat-icon fas fa-feather"></i>
+      <div>
+        <div class="stat-value">{{ user_obj.social_posts.count }}</div>
+        <div class="stat-label">Posts</div>
+      </div>
+    </div>
+    <div class="stat-item">
+      <i class="stat-icon fas fa-user-plus"></i>
+      <div>
+        <div class="stat-value">{{ user_obj.social_followers_set.count }}</div>
+        <div class="stat-label">Followers</div>
+      </div>
+    </div>
+    <div class="stat-item">
+      <i class="stat-icon fas fa-user-friends"></i>
+      <div>
+        <div class="stat-value">{{ user_obj.social_following_set.count }}</div>
+        <div class="stat-label">Following</div>
+      </div>
+    </div>
+    <div class="stat-item">
+      <i class="stat-icon fas fa-store"></i>
+      <div>
+        <div class="stat-value">{{ user_obj.listings.count }}</div>
+        <div class="stat-label">Listings</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="enhanced-card mb-4">
+    <div class="section-title"><i class="fas fa-bolt"></i> Quick Actions</div>
+    <div class="action-grid">
+      <a class="action-item" href="{% url 'accounts:profile_edit' %}"><i class="action-icon fas fa-cog"></i><div class="action-label">Edit Profile</div></a>
+      <a class="action-item" href="{% url 'social:profile' user_obj.username %}"><i class="action-icon fas fa-user"></i><div class="action-label">Social Profile</div></a>
+      <a class="action-item" href="{% url 'social:create_post' %}"><i class="action-icon fas fa-pencil-alt"></i><div class="action-label">Create Post</div></a>
+      <a class="action-item" href="{% url 'marketplace:listing_create' %}"><i class="action-icon fas fa-plus-square"></i><div class="action-label">New Listing</div></a>
+      <a class="action-item" href="{% url 'social:dashboard' %}"><i class="action-icon fas fa-th-large"></i><div class="action-label">Social Dashboard</div></a>
+      <a class="action-item" href="{% url 'marketplace:dashboard' %}"><i class="action-icon fas fa-chart-bar"></i><div class="action-label">Seller Dashboard</div></a>
+      <a class="action-item" href="{% url 'marketplace:notifications' %}"><i class="action-icon fas fa-bell"></i><div class="action-label">Notifications</div></a>
+      <a class="action-item" href="{% url 'logout' %}"><i class="action-icon fas fa-sign-out-alt"></i><div class="action-label">Logout</div></a>
+    </div>
+  </div>
+
+  <div class="enhanced-card mb-6">
+    <div class="flex gap-3">
+      <a href="#overview" class="tab-item active btn btn-ghost btn-sm btn-enhanced">Overview</a>
+      <a href="#activity" class="tab-item btn btn-ghost btn-sm btn-enhanced">Activity</a>
+      <a href="#settings" class="tab-item btn btn-ghost btn-sm btn-enhanced">Settings</a>
+    </div>
+  </div>
+
+  <div class="enhanced-card mb-4">
+    <div class="section-title"><i class="fas fa-star"></i> Seller Ratings</div>
+    <div class="flex items-center gap-4 mb-3">
+      <div class="rating-ring" style="--value: {{ seller_rating_avg|default:0|floatformat:2 }}">
+        <div class="ring-inner">{{ seller_rating_avg|floatformat:1 }}</div>
+      </div>
+      <div>
+        <div class="font-semibold">Average <span class="opacity-70">/ 5</span></div>
+        <div class="text-sm opacity-70">{{ seller_rating_count }} total reviews</div>
+      </div>
+    </div>
+    {% if seller_rating_count > 0 %}
+      <div>
+        <div class="subsection-title"><i class="fas fa-history"></i> Recent Reviews</div>
+        <ul class="space-y-2">
+          {% for r in recent_ratings %}
+            <li class="timeline-item">
+              <div class="timeline-title">
+                <i class="fas fa-star text-yellow-400"></i> {{ r.score }}/5 from @{{ r.buyer.username }}
+              </div>
+              {% if r.listing %}<div class="timeline-meta">on {{ r.listing.title }} • {{ r.created_at|date:"M d, Y" }}</div>{% else %}
+              <div class="timeline-meta">{{ r.created_at|date:"M d, Y" }}</div>{% endif %}
+              {% if r.comment %}<div class="text-sm mt-1">“{{ r.comment }}”</div>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% else %}
+      <div class="text-sm opacity-70">No reviews yet.</div>
+    {% endif %}
+  </div>
+
+  <div class="enhanced-card mb-4">
+    <div class="section-title"><i class="fas fa-stream"></i> Activity</div>
+    <div class="timeline">
+      {% if recent_ratings %}
+        {% for r in recent_ratings %}
+          <div class="timeline-item">
+            <div class="timeline-title"><i class="fas fa-star text-yellow-400"></i> Received a {{ r.score }}/5 rating from @{{ r.buyer.username }}</div>
+            <div class="timeline-meta">{{ r.created_at|date:"M d, Y" }}{% if r.listing %} • on {{ r.listing.title }}{% endif %}</div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="text-sm opacity-70">No recent activity</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="enhanced-card">
+    <div class="section-title"><i class="fas fa-user"></i> Profile Details</div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div><div class="text-sm text-gray-500">Display Name</div><div class="font-medium">{{ user_obj.profile.display_name|default:"(not set)" }}</div></div>
+      <div><div class="text-sm text-gray-500">Location</div><div class="font-medium">{{ user_obj.profile.location|default:"(not set)" }}</div></div>
+      <div><div class="text-sm text-gray-500">Phone</div><div class="font-medium">{{ user_obj.profile.phone|default:"(not set)" }}</div></div>
+      <div class="md:col-span-2"><div class="text-sm text-gray-500">Bio</div><div class="font-medium">{{ user_obj.profile.bio|default:"(not set)" }}</div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/auth.js' %}"></script>
 {% endblock %}

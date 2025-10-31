@@ -20,6 +20,7 @@
        class="tab tab-sm md:tab-md lg:tab-lg shrink-0 {% if request.resolver_match.url_name == 'messages' %}tab-active{% endif %}">
         <i class="fas fa-comments mr-2"></i>
         Messages
+        <span id="marketplaceMsgBadge" class="badge badge-primary badge-sm ml-2" data-badge-count-url="{% url 'marketplace:messages_count' %}" data-app="marketplace" style="display:none;"></span>
     </a>
     <a href="{% url 'marketplace:transactions' %}"
        class="tab tab-sm md:tab-md lg:tab-lg shrink-0 {% if request.resolver_match.url_name == 'transactions' %}tab-active{% endif %}">
@@ -30,12 +31,16 @@
        class="tab tab-sm md:tab-md lg:tab-lg shrink-0 {% if request.resolver_match.url_name == 'notifications' %}tab-active{% endif %}">
         <i class="fas fa-bell mr-2"></i>
         Notifications
-        {% if unread_notifications %}
-        <span class="badge badge-primary badge-sm ml-2">{{ unread_notifications }}</span>
-        {% endif %}
+        <span id="marketplaceNotifBadge" class="badge badge-primary badge-sm ml-2" data-badge-count-url="{% url 'marketplace:notifications_count' %}" data-app="marketplace" {% if not unread_notifications %}style="display:none;"{% endif %}>{{ unread_notifications|default:0 }}</span>
     </a>
   </div>
 </div>
+{% endblock %}
+
+{% block sidebar %}
+  {% with view_name=request.resolver_match.url_name %}
+    {% include 'marketplace/sidebar.html' with current_app='marketplace' view_name=view_name %}
+  {% endwith %}
 {% endblock %}
 
 {% block content %}

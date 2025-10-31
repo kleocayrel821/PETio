@@ -1,8 +1,12 @@
-{% extends 'social/base_social.html' %}
+{% extends 'base.html' %}
 
-{% block social_title %}My Dashboard - IOsocial{% endblock %}
+{% block title %}My Dashboard - PETio Social{% endblock %}
 
-{% block social_content %}
+{% block sidebar %}
+  {% include 'social/sidebar.html' with view_name='dashboard' %}
+{% endblock %}
+
+{% block content %}
 <div class="max-w-7xl mx-auto">
     <!-- Header -->
     <div class="mb-8">

@@ -29,6 +29,12 @@
 </div>
 {% endblock %}
 
+{% block sidebar %}
+  {% with view_name=request.resolver_match.url_name %}
+    {% include 'social/sidebar.html' with current_app='social' view_name=view_name %}
+  {% endwith %}
+{% endblock %}
+
 {% block content %}
   {% block social_content %}{% endblock %}
 {% endblock %}
@@ -37,26 +43,5 @@
   <script src="{% static 'social/js/interactions.js' %}"></script>
   {% block social_scripts %}{% endblock %}
   {% block extra_js %}{% endblock %}
-  <script>
-    (function(){
-      const badge = document.getElementById('notifBadge');
-      if (!badge) return;
-      function updateNotifCount(){
-        fetch('{% url "social:notification_count" %}', {headers: {'X-Requested-With': 'XMLHttpRequest'}})
-          .then(r => r.json())
-          .then(data => {
-            const count = data && typeof data.count === 'number' ? data.count : 0;
-            if (count > 0) {
-              badge.textContent = count;
-              badge.style.display = '';
-            } else {
-              badge.style.display = 'none';
-            }
-          })
-          .catch(() => {});
-      }
-      updateNotifCount();
-      setInterval(updateNotifCount, 60000);
-    })();
-  </script>
+  {# Inline Social badge polling removed; global navigation.js updates badges consistently #}
 {% endblock %}
