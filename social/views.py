@@ -19,7 +19,18 @@ User = get_user_model()
 
 def home(request):
     """Home/Landing page for IOsocial"""
-    return render(request, 'social/home.html')
+    # Calculate community stats for the home page
+    total_users = User.objects.count()
+    total_posts = Post.objects.count()
+    total_interactions = Like.objects.count() + Comment.objects.count()
+    
+    context = {
+        'total_users': total_users,
+        'total_posts': total_posts,
+        'total_interactions': total_interactions,
+    }
+    
+    return render(request, 'social/home.html', context)
 
 
 def feed(request):
@@ -197,25 +208,38 @@ def dashboard(request):
     """User dashboard showing posts, stats, and recent activity"""
     user = request.user
     
-    # Core querysets
-    user_posts_qs = Post.objects.filter(author=user)
-    recent_posts = user_posts_qs.order_by('-created_at')[:5]
-    # Use an annotation name that does not collide with the model's @property
-    popular_posts = user_posts_qs.annotate(likes_count=Count('likes')).order_by('-likes_count', '-created_at')[:5]
-    recent_notifications = Notification.objects.filter(recipient=user).order_by('-created_at')[:5]
+    # Ensure user profile exists
+    profile, created = UserProfile.objects.get_or_create(user=user)
     
-    # Profile and aggregate stats
-    profile, _ = UserProfile.objects.get_or_create(user=user)
+    # Core querysets with select_related for better performance
+    user_posts_qs = Post.objects.filter(author=user).select_related('category')
+    recent_posts = user_posts_qs.order_by('-created_at')[:5]
+    
+    # Popular posts with proper annotation
+    popular_posts = user_posts_qs.annotate(
+        likes_count=Count('likes')
+    ).order_by('-likes_count', '-created_at')[:5]
+    
+    # Recent notifications with related data
+    recent_notifications = Notification.objects.filter(
+        recipient=user
+    ).select_related('sender', 'post').order_by('-created_at')[:5]
+    
+    # Calculate user statistics
     total_posts = user_posts_qs.count()
     total_likes = Like.objects.filter(post__author=user).count()
     total_comments = Comment.objects.filter(post__author=user).count()
+    
+    # Get follower/following counts directly from the database
+    followers_count = Follow.objects.filter(following=user).count()
+    following_count = Follow.objects.filter(follower=user).count()
     
     user_stats = {
         'total_posts': total_posts,
         'total_likes': total_likes,
         'total_comments': total_comments,
-        'followers_count': profile.follower_count,
-        'following_count': profile.following_count,
+        'followers_count': followers_count,
+        'following_count': following_count,
     }
     
     # Weekly activity stats

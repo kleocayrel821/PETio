@@ -52,6 +52,7 @@
         position: absolute;
         top: -75px;
         left: 20px;
+        z-index: 10;
     }
 
     /* Compact avatar size per spec */
@@ -74,10 +75,11 @@
     .profile-header-content {
         background: var(--card-background);
         border-radius: 16px;
-        padding: 70px 20px 20px;
+        padding: 70px 20px 20px 160px;
         margin-top: -40px;
         box-shadow: 0 6px 20px rgba(0,0,0,0.08);
         border: 1px solid var(--border-color);
+        position: relative;
     }
 
     .profile-actions-header {
@@ -142,6 +144,8 @@
         border-radius: 12px;
         padding: 12px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        min-height: 60px;
+        justify-content: flex-start;
     }
 
     .stat-item:hover {
@@ -262,7 +266,7 @@
 
     .post-header {
         display: flex;
-        justify-content: between;
+        justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 12px;
     }
@@ -274,15 +278,6 @@
         color: var(--text-secondary);
         font-size: 0.9rem;
         flex-grow: 1;
-    }
-
-    .post-actions-menu {
-        opacity: 0;
-        transition: opacity 0.2s ease;
-    }
-
-    .post-item:hover .post-actions-menu {
-        opacity: 1;
     }
 
     .post-title {
@@ -455,6 +450,9 @@
           linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.02));
         padding: 16px;
         border-radius: 16px;
+        max-width: 900px;
+        margin: 0 auto;
+        position: relative;
     }
 
     /* Modern card helpers */
@@ -491,19 +489,18 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 6px;
         padding: 12px;
         border: 1px solid var(--border-color);
-        border-radius: 12px;
+        border-radius: 8px;
         background: var(--card-background);
         transition: all 0.2s ease;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+        text-decoration: none;
+        color: var(--text-primary);
     }
     .icon-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-        border-color: rgba(29,161,242,0.4);
+        background: var(--hover-background);
+        border-color: var(--primary-color);
+        text-decoration: none;
     }
 
     /* Timeline styles */
@@ -572,6 +569,138 @@
         justify-content: center;
         font-weight: 700;
         color: #374151;
+    }
+
+    /* Verified badge styles */
+    .verified-badge {
+        color: #1da1f2;
+        margin-left: 8px;
+        font-size: 1.2rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .profile-info-container {
+            padding: 0 16px;
+        }
+
+        .profile-avatar-container {
+            left: 16px;
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            font-size: 2.5rem;
+        }
+
+        .profile-header-content {
+            padding: 60px 16px 16px;
+        }
+
+        .profile-name {
+            font-size: 1.3rem;
+        }
+
+        .profile-stats {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-item {
+            padding: 10px;
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.1rem;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+        }
+
+        .icon-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .icon-item {
+            min-height: 70px;
+            padding: 10px 6px;
+        }
+        .icon-item i {
+            font-size: 1.1rem;
+        }
+
+
+        .posts-section {
+            padding: 0 16px;
+        }
+
+        .post-item {
+            padding: 16px;
+        }
+
+        .profile-meta {
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .progress-ring {
+            width: 90px;
+            height: 90px;
+        }
+
+        .progress-inner {
+            width: 70px;
+            height: 70px;
+            font-size: 0.9rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .profile-cover {
+            height: 150px;
+        }
+
+        .profile-avatar-container {
+            top: -50px;
+            left: 20px;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            font-size: 2rem;
+        }
+
+        .profile-header-content {
+            padding: 45px 12px 12px 110px;
+            margin-top: -30px;
+        }
+
+        .profile-name {
+            font-size: 1.2rem;
+        }
+
+        .profile-username {
+            font-size: 0.9rem;
+        }
+
+        .profile-stats {
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .icon-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .btn-modern {
+            padding: 6px 16px;
+            font-size: 0.85rem;
+        }
     }
 </style>
 {% endblock %}
@@ -663,12 +792,12 @@
             </a>
             <a href="#" class="stat-item">
                 <i class="fas fa-user-friends"></i>
-                <span class="stat-number">{{ profile_user.followers.count }}</span>
+                <span class="stat-number">{{ profile.follower_count }}</span>
                 <span class="stat-label">Followers</span>
             </a>
             <a href="#" class="stat-item">
                 <i class="fas fa-user-plus"></i>
-                <span class="stat-number">{{ profile_user.following.count }}</span>
+                <span class="stat-number">{{ profile.following_count }}</span>
                 <span class="stat-label">Following</span>
             </a>
             <a href="#" class="stat-item">
@@ -679,7 +808,7 @@
         </div>
     </div>
 
-    <!-- Quick Actions -->
+    
     <div class="modern-card accent-border" style="margin-top: 12px;">
         <h3 class="card-title"><i class="fas fa-bolt"></i> Quick Actions</h3>
         <div class="icon-grid" style="margin-top: 10px;">
@@ -765,7 +894,7 @@
           {% endif %}
           <div class="timeline-item">
               <div class="timeline-title"><i class="fas fa-users"></i> Community Growth</div>
-              <div class="timeline-meta">Followers: {{ profile_user.followers.count }} • Following: {{ profile_user.following.count }}</div>
+              <div class="timeline-meta">Followers: {{ profile.follower_count }} • Following: {{ profile.following_count }}</div>
           </div>
       </div>
   </div>
@@ -793,10 +922,23 @@
                         {% endif %}
                     </div>
                     {% if is_own_profile %}
-                        <div class="post-actions-menu">
-                            <button class="engagement-btn" onclick="event.stopPropagation(); editPost({{ post.id }})">
-                                <i class="fas fa-edit"></i>
-                            </button>
+                        <div class="dropdown dropdown-end">
+                            <label tabindex="0" class="btn btn-ghost btn-sm">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </label>
+                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                                <li><a href="{% url 'social:edit_post' post.pk %}"><i class="fas fa-edit"></i> Edit</a></li>
+                                <li><a href="{% url 'social:post_detail' post.pk %}"><i class="fas fa-eye"></i> View</a></li>
+                                <li>
+                                    <form method="POST" action="{% url 'social:delete_post' post.pk %}" 
+                                          onsubmit="return confirm('Are you sure you want to delete this post?')">
+                                        {% csrf_token %}
+                                        <button type="submit" class="text-red-500">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
                         </div>
                     {% endif %}
                 </div>
