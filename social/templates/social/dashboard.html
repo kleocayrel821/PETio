@@ -16,11 +16,11 @@
 
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="card bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg">
+        <div class="card bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-shadow">
             <div class="card-body">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h3 class="text-2xl font-bold">{{ user_stats.total_posts }}</h3>
+                        <h3 class="text-2xl font-bold">{{ user_stats.total_posts|default:0 }}</h3>
                         <p class="opacity-90">Total Posts</p>
                     </div>
                     <i class="fas fa-file-alt text-3xl opacity-80"></i>
@@ -28,11 +28,11 @@
             </div>
         </div>
 
-        <div class="card bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg">
+        <div class="card bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg hover:shadow-xl transition-shadow">
             <div class="card-body">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h3 class="text-2xl font-bold">{{ user_stats.total_likes }}</h3>
+                        <h3 class="text-2xl font-bold">{{ user_stats.total_likes|default:0 }}</h3>
                         <p class="opacity-90">Total Likes</p>
                     </div>
                     <i class="fas fa-heart text-3xl opacity-80"></i>
@@ -40,11 +40,11 @@
             </div>
         </div>
 
-        <div class="card bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg">
+        <div class="card bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-shadow">
             <div class="card-body">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h3 class="text-2xl font-bold">{{ user_stats.total_comments }}</h3>
+                        <h3 class="text-2xl font-bold">{{ user_stats.total_comments|default:0 }}</h3>
                         <p class="opacity-90">Total Comments</p>
                     </div>
                     <i class="fas fa-comments text-3xl opacity-80"></i>
@@ -52,11 +52,11 @@
             </div>
         </div>
 
-        <div class="card bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg">
+        <div class="card bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg hover:shadow-xl transition-shadow">
             <div class="card-body">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h3 class="text-2xl font-bold">{{ user_stats.followers_count }}</h3>
+                        <h3 class="text-2xl font-bold">{{ user_stats.followers_count|default:0 }}</h3>
                         <p class="opacity-90">Followers</p>
                     </div>
                     <i class="fas fa-users text-3xl opacity-80"></i>
@@ -164,25 +164,43 @@
             <div class="card bg-base-100 shadow-lg">
                 <div class="card-body text-center">
                     <div class="avatar mb-4">
-                        <div class="w-20 rounded-full">
-                            <img src="https://ui-avatars.com/api/?name={{ user.get_full_name|default:user.username }}&background=3B82F6&color=fff&size=80" alt="Your Avatar" />
+                        <div class="w-20 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
+                            {% if profile.avatar %}
+                                <img src="{{ profile.avatar.url }}" alt="{{ user.get_full_name|default:user.username }}" />
+                            {% else %}
+                                <img src="https://ui-avatars.com/api/?name={{ user.get_full_name|default:user.username|urlencode }}&background=3B82F6&color=fff&size=80" alt="{{ user.get_full_name|default:user.username }}" />
+                            {% endif %}
                         </div>
                     </div>
                     <h3 class="font-bold text-lg">{{ user.get_full_name|default:user.username }}</h3>
-                    <p class="text-base-content/60 mb-4">@{{ user.username }}</p>
-                    {% if profile.bio %}
-                        <p class="text-sm mb-4">{{ profile.bio|truncatewords:20 }}</p>
+                    <p class="text-base-content/60 mb-2">@{{ user.username }}</p>
+                    {% if profile.location %}
+                        <p class="text-xs text-base-content/50 mb-2">
+                            <i class="fas fa-map-marker-alt"></i> {{ profile.location }}
+                        </p>
                     {% endif %}
-                    <div class="flex justify-center space-x-4 text-sm">
+                    {% if profile.bio %}
+                        <p class="text-sm mb-4 text-base-content/80">{{ profile.bio|truncatewords:20 }}</p>
+                    {% else %}
+                        <p class="text-sm mb-4 text-base-content/50 italic">No bio yet</p>
+                    {% endif %}
+                    <div class="flex justify-center space-x-6 text-sm">
                         <div class="text-center">
-                            <div class="font-bold">{{ user_stats.following_count }}</div>
+                            <div class="font-bold text-lg">{{ user_stats.following_count|default:0 }}</div>
                             <div class="text-base-content/60">Following</div>
                         </div>
                         <div class="text-center">
-                            <div class="font-bold">{{ user_stats.followers_count }}</div>
+                            <div class="font-bold text-lg">{{ user_stats.followers_count|default:0 }}</div>
                             <div class="text-base-content/60">Followers</div>
                         </div>
                     </div>
+                    {% if profile.website %}
+                        <div class="mt-4">
+                            <a href="{{ profile.website }}" target="_blank" class="text-primary hover:text-primary-focus text-sm">
+                                <i class="fas fa-external-link-alt"></i> Website
+                            </a>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -251,24 +269,27 @@
             <!-- Quick Stats -->
             <div class="card bg-base-100 shadow-lg">
                 <div class="card-body">
-                    <h3 class="card-title mb-4">This Week</h3>
+                    <h3 class="card-title mb-4">
+                        <i class="fas fa-calendar-week text-primary"></i>
+                        This Week
+                    </h3>
                     
                     <div class="space-y-3">
-                        <div class="flex justify-between">
-                            <span class="text-sm">Posts Created</span>
-                            <span class="font-bold">{{ weekly_stats.posts }}</span>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-base-content/70">Posts Created</span>
+                            <span class="font-bold text-primary">{{ weekly_stats.posts|default:0 }}</span>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-sm">Likes Received</span>
-                            <span class="font-bold">{{ weekly_stats.likes }}</span>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-base-content/70">Likes Received</span>
+                            <span class="font-bold text-green-600">{{ weekly_stats.likes|default:0 }}</span>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-sm">Comments Received</span>
-                            <span class="font-bold">{{ weekly_stats.comments }}</span>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-base-content/70">Comments Received</span>
+                            <span class="font-bold text-purple-600">{{ weekly_stats.comments|default:0 }}</span>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-sm">New Followers</span>
-                            <span class="font-bold">{{ weekly_stats.followers }}</span>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-base-content/70">New Followers</span>
+                            <span class="font-bold text-orange-600">{{ weekly_stats.followers|default:0 }}</span>
                         </div>
                     </div>
                 </div>
