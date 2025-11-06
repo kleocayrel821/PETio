@@ -20,6 +20,8 @@ if getattr(settings, "MARKETPLACE_RESET", False):
         path("catalog/", views.reset_placeholder, name="catalog"),
         path("listing/<int:pk>/", views.reset_placeholder, name="listing_detail"),
         path("listing/new/", views.reset_placeholder, name="listing_create"),
+        # Legacy alias to create listing route (redirects in normal mode)
+        path("listing/create/", views.reset_placeholder, name="create_listing"),
         path("dashboard/", views.reset_placeholder, name="dashboard"),
         path("transactions/", views.reset_placeholder, name="transactions"),
         path("messages/", views.reset_placeholder, name="messages"),
@@ -34,6 +36,8 @@ else:
         # Listing detail and manual purchase request
         path("listing/<int:pk>/", views.ListingDetailView.as_view(), name="listing_detail"),
         path("listing/<int:pk>/request/", views.request_to_purchase, name="request_purchase"),
+        # Report listing HTML form (UI)
+        path("listing/<int:listing_id>/report/", views.report_listing, name="report_listing"),
 
         # Purchase request detail and messaging
         path("request/<int:pk>/", views.RequestDetailView.as_view(), name="request_detail"),
@@ -43,6 +47,8 @@ else:
 
         # Listing create (seller)
         path("listing/new/", views.ListingCreateView.as_view(), name="listing_create"),
+        # Legacy alias that redirects to the standard create view
+        path("listing/create/", views.create_listing, name="create_listing"),
 
         # User dashboard and utility pages
         path("dashboard/", views.DashboardView.as_view(), name="dashboard"),
@@ -57,9 +63,25 @@ else:
         path("notifications/count/", views.notifications_count, name="notifications_count"),
         path("messages/count/", views.messages_count, name="messages_count"),
 
+        # Trust & Safety
+        path("user/<int:user_id>/profile/", views.user_profile, name="user_profile"),
+        path("verification/", views.verification_page, name="verification"),
+
+        # Meetup safety helpers
+        path("request/<int:pk>/suggest-locations/", views.suggest_safe_locations, name="suggest_locations"),
+        path("request/<int:pk>/send-reminder/", views.send_meetup_reminder, name="send_reminder"),
+        path("request/<int:pk>/report-no-show/", views.report_no_show, name="report_no_show"),
+
+        # Dispute management
+        path("request/<int:pk>/file-dispute/", views.file_dispute, name="file_dispute"),
+        path("dispute/<int:dispute_id>/", views.dispute_detail, name="dispute_detail"),
+        path("dispute/<int:dispute_id>/add-message/", views.add_dispute_message, name="add_dispute_message"),
+
         # Dashboards
         path("buyer/", views.BuyerDashboardView.as_view(), name="buyer_dashboard"),
         path("seller/", views.SellerDashboardView.as_view(), name="seller_dashboard"),
+        # Requests overview
+        path("requests/", views.RequestsOverviewView.as_view(), name="requests_overview"),
         # Legacy moderator route: temporarily redirect to unified admin dashboard
         path("moderator/", views.moderator_legacy_redirect, name="moderator_dashboard"),
         path("moderator/listing/<int:listing_id>/approve/", views.moderator_approve_listing, name="moderator_approve_listing"),
@@ -90,7 +112,9 @@ else:
         # Inline listing action endpoints used by Dashboard
         path("api/listings/<int:listing_id>/reserve/", views.api_listing_reserve, name="api_listing_reserve"),
         path("api/listings/<int:listing_id>/sell/", views.api_listing_sell, name="api_listing_sell"),
+        path("api/listings/<int:listing_id>/buy-now/", views.api_listing_buy_now, name="api_listing_buy_now"),
         path("api/listings/<int:listing_id>/complete/", views.api_listing_complete, name="api_listing_complete"),
+        path("api/listings/<int:listing_id>/report/", views.api_listing_report, name="api_listing_report"),
 
         # Messaging JSON API endpoints (explicit names used by tests)
         path("api/messages/thread/start/", views.api_start_or_get_thread, name="api_start_or_get_thread"),
@@ -105,7 +129,10 @@ else:
         path("api/requests/<int:request_id>/cancel/", views.api_request_cancel, name="api_request_cancel"),
         path("api/requests/<int:request_id>/meetup/set/", views.api_request_meetup_set, name="api_request_meetup_set"),
         path("api/requests/<int:request_id>/meetup/confirm/", views.api_request_meetup_confirm, name="api_request_meetup_confirm"),
+        path("api/requests/<int:request_id>/payment/record/", views.api_request_record_payment, name="api_request_record_payment"),
         path("api/requests/<int:request_id>/complete/", views.api_request_complete, name="api_request_complete"),
+        # Request-level messages polling
+        path("api/requests/<int:request_id>/messages/", views.api_request_messages, name="api_request_messages"),
 
         # Include DRF router for RESTful endpoints
         path("api/", include(router.urls)),

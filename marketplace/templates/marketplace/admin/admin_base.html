@@ -7,48 +7,42 @@
 
 {% block extra_head %}
   <link rel="stylesheet" href="{% static 'marketplace/css/admin.css' %}">
+  {# Lucide icons will be initialized in scripts; include any extra head content here if needed #}
 {% endblock %}
 
-{% block app_nav %}
-<div class="overflow-x-auto">
-  <div class="tabs tabs-boxed bg-transparent gap-2 py-1 whitespace-nowrap flex">
-    <a href="{% url 'marketplace_admin:dashboard' %}"
-       class="tab tab-sm md:tab-md lg:tab-lg shrink-0 {% if active_tab == 'analytics' %}tab-active{% endif %}">
-        <i class="fas fa-chart-line mr-2"></i>
-        Admin
-    </a>
-  </div>
-</div>
+{# Use the global base layout and sidebar to share the same UI #}
+{% block sidebar %}
+  {% block admin_sidebar %}{% endblock %}
 {% endblock %}
 
 {% block content %}
-<div class="grid grid-cols-1 md:grid-cols-5 gap-6">
-  <!-- Admin Sidebar (left) -->
-  <aside class="md:col-span-1">
-    {% block admin_sidebar %}{% endblock %}
-  </aside>
-
-  <!-- Admin Content (right) -->
-  <section class="md:col-span-4">
-    {% block admin_messages %}
-    {% if messages %}
-    <div class="space-y-2 mb-4">
-      {% for message in messages %}
-      <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %}">
-        <span>{{ message }}</span>
-      </div>
-      {% endfor %}
+  {% block admin_messages %}
+  {% if messages %}
+  <div class="space-y-2 mb-4">
+    {% for message in messages %}
+    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %}">
+      <span>{{ message }}</span>
     </div>
-    {% endif %}
-    {% endblock %}
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endblock %}
 
-    <div class="card bg-base-100 shadow">
-      <div class="card-body p-4">
-        {% block admin_content %}{% endblock %}
-      </div>
+  <div class="card bg-base-100 shadow">
+    <div class="card-body p-4">
+      {% block admin_content %}{% endblock %}
     </div>
-  </section>
-</div>
+  </div>
 {% endblock %}
 
-{% block global_sidebar %}{% endblock %}
+{% block extra_js %}
+  <script src="{% static 'marketplace/admin.js' %}"></script>
+{% endblock %}
+
+{% block scripts %}
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    // Initialize Lucide icons when library is ready
+    document.addEventListener('DOMContentLoaded', function() { try { if (window.lucide) { window.lucide.createIcons(); } } catch (e) {} });
+  </script>
+{% endblock %}

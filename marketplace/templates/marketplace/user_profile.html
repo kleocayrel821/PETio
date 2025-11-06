@@ -1,0 +1,78 @@
+<!--
+  Template: User Profile
+  Purpose: Display a user's marketplace profile including trust metrics, verification badge,
+           recent reviews (SellerRating), and completed transaction counts.
+-->
+{% extends "base.html" %}
+
+{% block title %}{{ profile_user.username }} — Marketplace Profile{% endblock %}
+
+{% block content %}
+<section class="container" style="max-width: 960px; margin: 0 auto; padding: 1.5rem;">
+  <header style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">
+    <div>
+      <h1 style="margin:0;">{{ profile_user.username }}</h1>
+      <p style="margin:0.25rem 0; color:#555;">{{ profile.location|default:"Location not set" }}</p>
+      <div style="display:flex; gap:0.75rem; align-items:center; margin-top:0.5rem;">
+        <span style="font-weight:600;">Trust Score:</span>
+        <span>{{ profile.trust_score|default:0 }}</span>
+        {% if profile.verified %}
+          <span style="background:#e6ffed; color:#0366d6; border:1px solid #c6e48b; padding:0.2rem 0.5rem; border-radius:4px;">Verified</span>
+        {% else %}
+          <span style="background:#fff5f5; color:#d6336c; border:1px solid #f5c2c7; padding:0.2rem 0.5rem; border-radius:4px;">Unverified</span>
+        {% endif %}
+        <span style="color:#888;">No-shows: {{ profile.no_show_count|default:0 }}</span>
+      </div>
+    </div>
+  </header>
+
+  <section style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+    <div style="border:1px solid #eee; padding:1rem; border-radius:6px;">
+      <h2 style="margin-top:0;">Transaction Summary</h2>
+      <ul style="list-style:none; padding:0; margin:0;">
+        <li>Completed as Buyer: <strong>{{ completed_as_buyer }}</strong></li>
+        <li>Completed as Seller: <strong>{{ completed_as_seller }}</strong></li>
+      </ul>
+    </div>
+    <div style="border:1px solid #eee; padding:1rem; border-radius:6px;">
+      <h2 style="margin-top:0;">Rating Distribution</h2>
+      <ul style="list-style:none; padding:0; margin:0;">
+        <li>5★: {{ rating_distribution.5 }}</li>
+        <li>4★: {{ rating_distribution.4 }}</li>
+        <li>3★: {{ rating_distribution.3 }}</li>
+        <li>2★: {{ rating_distribution.2 }}</li>
+        <li>1★: {{ rating_distribution.1 }}</li>
+      </ul>
+    </div>
+  </section>
+
+  <section style="border:1px solid #eee; padding:1rem; border-radius:6px;">
+    <h2 style="margin-top:0;">Recent Reviews</h2>
+    {% if reviews %}
+      <ul style="list-style:none; padding:0; margin:0;">
+        {% for r in reviews %}
+          <li style="border-bottom:1px solid #f0f0f0; padding:0.75rem 0;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong>{{ r.buyer.username }}</strong>
+                {% if r.listing %}
+                  on <em>{{ r.listing.title }}</em>
+                {% endif %}
+              </div>
+              <div>
+                <span>{{ r.score }}★</span>
+              </div>
+            </div>
+            {% if r.comment %}
+              <p style="margin:0.5rem 0; color:#444;">{{ r.comment }}</p>
+            {% endif %}
+            <small style="color:#999;">{{ r.created_at }}</small>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No reviews yet.</p>
+    {% endif %}
+  </section>
+</section>
+{% endblock %}

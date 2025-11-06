@@ -46,6 +46,7 @@
 {% block content %}
 <div class="min-h-screen bg-base-100">
      <!-- Marketplace Header Section -->
+     {% block marketplace_header_section %}
      <div class="bg-gradient-to-r from-accent/10 to-accent/5 border-b border-base-300">
          <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
              <!-- Marketplace Title & Navigation -->
@@ -65,7 +66,7 @@
                  </div>
                  
                  <!-- Marketplace Quick Actions -->
-                 <div class="flex items-center gap-2">
+                 <!-- <div class="flex items-center gap-2">
                      {% block marketplace_actions %}
                      {% if request.user.is_authenticated %}
                      <a href="{% url 'marketplace:listing_create' %}" class="btn btn-primary btn-md lg:btn-lg">
@@ -80,10 +81,11 @@
                      </a>
                      {% endif %}
                      {% endblock %}
-                 </div>
+                 </div> -->
              </div>
          </div>
      </div>
+     {% endblock %}
 
      <!-- Breadcrumbs -->
      <div class="container mx-auto px-3 sm:px-4 py-2">

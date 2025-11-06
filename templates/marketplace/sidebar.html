@@ -20,6 +20,10 @@ Expects: view_name set to one of: browse, my_listings, messages, transactions, n
     <i class="fas fa-exchange-alt"></i>
     <span>Transactions</span>
   </a>
+  <a href="{% url 'marketplace:requests_overview' %}" class="sidebar-item {% if view_name == 'requests_overview' or view_name == 'buyer_dashboard' or view_name == 'seller_dashboard' or view_name == 'request_detail' %}active{% endif %}">
+    <i class="fas fa-clipboard-list"></i>
+    <span>Request Purchase</span>
+  </a>
   <a href="{% url 'marketplace:notifications' %}" class="sidebar-item {% if view_name == 'notifications' %}active{% endif %}">
     <i class="fas fa-bell"></i>
     <span>Notifications</span>

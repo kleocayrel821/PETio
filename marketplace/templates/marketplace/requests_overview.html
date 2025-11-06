@@ -1,0 +1,107 @@
+{% extends "marketplace/base_marketplace.html" %}
+{#
+  Requests Overview Template
+  Purpose: Show all purchase requests related to the current user, grouped as
+           buyer and seller (incoming), with quick actions and deep links.
+  Design: Tailwind + DaisyUI
+  Accessibility: Semantic headings, readable badges, clear actions.
+#}
+
+{% block marketplace_title %}Requests Overview{% endblock %}
+{% block marketplace_header %}Purchase Requests{% endblock %}
+{% block marketplace_subtitle %}View and manage all your requests in one place{% endblock %}
+
+{% block breadcrumbs %}
+<li><a href="{% url 'marketplace:home' %}">Home</a></li>
+<li>Requests</li>
+{% endblock %}
+
+{% block marketplace_content %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- Buyer side -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <div class="flex items-center gap-2">
+        <h2 class="card-title"><span class="mr-2">🛒</span>Your Purchase Requests</h2>
+        {% if buyer_requests and buyer_requests|length %}
+        <span class="badge badge-primary">{{ buyer_requests|length }}</span>
+        {% endif %}
+      </div>
+      <div class="grid gap-4 mt-2">
+        {% for r in buyer_requests %}
+        <div class="bg-base-200 rounded-xl p-4">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="font-semibold flex items-center gap-2">
+                {{ r.listing.title }}
+                {% if r.unread_count %}
+                  <span class="badge badge-warning">{{ r.unread_count }} new</span>
+                {% endif %}
+              </div>
+              <div class="text-sm text-base-content/70">Seller: {{ r.seller.username }} • Status: {{ r.get_status_display }}</div>
+              {% if r.message %}
+              <div class="mt-1 text-sm">Your note: {{ r.message }}</div>
+              {% endif %}
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <a class="btn btn-ghost btn-sm" href="{% url 'marketplace:listing_detail' r.listing.id %}">View Listing</a>
+              <a class="btn btn-primary btn-sm" href="{% url 'marketplace:request_detail' r.id %}">Open Thread</a>
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="alert">No purchase requests as buyer.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Seller side -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <div class="flex items-center gap-2">
+        <h2 class="card-title"><span class="mr-2">📥</span>Incoming Purchase Requests</h2>
+        {% if seller_requests and seller_requests|length %}
+        <span class="badge badge-primary">{{ seller_requests|length }}</span>
+        {% endif %}
+      </div>
+      <div class="grid gap-4 mt-2">
+        {% for r in seller_requests %}
+        <div class="bg-base-200 rounded-xl p-4">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="font-semibold flex items-center gap-2">
+                {{ r.listing.title }} • Buyer: {{ r.buyer.username }}
+                {% if r.unread_count %}
+                  <span class="badge badge-warning">{{ r.unread_count }} new</span>
+                {% endif %}
+              </div>
+              <div class="text-sm text-base-content/70">Status: {{ r.get_status_display }}</div>
+              {% if r.message %}
+              <div class="mt-1 text-sm">Buyer note: {{ r.message }}</div>
+              {% endif %}
+            </div>
+            <div class="flex flex-wrap gap-2">
+              {% if r.status == 'pending' or r.status == 'negotiating' %}
+              <form method="post" action="{% url 'marketplace:seller_accept_request' r.id %}">
+                {% csrf_token %}
+                <button class="btn btn-primary btn-sm">Accept</button>
+              </form>
+              <form method="post" action="{% url 'marketplace:seller_reject_request' r.id %}">
+                {% csrf_token %}
+                <button class="btn btn-error btn-sm">Reject</button>
+              </form>
+              {% endif %}
+              <a class="btn btn-ghost btn-sm" href="{% url 'marketplace:listing_detail' r.listing.id %}">View Listing</a>
+              <a class="btn btn-primary btn-sm" href="{% url 'marketplace:request_detail' r.id %}">Open Thread</a>
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="alert">No incoming requests as seller.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

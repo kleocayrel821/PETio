@@ -1,62 +1,299 @@
-{% comment %}Listings tab: renders table and uses AJAX to fetch/approve/reject.{% endcomment %}
-<h3 class="text-xl font-semibold mb-3">Pending Listings</h3>
+{% comment %}Enhanced Listings tab with professional design and improved UX{% endcomment %}
 
-<div class="overflow-x-auto">
-  <table id="listings-table" class="table table-zebra w-full">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Title</th>
-        <th>Seller</th>
-        <th>Price</th>
-        <th>Submitted</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for l in pending_listings %}
-      <tr>
-        <td>{{ l.id }}</td>
-        <td>{{ l.title }}</td>
-        <td>{{ l.seller.username }}</td>
-        <td>₱{{ l.price|floatformat:2 }}</td>
-        <td>{{ l.created_at|date:"Y-m-d H:i" }}</td>
-        <td class="flex gap-2">
-          <button class="btn btn-primary btn-xs" data-action="approve" data-id="{{ l.id }}">Approve</button>
-          <button class="btn btn-error btn-xs" data-action="reject" data-id="{{ l.id }}">Reject</button>
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="6" class="text-center">No pending listings.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+<!-- Header Section with Search & Filters -->
+<div class="space-y-6">
+  <!-- Page Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h3 class="text-2xl font-semibold text-base-content">Pending Listings</h3>
+      <p class="text-sm text-base-content/60 mt-1">Review and moderate marketplace listings</p>
+    </div>
+    <div class="badge badge-lg badge-primary" id="pending-count">
+      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <span id="count-text">0 Pending</span>
+    </div>
+  </div>
 
-<div id="reject-modal" class="modal hidden">
-  <div class="modal-box">
-    <h3 class="font-bold text-lg">Reject Listing</h3>
-    <div class="py-2">
-      <input id="reject-reason" class="input input-bordered w-full" placeholder="Reason (optional)" />
+  <!-- Search & Filter Bar -->
+  <div class="card bg-base-100 shadow-sm border border-base-200">
+    <div class="card-body p-4">
+      <div class="flex flex-col lg:flex-row gap-3">
+        <!-- Search Input -->
+        <div class="flex-1 relative">
+          <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input 
+            type="text" 
+            id="search-listings" 
+            placeholder="Search by title, seller, or ID..." 
+            class="input input-bordered w-full pl-10 focus:input-primary transition-all"
+          />
+        </div>
+        
+        <!-- Price Range Filter -->
+        <select id="filter-price" class="select select-bordered focus:select-primary min-w-[140px]">
+          <option value="">All Prices</option>
+          <option value="0-500">₱0 - ₱500</option>
+          <option value="500-1000">₱500 - ₱1,000</option>
+          <option value="1000-5000">₱1K - ₱5K</option>
+          <option value="5000+">₱5,000+</option>
+        </select>
+
+        <!-- Sort By -->
+        <select id="filter-sort" class="select select-bordered focus:select-primary min-w-[140px]">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="price-high">Price: High to Low</option>
+          <option value="price-low">Price: Low to High</option>
+        </select>
+
+        <!-- Bulk Actions -->
+        <div class="dropdown dropdown-end" id="bulk-actions-dropdown" style="display: none;">
+          <label tabindex="0" class="btn btn-outline gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+            </svg>
+            <span id="bulk-count">0 Selected</span>
+          </label>
+          <ul tabindex="0" class="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200 mt-1">
+            <li><a id="bulk-approve" class="text-success"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Approve Selected</a></li>
+            <li><a id="bulk-reject" class="text-error"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Reject Selected</a></li>
+          </ul>
+        </div>
+      </div>
     </div>
-    <div class="py-2">
-      <select id="reject-reason-code" class="select select-bordered w-full">
-        <option value="">Select reason code</option>
-        {% for code,label in rejection_reason_choices %}
-          <option value="{{ code }}">{{ label }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="modal-action">
-      <button id="reject-confirm" class="btn btn-error">Confirm Reject</button>
-      <button id="reject-cancel" class="btn">Cancel</button>
+  </div>
+
+  <!-- Loading Skeleton -->
+  <div id="listings-skeleton" class="space-y-2" style="display: none;">
+    <div class="skeleton h-16 w-full"></div>
+    <div class="skeleton h-16 w-full"></div>
+    <div class="skeleton h-16 w-full"></div>
+  </div>
+
+  <!-- Listings Table -->
+  <div class="card bg-base-100 shadow-md border border-base-200 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table id="listings-table" class="table table-zebra w-full">
+        <thead class="bg-base-200 sticky top-0 z-10">
+          <tr>
+            <th class="w-12">
+              <input type="checkbox" id="select-all" class="checkbox checkbox-sm" />
+            </th>
+            <th class="w-20">Preview</th>
+            <th class="min-w-[80px]">ID</th>
+            <th class="min-w-[200px]">Title</th>
+            <th class="min-w-[120px]">Seller</th>
+            <th class="min-w-[100px]">Price</th>
+            <th class="min-w-[140px]">Submitted</th>
+            <th class="min-w-[180px] text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in pending_listings %}
+          <tr class="hover:bg-base-200/50 transition-colors" data-listing-id="{{ l.id }}">
+            <td>
+              <input type="checkbox" class="checkbox checkbox-sm listing-checkbox" value="{{ l.id }}" />
+            </td>
+            <td>
+              <div class="avatar">
+                <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-200 overflow-hidden">
+                  {% if l.main_image %}
+                  <img src="{{ l.main_image.url }}" alt="{{ l.title }}" class="object-cover w-full h-full hover:scale-110 transition-transform cursor-pointer" onclick="showImagePreview('{{ l.main_image.url }}', '{{ l.title|escapejs }}')" />
+                  {% else %}
+                  <div class="w-full h-full flex items-center justify-center text-base-content/30">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+            <td class="font-mono text-sm text-base-content/70">#{{ l.id }}</td>
+            <td>
+              <div class="flex flex-col">
+                <span class="font-medium text-base-content line-clamp-1">{{ l.title }}</span>
+                <span class="text-xs text-base-content/50">{{ l.category.name|default:"Uncategorized" }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="flex items-center gap-2">
+                <div class="avatar placeholder">
+                  <div class="bg-primary text-primary-content rounded-full w-8 h-8 text-xs">
+                    <span>{{ l.seller.username|slice:":1"|upper }}</span>
+                  </div>
+                </div>
+                <span class="text-sm">{{ l.seller.username }}</span>
+              </div>
+            </td>
+            <td class="font-semibold text-primary">₱{{ l.price|floatformat:2 }}</td>
+            <td>
+              <div class="flex flex-col">
+                <span class="text-sm text-base-content/70">{{ l.created_at|date:"M d, Y" }}</span>
+                <span class="text-xs text-base-content/50">{{ l.created_at|date:"H:i" }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="flex gap-2 justify-end">
+                <button 
+                  class="btn btn-sm btn-success gap-1 hover:scale-105 transition-transform" 
+                  data-action="approve" 
+                  data-id="{{ l.id }}"
+                  title="Approve listing"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  Approve
+                </button>
+                <button 
+                  class="btn btn-sm btn-error btn-outline gap-1 hover:scale-105 transition-transform" 
+                  data-action="reject" 
+                  data-id="{{ l.id }}"
+                  title="Reject listing"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                  Reject
+                </button>
+                <button 
+                  class="btn btn-sm btn-ghost btn-square" 
+                  data-action="quick-view" 
+                  data-id="{{ l.id }}"
+                  title="Quick view details"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8">
+              <div class="flex flex-col items-center justify-center py-12 text-center">
+                <svg class="w-16 h-16 text-base-content/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <h4 class="text-lg font-semibold text-base-content/60 mb-1">No Pending Listings</h4>
+                <p class="text-sm text-base-content/40">All listings have been reviewed</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
 
+<!-- Enhanced Rejection Modal -->
+<div id="reject-modal" class="modal">
+  <div class="modal-box max-w-lg relative">
+    <!-- Close Button -->
+    <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4" onclick="closeRejectModal()">✕</button>
+    
+    <!-- Modal Header -->
+    <div class="flex items-center gap-3 mb-6">
+      <div class="flex-shrink-0 w-12 h-12 bg-error/10 rounded-full flex items-center justify-center">
+        <svg class="w-6 h-6 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.964-1.333-2.732 0L3.732 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+      </div>
+      <div>
+        <h3 class="font-bold text-xl text-base-content">Reject Listing</h3>
+        <p class="text-sm text-base-content/60">Provide a reason for rejection</p>
+      </div>
+    </div>
+
+    <!-- Listing Info (populated dynamically) -->
+    <div class="alert alert-warning mb-4" id="reject-listing-info" style="display: none;">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <div class="text-sm">
+        <div class="font-semibold" id="reject-listing-title"></div>
+        <div class="text-xs opacity-70">by <span id="reject-listing-seller"></span></div>
+      </div>
+    </div>
+
+    <!-- Reason Code (Required) -->
+    <div class="form-control mb-4">
+      <label class="label">
+        <span class="label-text font-medium">Rejection Reason <span class="text-error">*</span></span>
+      </label>
+      <select id="reject-reason-code" class="select select-bordered focus:select-error w-full">
+        <option value="" disabled selected>Select a reason...</option>
+        {% for code,label in rejection_reason_choices %}
+          <option value="{{ code }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <label class="label">
+        <span class="label-text-alt text-error hidden" id="reason-code-error">Please select a rejection reason</span>
+      </label>
+    </div>
+
+    <!-- Additional Notes (Optional) -->
+    <div class="form-control mb-6">
+      <label class="label">
+        <span class="label-text font-medium">Additional Notes (Optional)</span>
+        <span class="label-text-alt text-base-content/50" id="reason-char-count">0/500</span>
+      </label>
+      <textarea 
+        id="reject-reason" 
+        class="textarea textarea-bordered focus:textarea-error h-24 resize-none" 
+        placeholder="Provide additional context or suggestions for the seller..."
+        maxlength="500"
+      ></textarea>
+    </div>
+
+    <!-- Modal Actions -->
+    <div class="modal-action justify-between">
+      <button class="btn btn-ghost" onclick="closeRejectModal()">Cancel</button>
+      <button id="reject-confirm" class="btn btn-error gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+        Confirm Rejection
+      </button>
+    </div>
+  </div>
+  <div class="modal-backdrop" onclick="closeRejectModal()"></div>
+</div>
+
+<!-- Image Preview Modal -->
+<div id="image-preview-modal" class="modal">
+  <div class="modal-box max-w-3xl">
+    <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4" onclick="closeImagePreview()">✕</button>
+    <h3 class="font-bold text-lg mb-4" id="preview-title"></h3>
+    <img id="preview-image" src="" alt="" class="w-full rounded-lg" />
+  </div>
+  <div class="modal-backdrop" onclick="closeImagePreview()"></div>
+</div>
+
+<!-- Quick View Modal -->
+<div id="quick-view-modal" class="modal">
+  <div class="modal-box max-w-2xl">
+    <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4" onclick="closeQuickView()">✕</button>
+    <div id="quick-view-content" class="space-y-4">
+      <!-- Content loaded dynamically -->
+      <div class="flex justify-center py-8">
+        <span class="loading loading-spinner loading-lg"></span>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop" onclick="closeQuickView()"></div>
+</div>
+
 <script>
+  // ===== Utility Functions =====
   function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -72,48 +309,177 @@
     return cookieValue;
   }
 
-  const csrftoken = getCookie('csrftoken');
+  /**
+   * Safely escape HTML special characters for string interpolation.
+   * Prevents XSS when inserting user-provided content into innerHTML.
+   */
+  function escapeHTML(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
-  async function fetchListings() {
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.set('format', 'json');
-      const res = await fetch(url.toString(), { headers: { 'X-CSRFToken': csrftoken } });
-      const data = await res.json();
-      if (data.status !== 'ok') throw new Error(data.message || 'Failed');
-      renderListings(data.listings);
-    } catch (e) {
-      console.error('Failed to fetch listings', e);
+  const csrftoken = getCookie('csrftoken');
+  let pendingRejectId = null;
+  let selectedListings = new Set();
+
+  // ===== Toast Notification =====
+  function showToast(message, type = 'info') {
+    // Check if showMarketplaceToast exists globally
+    if (typeof showMarketplaceToast === 'function') {
+      showMarketplaceToast(message, type);
+    } else {
+      // Fallback to alert if toast function not available
+      alert(message);
     }
   }
 
+  // ===== Fetch Listings =====
+  async function fetchListings() {
+    const skeleton = document.getElementById('listings-skeleton');
+    const table = document.getElementById('listings-table');
+    
+    try {
+      if (skeleton) skeleton.style.display = 'block';
+      if (table) table.style.opacity = '0.5';
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('format', 'json');
+      
+      const res = await fetch(url.toString(), { 
+        headers: { 'X-CSRFToken': csrftoken, 'Accept': 'application/json' } 
+      });
+      const data = await res.json();
+      
+      if (data.status !== 'ok') throw new Error(data.message || 'Failed');
+      
+      renderListings(data.listings);
+      updatePendingCount(data.listings.length);
+    } catch (e) {
+      console.error('Failed to fetch listings', e);
+      showToast('Failed to load listings', 'error');
+    } finally {
+      if (skeleton) skeleton.style.display = 'none';
+      if (table) table.style.opacity = '1';
+    }
+  }
+
+  // ===== Render Listings =====
   function renderListings(listings) {
     const tbody = document.querySelector('#listings-table tbody');
     if (!tbody) return;
+    
     tbody.innerHTML = '';
+    selectedListings.clear();
+    updateBulkActions();
+    
     if (!listings || listings.length === 0) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="6" class="text-center">No pending listings.</td>`;
-      tbody.appendChild(tr);
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8">
+            <div class="flex flex-col items-center justify-center py-12 text-center">
+              <svg class="w-16 h-16 text-base-content/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              <h4 class="text-lg font-semibold text-base-content/60 mb-1">No Pending Listings</h4>
+              <p class="text-sm text-base-content/40">All listings have been reviewed</p>
+            </div>
+          </td>
+        </tr>
+      `;
       return;
     }
+    
     for (const l of listings) {
       const tr = document.createElement('tr');
+      tr.className = 'hover:bg-base-200/50 transition-colors';
+      tr.dataset.listingId = l.id;
+      
       tr.innerHTML = `
-        <td>${l.id}</td>
-        <td>${l.title}</td>
-        <td>${l.seller}</td>
-        <td>₱${Number(l.price).toFixed(2)}</td>
-        <td>${l.submitted}</td>
-        <td class="flex gap-2">
-          <button class="btn btn-primary btn-xs" data-action="approve" data-id="${l.id}">Approve</button>
-          <button class="btn btn-error btn-xs" data-action="reject" data-id="${l.id}">Reject</button>
+        <td>
+          <input type="checkbox" class="checkbox checkbox-sm listing-checkbox" value="${l.id}" />
+        </td>
+        <td>
+          <div class="avatar">
+            <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-200 overflow-hidden">
+              ${l.image ? 
+                `<img src="${l.image}" alt="${l.title}" class="object-cover w-full h-full hover:scale-110 transition-transform cursor-pointer" onclick="showImagePreview('${l.image}', '${l.title}')" />` :
+                `<div class="w-full h-full flex items-center justify-center text-base-content/30">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                </div>`
+              }
+            </div>
+          </div>
+        </td>
+        <td class="font-mono text-sm text-base-content/70">#${l.id}</td>
+        <td>
+          <div class="flex flex-col">
+            <span class="font-medium text-base-content line-clamp-1">${l.title}</span>
+            <span class="text-xs text-base-content/50">${l.category || 'Uncategorized'}</span>
+          </div>
+        </td>
+        <td>
+          <div class="flex items-center gap-2">
+            <div class="avatar placeholder">
+              <div class="bg-primary text-primary-content rounded-full w-8 h-8 text-xs">
+                <span>${l.seller.charAt(0).toUpperCase()}</span>
+              </div>
+            </div>
+            <span class="text-sm">${l.seller}</span>
+          </div>
+        </td>
+        <td class="font-semibold text-primary">₱${Number(l.price).toFixed(2)}</td>
+        <td>
+          <div class="flex flex-col">
+            <span class="text-sm text-base-content/70">${l.submitted_date || ''}</span>
+            <span class="text-xs text-base-content/50">${l.submitted_time || ''}</span>
+          </div>
+        </td>
+        <td>
+          <div class="flex gap-2 justify-end">
+            <button class="btn btn-sm btn-success gap-1 hover:scale-105 transition-transform" data-action="approve" data-id="${l.id}" title="Approve listing">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              Approve
+            </button>
+            <button class="btn btn-sm btn-error btn-outline gap-1 hover:scale-105 transition-transform" data-action="reject" data-id="${l.id}" title="Reject listing">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+              Reject
+            </button>
+            <button class="btn btn-sm btn-ghost btn-square" data-action="quick-view" data-id="${l.id}" title="Quick view details">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
         </td>
       `;
       tbody.appendChild(tr);
     }
+
+    // Reattach checkbox listeners
+    attachCheckboxListeners();
   }
 
+  // ===== Update Pending Count =====
+  function updatePendingCount(count) {
+    const countEl = document.getElementById('count-text');
+    if (countEl) {
+      countEl.textContent = `${count} Pending`;
+    }
+  }
+
+  // ===== Post Action =====
   async function postAction(url, body) {
     const res = await fetch(url, {
       method: 'POST',
@@ -127,67 +493,472 @@
     return res.json();
   }
 
-  let pendingRejectId = null;
+  // ===== Handle Approve =====
+  async function handleApprove(listingId, skipRefresh = false) {
+    const btn = document.querySelector(`button[data-action="approve"][data-id="${listingId}"]`);
+    const originalHTML = btn ? btn.innerHTML : '';
+    
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Approving...';
+      }
 
+      const url = `{% url 'marketplace_admin:approve_listing' 0 %}`.replace('/0/', `/${listingId}/`);
+      const data = await postAction(url, {});
+      
+      if (data.status === 'ok') {
+        showToast('Listing approved successfully', 'success');
+        if (!skipRefresh) await fetchListings();
+      } else {
+        throw new Error(data.message || 'Approve failed');
+      }
+    } catch (err) {
+      console.error('Approve error:', err);
+      showToast(err.message || 'Failed to approve listing', 'error');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+      }
+    }
+  }
+
+  // ===== Rejection Modal =====
   function openRejectModal(listingId) {
     pendingRejectId = listingId;
+    
+    // Clear form
     document.getElementById('reject-reason').value = '';
     document.getElementById('reject-reason-code').value = '';
-    document.getElementById('reject-modal').classList.remove('hidden');
+    document.getElementById('reason-code-error').classList.add('hidden');
+    
+    // Show modal
+    document.getElementById('reject-modal').classList.add('modal-open');
   }
 
   function closeRejectModal() {
-    document.getElementById('reject-modal').classList.add('hidden');
+    document.getElementById('reject-modal').classList.remove('modal-open');
     pendingRejectId = null;
-  }
-
-  async function handleApprove(listingId) {
-    const url = `{% url 'marketplace_admin:approve_listing' 0 %}`.replace('/0/', `/${listingId}/`);
-    const data = await postAction(url, {});
-    if (data.status === 'ok') {
-      await fetchListings();
-    } else {
-      alert(data.message || 'Approve failed');
-    }
   }
 
   async function handleRejectConfirm() {
     if (!pendingRejectId) return closeRejectModal();
-    const url = `{% url 'marketplace_admin:reject_listing' 0 %}`.replace('/0/', `/${pendingRejectId}/`);
-    const reason = document.getElementById('reject-reason').value || '';
-    const reason_code = document.getElementById('reject-reason-code').value || '';
-    const data = await postAction(url, { reason, reason_code });
-    if (data.status === 'ok') {
-      closeRejectModal();
-      await fetchListings();
-    } else {
-      alert(data.message || 'Reject failed');
+    
+    const reasonCode = document.getElementById('reject-reason-code').value;
+    const reasonText = document.getElementById('reject-reason').value || '';
+    const errorEl = document.getElementById('reason-code-error');
+    
+    // Validate reason code
+    if (!reasonCode) {
+      errorEl.classList.remove('hidden');
+      document.getElementById('reject-reason-code').classList.add('select-error');
+      return;
+    }
+    
+    const btn = document.getElementById('reject-confirm');
+    const originalHTML = btn.innerHTML;
+    
+    try {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Rejecting...';
+      
+      const url = `{% url 'marketplace_admin:reject_listing' 0 %}`.replace('/0/', `/${pendingRejectId}/`);
+      const data = await postAction(url, { 
+        reason: reasonText, 
+        reason_code: reasonCode 
+      });
+      
+      if (data.status === 'ok') {
+        showToast('Listing rejected successfully', 'success');
+        closeRejectModal();
+        await fetchListings();
+      } else {
+        throw new Error(data.message || 'Reject failed');
+      }
+    } catch (err) {
+      console.error('Reject error:', err);
+      showToast(err.message || 'Failed to reject listing', 'error');
+      btn.disabled = false;
+      btn.innerHTML = originalHTML;
     }
   }
 
+  // ===== Checkbox Management =====
+  function attachCheckboxListeners() {
+    const checkboxes = document.querySelectorAll('.listing-checkbox');
+    checkboxes.forEach(cb => {
+      cb.addEventListener('change', handleCheckboxChange);
+    });
+  }
+
+  function handleCheckboxChange(e) {
+    const listingId = parseInt(e.target.value);
+    if (e.target.checked) {
+      selectedListings.add(listingId);
+    } else {
+      selectedListings.delete(listingId);
+    }
+    updateBulkActions();
+    updateSelectAllState();
+  }
+
+  function updateBulkActions() {
+    const dropdown = document.getElementById('bulk-actions-dropdown');
+    const countEl = document.getElementById('bulk-count');
+    
+    if (selectedListings.size > 0) {
+      dropdown.style.display = 'block';
+      countEl.textContent = `${selectedListings.size} Selected`;
+    } else {
+      dropdown.style.display = 'none';
+    }
+  }
+
+  function updateSelectAllState() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.listing-checkbox');
+    const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+    
+    if (selectAll) {
+      selectAll.checked = checkedCount > 0 && checkedCount === checkboxes.length;
+      selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+    }
+  }
+
+  // ===== Select All Handler =====
+  document.getElementById('select-all')?.addEventListener('change', (e) => {
+    const checkboxes = document.querySelectorAll('.listing-checkbox');
+    checkboxes.forEach(cb => {
+      cb.checked = e.target.checked;
+      const listingId = parseInt(cb.value);
+      if (e.target.checked) {
+        selectedListings.add(listingId);
+      } else {
+        selectedListings.delete(listingId);
+      }
+    });
+    updateBulkActions();
+  });
+
+  // ===== Bulk Actions =====
+  document.getElementById('bulk-approve')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    
+    if (selectedListings.size === 0) return;
+    
+    const confirmed = confirm(`Are you sure you want to approve ${selectedListings.size} listing(s)?`);
+    if (!confirmed) return;
+    
+    const promises = Array.from(selectedListings).map(id => handleApprove(id, true));
+    
+    try {
+      await Promise.all(promises);
+      showToast(`${selectedListings.size} listing(s) approved`, 'success');
+      selectedListings.clear();
+      await fetchListings();
+    } catch (err) {
+      showToast('Some listings failed to approve', 'error');
+    }
+  });
+
+  document.getElementById('bulk-reject')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    
+    if (selectedListings.size === 0) return;
+    
+    // For bulk reject, we'll open modal with first ID and note it's bulk
+    alert('Bulk rejection requires selecting a reason. Please reject listings individually for now.');
+  });
+
+  // ===== Image Preview =====
+  function showImagePreview(imageUrl, title) {
+    document.getElementById('preview-image').src = imageUrl;
+    document.getElementById('preview-title').textContent = title;
+    document.getElementById('image-preview-modal').classList.add('modal-open');
+  }
+
+  function closeImagePreview() {
+    document.getElementById('image-preview-modal').classList.remove('modal-open');
+  }
+
+  // ===== Quick View =====
+  /**
+   * Show a filled-in preview of listing details in the admin Quick View modal.
+   * Fetches JSON from the Marketplace API and renders title, category, price,
+   * quantity, seller, created date, description, and main image.
+   */
+  async function showQuickView(listingId) {
+    const modal = document.getElementById('quick-view-modal');
+    const content = document.getElementById('quick-view-content');
+
+    modal.classList.add('modal-open');
+    content.innerHTML = '<div class="flex justify-center py-8"><span class="loading loading-spinner loading-lg"></span></div>';
+
+    try {
+      const apiUrl = `/marketplace/api/listings/${listingId}/`;
+      const res = await fetch(apiUrl, { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) throw new Error('Failed to load details');
+
+      const data = await res.json();
+
+      const imgHTML = data.main_image
+        ? `<img src="${data.main_image}" alt="${escapeHTML(data.title)}" class="object-cover w-full h-full" />`
+        : `<div class="w-full h-full flex items-center justify-center text-base-content/30">
+             <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+             </svg>
+           </div>`;
+
+      const priceText = (window.AdminUtils && typeof window.AdminUtils.formatCurrencyPHP === 'function')
+        ? window.AdminUtils.formatCurrencyPHP(data.price)
+        : `₱${Number(data.price || 0).toFixed(2)}`;
+
+      const createdText = data.created_at
+        ? new Date(data.created_at).toLocaleString()
+        : '';
+
+      const categoryName = (data.category && data.category.name) ? data.category.name : 'Uncategorized';
+      const sellerName = (data.seller && data.seller.username) ? data.seller.username : 'Unknown';
+      const fullPageUrl = `/marketplace/listings/${listingId}/`;
+
+      content.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="md:col-span-1">
+            <div class="w-full h-48 md:h-full rounded-lg border border-base-300 bg-base-200 overflow-hidden">
+              ${imgHTML}
+            </div>
+          </div>
+          <div class="md:col-span-2">
+            <h3 class="text-xl font-bold mb-1">${escapeHTML(data.title)}</h3>
+            <div class="text-sm text-base-content/60 mb-3">${escapeHTML(categoryName)} • Qty: ${Number(data.quantity || 0)}</div>
+            <div class="font-semibold text-primary mb-3">${priceText}</div>
+
+            <div class="space-y-1 text-sm text-base-content/70 mb-4">
+              <div><span class="font-medium">Seller:</span> ${escapeHTML(sellerName)}</div>
+              <div><span class="font-medium">Created:</span> ${escapeHTML(createdText)}</div>
+              <div><span class="font-medium">Status:</span> ${escapeHTML(data.status || 'pending')}</div>
+            </div>
+
+            <div class="prose max-w-none">
+              <p>${escapeHTML(data.description || '')}</p>
+            </div>
+
+            <div class="mt-6 flex gap-2">
+              <a href="${fullPageUrl}" target="_blank" class="btn btn-primary btn-sm">
+                Open Full Listing
+                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+    } catch (err) {
+      console.error('Quick view error:', err);
+      content.innerHTML = `
+        <div class="alert alert-error">
+          <span>Failed to load listing details</span>
+        </div>
+      `;
+    }
+  }
+
+  function closeQuickView() {
+    document.getElementById('quick-view-modal').classList.remove('modal-open');
+  }
+
+  // ===== Search & Filter =====
+  let searchTimeout;
+  document.getElementById('search-listings')?.addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      filterListings();
+    }, 300); // Debounce 300ms
+  });
+
+  document.getElementById('filter-price')?.addEventListener('change', filterListings);
+  document.getElementById('filter-sort')?.addEventListener('change', filterListings);
+
+  function filterListings() {
+    const searchTerm = document.getElementById('search-listings')?.value.toLowerCase() || '';
+    const priceRange = document.getElementById('filter-price')?.value || '';
+    const sortBy = document.getElementById('filter-sort')?.value || 'newest';
+    
+    const rows = Array.from(document.querySelectorAll('#listings-table tbody tr[data-listing-id]'));
+    
+    // Filter
+    rows.forEach(row => {
+      const title = row.querySelector('td:nth-child(4)')?.textContent.toLowerCase() || '';
+      const seller = row.querySelector('td:nth-child(5)')?.textContent.toLowerCase() || '';
+      const id = row.querySelector('td:nth-child(3)')?.textContent.toLowerCase() || '';
+      const priceText = row.querySelector('td:nth-child(6)')?.textContent || '';
+      const price = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+      
+      let matchesSearch = !searchTerm || title.includes(searchTerm) || seller.includes(searchTerm) || id.includes(searchTerm);
+      let matchesPrice = true;
+      
+      if (priceRange) {
+        if (priceRange === '0-500') matchesPrice = price >= 0 && price <= 500;
+        else if (priceRange === '500-1000') matchesPrice = price > 500 && price <= 1000;
+        else if (priceRange === '1000-5000') matchesPrice = price > 1000 && price <= 5000;
+        else if (priceRange === '5000+') matchesPrice = price > 5000;
+      }
+      
+      row.style.display = (matchesSearch && matchesPrice) ? '' : 'none';
+    });
+    
+    // Sort visible rows
+    const visibleRows = rows.filter(row => row.style.display !== 'none');
+    visibleRows.sort((a, b) => {
+      if (sortBy === 'newest' || sortBy === 'oldest') {
+        const dateA = a.querySelector('td:nth-child(7)')?.textContent || '';
+        const dateB = b.querySelector('td:nth-child(7)')?.textContent || '';
+        return sortBy === 'newest' ? dateB.localeCompare(dateA) : dateA.localeCompare(dateB);
+      } else if (sortBy === 'price-high' || sortBy === 'price-low') {
+        const priceA = parseFloat(a.querySelector('td:nth-child(6)')?.textContent.replace(/[^0-9.]/g, '') || '0');
+        const priceB = parseFloat(b.querySelector('td:nth-child(6)')?.textContent.replace(/[^0-9.]/g, '') || '0');
+        return sortBy === 'price-high' ? priceB - priceA : priceA - priceB;
+      }
+      return 0;
+    });
+    
+    // Reorder in DOM
+    const tbody = document.querySelector('#listings-table tbody');
+    visibleRows.forEach(row => tbody.appendChild(row));
+  }
+
+  // ===== Character Counter =====
+  document.getElementById('reject-reason')?.addEventListener('input', (e) => {
+    const counter = document.getElementById('reason-char-count');
+    if (counter) {
+      counter.textContent = `${e.target.value.length}/500`;
+    }
+  });
+
+  // Clear error on reason code change
+  document.getElementById('reject-reason-code')?.addEventListener('change', (e) => {
+    document.getElementById('reason-code-error')?.classList.add('hidden');
+    e.target.classList.remove('select-error');
+  });
+
+  // ===== Event Delegation for Action Buttons =====
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
+    
     const action = btn.getAttribute('data-action');
     const id = btn.getAttribute('data-id');
+    
     if (action === 'approve' && id) {
       e.preventDefault();
       handleApprove(id);
     } else if (action === 'reject' && id) {
       e.preventDefault();
       openRejectModal(id);
+    } else if (action === 'quick-view' && id) {
+      e.preventDefault();
+      showQuickView(id);
     }
   });
 
-  document.getElementById('reject-confirm').addEventListener('click', (e) => {
+  // ===== Modal Button Handlers =====
+  document.getElementById('reject-confirm')?.addEventListener('click', (e) => {
     e.preventDefault();
     handleRejectConfirm();
   });
-  document.getElementById('reject-cancel').addEventListener('click', (e) => {
-    e.preventDefault();
-    closeRejectModal();
+
+  // ===== Keyboard Shortcuts =====
+  document.addEventListener('keydown', (e) => {
+    // ESC to close modals
+    if (e.key === 'Escape') {
+      if (document.getElementById('reject-modal').classList.contains('modal-open')) {
+        closeRejectModal();
+      }
+      if (document.getElementById('image-preview-modal').classList.contains('modal-open')) {
+        closeImagePreview();
+      }
+      if (document.getElementById('quick-view-modal').classList.contains('modal-open')) {
+        closeQuickView();
+      }
+    }
   });
 
+  // ===== Initialize =====
+  document.addEventListener('DOMContentLoaded', () => {
+    // Initial fetch
+    fetchListings();
+    
+    // Attach checkbox listeners for initial render
+    attachCheckboxListeners();
+  });
+  
   // Initial refresh to ensure table sync
   fetchListings();
 </script>
+
+<style>
+  /* Custom animations */
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  #listings-table tbody tr {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  /* Smooth transitions */
+  .btn {
+    transition: all 0.2s ease;
+  }
+
+  /* Modal backdrop */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+  }
+
+  /* Improved table hover */
+  #listings-table tbody tr:hover {
+    transform: scale(1.001);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Line clamp utility */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    background: linear-gradient(90deg, 
+      rgba(255, 255, 255, 0) 0%, 
+      rgba(255, 255, 255, 0.2) 50%, 
+      rgba(255, 255, 255, 0) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* Better focus states */
+  .input:focus, .select:focus, .textarea:focus {
+    outline: 2px solid hsl(var(--p));
+    outline-offset: 2px;
+  }
+</style>

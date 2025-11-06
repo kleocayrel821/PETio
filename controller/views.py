@@ -21,8 +21,43 @@ from rest_framework.throttling import SimpleRateThrottle
 class FeedNowThrottle(SimpleRateThrottle):
     scope = "feed_now"
 
+    # Generate a cache key per user/IP and scope to enable rate limiting
+    def get_cache_key(self, request, view):
+        """Return a cache key that isolates throttle history by scope and identity."""
+        try:
+            if getattr(request, 'user', None) and request.user.is_authenticated:
+                ident = f"user_{request.user.pk}"
+            else:
+                ident = f"anon_{self.get_ident(request)}"
+            return f"throttle_{self.scope}_{ident}"
+        except Exception:
+            # Fallback to IP-based key if anything unexpected occurs
+            return f"throttle_{self.scope}_anon_{self.get_ident(request)}"
+
 class DeviceStatusThrottle(SimpleRateThrottle):
     scope = "device_status"
+
+    # Device status endpoint can be hit frequently; key by device_id or IP
+    def get_cache_key(self, request, view):
+        """Return a cache key keyed primarily by device_id when available, else user/IP."""
+        try:
+            device_id = None
+            # Attempt to read device_id from common locations
+            if request.method == 'GET':
+                device_id = request.query_params.get('device_id') or request.GET.get('device_id')
+            else:
+                data = getattr(request, 'data', {}) or {}
+                device_id = data.get('device_id')
+
+            if device_id:
+                ident = f"device_{device_id}"
+            elif getattr(request, 'user', None) and request.user.is_authenticated:
+                ident = f"user_{request.user.pk}"
+            else:
+                ident = f"anon_{self.get_ident(request)}"
+            return f"throttle_{self.scope}_{ident}"
+        except Exception:
+            return f"throttle_{self.scope}_anon_{self.get_ident(request)}"
 
 # Connectivity check and settings
 from django.conf import settings
@@ -104,8 +139,10 @@ def feed_now(request):
     Performs hardware connectivity check before queuing the command.
     """
     try:
+        # Request ID for tracing across logs and clients
+        request_id = request.META.get('REQUEST_ID') or request.META.get('HTTP_X_REQUEST_ID') or 'unknown'
         portion_size = request.data.get("portion_size")
-        logger.info(f"feed_now: received request portion_size={portion_size}")
+        logger.info(f"[{request_id}] feed_now: received request portion_size={portion_size}")
         if portion_size is None:
             try:
                 pet = PetProfile.objects.first()
@@ -142,31 +179,51 @@ def feed_now(request):
                     status=status.HTTP_503_SERVICE_UNAVAILABLE
                 )
 
-        # Deduplicate feed_now within 10 seconds
+        # Create new pending command in database with device scoping
+        # Move ALL duplicate checks inside the transaction and lock rows to prevent races
         from django.utils import timezone
         from datetime import timedelta
-        recent_window = timezone.now() - timedelta(seconds=10)
-        if PendingCommand.objects.filter(command='feed_now', created_at__gte=recent_window).exists():
-            return Response({"status": "conflict", "message": "Duplicate feed request.", "success": False}, status=status.HTTP_409_CONFLICT)
-
-        # Create new pending command in database with device scoping
         with transaction.atomic():
-            existing_command = PendingCommand.objects.filter(
-                command='feed_now',
-                status__in=['pending', 'processing'],
-                device_id=device_id,
-            ).order_by('created_at').first()
-            if existing_command:
-                logger.info(f"feed_now: conflict existing pending command id={existing_command.id} portion={existing_command.portion_size}")
+            # Check for recent duplicates with a 10-second window and device scoping, locking matching rows
+            recent_window = timezone.now() - timedelta(seconds=10)
+            recent_dup = (
+                PendingCommand.objects.select_for_update()
+                .filter(
+                    command='feed_now',
+                    created_at__gte=recent_window,
+                    device_id=device_id,
+                )
+                .order_by('created_at')
+                .first()
+            )
+            if recent_dup:
+                logger.info(f"[{request_id}] feed_now: recent duplicate id={recent_dup.id} portion={recent_dup.portion_size} device_id={device_id}")
+                return Response({"status": "conflict", "message": "Duplicate feed request.", "success": False, "command_id": recent_dup.id, "portion_size": recent_dup.portion_size}, status=status.HTTP_409_CONFLICT)
+
+            # Check for existing pending/processing commands for this device, locking matching rows
+            existing = (
+                PendingCommand.objects.select_for_update()
+                .filter(
+                    command='feed_now',
+                    status__in=['pending', 'processing'],
+                    device_id=device_id,
+                )
+                .order_by('created_at')
+                .first()
+            )
+            if existing:
+                logger.info(f"[{request_id}] feed_now: conflict existing pending command id={existing.id} portion={existing.portion_size} device_id={device_id}")
                 return Response(
-                    {"status": "conflict", "message": "Feed command already pending", "success": False, "command_id": existing_command.id, "portion_size": existing_command.portion_size},
+                    {"status": "conflict", "message": "Feed command already pending", "success": False, "command_id": existing.id, "portion_size": existing.portion_size},
                     status=status.HTTP_409_CONFLICT
                 )
+
+            # Safe to create command here under transaction
             command = PendingCommand.objects.create(command='feed_now', portion_size=float(portion_size), device_id=device_id)
-            logger.info(f"feed_now: queued command id={command.id} portion={command.portion_size} device_id={device_id}")
+            logger.info(f"[{request_id}] feed_now: queued command id={command.id} portion={command.portion_size} device_id={device_id}")
             return Response({"status": "ok", "message": "Feed command queued", "success": True, "command_id": command.id, "portion_size": command.portion_size})
     except Exception as e:
-        logger.exception("feed_now: error")
+        logger.exception(f"[{request_id}] feed_now: error")
         return Response({"status": "error", "message": f"Failed to queue feed command: {str(e)}", "success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -224,8 +281,9 @@ def check_schedule(request):
         from datetime import datetime, timedelta
         from django.core.cache import cache
         
-        now_aware = timezone.now()
+        now_aware = timezone.now()  # UTC-aware if USE_TZ=True
         local_now = timezone.localtime(now_aware)
+        tzname = timezone.get_current_timezone_name()
         current_time = local_now.time()
         current_time_str = current_time.strftime("%I:%M %p")
         today_date = local_now.date()
@@ -261,19 +319,19 @@ def check_schedule(request):
             
             # Create timezone-aware datetime for today's scheduled time using current TZ
             schedule_naive = datetime.combine(today_date, schedule_time)
-            schedule_datetime = timezone.make_aware(schedule_naive, timezone.get_current_timezone())
-            current_datetime = local_now
-            
-            time_diff = (current_datetime - schedule_datetime).total_seconds()
+            schedule_datetime_local = timezone.make_aware(schedule_naive, timezone.get_current_timezone())
+            # Compare in UTC to avoid DST/local mismatches
+            schedule_datetime_utc = schedule_datetime_local.astimezone(timezone.utc)
+            time_diff = (now_aware - schedule_datetime_utc).total_seconds()
             within_window = 0 <= time_diff <= TRIGGER_WINDOW_SECONDS
             
-            # Cache key: per schedule, date, and minute
-            cache_key = f"sched_triggered:{schedule.id}:{today_date.isoformat()}:{schedule_time.strftime('%H%M')}"
+            # Cache key: include timezone to prevent cross-TZ collisions
+            cache_key = f"sched_triggered:{tzname}:{schedule.id}:{today_date.isoformat()}:{schedule_time.strftime('%H%M')}"
             cache_hit = cache.get(cache_key) is not None
             
             logger.info(
-                f"check_schedule: now={current_time_str} day={current_day_abbr} sched_id={schedule.id} sched_time={schedule_time.strftime('%H:%M')} "
-                f"diff={time_diff:.2f}s within_window={within_window} cache_hit={cache_hit} label={getattr(schedule, 'label', '')}"
+                f"check_schedule: tz={tzname} now_local={current_time_str} day={current_day_abbr} sched_id={schedule.id} sched_time_local={schedule_time.strftime('%H:%M')} "
+                f"utc_diff={time_diff:.2f}s within_window={within_window} cache_hit={cache_hit} label={getattr(schedule, 'label', '')}"
             )
             
             if within_window and not cache_hit:
@@ -362,8 +420,17 @@ def device_status(request):
             now = timezone.now()
             is_online = bool(ds.last_seen and (now - ds.last_seen) <= timedelta(seconds=TTL_SECONDS))
             computed = 'online' if is_online else 'offline'
+            # Persist computed status for visibility in admin and health checks
+            if ds.status != computed:
+                ds.status = computed
+                try:
+                    ds.save(update_fields=["status"])
+                except Exception:
+                    # Non-fatal; continue returning response
+                    pass
             data = {
-                "status": computed,
+                "status": ds.status,
+                "computed_status": computed,
                 "device_id": ds.device_id,
                 "last_seen": ds.last_seen.isoformat() if ds.last_seen else None,
                 "wifi_rssi": ds.wifi_rssi,
@@ -371,6 +438,9 @@ def device_status(request):
                 "daily_feeds": ds.daily_feeds,
                 "last_feed": ds.last_feed.isoformat() if ds.last_feed else None,
                 "error_message": ds.error_message,
+                "online": is_online,
+                "ttl_seconds": TTL_SECONDS,
+                "last_seen_age_seconds": (float((now - ds.last_seen).total_seconds()) if ds.last_seen else None),
             }
             return Response(data)
 
@@ -421,8 +491,20 @@ def device_status(request):
         ds.error_message = error_message or ""
         ds.save()
 
+        # Compute online state for response and diagnostics
+        is_online = True
         logger.info(f"device_status: heartbeat from {device_id} rssi={wifi_rssi} uptime={uptime}s feeds={daily_feeds}")
-        return Response({"status": "ok", "device_id": device_id, "computed_status": "online", "last_seen": now.isoformat()})
+        # Tests expect a simple acknowledgement status of 'ok' while the
+        # persisted DeviceStatus.status is set to 'online'. Keep diagnostic
+        # fields for visibility but align the top-level status with tests.
+        return Response({
+            "status": "ok",
+            "device_id": device_id,
+            "computed_status": "online" if is_online else "offline",
+            "online": is_online,
+            "last_seen": now.isoformat(),
+            "ttl_seconds": TTL_SECONDS,
+        })
 
     except Exception as e:
         logger.exception("device_status: error")

@@ -1,9 +1,11 @@
 {% extends "marketplace/base_marketplace.html" %}
 {% load static %}
 
+{% block marketplace_header_section %}{% endblock %}
 {% block marketplace_title %}Browse Products{% endblock %}
-{% block marketplace_header %}Browse Products{% endblock %}
-{% block marketplace_subtitle %}Discover pet products from the PETio community{% endblock %}
+{# Header title/subtitle removed for catalog page #}
+{% block marketplace_header %}{% endblock %}
+{% block marketplace_subtitle %}{% endblock %}
 
 {% block breadcrumbs %}
 <li>Browse</li>
@@ -171,6 +173,9 @@
             <img src="{{ item.main_image.url }}" alt="{{ item.title }}" class="w-full h-40 sm:h-48 xl:h-56 object-cover rounded-t-xl" loading="lazy">
             {% else %}
             <img src="{% static 'img/placeholder.svg' %}" alt="{{ item.title }}" class="w-full h-40 sm:h-48 xl:h-56 object-cover rounded-t-xl" loading="lazy">
+            {% endif %}
+            {% if item.is_fixed_price %}
+            <div class="badge badge-info absolute top-2 left-2">Buy Now</div>
             {% endif %}
             {% if item.quantity == 0 %}
             <div class="badge badge-error absolute top-2 right-2">Out of Stock</div>

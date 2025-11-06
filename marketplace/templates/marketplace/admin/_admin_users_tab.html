@@ -1,44 +1,75 @@
-{% comment %}Users tab partial: renders table with AJAX toggle and search{% endcomment %}
-<h3 class="text-xl font-semibold mb-3">User Management</h3>
+{% comment %}Users tab partial: unified design and behavior with Listings tab{% endcomment %}
 
-<div class="flex flex-wrap items-center gap-3 mb-3">
-  <div class="join">
-    <input id="users-search" class="input input-bordered join-item" placeholder="Search username or email" value="{{ users_search_query|default:'' }}" />
-    <select id="users-role" class="select select-bordered join-item">
-      <option value="" {% if not users_role %}selected{% endif %}>All roles</option>
-      <option value="seller" {% if users_role == 'seller' %}selected{% endif %}>Seller</option>
-      <option value="buyer" {% if users_role == 'buyer' %}selected{% endif %}>Buyer</option>
-    </select>
-    <button id="users-apply" class="btn btn-primary join-item">Apply</button>
+<!-- Header -->
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <h3 class="text-2xl font-semibold text-base-content">User Management</h3>
+    <p class="text-sm text-base-content/60 mt-1">Search, filter, and toggle user activity</p>
+  </div>
+  <div class="badge badge-lg badge-info" id="users-count">
+    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m4 4V8a4 4 0 10-8 0v8a4 4 0 108 0z"/>
+    </svg>
+    <span id="users-count-text">{{ users|length|default:0 }} Users</span>
   </div>
 </div>
 
+<!-- Search & Filters -->
+<div class="card bg-base-100 shadow-sm border border-base-200 mb-4">
+  <div class="card-body p-4">
+    <div class="flex flex-col lg:flex-row gap-3">
+      <!-- Search Input -->
+      <div class="flex-1 relative">
+        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input id="users-search" class="input input-bordered pl-10 w-full" placeholder="Search username or email" value="{{ users_search_query|default:'' }}" />
+      </div>
+      <!-- Role Filter -->
+      <div class="flex items-center gap-2">
+        <select id="users-role" class="select select-bordered">
+          <option value="" {% if not users_role %}selected{% endif %}>All roles</option>
+          <option value="seller" {% if users_role == 'seller' %}selected{% endif %}>Seller</option>
+          <option value="buyer" {% if users_role == 'buyer' %}selected{% endif %}>Buyer</option>
+        </select>
+        <button id="users-apply" class="btn">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Skeleton -->
+<div id="users-skeleton" class="hidden">
+  <div class="animate-pulse space-y-3">
+    {% for i in "12345" %}
+    <div class="h-10 bg-base-200 rounded"></div>
+    {% endfor %}
+  </div>
+  </div>
+
+<!-- Users Table -->
 <div class="overflow-x-auto">
-  <table id="users-table" class="table table-zebra w-full">
-    <thead>
+  <table id="users-table" class="table table-compact w-full">
+    <thead class="sticky top-0 bg-base-200">
       <tr>
         <th>User ID</th>
         <th>Username</th>
         <th>Role</th>
-        <th>Active</th>
-        <th>Actions</th>
+        <th>Status</th>
+        <th class="text-right">Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for u in users %}
-      {# Role is inferred server-side in JSON; for initial render, basic inference by activity counts can be skipped #}
       <tr>
-        <td>{{ u.id }}</td>
+        <td class="font-mono text-sm text-base-content/70">#{{ u.id }}</td>
         <td>{{ u.username }}</td>
+        <td><span class="badge badge-outline">—</span></td>
+        <td>{% if u.is_active %}<span class="badge badge-success">Active{% else %}<span class="badge badge-error">Inactive{% endif %}</span></td>
         <td>
-          {# Placeholder role for initial render; AJAX will refresh #}
-          <span class="badge">—</span>
-        </td>
-        <td>
-          {% if u.is_active %}<span class="badge badge-success">Active{% else %}<span class="badge badge-error">Inactive{% endif %}</span>
-        </td>
-        <td>
-          <button class="btn btn-xs" data-action="toggle" data-id="{{ u.id }}">Toggle Active</button>
+          <div class="flex justify-end">
+            <button class="btn btn-xs" data-action="toggle" data-id="{{ u.id }}">Toggle Active</button>
+          </div>
         </td>
       </tr>
       {% empty %}
@@ -49,72 +80,90 @@
 </div>
 
 <script>
-  // CSRF helper copied from other admin tabs
-  function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-      const cookies = document.cookie.split(';');
-      for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i].trim();
-        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-          break;
-        }
-      }
-    }
-    return cookieValue;
+  /** Get CSRF token via AdminUtils fallback. */
+  function getCsrf() {
+    return (window.AdminUtils && typeof window.AdminUtils.getCSRFToken === 'function')
+      ? window.AdminUtils.getCSRFToken()
+      : (function(name){
+          let cookieValue = null;
+          if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i].trim();
+              if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+              }
+            }
+          }
+          return cookieValue;
+        })('csrftoken');
   }
-  const csrftoken = getCookie('csrftoken');
+  const csrftoken = getCsrf();
 
+  /** Build users URL with current filters. */
   function buildUsersUrl() {
     const url = new URL(window.location.href);
     const q = document.getElementById('users-search')?.value || '';
     const role = document.getElementById('users-role')?.value || '';
     url.searchParams.set('format', 'json');
-    if (q) url.searchParams.set('q', q);
-    else url.searchParams.delete('q');
-    if (role) url.searchParams.set('role', role);
-    else url.searchParams.delete('role');
+    if (q) url.searchParams.set('q', q); else url.searchParams.delete('q');
+    if (role) url.searchParams.set('role', role); else url.searchParams.delete('role');
     return url;
   }
 
+  /** Fetch users and render table; show skeleton during load. */
   async function fetchUsers() {
+    const skeleton = document.getElementById('users-skeleton');
+    skeleton?.classList.remove('hidden');
     try {
       const url = buildUsersUrl();
       const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
       const data = await res.json();
       if (data.status !== 'ok') throw new Error(data.message || 'Failed');
       renderUsers(data.users);
+      updateUsersCount(data.users);
     } catch (e) {
       console.error('Failed to fetch users', e);
+      (window.AdminUtils?.showMarketplaceToast || alert)('Failed to load users');
+    } finally {
+      skeleton?.classList.add('hidden');
     }
   }
 
+  /** Render users into table body. */
   function renderUsers(users) {
     const tbody = document.querySelector('#users-table tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
     if (!users || users.length === 0) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="5" class="text-base-content/60">No users found.</td>`;
-      tbody.appendChild(tr);
+      tbody.innerHTML = `<tr><td colspan="5" class="text-base-content/60">No users found.</td></tr>`;
       return;
     }
     for (const u of users) {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${u.id}</td>
+        <td class="font-mono text-sm text-base-content/70">#${u.id}</td>
         <td>${u.username}</td>
         <td><span class="badge badge-outline">${u.role || '—'}</span></td>
         <td>${u.active ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-error">Inactive</span>'}</td>
         <td>
-          <button class="btn btn-xs" data-action="toggle" data-id="${u.id}">${u.active ? 'Deactivate' : 'Activate'}</button>
+          <div class="flex justify-end">
+            <button class="btn btn-xs" data-action="toggle" data-id="${u.id}">${u.active ? 'Deactivate' : 'Activate'}</button>
+          </div>
         </td>
       `;
       tbody.appendChild(tr);
     }
   }
 
+  /** Update users count badge text. */
+  function updateUsersCount(users) {
+    const el = document.getElementById('users-count-text');
+    if (el) el.textContent = `${(users || []).length} Users`;
+  }
+
+  /** POST admin action helper. */
   async function postAction(url, body) {
     const res = await fetch(url, {
       method: 'POST',
@@ -128,27 +177,37 @@
     return res.json();
   }
 
+  /** Toggle user active/inactive; refresh table and toast outcome. */
   async function handleToggle(userId) {
     const url = `{% url 'marketplace_admin:toggle_user_active' 0 %}`.replace('/0/', `/${userId}/`);
     try {
       const data = await postAction(url, {});
       if (data.status === 'ok') {
-        showMarketplaceToast('User status updated', 'success');
+        (window.AdminUtils?.showMarketplaceToast || alert)('User status updated');
         await fetchUsers();
       } else {
-        showMarketplaceToast(data.message || 'Update failed', 'error');
+        (window.AdminUtils?.showMarketplaceToast || alert)(data.message || 'Update failed');
       }
     } catch (err) {
       console.error(err);
-      showMarketplaceToast('Network error updating user', 'error');
+      (window.AdminUtils?.showMarketplaceToast || alert)('Network error updating user');
     }
   }
 
+  // Apply button
   document.getElementById('users-apply')?.addEventListener('click', (e) => {
     e.preventDefault();
     fetchUsers();
   });
 
+  // Debounced search
+  const debouncedSearch = (window.AdminUtils?.debounce || ((fn)=>fn))(() => fetchUsers(), 250);
+  document.getElementById('users-search')?.addEventListener('input', debouncedSearch);
+
+  // Role change
+  document.getElementById('users-role')?.addEventListener('change', () => fetchUsers());
+
+  // Toggle buttons
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;

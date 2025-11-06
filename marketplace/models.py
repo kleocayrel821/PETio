@@ -58,6 +58,11 @@ class Listing(TimeStampedModel):
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     quantity = models.PositiveIntegerField(default=1)
+    # Purchase options
+    # When true, listing is offered at a fixed price and is eligible for Buy Now
+    is_fixed_price = models.BooleanField(default=False)
+    # When true, buyers may submit price offers/negotiations on this listing
+    allow_offers = models.BooleanField(default=True)
 
     # Minimal: one primary image to start. Can be extended with a related Image model later.
     main_image = models.ImageField(upload_to="listings/%Y/%m/", blank=True, null=True)
@@ -189,6 +194,8 @@ class Transaction(TimeStampedModel):
     listing = models.ForeignKey(Listing, on_delete=models.PROTECT, related_name="transactions")
     buyer = models.ForeignKey(User, on_delete=models.PROTECT, related_name="purchases")
     seller = models.ForeignKey(User, on_delete=models.PROTECT, related_name="sales")
+    # Optional link to the associated conversation thread between parties
+    thread = models.ForeignKey(MessageThread, on_delete=models.SET_NULL, null=True, blank=True, related_name="transactions")
 
     status = models.CharField(
         max_length=20,
@@ -351,6 +358,10 @@ class Notification(TimeStampedModel):
     related_listing = models.ForeignKey(
         Listing, on_delete=models.CASCADE, null=True, blank=True, related_name="notifications"
     )
+    # Link to a conversation thread so notifications can deep-link to chat
+    related_thread = models.ForeignKey(
+        MessageThread, on_delete=models.CASCADE, null=True, blank=True, related_name="notifications"
+    )
     email_sent = models.BooleanField(default=False)
 
     class Meta:
@@ -430,3 +441,134 @@ class Report(TimeStampedModel):
 
     def __str__(self) -> str:  # pragma: no cover - trivial
         return f"Report #{self.id} on {self.listing.title} ({self.get_status_display()})"
+
+
+# -----------------------------
+# Trust & Safety Models
+# -----------------------------
+
+class UserProfile(TimeStampedModel):
+    """Marketplace-specific user profile and trust metrics.
+
+    Provides a separate profile for marketplace features to avoid coupling with
+    accounts or social apps. Exposes a `marketplace_profile` relation on `User`.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="marketplace_profile")
+    bio = models.TextField(blank=True)
+    location = models.CharField(max_length=160, blank=True)
+    avatar = models.ImageField(upload_to="profiles/%Y/%m/", null=True, blank=True)
+
+    # Trust signals
+    trust_score = models.PositiveIntegerField(default=100)
+    verified = models.BooleanField(default=False)
+    no_show_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["user__username"]
+        indexes = [
+            models.Index(fields=["user"], name="idx_mkt_profile_user"),
+            models.Index(fields=["verified"], name="idx_mkt_profile_verified"),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"MarketplaceProfile({getattr(self.user, 'username', self.user_id)})"
+
+    def calculate_trust_score(self):
+        """Recalculate and persist trust score based on simple heuristics.
+
+        - Start at 100
+        - Deduct 10 points per reported no-show (max 50 deduction)
+        - Incorporate seller ratings average: below 4.0 reduces score proportionally
+        """
+        base = 100
+        # No-show penalty
+        penalty = min(self.no_show_count * 10, 50)
+        # Rating impact (seller ratings only for now)
+        try:
+            from .models import SellerRating
+            agg = SellerRating.objects.filter(seller_id=self.user_id).aggregate(avg=models.Avg("score"))
+            avg_score = agg.get("avg") or 5.0
+            if avg_score < 4.0:
+                # Linear penalty: down to 3.0 incurs ~20 points; below scales slightly more
+                rating_penalty = int((4.0 - float(avg_score)) * 20)
+            else:
+                rating_penalty = 0
+        except Exception:
+            rating_penalty = 0
+        new_score = max(0, base - penalty - rating_penalty)
+        self.trust_score = new_score
+        self.save(update_fields=["trust_score", "updated_at"])
+
+
+class MeetupStatus(models.TextChoices):
+    """Meetup attendance tracking on a purchase request."""
+    SCHEDULED = "scheduled", "Scheduled"
+    SHOWED_UP = "showed_up", "Showed Up"
+    NO_SHOW_BUYER = "no_show_buyer", "No-show (Buyer)"
+    NO_SHOW_SELLER = "no_show_seller", "No-show (Seller)"
+
+
+# Extend PurchaseRequest with meetup attendance fields
+PurchaseRequest.add_to_class(
+    "meetup_status",
+    models.CharField(max_length=20, choices=MeetupStatus.choices, default=MeetupStatus.SCHEDULED, db_index=True),
+)
+PurchaseRequest.add_to_class(
+    "no_show_reported_at",
+    models.DateTimeField(null=True, blank=True),
+)
+PurchaseRequest.add_to_class(
+    "no_show_reporter",
+    models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reported_no_shows"),
+)
+
+
+class DisputeStatus(models.TextChoices):
+    UNDER_REVIEW = "under_review", "Under Review"
+    RESOLVED = "resolved", "Resolved"
+    REJECTED = "rejected", "Rejected"
+
+
+class DisputeType(models.TextChoices):
+    ITEM_NOT_AS_DESCRIBED = "item_not_as_described", "Item Not as Described"
+    NO_SHOW = "no_show", "No-show"
+    PAYMENT_ISSUE = "payment_issue", "Payment Issue"
+    OTHER = "other", "Other"
+
+
+class TransactionDispute(TimeStampedModel):
+    """A dispute filed by a party about a purchase request/transaction."""
+    transaction = models.ForeignKey(PurchaseRequest, on_delete=models.CASCADE, related_name="disputes")
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name="filed_disputes")
+    dispute_type = models.CharField(max_length=40, choices=DisputeType.choices)
+    description = models.TextField(blank=True)
+    evidence_photos = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=20, choices=DisputeStatus.choices, default=DisputeStatus.UNDER_REVIEW, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["transaction", "status"], name="idx_dispute_tx_status"),
+            models.Index(fields=["reporter"], name="idx_dispute_reporter"),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"Dispute #{self.id} on Req #{self.transaction_id} ({self.get_status_display()})"
+
+
+class DisputeMessage(TimeStampedModel):
+    """Message thread entries attached to a TransactionDispute."""
+    dispute = models.ForeignKey(TransactionDispute, on_delete=models.CASCADE, related_name="messages")
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="dispute_messages")
+    message = models.TextField()
+    is_admin = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["dispute", "created_at"], name="idx_disputemsg_dispute_created"),
+            models.Index(fields=["author"], name="idx_disputemsg_author"),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"DisputeMsg #{self.id} for Dispute #{self.dispute_id}"

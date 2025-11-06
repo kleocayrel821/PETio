@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.db.models import Q, Count, Avg, OuterRef, Subquery
 from django.views.generic import ListView, DetailView
 from django.views.generic import CreateView
+from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse
 from django.contrib.auth import get_user_model
@@ -23,6 +24,7 @@ from .models import (
     LogAction,
     RequestMessage,
     Message,
+    MessageThread,
     Notification,
     NotificationType,
  )
@@ -42,6 +44,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
 from django.utils.decorators import method_decorator
 from django.core.cache import cache
 import re
+from datetime import timedelta
 
 # -----------------------------
 # JSON Response Helpers (standardized for toast system)
@@ -120,7 +123,7 @@ def rate_limit(action_key, window_seconds=60, max_calls=5):
 # -----------------------------
 # In-app Notifications Helpers
 # -----------------------------
-def _notify(user, notif_type, request_obj=None, listing=None, message_text=None, send_email=False):
+def _notify(user, notif_type, request_obj=None, listing=None, message_text=None, send_email=False, thread=None):
     """Create a simple in-app notification aligned with Notification model fields."""
     try:
         # Derive a friendly title
@@ -164,6 +167,7 @@ def _notify(user, notif_type, request_obj=None, listing=None, message_text=None,
                 body=body_text,
                 related_request=request_obj,
                 related_listing=listing,
+                related_thread=thread,
                 unread=True,
             )
         # Optional email delivery is delegated to async task for retries
@@ -649,6 +653,35 @@ def request_to_purchase(request, pk):
         status=PurchaseRequestStatus.PENDING,
         message=note,
     )
+    # Create or get a conversation thread between parties for this listing
+    thread, created = MessageThread.objects.get_or_create(
+        listing=listing,
+        buyer=buyer,
+        seller=seller,
+        defaults={"last_message_at": timezone.now()},
+    )
+    # If buyer provided an initial note, add it as the first chat message
+    if note:
+        try:
+            Message.objects.create(thread=thread, sender=buyer, content=note)
+            MessageThread.objects.filter(pk=thread.pk).update(last_message_at=timezone.now())
+        except Exception:
+            pass
+    # Create or get a conversation thread between parties for this listing
+    thread, created = MessageThread.objects.get_or_create(
+        listing=listing,
+        buyer=buyer,
+        seller=seller,
+        defaults={"last_message_at": timezone.now()},
+    )
+    # If buyer provided an initial note, add it as the first chat message
+    if note:
+        try:
+            Message.objects.create(thread=thread, sender=buyer, content=note)
+            MessageThread.objects.filter(pk=thread.pk).update(last_message_at=timezone.now())
+        except Exception:
+            # Non-blocking: failure to create chat message shouldn't block request creation
+            pass
     TransactionLog.objects.create(
         request=pr,
         actor=buyer,
@@ -656,8 +689,8 @@ def request_to_purchase(request, pk):
         note=note,
     )
     # Notify buyer and seller
-    _notify(seller, NotificationType.REQUEST_CREATED, request_obj=pr, listing=listing, message_text=note, send_email=True)
-    _notify(buyer, NotificationType.REQUEST_CREATED, request_obj=pr, listing=listing, message_text=note, send_email=True)
+    _notify(seller, NotificationType.REQUEST_CREATED, request_obj=pr, listing=listing, message_text=note, send_email=True, thread=thread)
+    _notify(buyer, NotificationType.REQUEST_CREATED, request_obj=pr, listing=listing, message_text=note, send_email=True, thread=thread)
 
     django_messages.success(request, "Purchase request sent to the seller.")
     # Redirect to request detail thread
@@ -720,6 +753,66 @@ class SellerDashboardView(LoginRequiredMixin, ListView):
         return ctx
 
 
+class RequestsOverviewView(LoginRequiredMixin, TemplateView):
+    """Unified view showing all purchase requests related to the current user.
+
+    Displays two lists:
+    - buyer_requests: requests where the user is the buyer
+    - seller_requests: requests where the user is the seller (incoming)
+
+    Each request is annotated with an "unread_count" for messages authored by
+    others that the current user has not read yet. This mirrors the behavior in
+    BuyerDashboardView and SellerDashboardView for consistency.
+    """
+
+    template_name = "marketplace/requests_overview.html"
+
+    def get_context_data(self, **kwargs):
+        """Build context with both buyer and seller request lists and counts."""
+        ctx = super().get_context_data(**kwargs)
+        user = self.request.user
+        # Sidebar active state indicator for templates
+        ctx["view_name"] = "requests_overview"
+        ctx["unread_notifications"] = _unread_count(user)
+
+        buyer_qs = (
+            PurchaseRequest.objects.filter(buyer=user)
+            .select_related("listing", "seller")
+            .order_by("-created_at")
+        )
+        seller_qs = (
+            PurchaseRequest.objects.filter(seller=user)
+            .select_related("listing", "buyer")
+            .order_by("-created_at")
+        )
+
+        # Annotate unread message count for each request for this user
+        try:
+            for r in buyer_qs:
+                count = (
+                    RequestMessage.objects.filter(request_id=r.id, read_at__isnull=True)
+                    .exclude(author_id=user.id)
+                    .count()
+                )
+                setattr(r, "unread_count", count)
+        except Exception:
+            pass
+
+        try:
+            for r in seller_qs:
+                count = (
+                    RequestMessage.objects.filter(request_id=r.id, read_at__isnull=True)
+                    .exclude(author_id=user.id)
+                    .count()
+                )
+                setattr(r, "unread_count", count)
+        except Exception:
+            pass
+
+        ctx["buyer_requests"] = buyer_qs
+        ctx["seller_requests"] = seller_qs
+        return ctx
+
 class RequestDetailView(LoginRequiredMixin, DetailView):
     model = PurchaseRequest
     template_name = "marketplace/request_detail.html"
@@ -728,6 +821,14 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
     def dispatch(self, request, *args, **kwargs):
         pr = get_object_or_404(PurchaseRequest, pk=kwargs.get("pk"))
         allowed = request.user.id in (pr.buyer_id, pr.seller_id) or _is_moderator(request.user)
+        # Dev-only preview: optionally relax authorization to allow UI review without login
+        try:
+            from django.conf import settings
+            if getattr(settings, "DEV_ALLOW_REQUEST_PREVIEW", False):
+                allowed = True
+        except Exception:
+            # If settings import fails, keep strict authorization
+            pass
         if not allowed:
             return HttpResponseForbidden("Not authorized to view this request")
         return super().dispatch(request, *args, **kwargs)
@@ -820,6 +921,34 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
             ctx["can_mark_completed"] = bool(
                 is_buyer_or_mod and is_active and txn_paid and ctx.get("meetup_confirmed", False) and pr.status == PurchaseRequestStatus.ACCEPTED
             )
+            # Payment context: seller can record payment when accepted and transaction exists
+            try:
+                is_seller_or_mod = self.request.user.id == pr.seller_id or _is_moderator(self.request.user)
+                accepted_price = pr.counter_offer if pr.counter_offer is not None else pr.offer_price
+                if accepted_price is None:
+                    accepted_price = getattr(pr.listing, "price", None)
+                qty = pr.quantity or 1
+                agreed_total = None
+                if accepted_price is not None:
+                    try:
+                        agreed_total = Decimal(str(accepted_price)) * Decimal(str(qty))
+                    except Exception:
+                        agreed_total = None
+                # Build payment methods for UI
+                try:
+                    methods = [m.value for m in Transaction.PaymentMethod]
+                except Exception:
+                    methods = ["cash", "bank_transfer", "other"]
+                can_record_payment = bool(
+                    is_seller_or_mod and is_active and has_txn and pr.status == PurchaseRequestStatus.ACCEPTED and getattr(txn, "status", None) in (TransactionStatus.CONFIRMED, TransactionStatus.AWAITING_PAYMENT)
+                )
+                ctx["can_record_payment"] = can_record_payment
+                ctx["payment_methods"] = methods
+                ctx["payment_prefill_amount"] = agreed_total
+            except Exception:
+                ctx["can_record_payment"] = False
+                ctx["payment_methods"] = ["cash", "bank_transfer", "other"]
+                ctx["payment_prefill_amount"] = None
         except Exception:
             ctx["meetup_details"] = None
             ctx["can_propose_meetup"] = False
@@ -829,6 +958,9 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
             ctx["meetup_logs"] = []
             ctx["meetup_confirmed"] = False
             ctx["can_mark_completed"] = False
+            ctx["can_record_payment"] = False
+            ctx["payment_methods"] = ["cash", "bank_transfer", "other"]
+            ctx["payment_prefill_amount"] = None
         # Negotiation context: offer fields, permissions, and history
         try:
             is_buyer = self.request.user.id == pr.buyer_id
@@ -951,10 +1083,18 @@ def respond_offer(request, request_id):
             return HttpResponseBadRequest("Listing already reserved by another request")
         pr.status = PurchaseRequestStatus.ACCEPTED
         pr.accepted_at = timezone.now()
+        # Ensure a conversation thread exists for this listing/buyer/seller trio
+        thread, _ = MessageThread.objects.get_or_create(
+            listing=pr.listing,
+            buyer=pr.buyer,
+            seller=pr.seller,
+            defaults={"last_message_at": timezone.now()},
+        )
         txn = Transaction.objects.create(
             listing=pr.listing,
             buyer=pr.buyer,
             seller=pr.seller,
+            thread=thread,
             status=TransactionStatus.CONFIRMED,
         )
         pr.transaction = txn
@@ -970,10 +1110,17 @@ def respond_offer(request, request_id):
             action=LogAction.OFFER_ACCEPTED,
             note=f"Accepted: {accepted_qty} × {accepted_price}",
         )
-        _notify(pr.buyer, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="offer accepted", send_email=True)
-        _notify(pr.seller, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="offer accepted", send_email=True)
+        _notify(pr.buyer, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="offer accepted", send_email=True, thread=thread)
+        _notify(pr.seller, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="offer accepted", send_email=True, thread=thread)
         django_messages.success(request, "Offer accepted. Listing reserved.")
-        return redirect("marketplace:seller_dashboard")
+        # Redirect seller into the Messages page focused on the conversation thread
+        try:
+            from django.urls import reverse
+            from django.utils.http import urlencode
+            url = f"{reverse('marketplace:messages')}?" + urlencode({"thread_id": int(thread.id)})
+            return redirect(url)
+        except Exception:
+            return redirect("marketplace:seller_dashboard")
     elif act == "reject":
         pr.status = PurchaseRequestStatus.REJECTED
         pr.save(update_fields=["status", "updated_at"])
@@ -1015,16 +1162,92 @@ def post_request_message(request, pk):
         return HttpResponseForbidden("Not authorized to post in this thread")
     # Block posting when the request is completed or canceled
     if pr.status in (PurchaseRequestStatus.COMPLETED, PurchaseRequestStatus.CANCELED):
+        if wants_json(request):
+            return json_error("Cannot post messages on a closed request", status=400)
         return HttpResponseBadRequest("Cannot post messages on a closed request")
     content = sanitize_text(request.POST.get("content"), max_len=4000)
     if not content:
+        if wants_json(request):
+            return json_error("Message content is required", status=400, field_errors={"content": ["Message content is required"]})
         return HttpResponseBadRequest("Message content is required")
     msg = RequestMessage.objects.create(request=pr, author=request.user, content=content)
     # Notify the other party
     other = pr.seller if request.user.id == pr.buyer_id else pr.buyer
-    _notify(other, NotificationType.MESSAGE_POSTED, request_obj=pr, listing=pr.listing, message_text=content, send_email=True)
+    # Disabled: do not send notifications for individual chat messages to reduce clutter
+    # _notify(other, NotificationType.MESSAGE_POSTED, request_obj=pr, listing=pr.listing, message_text=content, send_email=True)
     django_messages.success(request, "Message posted.")
+    # JSON response for progressive enhancement
+    if wants_json(request):
+        from django.utils.timesince import timesince
+        created_local = timezone.localtime(msg.created_at)
+        message_json = {
+            "id": msg.id,
+            "author_id": msg.author_id,
+            "author": getattr(msg.author, "username", str(msg.author)),
+            "content": msg.content,
+            "created_at": msg.created_at.isoformat(),
+            "created_at_fmt": created_local.strftime("%Y-%m-%d %H:%M"),
+            "created_ago": timesince(msg.created_at) + " ago",
+        }
+        return json_ok("Message posted.", data={"message": message_json})
     return redirect("marketplace:request_detail", pk=pr.pk)
+
+
+# -----------------------------
+# Request Message JSON Endpoints
+# -----------------------------
+@require_http_methods(["GET"])  # Poll for request messages
+def api_request_messages(request, request_id):
+    """Fetch request-scoped messages for polling and live updates.
+
+    Requires authentication and participation (buyer, seller) or moderator role.
+    Accepts `since_id` (int) and optional `limit` (default 50, max 200).
+    Returns message objects shaped for the redesigned template.
+    """
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden("Authentication required")
+
+    pr = get_object_or_404(PurchaseRequest, pk=request_id)
+    if request.user.id not in (pr.buyer_id, pr.seller_id) and not _is_moderator(request.user):
+        return HttpResponseForbidden("Not authorized to view messages for this request")
+
+    try:
+        since_id = int(request.GET.get("since_id", 0))
+    except (TypeError, ValueError):
+        since_id = 0
+
+    try:
+        limit = int(request.GET.get("limit", 50))
+    except (TypeError, ValueError):
+        limit = 50
+    limit = max(1, min(limit, 200))
+
+    qs = RequestMessage.objects.filter(request=pr)
+    if since_id:
+        qs = qs.filter(id__gt=since_id)
+    qs = qs.select_related("author").order_by("id")[:limit]
+
+    from django.utils.timesince import timesince
+    messages = []
+    for m in qs:
+        created_local = timezone.localtime(m.created_at)
+        messages.append({
+            "id": m.id,
+            "author_id": m.author_id,
+            "author": getattr(m.author, "username", str(m.author)),
+            "content": m.content,
+            "created_at": m.created_at.isoformat(),
+            "created_at_fmt": created_local.strftime("%Y-%m-%d %H:%M"),
+            "created_ago": timesince(m.created_at) + " ago",
+        })
+
+    data = {
+        "messages": messages,
+        "count": len(messages),
+        "typing": False,
+        "server_time": timezone.now().isoformat(),
+    }
+    return json_ok("Messages fetched.", data=data)
 
 
 @login_required
@@ -1307,10 +1530,18 @@ def seller_accept_request(request, request_id):
     # Accept request, create confirmation Transaction, reserve listing
     pr.status = PurchaseRequestStatus.ACCEPTED
     pr.accepted_at = timezone.now()
+    # Link an existing or new conversation thread to the transaction
+    thread, _ = MessageThread.objects.get_or_create(
+        listing=pr.listing,
+        buyer=pr.buyer,
+        seller=pr.seller,
+        defaults={"last_message_at": timezone.now()},
+    )
     txn = Transaction.objects.create(
         listing=pr.listing,
         buyer=pr.buyer,
         seller=pr.seller,
+        thread=thread,
         status=TransactionStatus.CONFIRMED,
     )
     pr.transaction = txn
@@ -1325,10 +1556,17 @@ def seller_accept_request(request, request_id):
         note=sanitize_text(request.POST.get("note"), max_len=500),
     )
     # Notifications for status change
-    _notify(pr.buyer, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="accepted", send_email=True)
-    _notify(pr.seller, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="accepted", send_email=True)
+    _notify(pr.buyer, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="accepted", send_email=True, thread=thread)
+    _notify(pr.seller, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="accepted", send_email=True, thread=thread)
     django_messages.success(request, "Request accepted. Listing reserved.")
-    return redirect("marketplace:seller_dashboard")
+    # Redirect into Messages for the newly accepted request's conversation
+    try:
+        from django.urls import reverse
+        from django.utils.http import urlencode
+        url = f"{reverse('marketplace:messages')}?" + urlencode({"thread_id": int(thread.id)})
+        return redirect(url)
+    except Exception:
+        return redirect("marketplace:seller_dashboard")
 
 
 @login_required
@@ -1660,6 +1898,14 @@ def open_notification(request, notif_id):
     notif = get_object_or_404(Notification, pk=notif_id, user=request.user)
     notif.mark_as_read()
     notif.save(update_fields=["read_at", "unread", "updated_at"])
+    # Prefer deep-link to conversation if available
+    if getattr(notif, "related_thread_id", None):
+        try:
+            url = f"{reverse('marketplace:messages')}?" + urlencode({"thread_id": int(notif.related_thread_id)})
+            return redirect(url)
+        except Exception:
+            # Fallback continues below
+            pass
     if notif.related_request_id:
         return redirect("marketplace:request_detail", pk=notif.related_request_id)
     if notif.related_listing_id:
@@ -2289,6 +2535,9 @@ def api_listing_sell(request, listing_id):
         })
     else:
         # Direct checkout purchase flow for active listings
+        # Sellers must not use direct checkout; only buyers can purchase active listings
+        if request.user.id == seller.id:
+            return JsonResponse({"error": "Seller cannot sell without reservation"}, status=400)
         if listing.quantity <= 0:
             return HttpResponseBadRequest("Out of stock")
 
@@ -2329,6 +2578,103 @@ def api_listing_sell(request, listing_id):
                 "amount_paid": str(txn.amount_paid) if txn.amount_paid is not None else None,
             }
         })
+
+@csrf_protect
+@require_http_methods(["POST"])  # Buy Now purchase for fixed-price active listings
+def api_listing_buy_now(request, listing_id):
+    """Process an immediate purchase for a fixed-price listing.
+
+    Preconditions:
+    - User must be authenticated and not the seller
+    - Listing must be ACTIVE, `is_fixed_price` True, and have quantity > 0
+    - Price must be set (non-null)
+
+    Effects:
+    - Create or update a `Transaction` for the buyer to `PAID`
+    - Decrement `Listing.quantity`; set status to `SOLD` when 0, else remain `ACTIVE`
+    - Start or attach to a `MessageThread` and post an initial message
+    - Send lightweight notifications to buyer and seller
+
+    Returns JSON with updated listing and transaction details.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Authentication required"}, status=403)
+    try:
+        listing = Listing.objects.select_related("seller").get(pk=listing_id, status=ListingStatus.ACTIVE)
+    except Listing.DoesNotExist:
+        return HttpResponseBadRequest("Listing not found or not active")
+
+    # Validate fixed-price availability and stock
+    if not getattr(listing, "is_fixed_price", False):
+        return JsonResponse({"error": "Buy Now is not available for this listing"}, status=400)
+    if listing.quantity <= 0:
+        return HttpResponseBadRequest("Out of stock")
+    if listing.price is None:
+        return JsonResponse({"error": "Listing must have a price to buy now"}, status=400)
+
+    buyer = request.user
+    seller = listing.seller
+    if buyer.id == seller.id:
+        return JsonResponse({"error": "Seller cannot use Buy Now on own listing"}, status=400)
+
+    # Create or update transaction as PAID (direct checkout semantics)
+    txn, _ = Transaction.objects.get_or_create(
+        listing=listing,
+        buyer=buyer,
+        seller=seller,
+        defaults={"status": TransactionStatus.PAID, "amount_paid": listing.price},
+    )
+    updates = ["status"]
+    if txn.status != TransactionStatus.PAID:
+        txn.status = TransactionStatus.PAID
+    # Set amount_paid for clarity when not previously set
+    if txn.amount_paid is None:
+        txn.amount_paid = listing.price
+        updates.append("amount_paid")
+    txn.save(update_fields=updates)
+
+    # Decrement stock and set status accordingly
+    listing.quantity = max(0, listing.quantity - 1)
+    if listing.quantity == 0:
+        listing.status = ListingStatus.SOLD
+        listing.save(update_fields=["quantity", "status"])
+        _cascade_close_open_requests_for_listing(listing, reason="sold out")
+    else:
+        listing.status = ListingStatus.ACTIVE
+        listing.save(update_fields=["quantity", "status"])
+
+    # Create or attach to a conversation thread and post an initial system message
+    try:
+        thread, _ = MessageThread.objects.get_or_create(listing=listing, buyer=buyer, seller=seller)
+        txn.thread = thread
+        txn.save(update_fields=["thread"])
+        Message.objects.create(
+            thread=thread,
+            sender=buyer,
+            text=f"Buy Now purchase placed. Transaction #{txn.id}.",
+        )
+        # Notify parties; keep body concise
+        _notify(seller, NotificationType.STATUS_CHANGED, listing=listing, message_text="Buy Now purchase", thread=thread)
+        _notify(buyer, NotificationType.STATUS_CHANGED, listing=listing, message_text="Buy Now purchase", thread=thread)
+    except Exception:
+        # Do not fail primary flow if messaging/notifications error
+        pass
+
+    return JsonResponse({
+        "listing": {
+            "id": listing.id,
+            "title": listing.title,
+            "quantity": listing.quantity,
+            "status": listing.status,
+        },
+        "transaction": {
+            "id": txn.id,
+            "status": txn.status,
+            "buyer_id": buyer.id,
+            "seller_id": seller.id,
+            "amount_paid": str(txn.amount_paid) if txn.amount_paid is not None else None,
+        },
+    })
 
 @csrf_protect
 @require_http_methods(["POST"])  # Mark latest transaction as completed (without changing stock)
@@ -2439,6 +2785,319 @@ def report_listing(request, listing_id):
 def reset_placeholder(request):
     """Minimal placeholder view for marketplace reset mode."""
     return render(request, "marketplace/reset.html")
+
+
+# -----------------------------
+# Trust & Safety Views
+# -----------------------------
+from .models import (
+    PurchaseRequest,
+    NotificationType,
+    SellerRating,
+    TransactionDispute,
+    DisputeMessage,
+    MeetupStatus,
+)
+
+
+@login_required
+@require_POST
+def report_no_show(request, pk):
+    """Report a meetup no-show for a purchase request.
+
+    Validates party membership and that the meetup time has passed, then records
+    the no-show against the request and updates the reported user's marketplace profile.
+    """
+    pr = get_object_or_404(PurchaseRequest, pk=pk)
+
+    # Verify user is part of this transaction
+    if request.user.id not in (pr.buyer_id, pr.seller_id):
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=403)
+
+    # Verify meetup exists and time has passed
+    txn = getattr(pr, "transaction", None)
+    if not txn or not txn.meetup_time:
+        return JsonResponse({"success": False, "error": "No meetup scheduled"}, status=400)
+    if txn.meetup_time > timezone.now():
+        return JsonResponse({"success": False, "error": "Meetup time has not passed yet"}, status=400)
+
+    try:
+        # Determine who didn't show up (the other party)
+        no_show_user = pr.seller if request.user.id == pr.buyer_id else pr.buyer
+
+        # Update request meetup status and no-show audit fields
+        pr.meetup_status = MeetupStatus.NO_SHOW_SELLER if no_show_user.id == pr.seller_id else MeetupStatus.NO_SHOW_BUYER
+        pr.no_show_reported_at = timezone.now()
+        pr.no_show_reporter = request.user
+        pr.save(update_fields=["meetup_status", "no_show_reported_at", "no_show_reporter", "updated_at"])
+
+        # Update no-show user's marketplace profile (create if missing)
+        profile = getattr(no_show_user, "marketplace_profile", None)
+        if profile is None:
+            from .models import UserProfile
+            profile = UserProfile.objects.create(user=no_show_user)
+        profile.no_show_count += 1
+        profile.save(update_fields=["no_show_count", "updated_at"])
+        # Recalculate trust score with applied penalty
+        profile.calculate_trust_score()
+
+        # Notify the no-show user
+        _notify(
+            no_show_user,
+            NotificationType.STATUS_CHANGED,
+            request_obj=pr,
+            listing=pr.listing,
+            message_text="You have been reported for not showing up to a meetup. This affects your reliability rating.",
+            send_email=True,
+        )
+
+        # Notify admins/staff
+        from django.contrib.auth import get_user_model
+        admins = get_user_model().objects.filter(is_staff=True)
+        for admin in admins:
+            _notify(
+                admin,
+                NotificationType.STATUS_CHANGED,
+                request_obj=pr,
+                listing=pr.listing,
+                message_text=f"No-show reported: Request #{pr.id}. Reporter: {request.user.username}, No-show: {no_show_user.username}",
+                send_email=True,
+            )
+
+        return JsonResponse({"success": True})
+    except Exception as exc:  # pragma: no cover - safety net
+        return JsonResponse({"success": False, "error": str(exc)}, status=500)
+
+
+@login_required
+@require_POST
+def file_dispute(request, pk):
+    """File a dispute for a purchase request/transaction.
+
+    Creates a `TransactionDispute` with optional evidence photos and notifies the other party
+    and staff for review.
+    """
+    pr = get_object_or_404(PurchaseRequest, pk=pk)
+
+    # Verify user is part of this transaction
+    if request.user.id not in (pr.buyer_id, pr.seller_id):
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=403)
+
+    # Prevent duplicate dispute by the same reporter on the same request
+    if TransactionDispute.objects.filter(transaction=pr, reporter=request.user).exists():
+        return JsonResponse({"success": False, "error": "Dispute already filed"}, status=400)
+
+    try:
+        dispute_type = (request.POST.get("dispute_type") or "").strip() or "other"
+        description = (request.POST.get("description") or "").strip()
+
+        # Handle evidence photos (store URLs for simplicity)
+        evidence_urls = []
+        files = request.FILES.getlist("evidence")
+        if files:
+            from django.core.files.storage import default_storage
+            for photo in files:
+                file_path = default_storage.save(f"dispute_evidence/{photo.name}", photo)
+                evidence_urls.append(default_storage.url(file_path))
+
+        dispute = TransactionDispute.objects.create(
+            transaction=pr,
+            reporter=request.user,
+            dispute_type=dispute_type,
+            description=description,
+            evidence_photos=evidence_urls,
+        )
+
+        # Notify the other party
+        other_user = pr.seller if request.user.id == pr.buyer_id else pr.buyer
+        _notify(
+            other_user,
+            NotificationType.STATUS_CHANGED,
+            request_obj=pr,
+            listing=pr.listing,
+            message_text=f"{request.user.username} has filed a dispute about your transaction. Please respond.",
+            send_email=True,
+        )
+
+        # Notify admins/staff
+        from django.contrib.auth import get_user_model
+        admins = get_user_model().objects.filter(is_staff=True)
+        for admin in admins:
+            _notify(
+                admin,
+                NotificationType.STATUS_CHANGED,
+                request_obj=pr,
+                listing=pr.listing,
+                message_text=f"New dispute filed: Request #{pr.id}",
+                send_email=True,
+            )
+
+        return JsonResponse({"success": True, "dispute_id": dispute.id})
+    except Exception as exc:  # pragma: no cover - safety net
+        return JsonResponse({"success": False, "error": str(exc)}, status=500)
+
+
+@login_required
+def user_profile(request, user_id):
+    """Display a user's public marketplace profile with trust and reviews."""
+    from django.contrib.auth import get_user_model
+    profile_user = get_object_or_404(get_user_model(), id=user_id)
+
+    # Ensure marketplace profile exists
+    profile = getattr(profile_user, "marketplace_profile", None)
+    if profile is None:
+        from .models import UserProfile
+        profile, _ = UserProfile.objects.get_or_create(user=profile_user)
+
+    # Reviews: use SellerRating as the canonical post-transaction rating
+    reviews = SellerRating.objects.filter(seller=profile_user).select_related("buyer", "listing", "purchase_request").order_by("-created_at")[:20]
+
+    # Completed transactions count via PurchaseRequest status
+    from .models import PurchaseRequestStatus
+    completed_as_buyer = PurchaseRequest.objects.filter(buyer=profile_user, status=PurchaseRequestStatus.COMPLETED).count()
+    completed_as_seller = PurchaseRequest.objects.filter(seller=profile_user, status=PurchaseRequestStatus.COMPLETED).count()
+
+    # Rating distribution (1..5 using `score` field)
+    rating_distribution = {i: reviews.filter(score=i).count() for i in range(1, 6)}
+
+    context = {
+        "profile_user": profile_user,
+        "profile": profile,
+        "reviews": reviews,
+        "completed_as_buyer": completed_as_buyer,
+        "completed_as_seller": completed_as_seller,
+        "rating_distribution": rating_distribution,
+    }
+    return render(request, "marketplace/user_profile.html", context)
+
+
+@login_required
+def send_meetup_reminder(request, pk):
+    """Schedule an SMS reminder 1 hour before meetup (placeholder).
+
+    Integrate with an SMS provider (e.g., Twilio) to schedule delivery. Returns a
+    simple success response for now.
+    """
+    pr = get_object_or_404(PurchaseRequest, pk=pk)
+    if request.user.id not in (pr.buyer_id, pr.seller_id):
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=403)
+    try:
+        txn = getattr(pr, "transaction", None)
+        if not txn or not txn.meetup_time:
+            return JsonResponse({"success": False, "error": "No meetup scheduled"}, status=400)
+        reminder_time = txn.meetup_time - timedelta(hours=1)
+        # TODO: Integrate with SMS scheduling provider
+        return JsonResponse({"success": True, "message": "Reminder will be sent 1 hour before meetup", "reminder_time": reminder_time.isoformat()})
+    except Exception as exc:  # pragma: no cover
+        return JsonResponse({"success": False, "error": str(exc)}, status=500)
+
+
+@login_required
+def suggest_safe_locations(request, pk):
+    """Suggest safe meetup locations (static demo)."""
+    pr = get_object_or_404(PurchaseRequest, pk=pk)
+    if request.user.id not in (pr.buyer_id, pr.seller_id):
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=403)
+    try:
+        suggested_locations = [
+            {
+                "id": 1,
+                "name": "SM City Imus",
+                "address": "Aguinaldo Highway, Imus, Cavite",
+                "type": "Shopping Mall",
+                "distance_km": 2.3,
+                "operating_hours": "10:00 AM - 9:00 PM",
+                "safety_rating": 5.0,
+            },
+            {
+                "id": 2,
+                "name": "Imus City Hall",
+                "address": "Poblacion 1-A, Imus, Cavite",
+                "type": "Public Building",
+                "distance_km": 3.1,
+                "operating_hours": "8:00 AM - 5:00 PM (Weekdays)",
+                "safety_rating": 5.0,
+            },
+            {
+                "id": 3,
+                "name": "Imus Police Station",
+                "address": "Anabu I-B, Imus, Cavite",
+                "type": "Police Station",
+                "distance_km": 2.8,
+                "operating_hours": "24/7",
+                "safety_rating": 5.0,
+            },
+        ]
+        return JsonResponse({"suggested_locations": suggested_locations})
+    except Exception as exc:  # pragma: no cover
+        return JsonResponse({"success": False, "error": str(exc)}, status=500)
+
+
+@login_required
+@require_POST
+def add_dispute_message(request, dispute_id):
+    """Add a message to an existing dispute thread."""
+    dispute = get_object_or_404(TransactionDispute, id=dispute_id)
+
+    # Verify user is part of this dispute
+    allowed_user_ids = {dispute.reporter_id, dispute.transaction.buyer_id, dispute.transaction.seller_id}
+    if request.user.id not in allowed_user_ids:
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=403)
+
+    try:
+        message_text = (request.POST.get("message") or "").strip()
+        if not message_text:
+            return JsonResponse({"success": False, "error": "Message cannot be empty"}, status=400)
+
+        DisputeMessage.objects.create(
+            dispute=dispute,
+            author=request.user,
+            message=message_text,
+            is_admin=bool(getattr(request.user, "is_staff", False)),
+        )
+
+        # Notify other party (only if different from author)
+        other_user = dispute.transaction.seller if request.user.id == dispute.transaction.buyer_id else dispute.transaction.buyer
+        if other_user.id != request.user.id:
+            _notify(
+                other_user,
+                NotificationType.MESSAGE_POSTED,
+                request_obj=dispute.transaction,
+                listing=dispute.transaction.listing,
+                message_text=f"New message in dispute for Request #{dispute.transaction.id}",
+                send_email=True,
+            )
+
+        return JsonResponse({"success": True})
+    except Exception as exc:  # pragma: no cover
+        return JsonResponse({"success": False, "error": str(exc)}, status=500)
+
+
+@login_required
+def dispute_detail(request, dispute_id):
+    """Display dispute details and communication thread (basic view)."""
+    dispute = get_object_or_404(TransactionDispute, id=dispute_id)
+
+    # Verify participant or staff
+    allowed_user_ids = {dispute.reporter_id, dispute.transaction.buyer_id, dispute.transaction.seller_id}
+    if request.user.id not in allowed_user_ids and not getattr(request.user, "is_staff", False):
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=403)
+
+    other_user = dispute.transaction.seller if request.user.id == dispute.transaction.buyer_id else dispute.transaction.buyer
+    other_party_response = dispute.messages.filter(author_id=other_user.id).order_by("created_at").first()
+
+    context = {
+        "dispute": dispute,
+        "other_user": other_user,
+        "other_party_response": other_party_response,
+    }
+    return render(request, "marketplace/dispute_detail.html", context)
+
+
+@login_required
+def verification_page(request):
+    """Simple verification info/incentives page (placeholder UI)."""
+    return render(request, "marketplace/verification.html")
 
 class CategoryViewSet(viewsets.ModelViewSet):
     """RESTful endpoints for categories."""
@@ -2580,8 +3239,8 @@ def api_request_create(request, listing_id):
         action=LogAction.BUYER_REQUEST,
         note=note,
     )
-    _notify(seller, NotificationType.REQUEST_CREATED, request_obj=pr, listing=listing, message_text=note, send_email=True)
-    _notify(buyer, NotificationType.REQUEST_CREATED, request_obj=pr, listing=listing, message_text=note, send_email=True)
+    _notify(seller, NotificationType.REQUEST_CREATED, request_obj=pr, listing=listing, message_text=note, send_email=True, thread=thread)
+    _notify(buyer, NotificationType.REQUEST_CREATED, request_obj=pr, listing=listing, message_text=note, send_email=True, thread=thread)
 
     return json_ok({
         "request": {
@@ -2935,6 +3594,123 @@ def api_request_complete(request, request_id):
         "listing": {"id": pr.listing.id, "status": pr.listing.status},
         "transaction": {"id": pr.transaction.id, "status": pr.transaction.status},
     })
+
+@csrf_protect
+@require_http_methods(["POST"])  # Seller records payment for an accepted purchase request
+def api_request_record_payment(request, request_id):
+    """Record payment for an accepted request.
+
+    - Only the seller may record payment.
+    - Request must be ACCEPTED and have an associated Transaction (typically CONFIRMED).
+    - Validates `payment_method` and `amount_paid` (JSON or form-data).
+    - Sets transaction to PAID, updates amount and method, and adjusts listing stock.
+    - Listing remains RESERVED until completion; only quantity is decremented.
+    """
+    if not request.user.is_authenticated:
+        return json_error("Authentication required", status=403)
+    pr = get_object_or_404(PurchaseRequest, pk=request_id)
+    if request.user.id != pr.seller_id:
+        return json_error("Only the seller can record payment", status=403)
+    if pr.status != PurchaseRequestStatus.ACCEPTED:
+        return json_error("Request is not in accepted status", status=400)
+    if not pr.transaction:
+        return json_error("No transaction associated with this request", status=400)
+
+    txn = pr.transaction
+    listing = pr.listing
+
+    # Capture input
+    payment_method = None
+    amount_paid = None
+    proof_file = None
+    ct = (request.content_type or "").lower()
+    if ct.startswith("application/json"):
+        try:
+            payload = json.loads(request.body.decode("utf-8") or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+        payment_method = (payload.get("payment_method") or "").strip() or None
+        amount_paid = payload.get("amount_paid")
+    else:
+        payment_method = (request.POST.get("payment_method") or "").strip() or None
+        amount_paid = request.POST.get("amount_paid")
+        proof_file = request.FILES.get("payment_proof")
+
+    if amount_paid is not None:
+        try:
+            amount_paid = Decimal(str(amount_paid))
+        except Exception:
+            amount_paid = None
+
+    field_errors = {}
+    # Validate method
+    try:
+        valid_methods = {m.value for m in Transaction.PaymentMethod}
+    except Exception:
+        valid_methods = {"cash", "bank_transfer", "other"}
+    if payment_method and payment_method not in valid_methods:
+        field_errors["payment_method"] = "Invalid payment method"
+
+    # Compute agreed cap
+    agreed_price = pr.counter_offer if pr.counter_offer is not None else pr.offer_price
+    if agreed_price is None:
+        agreed_price = getattr(listing, "price", None)
+    agreed_qty = pr.quantity or 1
+    try:
+        agreed_total = (Decimal(str(agreed_price)) if agreed_price is not None else None)
+        if agreed_total is not None:
+            agreed_total *= Decimal(str(agreed_qty))
+    except Exception:
+        agreed_total = None
+
+    # Validate amount
+    if amount_paid is None:
+        field_errors["amount_paid"] = "Amount is required"
+    else:
+        if amount_paid <= Decimal("0"):
+            field_errors["amount_paid"] = "Amount must be positive"
+        elif agreed_total is not None and amount_paid > agreed_total:
+            field_errors["amount_paid"] = "Amount cannot exceed agreed total"
+
+    if field_errors:
+        return json_error("Validation failed", status=400, field_errors=field_errors)
+
+    # Update transaction
+    txn.payment_method = payment_method
+    txn.amount_paid = amount_paid
+    txn.status = TransactionStatus.PAID
+    if proof_file is not None:
+        txn.payment_proof = proof_file
+    txn.save(update_fields=["status", "payment_method", "amount_paid", "payment_proof", "updated_at"])
+
+    # Adjust stock based on agreed quantity (keep listing status RESERVED until completion)
+    try:
+        qty = int(agreed_qty) if agreed_qty else 1
+    except Exception:
+        qty = 1
+    listing.quantity = max(0, (listing.quantity or 0) - qty)
+    # Preserve RESERVED status for accepted request flow regardless of quantity
+    listing.save(update_fields=["quantity", "updated_at"])  # Do not change status here
+
+    # Notify buyer
+    try:
+        _notify(pr.buyer, NotificationType.STATUS_CHANGED, request_obj=pr, listing=listing, message_text="payment recorded", send_email=True)
+    except Exception:
+        pass
+
+    return json_ok(
+        "Payment recorded",
+        data={
+            "request": {"id": pr.id, "status": pr.status},
+            "transaction": {
+                "id": txn.id,
+                "status": txn.status,
+                "payment_method": txn.payment_method,
+                "amount_paid": str(txn.amount_paid) if txn.amount_paid is not None else None,
+            },
+            "listing": {"id": listing.id, "status": listing.status, "quantity": listing.quantity},
+        }
+    )
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import TemplateView
 from django.db.models import Sum, Count

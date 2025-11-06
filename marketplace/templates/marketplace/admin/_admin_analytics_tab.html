@@ -1,52 +1,87 @@
-{% comment %}Analytics tab partial: expects labels/data JSON, categories, recent_transactions{% endcomment %}
-<h3 class="text-xl font-semibold mb-3">Analytics Overview</h3>
+{% comment %}Analytics tab partial: unified design; expects labels/data JSON, categories, recent_transactions{% endcomment %}
+
+<!-- Header -->
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <h3 class="text-2xl font-semibold text-base-content">Analytics Overview</h3>
+    <p class="text-sm text-base-content/60 mt-1">Monitor performance across listings, users, and transactions</p>
+  </div>
+  <div class="badge badge-lg badge-info">
+    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m4 4V8a4 4 0 10-8 0v8a4 4 0 108 0z"/>
+    </svg>
+    Real-time
+  </div>
+  </div>
+
 <!-- KPI Cards -->
-<div id="kpiCards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-  <div class="card bg-base-100 shadow-md">
-    <div class="card-body">
-      <div class="text-sm text-base-content/60">Total Listings</div>
-      <div id="kpiTotalListings" class="text-2xl font-semibold">{{ kpi_total_listings|default:0 }}</div>
+<div id="kpiCards" class="kpi-grid mb-6">
+  <div class="card kpi-card">
+    <div class="card-body kpi-content">
+      <div class="kpi-icon kpi-icon-blue"><i data-lucide="files"></i></div>
+      <div>
+        <div class="kpi-label">Total Listings</div>
+        <div id="kpiTotalListings" class="kpi-value">{{ kpi_total_listings|default:0 }}</div>
+      </div>
     </div>
   </div>
-  <div class="card bg-base-100 shadow-md">
-    <div class="card-body">
-      <div class="text-sm text-base-content/60">Approved Listings</div>
-      <div id="kpiApprovedListings" class="text-2xl font-semibold">{{ kpi_approved_listings|default:0 }}</div>
+  <div class="card kpi-card">
+    <div class="card-body kpi-content">
+      <div class="kpi-icon kpi-icon-green"><i data-lucide="check-circle"></i></div>
+      <div>
+        <div class="kpi-label">Approved Listings</div>
+        <div id="kpiApprovedListings" class="kpi-value">{{ kpi_approved_listings|default:0 }}</div>
+      </div>
     </div>
   </div>
-  <div class="card bg-base-100 shadow-md">
-    <div class="card-body">
-      <div class="text-sm text-base-content/60">Rejected Listings</div>
-      <div id="kpiRejectedListings" class="text-2xl font-semibold">{{ kpi_rejected_listings|default:0 }}</div>
+  <div class="card kpi-card">
+    <div class="card-body kpi-content">
+      <div class="kpi-icon kpi-icon-amber"><i data-lucide="x-circle"></i></div>
+      <div>
+        <div class="kpi-label">Rejected Listings</div>
+        <div id="kpiRejectedListings" class="kpi-value">{{ kpi_rejected_listings|default:0 }}</div>
+      </div>
     </div>
   </div>
-  <div class="card bg-base-100 shadow-md">
-    <div class="card-body">
-      <div class="text-sm text-base-content/60">Active Users</div>
-      <div id="kpiActiveUsers" class="text-2xl font-semibold">{{ kpi_active_users|default:0 }}</div>
+  <div class="card kpi-card">
+    <div class="card-body kpi-content">
+      <div class="kpi-icon kpi-icon-blue"><i data-lucide="users"></i></div>
+      <div>
+        <div class="kpi-label">Active Users</div>
+        <div id="kpiActiveUsers" class="kpi-value">{{ kpi_active_users|default:0 }}</div>
+      </div>
     </div>
   </div>
-  <div class="card bg-base-100 shadow-md">
-    <div class="card-body">
-      <div class="text-sm text-base-content/60">Transactions Completed</div>
-      <div id="kpiTransactionsCompleted" class="text-2xl font-semibold">{{ kpi_transactions_completed|default:0 }}</div>
+  <div class="card kpi-card">
+    <div class="card-body kpi-content">
+      <div class="kpi-icon kpi-icon-green"><i data-lucide="shopping-cart"></i></div>
+      <div>
+        <div class="kpi-label">Transactions Completed</div>
+        <div id="kpiTransactionsCompleted" class="kpi-value">{{ kpi_transactions_completed|default:0 }}</div>
+      </div>
     </div>
   </div>
 </div>
-<div class="mb-4 flex flex-wrap items-center gap-3">
-  <form id="analyticsFilterForm" class="flex flex-wrap items-center gap-2">
-    <input id="filterStart" type="date" class="input input-bordered input-sm" />
-    <span>to</span>
-    <input id="filterEnd" type="date" class="input input-bordered input-sm" />
-    <select id="filterCategory" class="select select-bordered select-sm">
-      <option value="">All Categories</option>
-      {% for c in categories %}
-      <option value="{{ c.slug }}">{{ c.name }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit" class="btn btn-sm">Apply</button>
-  </form>
+
+<!-- Filters -->
+<div class="card bg-base-100 shadow-sm border border-base-200 mb-6">
+  <div class="card-body p-4">
+    <form id="analyticsFilterForm" class="flex flex-wrap items-center gap-2">
+      <input id="filterStart" type="date" class="input input-bordered input-sm" />
+      <span>to</span>
+      <input id="filterEnd" type="date" class="input input-bordered input-sm" />
+      <select id="filterCategory" class="select select-bordered select-sm">
+        <option value="">All Categories</option>
+        {% for c in categories %}
+        <option value="{{ c.slug }}">{{ c.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-sm">Apply</button>
+    </form>
   </div>
+</div>
+
+<!-- Charts -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
   <div class="card bg-base-100 shadow-md">
     <div class="card-body">
@@ -75,21 +110,22 @@
     </div>
   </div>
 </div>
+
+<!-- Recent Transactions -->
 <div class="card bg-base-100 shadow-md">
   <div class="card-body">
     <h3 class="card-title">Recent Transactions</h3>
     <div class="overflow-x-auto">
-      <table class="table w-full">
-        <thead>
+      <table class="table table-compact w-full">
+        <thead class="sticky top-0 bg-base-200">
           <tr>
             <th>ID</th><th>Listing</th><th>Buyer</th><th>Seller</th><th>Status</th><th>Amount</th><th>Created</th><th>Actions</th>
           </tr>
         </thead>
-        <tbody>
-          <tbody id="recentTxBody">
+        <tbody id="recentTxBody">
           {% for tx in recent_transactions %}
           <tr>
-            <td>{{ tx.id }}</td>
+            <td class="font-mono text-sm text-base-content/70">#{{ tx.id }}</td>
             <td>{{ tx.listing.title }}</td>
             <td>{{ tx.buyer.username }}</td>
             <td>{{ tx.seller.username }}</td>
@@ -97,11 +133,11 @@
             <td>₱{{ tx.amount_paid|floatformat:2 }}</td>
             <td>{{ tx.created_at|date:"Y-m-d H:i" }}</td>
             <td class="flex gap-2">
-<form method="post" action="{% url 'marketplace_admin:approve_refund' tx.id %}">
+              <form method="post" action="{% url 'marketplace_admin:approve_refund' tx.id %}">
                 {% csrf_token %}
                 <button class="btn btn-outline btn-sm">Approve Refund</button>
               </form>
-<form method="post" action="{% url 'marketplace_admin:cancel_transaction' tx.id %}">
+              <form method="post" action="{% url 'marketplace_admin:cancel_transaction' tx.id %}">
                 {% csrf_token %}
                 <button class="btn btn-outline btn-error btn-sm">Cancel</button>
               </form>
@@ -115,13 +151,18 @@
     </div>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
-  function toggleListingDetails(id) {
-    const el = document.getElementById(`listing-details-${id}`);
-    if (!el) return;
-    el.classList.toggle('hidden');
+  /** Inline helper: currency format via AdminUtils fallback */
+  function currencyFormat(value) {
+    if (window.AdminUtils && typeof window.AdminUtils.formatCurrencyPHP === 'function') {
+      return window.AdminUtils.formatCurrencyPHP(value);
+    }
+    try {
+      return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'PHP', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value || 0);
+    } catch { const v = Number(value || 0); return `₱${v.toFixed(2)}`; }
   }
+
   const revenueLabels = {{ revenue_labels_json|default:'[]'|safe }};
   const revenueData = {{ revenue_data_json|default:'[]'|safe }};
   const catLabels = {{ categories_labels_json|default:'[]'|safe }};
@@ -130,31 +171,15 @@
   const activeCatData = {{ active_cat_data_json|default:'[]'|safe }};
   const userLabels = {{ user_labels_json|default:'[]'|safe }};
   const userData = {{ user_data_json|default:'[]'|safe }};
-const dataUrl = "{% url 'marketplace_admin:analytics_data' %}";
+  const dataUrl = "{% url 'marketplace_admin:analytics_data' %}";
 
-  function currencyFormat(value) {
-    try {
-      return new Intl.NumberFormat(undefined, {
-        style: 'currency',
-        currency: 'PHP',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(value || 0);
-    } catch {
-      const v = Number(value || 0);
-      return `₱${v.toFixed(2)}`;
-    }
-  }
   function makeLineChart(ctx, labels, data, label) {
     return new Chart(ctx, {
       type: 'line',
       data: { labels, datasets: [{ label, data, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.15)', tension: 0.3 }] },
       options: {
-        scales: {
-          x: { ticks: { maxRotation: 0, autoSkip: true } },
-          y: { beginAtZero: true, ticks: { callback: currencyFormat }, title: { display: true, text: 'Amount' } },
-        },
-        plugins: { legend: { display: true }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${currencyFormat(ctx.parsed.y)}` } } },
+        scales: { x: { ticks: { maxRotation: 0, autoSkip: true } }, y: { beginAtZero: true, ticks: { callback: currencyFormat }, title: { display: true, text: 'Amount' } } },
+        plugins: { legend: { display: true }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${currencyFormat(ctx.parsed.y)}` } } }
       }
     });
   }
@@ -164,14 +189,19 @@ const dataUrl = "{% url 'marketplace_admin:analytics_data' %}";
       data: { labels, datasets: [{ label, data, backgroundColor: '#10b981' }] },
       options: {
         scales: { y: { beginAtZero: true, ticks: { callback: currencyFormat }, title: { display: true, text: 'Amount' } } },
-        plugins: { legend: { display: true }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${currencyFormat(ctx.parsed.y)}` } } },
+        plugins: { legend: { display: true }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${currencyFormat(ctx.parsed.y)}` } } }
       }
     });
   }
-  const chartRevenue = makeLineChart(document.getElementById('chartRevenue').getContext('2d'), revenueLabels, revenueData, 'Revenue');
-  const chartCategories = makeBarChart(document.getElementById('chartCategories').getContext('2d'), catLabels, catData, 'Sales');
-  const chartActiveCat = makeBarChart(document.getElementById('chartActiveCat').getContext('2d'), activeCatLabels, activeCatData, 'Active Listings');
-  const chartUsers = makeLineChart(document.getElementById('chartUsers').getContext('2d'), userLabels, userData, 'New Users');
+
+  let chartRevenue, chartCategories, chartActiveCat, chartUsers;
+
+  function initCharts() {
+    chartRevenue = makeLineChart(document.getElementById('chartRevenue').getContext('2d'), revenueLabels, revenueData, 'Revenue');
+    chartCategories = makeBarChart(document.getElementById('chartCategories').getContext('2d'), catLabels, catData, 'Sales');
+    chartActiveCat = makeBarChart(document.getElementById('chartActiveCat').getContext('2d'), activeCatLabels, activeCatData, 'Active Listings');
+    chartUsers = makeLineChart(document.getElementById('chartUsers').getContext('2d'), userLabels, userData, 'New Users');
+  }
 
   function refreshAnalytics(params) {
     const url = new URL(dataUrl, window.location.origin);
@@ -179,7 +209,6 @@ const dataUrl = "{% url 'marketplace_admin:analytics_data' %}";
     fetch(url, { headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
       .then(json => {
-        // Update KPI cards
         const kpi = json.kpi || {};
         const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value ?? 0; };
         setText('kpiTotalListings', kpi.total_listings);
@@ -188,43 +217,34 @@ const dataUrl = "{% url 'marketplace_admin:analytics_data' %}";
         setText('kpiActiveUsers', kpi.active_users);
         setText('kpiTransactionsCompleted', kpi.transactions_completed);
 
-        chartRevenue.data.labels = json.revenue_labels;
-        chartRevenue.data.datasets[0].data = json.revenue_data;
-        chartRevenue.update();
-
-        chartCategories.data.labels = json.categories_labels;
-        chartCategories.data.datasets[0].data = json.categories_data;
-        chartCategories.update();
-
-        chartActiveCat.data.labels = json.active_cat_labels;
-        chartActiveCat.data.datasets[0].data = json.active_cat_data;
-        chartActiveCat.update();
-
-        chartUsers.data.labels = json.user_labels;
-        chartUsers.data.datasets[0].data = json.user_data;
-        chartUsers.update();
+        chartRevenue.data.labels = json.revenue_labels; chartRevenue.data.datasets[0].data = json.revenue_data; chartRevenue.update();
+        chartCategories.data.labels = json.categories_labels; chartCategories.data.datasets[0].data = json.categories_data; chartCategories.update();
+        chartActiveCat.data.labels = json.active_cat_labels; chartActiveCat.data.datasets[0].data = json.active_cat_data; chartActiveCat.update();
+        chartUsers.data.labels = json.user_labels; chartUsers.data.datasets[0].data = json.user_data; chartUsers.update();
 
         const tbody = document.getElementById('recentTxBody');
-        tbody.innerHTML = (json.recent_transactions || []).map(tx => `
-          <tr>
-            <td>${tx.id}</td>
-            <td>${tx.listing_title}</td>
-            <td>${tx.buyer}</td>
-            <td>${tx.seller}</td>
-            <td>${tx.status}</td>
-            <td>${currencyFormat(tx.amount_paid)}</td>
-            <td>${tx.created}</td>
-            <td class="flex gap-2">
-              <button class="btn btn-outline btn-sm" disabled>Approve Refund</button>
-              <button class="btn btn-outline btn-error btn-sm" disabled>Cancel</button>
-            </td>
-          </tr>
-        `).join('');
+        if (tbody) {
+          tbody.innerHTML = (json.recent_transactions || []).map(tx => `
+            <tr>
+              <td class='font-mono text-sm text-base-content/70'>#${tx.id}</td>
+              <td>${tx.listing_title}</td>
+              <td>${tx.buyer}</td>
+              <td>${tx.seller}</td>
+              <td>${tx.status}</td>
+              <td>${currencyFormat(tx.amount_paid)}</td>
+              <td>${tx.created}</td>
+              <td class="flex gap-2">
+                <button class="btn btn-outline btn-sm" disabled>Approve Refund</button>
+                <button class="btn btn-outline btn-error btn-sm" disabled>Cancel</button>
+              </td>
+            </tr>
+          `).join('');
+        }
       })
       .catch(err => console.error('Analytics refresh error:', err));
   }
 
-  document.getElementById('analyticsFilterForm').addEventListener('submit', (e) => {
+  document.getElementById('analyticsFilterForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const params = {
       start: document.getElementById('filterStart').value,
@@ -233,6 +253,11 @@ const dataUrl = "{% url 'marketplace_admin:analytics_data' %}";
     };
     refreshAnalytics(params);
   });
+
+  // Lazy-load Chart.js via AdminUtils
+  (window.AdminUtils && typeof window.AdminUtils.loadChartJs === 'function' ? window.AdminUtils.loadChartJs() : Promise.resolve())
+    .then(() => { if (!window.Chart) throw new Error('Chart.js unavailable'); initCharts(); })
+    .catch(err => console.error('Chart.js load error:', err));
 
   // Auto-refresh every 60 seconds
   let lastParams = {};
