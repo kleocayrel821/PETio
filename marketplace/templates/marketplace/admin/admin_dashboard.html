@@ -4,65 +4,66 @@
 {% block admin_sidebar %}
 <!-- Mobile Navigation Toggle -->
 <button class="sidebar-toggle md:hidden fixed top-4 left-4 z-50 bg-white rounded-lg shadow-md p-2" id="mobile-nav-toggle" aria-label="Open admin sidebar">
-  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-  </svg>
+  <i data-lucide="menu" class="w-6 h-6"></i>
   <span class="sr-only">Open navigation</span>
 </button>
 
 <!-- Mobile Overlay -->
-<div class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden" id="mobile-overlay" aria-hidden="true"></div>
+<div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-30 hidden" id="mobile-overlay" aria-hidden="true"></div>
 
 <aside class="admin-sidebar" id="admin-sidebar">
   <div class="sidebar-header">
     <h2 class="sidebar-brand">Admin Panel</h2>
     <button class="sidebar-toggle md:hidden" id="sidebar-close" aria-label="Close admin sidebar">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-      </svg>
+      <i data-lucide="x" class="w-5 h-5"></i>
       <span class="sr-only">Close navigation</span>
     </button>
+  </div>
+
+  <!-- User Profile Section -->
+  <div class="sidebar-user">
+    <div class="avatar placeholder">
+      <div class="bg-neutral text-neutral-content rounded-full w-10">
+        <span>{{ request.user.username|default:'A'|slice:':1'|upper }}</span>
+      </div>
+    </div>
+    <div>
+      <div class="user-name">{{ request.user.get_username|default:'Admin' }}</div>
+      <div class="user-role badge badge-sm badge-primary">{% if request.user.is_superuser %}Superuser{% elif request.user.is_staff %}Admin{% else %}User{% endif %}</div>
+    </div>
   </div>
   
   <nav class="sidebar-nav" aria-label="Admin sections">
     <a href="{% url 'marketplace_admin:listings' %}" 
        class="sidebar-item {% if active_tab == 'listings' %}active{% endif %}">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-      </svg>
-      Listings
+      <i data-lucide="file-text" class="w-5 h-5"></i>
+      <span>Listings</span>
+      {% if pending_listings %}<span class="sidebar-badge">{{ pending_listings|length }}</span>{% endif %}
     </a>
     
     <a href="{% url 'marketplace_admin:reports' %}" 
        class="sidebar-item {% if active_tab == 'reports' %}active{% endif %}">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-      </svg>
-      Reports
+      <i data-lucide="flag" class="w-5 h-5"></i>
+      <span>Reports</span>
+      {% if reports %}<span class="sidebar-badge">{{ reports|length }}</span>{% endif %}
     </a>
     
     <a href="{% url 'marketplace_admin:analytics' %}" 
        class="sidebar-item {% if active_tab == 'analytics' %}active{% endif %}">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-      </svg>
-      Analytics
+      <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+      <span>Analytics</span>
     </a>
     
     <a href="{% url 'marketplace_admin:users' %}" 
        class="sidebar-item {% if active_tab == 'users' %}active{% endif %}">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"></path>
-      </svg>
-      Users
+      <i data-lucide="users" class="w-5 h-5"></i>
+      <span>Users</span>
     </a>
     
     <a href="{% url 'marketplace_admin:notifications' %}" 
        class="sidebar-item {% if active_tab == 'notifications' %}active{% endif %}">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.343 12.344l1.414 1.414L9 10.414V3a1 1 0 011-1h4a1 1 0 011 1v7.414l3.243 3.243 1.414-1.414L15 8.586V3a3 3 0 00-6 0v5.586l-4.657 4.657z"></path>
-      </svg>
-      Notifications
+      <i data-lucide="megaphone" class="w-5 h-5"></i>
+      <span>Notifications</span>
     </a>
   </nav>
   
@@ -73,9 +74,7 @@
         {% csrf_token %}
         <input type="hidden" name="next" value="{% url 'login' %}">
         <button type="submit" class="flex items-center gap-2">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-          </svg>
+          <i data-lucide="log-out" class="w-5 h-5"></i>
           <span>Logout</span>
         </button>
       </form>
@@ -86,24 +85,17 @@
 <script>
 // Mobile Navigation JavaScript
 document.addEventListener('DOMContentLoaded', function() {
+  // Sidebar interactions are handled by unified admin.js (AdminUtils)
+  // This inline script remains for resilience but defers to AdminUtils
   const mobileToggle = document.getElementById('mobile-nav-toggle');
   const sidebarClose = document.getElementById('sidebar-close');
   const sidebar = document.getElementById('admin-sidebar');
   const overlay = document.getElementById('mobile-overlay');
-  
-  function openSidebar() {
-    sidebar.classList.add('open');
-    overlay.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-  }
-  function closeSidebar() {
-    sidebar.classList.remove('open');
-    overlay.classList.add('hidden');
-    document.body.style.overflow = '';
-  }
-  if (mobileToggle) mobileToggle.addEventListener('click', openSidebar);
-  if (sidebarClose) sidebarClose.addEventListener('click', closeSidebar);
-  if (overlay) overlay.addEventListener('click', closeSidebar);
+  function openSidebar() { if (!sidebar || !overlay) return; sidebar.classList.add('open'); overlay.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+  function closeSidebar() { if (!sidebar || !overlay) return; sidebar.classList.remove('open'); overlay.classList.add('hidden'); document.body.style.overflow = ''; }
+  mobileToggle && mobileToggle.addEventListener('click', openSidebar);
+  sidebarClose && sidebarClose.addEventListener('click', closeSidebar);
+  overlay && overlay.addEventListener('click', closeSidebar);
 });
 </script>
 {% endblock %}

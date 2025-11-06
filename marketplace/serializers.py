@@ -37,6 +37,8 @@ class ListingSerializer(serializers.ModelSerializer):
     category_id = serializers.PrimaryKeyRelatedField(
         source="category", queryset=Category.objects.all(), required=False, allow_null=True
     )
+    # Expose full category details read-only to simplify UI rendering (e.g., admin quick view)
+    category = CategorySerializer(read_only=True)
 
     class Meta:
         model = Listing
@@ -45,6 +47,7 @@ class ListingSerializer(serializers.ModelSerializer):
             "seller",
             "seller_id",
             "category_id",
+            "category",
             "title",
             "description",
             "price",

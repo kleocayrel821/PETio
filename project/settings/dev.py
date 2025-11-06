@@ -39,3 +39,7 @@ CELERY_TASK_EAGER_PROPAGATES = True
 
 # Device API key used by controller/device_api.py to authenticate firmware requests
 PETIO_DEVICE_API_KEY = os.getenv('PETIO_DEVICE_API_KEY', 'petio_secure_key_2025')
+
+# Development-only: allow anonymous UI preview of request detail page
+# This MUST stay disabled in production.
+DEV_ALLOW_REQUEST_PREVIEW = True

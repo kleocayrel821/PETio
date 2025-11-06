@@ -105,6 +105,13 @@
                         Request to Purchase
                     </button>
                 </form>
+                {% if listing.is_fixed_price and listing.quantity > 0 and request.user.id != listing.seller_id %}
+                <button id="buyNowBtn" class="btn btn-success btn-block">
+                    <i class="fas fa-bolt mr-2"></i>
+                    Buy Now
+                </button>
+                <div id="buyNowHelp" class="text-xs text-base-content/70 mt-1">Instant purchase for fixed-price listings.</div>
+                {% endif %}
                 <button class="btn btn-ghost btn-block" onclick="openMessageModal()">
                     <i class="fas fa-envelope mr-2"></i>
                     Message Seller
@@ -453,6 +460,39 @@ document.addEventListener('DOMContentLoaded', function() {
     const wishlistBtn = document.querySelector('[title="Add to Wishlist"]');
     if (wishlistBtn) {
         wishlistBtn.addEventListener('click', toggleWishlist);
+    }
+
+    // Buy Now handler
+    const buyBtn = document.getElementById('buyNowBtn');
+    if (buyBtn) {
+        buyBtn.addEventListener('click', async () => {
+            try {
+                const res = await fetch("{% url 'marketplace:api_listing_buy_now' listing.pk %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [null, ''])[1],
+                        'Accept': 'application/json'
+                    }
+                });
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    const msg = body.error || 'Unable to complete Buy Now';
+                    showMarketplaceToast(msg, 'error');
+                    return;
+                }
+                const data = await res.json();
+                showMarketplaceToast('Purchase completed via Buy Now!', 'success');
+                // Reflect quantity change immediately if present
+                const qtyEl = document.querySelector('.text-lg.font-semibold');
+                if (qtyEl && data.listing && typeof data.listing.quantity !== 'undefined') {
+                    qtyEl.textContent = `${data.listing.quantity} Available`;
+                }
+                // Optional: redirect to transactions page
+                // window.location.href = "{% url 'marketplace:transactions' %}";
+            } catch (e) {
+                showMarketplaceToast('Network error during Buy Now', 'error');
+            }
+        });
     }
 });
 </script>

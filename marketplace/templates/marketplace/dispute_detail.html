@@ -1,0 +1,79 @@
+<!--
+  Template: Dispute Detail
+  Purpose: Show a transaction dispute, evidence, status, and the message thread
+           with a form to add new messages.
+-->
+{% extends "base.html" %}
+
+{% block title %}Dispute #{{ dispute.id }} — Transaction {{ dispute.transaction.id }}{% endblock %}
+
+{% block content %}
+<section class="container" style="max-width: 960px; margin: 0 auto; padding: 1.5rem;">
+  <header style="margin-bottom: 1rem;">
+    <h1 style="margin:0;">Dispute #{{ dispute.id }}</h1>
+    <p style="margin:0.25rem 0; color:#555;">
+      Transaction: #{{ dispute.transaction.id }} — Listing: {{ dispute.transaction.listing.title }}
+    </p>
+    <div style="display:flex; gap:1rem; margin-top:0.5rem;">
+      <span><strong>Type:</strong> {{ dispute.get_dispute_type_display }}</span>
+      <span><strong>Status:</strong> {{ dispute.get_status_display }}</span>
+      <span><strong>Reporter:</strong> {{ dispute.reporter.username }}</span>
+    </div>
+  </header>
+
+  {% if dispute.description %}
+    <section style="border:1px solid #eee; padding:1rem; border-radius:6px; margin-bottom:1rem;">
+      <h2 style="margin-top:0;">Description</h2>
+      <p style="margin:0; white-space:pre-wrap;">{{ dispute.description }}</p>
+    </section>
+  {% endif %}
+
+  <section style="border:1px solid #eee; padding:1rem; border-radius:6px; margin-bottom:1rem;">
+    <h2 style="margin-top:0;">Evidence</h2>
+    {% if dispute.evidence_photos %}
+      <div style="display:flex; flex-wrap:wrap; gap:0.75rem;">
+        {% for url in dispute.evidence_photos %}
+          <a href="{{ url }}" target="_blank" rel="noopener" style="display:inline-block;">
+            <img src="{{ url }}" alt="Evidence photo" style="width:160px; height:120px; object-fit:cover; border:1px solid #ddd; border-radius:4px;" />
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p>No evidence uploaded.</p>
+    {% endif %}
+  </section>
+
+  <section style="border:1px solid #eee; padding:1rem; border-radius:6px; margin-bottom:1rem;">
+    <h2 style="margin-top:0;">Messages</h2>
+    {% if dispute.messages.all %}
+      <ul style="list-style:none; padding:0; margin:0;">
+        {% for m in dispute.messages.all %}
+          <li style="border-bottom:1px solid #f0f0f0; padding:0.75rem 0;">
+            <div style="display:flex; justify-content:space-between;">
+              <strong>{{ m.author.username }}</strong>
+              <small style="color:#999;">{{ m.created_at }}</small>
+            </div>
+            <p style="margin:0.5rem 0; color:#444; white-space:pre-wrap;">{{ m.message }}</p>
+            {% if m.is_admin %}
+              <span style="background:#e7f5ff; color:#1c7ed6; border:1px solid #a5d8ff; padding:0.1rem 0.4rem; border-radius:3px;">Admin</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No messages yet.</p>
+    {% endif %}
+  </section>
+
+  <section style="border:1px solid #eee; padding:1rem; border-radius:6px;">
+    <h2 style="margin-top:0;">Add Message</h2>
+    <form method="post" action="{% url 'marketplace:add_dispute_message' dispute.id %}">
+      {% csrf_token %}
+      <textarea name="message" rows="4" style="width:100%;" placeholder="Write your message..."></textarea>
+      <div style="margin-top:0.5rem;">
+        <button type="submit">Send</button>
+      </div>
+    </form>
+  </section>
+</section>
+{% endblock %}

@@ -287,31 +287,47 @@
 </style>
 
 <script>
-// Helper function to show toast notifications
-function showToast(message, type = 'success') {
-    // Normalize type: treat 'error' as 'danger' for consistent styling
-    const resolvedType = (type === 'error') ? 'danger' : type;
-    const container = document.createElement('div');
-    container.className = 'position-fixed bottom-0 end-0 p-3';
-    container.style.zIndex = '1100';
-    container.innerHTML = `
-        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true" style="min-width: 260px;">
-            <div class="toast-header">
-                <strong class="me-auto">Pet Feeder</strong>
-                <small>Just now</small>
-                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-            <div class="toast-body ${resolvedType === 'danger' ? 'text-danger' : (resolvedType === 'warning' ? 'text-warning' : '')}">
-                ${message}
-            </div>
-        </div>`;
-    document.body.appendChild(container);
-    // Auto remove after 3 seconds
-    setTimeout(() => {
-        if (container.parentNode) {
-            container.parentNode.removeChild(container);
+// Helper: unified toast wrapper using global toastManager for consistent UI
+function showToast(message, type = 'success', options = {}) {
+    /**
+     * Show a toast using the global ToastManager if available,
+     * otherwise fall back gracefully.
+     *
+     * Args:
+     * - message: Text to display.
+     * - type: 'success' | 'error' | 'warning' | 'info' (accepts 'danger').
+     * - options: { duration?: number, sticky?: boolean }
+     */
+    const mapType = (t) => {
+        if (t === 'danger' || t === 'error') return 'error';
+        if (t === 'warning') return 'warning';
+        if (t === 'info') return 'info';
+        return 'success';
+    };
+    const normalized = mapType(type);
+    try {
+        if (window.toastManager) {
+            if (typeof window.toastManager.show === 'function') {
+                window.toastManager.show(message, normalized, options);
+                return;
+            }
+            if (typeof window.toastManager[normalized] === 'function') {
+                window.toastManager[normalized](message);
+                return;
+            }
         }
-    }, 3000);
+        alert(message);
+    } catch (_) {
+        alert(message);
+    }
+}
+
+// Basic cookie helper used by CSRF retrieval
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return '';
 }
 
 // Handle fetch/network errors in a consistent way across the page
@@ -323,6 +339,40 @@ function handleFetchError(error) {
     } else {
         alert(message);
     }
+}
+// CSRF token fallback helper
+function getCSRFToken() {
+    // 1) Marketplace AdminUtils, if present
+    try {
+        if (window.AdminUtils && typeof window.AdminUtils.getCSRFToken === 'function') {
+            const v = window.AdminUtils.getCSRFToken();
+            if (v) return v;
+        }
+    } catch (_) {}
+    // 2) Cookie helper, if available
+    try {
+        if (typeof getCookie === 'function') {
+            const v = getCookie('csrftoken');
+            if (v) return v;
+        }
+    } catch (_) {}
+    // 3) Hidden input rendered by Django {% csrf_token %}
+    const inp = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (inp && inp.value) return inp.value;
+    // 4) Meta tag fallbacks
+    const meta = document.querySelector('meta[name="csrf-token"]')
+             || document.querySelector('meta[name="x-csrftoken"]')
+             || document.querySelector('meta[name="csrfmiddlewaretoken"]');
+    if (meta && meta.content) return meta.content;
+    return '';
+}
+// Safely parse JSON responses, falling back to text for HTML pages
+async function parseJsonSafe(response) {
+    const ct = (response.headers && response.headers.get && response.headers.get('content-type')) || '';
+    if (ct && ct.includes('application/json')) {
+        try { return await response.json(); } catch (_) { return null; }
+    }
+    try { return { _raw: await response.text() }; } catch (_) { return null; }
 }
 // Portion size display update
 function updatePortionDisplay(value) {
@@ -346,15 +396,16 @@ async function feedNow() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
+                'Accept': 'application/json',
+                'X-CSRFToken': getCSRFToken()
             },
+            credentials: 'same-origin',
             body: JSON.stringify({
                 portion_size: parseInt(portionSize),
                 device_id: (window.DEVICE_ID || '{{ DEVICE_ID }}')
             })
         });
-        
-        const data = await response.json();
+        const data = await parseJsonSafe(response);
         // Treat 409 Conflict (already pending) as soft success
         if (response.ok || response.status === 409) {
             const msg = (response.status === 409)
@@ -365,7 +416,10 @@ async function feedNow() {
             loadStats();
             updateLastFedTime();
         } else {
-            showToast(data.error || 'Failed to feed', 'error');
+            const errMsg = (data && (data.message || data.error || data.detail))
+                || (response.status === 401 || response.status === 403 ? 'Session expired. Please log in.' : null)
+                || 'Failed to feed';
+            showToast(errMsg, 'error');
         }
     } catch (error) {
         handleFetchError(error);
@@ -404,12 +458,12 @@ document.getElementById('quickScheduleForm').addEventListener('submit', async fu
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
+                'X-CSRFToken': getCSRFToken()
             },
+            credentials: 'same-origin',
             body: JSON.stringify(scheduleData)
         });
-        
-        const data = await response.json();
+        const data = await parseJsonSafe(response);
         
         if (response.ok) {
             showToast('Schedule added successfully!', 'success');
@@ -418,7 +472,10 @@ document.getElementById('quickScheduleForm').addEventListener('submit', async fu
             document.querySelectorAll('input[name="days"]').forEach(cb => cb.checked = false);
             loadStats();
         } else {
-            showToast(data.error || 'Failed to add schedule', 'error');
+            const errMsg = (data && (data.message || data.error || data.detail))
+                || (response.status === 401 || response.status === 403 ? 'Session expired. Please log in.' : null)
+                || 'Failed to add schedule';
+            showToast(errMsg, 'error');
         }
     } catch (error) {
         handleFetchError(error);
@@ -430,12 +487,15 @@ document.getElementById('quickScheduleForm').addEventListener('submit', async fu
 // Load recent activity
 async function loadRecentActivity() {
     try {
-        const response = await fetch('/api/logs/?limit=5');
-        const data = await response.json();
+        const response = await fetch('/api/logs/?limit=5', {
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin'
+        });
+        const data = await parseJsonSafe(response);
         
         const tbody = document.getElementById('recentActivityTable');
         
-        if (data.results && data.results.length > 0) {
+        if (data && data.results && data.results.length > 0) {
             tbody.innerHTML = data.results.map(log => `
                 <tr>
                     <td class="font-mono text-sm">${new Date(log.timestamp).toLocaleString()}</td>
@@ -482,22 +542,22 @@ async function loadRecentActivity() {
 async function loadStats() {
     try {
         const [logsResponse, schedulesResponse] = await Promise.all([
-            fetch('/api/logs/?limit=100'),
-            fetch('/api/schedules/?page_size=100&ordering=-id')
+            fetch('/api/logs/?limit=100', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' }),
+            fetch('/api/schedules/?page_size=100&ordering=-id', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
         ]);
         
-        const logsData = await logsResponse.json();
-        const schedulesData = await schedulesResponse.json();
+        const logsData = await parseJsonSafe(logsResponse);
+        const schedulesData = await parseJsonSafe(schedulesResponse);
         
         // Calculate today's stats
         const today = new Date().toDateString();
-        const todayLogs = logsData.results?.filter(log => 
+        const todayLogs = logsData && logsData.results?.filter(log => 
             new Date(log.timestamp).toDateString() === today
         ) || [];
         
         document.getElementById('todayFeedings').textContent = todayLogs.length;
         document.getElementById('activeSchedules').textContent = 
-            schedulesData.results?.filter(s => s.enabled).length || 0;
+            (schedulesData && schedulesData.results?.filter(s => s.enabled).length) || 0;
         document.getElementById('totalAmount').textContent = 
             `${todayLogs.reduce((sum, log) => sum + (log.amount || 0), 0)}g`;
             
@@ -512,10 +572,13 @@ async function loadStats() {
 // Update last fed time
 async function updateLastFedTime() {
     try {
-        const response = await fetch('/api/logs/?limit=1');
-        const data = await response.json();
+        const response = await fetch('/api/logs/?limit=1', {
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin'
+        });
+        const data = await parseJsonSafe(response);
         
-        if (data.results && data.results.length > 0) {
+        if (data && data.results && data.results.length > 0) {
             const lastFed = new Date(data.results[0].timestamp);
             const now = new Date();
             const diffMinutes = Math.floor((now - lastFed) / (1000 * 60));

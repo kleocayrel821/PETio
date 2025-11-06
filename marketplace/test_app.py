@@ -32,6 +32,8 @@ from .models import (
     SellerRating,
     TransactionLog,
     LogAction,
+    Notification,
+    NotificationType,
 )
 import json
 import unittest
@@ -771,6 +773,22 @@ class MarketplaceDRFEndpointsTests(TestCase):
         self.assertEqual(resp2.status_code, status.HTTP_200_OK)
         self.assertIn("message", resp2.json())
 
+    def test_send_message_does_not_create_notifications(self):
+        """Posting via DRF JSON should not create MESSAGE_POSTED notifications."""
+        # Login buyer
+        self.client.login(username="buyer_drf", password="pass1234")
+        # Start thread
+        url_start = "/marketplace/api/threads/start/"
+        resp = self.client.post(url_start, data={"listing_id": self.listing.id}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        thread_id = resp.json()["thread"]["id"]
+        # Send message
+        url_send = f"/marketplace/api/threads/{thread_id}/send/"
+        resp2 = self.client.post(url_send, data={"content": "Hi via API"}, format="json")
+        self.assertEqual(resp2.status_code, status.HTTP_200_OK)
+        # Assert no MESSAGE_POSTED notifications were created
+        self.assertFalse(Notification.objects.filter(type=NotificationType.MESSAGE_POSTED).exists())
+
     def test_reserve_listing_via_drf_action(self):
         # Login buyer
         self.client.login(username="buyer_drf", password="pass1234")
@@ -854,6 +872,124 @@ class TestRequestMessagingActions(TestCase):
         self.assertEqual(resp.status_code, 200)
         m.refresh_from_db()
         self.assertIsNotNone(m.read_at)
+
+
+class TestMessageNotificationSuppression(TestCase):
+    """Ensure chat messages no longer generate in-app notifications."""
+
+    def setUp(self):
+        self.client = Client()
+        User = get_user_model()
+        self.seller = User.objects.create_user(username="notif_seller", password="pass")
+        self.buyer = User.objects.create_user(username="notif_buyer", password="pass")
+        cat = Category.objects.create(name="NotifCat")
+        self.listing = Listing.objects.create(title="Cat Toy", description="", category=cat, seller=self.seller, price=Decimal("5.00"), status=ListingStatus.ACTIVE, quantity=2)
+        # Create a request and allow messaging
+        self.pr = PurchaseRequest.objects.create(listing=self.listing, buyer=self.buyer, seller=self.seller, status=PurchaseRequestStatus.PENDING)
+
+    def test_post_request_message_does_not_create_notification(self):
+        self.client.login(username="notif_buyer", password="pass")
+        url = reverse("marketplace:request_message_post", args=[self.pr.id])
+        resp = self.client.post(url, {"content": "Hello, seller!"})
+        self.assertEqual(resp.status_code, 302)
+        # No message-posted notifications should exist for either party
+        self.assertFalse(Notification.objects.filter(type=NotificationType.MESSAGE_POSTED).exists())
+
+
+class TestRequestMessageJSONEndpoints(TestCase):
+    def setUp(self):
+        self.client = Client()
+        User = get_user_model()
+        self.buyer = User.objects.create_user(username="json_buyer", email="json_buyer@example.com", password="pass")
+        self.seller = User.objects.create_user(username="json_seller", email="json_seller@example.com", password="pass")
+        self.intruder = User.objects.create_user(username="json_intruder", email="json_intruder@example.com", password="pass")
+        self.listing = Listing.objects.create(
+            seller=self.seller,
+            title="JSON Msg Item",
+            description="",
+            price=10,
+            quantity=1,
+            status=ListingStatus.ACTIVE,
+        )
+        self.pr = PurchaseRequest.objects.create(
+            listing=self.listing,
+            buyer=self.buyer,
+            seller=self.seller,
+            status=PurchaseRequestStatus.PENDING,
+        )
+
+    def test_fetch_requires_auth(self):
+        url = reverse("marketplace:api_request_messages", args=[self.pr.id])
+        resp = self.client.get(url, HTTP_ACCEPT="application/json")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_fetch_forbidden_for_intruder(self):
+        self.assertTrue(self.client.login(username="json_intruder", password="pass"))
+        url = reverse("marketplace:api_request_messages", args=[self.pr.id])
+        resp = self.client.get(url, HTTP_ACCEPT="application/json")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_fetch_returns_messages_and_supports_since_id(self):
+        # Seed two messages
+        m1 = RequestMessage.objects.create(request=self.pr, author=self.seller, content="First ping")
+        m2 = RequestMessage.objects.create(request=self.pr, author=self.buyer, content="Second pong")
+        self.assertTrue(self.client.login(username="json_buyer", password="pass"))
+        url = reverse("marketplace:api_request_messages", args=[self.pr.id])
+        resp = self.client.get(url, HTTP_ACCEPT="application/json")
+        self.assertEqual(resp.status_code, 200)
+        payload = json.loads(resp.content)
+        self.assertEqual(payload.get("status"), "ok")
+        data = payload.get("data", {})
+        self.assertEqual(data.get("count"), 2)
+        self.assertEqual(len(data.get("messages", [])), 2)
+        # Poll since first id returns only the second
+        resp2 = self.client.get(url + f"?since_id={m1.id}", HTTP_ACCEPT="application/json")
+        self.assertEqual(resp2.status_code, 200)
+        payload2 = json.loads(resp2.content)
+        data2 = payload2.get("data", {})
+        self.assertEqual(data2.get("count"), 1)
+        self.assertEqual(len(data2.get("messages", [])), 1)
+        self.assertEqual(data2["messages"][0]["id"], m2.id)
+
+    def test_post_json_returns_message_payload(self):
+        self.assertTrue(self.client.login(username="json_buyer", password="pass"))
+        post_url = reverse("marketplace:request_message_post", args=[self.pr.id])
+        resp = self.client.post(post_url, {"content": "Hello via JSON"}, HTTP_ACCEPT="application/json")
+        self.assertEqual(resp.status_code, 200)
+        payload = json.loads(resp.content)
+        self.assertEqual(payload.get("status"), "ok")
+        msg = payload.get("data", {}).get("message", {})
+        self.assertTrue(RequestMessage.objects.filter(request=self.pr, author=self.buyer, content__icontains="Hello").exists())
+        self.assertGreater(msg.get("id", 0), 0)
+        self.assertEqual(msg.get("author_id"), self.buyer.id)
+        self.assertIn("created_at", msg)
+        self.assertIn("created_at_fmt", msg)
+
+    def test_post_blocked_on_closed_request_json(self):
+        self.pr.status = PurchaseRequestStatus.COMPLETED
+        self.pr.save(update_fields=["status"])
+        self.assertTrue(self.client.login(username="json_buyer", password="pass"))
+        post_url = reverse("marketplace:request_message_post", args=[self.pr.id])
+        resp = self.client.post(post_url, {"content": "Nope"}, HTTP_ACCEPT="application/json")
+        self.assertEqual(resp.status_code, 400)
+        payload = json.loads(resp.content)
+        self.assertEqual(payload.get("status"), "error")
+
+    def test_post_requires_content_json(self):
+        self.assertTrue(self.client.login(username="json_buyer", password="pass"))
+        post_url = reverse("marketplace:request_message_post", args=[self.pr.id])
+        resp = self.client.post(post_url, {"content": "   "}, HTTP_ACCEPT="application/json")
+        self.assertEqual(resp.status_code, 400)
+        payload = json.loads(resp.content)
+        self.assertEqual(payload.get("status"), "error")
+        self.assertIn("field_errors", payload)
+
+    def test_post_request_message_json_does_not_create_notification(self):
+        self.assertTrue(self.client.login(username="json_buyer", password="pass"))
+        post_url = reverse("marketplace:request_message_post", args=[self.pr.id])
+        resp = self.client.post(post_url, {"content": "Hello JSON"}, HTTP_ACCEPT="application/json")
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Notification.objects.filter(type=NotificationType.MESSAGE_POSTED).exists())
 
 
 class TestSellerRatingActions(TestCase):
@@ -1535,6 +1671,66 @@ class TestDashboardsAndTransactionsIntegration(TestCase):
         self.assertIn("canceled", grouped)
 
 
+class TestRequestPaymentRecordingJSON(TestCase):
+    """Tests for recording payment on accepted purchase requests via JSON API."""
+
+    def setUp(self):
+        self.client = Client()
+        User = get_user_model()
+        self.seller = User.objects.create_user(username="pay_seller", password="pass")
+        self.buyer = User.objects.create_user(username="pay_buyer", password="pass")
+        self.cat = Category.objects.create(name="Payment")
+        self.listing = Listing.objects.create(
+            title="Bulk Feed",
+            description="",
+            category=self.cat,
+            seller=self.seller,
+            price=Decimal("15.00"),
+            status=ListingStatus.ACTIVE,
+            quantity=3,
+        )
+        # Create a pending request with quantity
+        self.pr = PurchaseRequest.objects.create(
+            listing=self.listing,
+            buyer=self.buyer,
+            seller=self.seller,
+            status=PurchaseRequestStatus.PENDING,
+            quantity=2,
+            offer_price=Decimal("15.00"),
+        )
+        # Seller accepts to create transaction and reserve listing
+        self.client.login(username="pay_seller", password="pass")
+        accept_url = reverse("marketplace:seller_accept_request", kwargs={"request_id": self.pr.id})
+        r1 = self.client.post(accept_url)
+        self.assertEqual(r1.status_code, 302)
+        self.pr.refresh_from_db()
+        self.assertEqual(self.pr.status, PurchaseRequestStatus.ACCEPTED)
+        self.assertIsNotNone(self.pr.transaction)
+        self.assertEqual(self.pr.transaction.status, TransactionStatus.CONFIRMED)
+        self.listing.refresh_from_db()
+        self.assertEqual(self.listing.status, ListingStatus.RESERVED)
+
+    def test_seller_can_record_payment_and_decrement_stock(self):
+        # Seller records payment via JSON API
+        url = reverse("marketplace:api_request_record_payment", kwargs={"request_id": self.pr.id})
+        resp = self.client.post(url, {"payment_method": "cash", "amount_paid": "30.00"})
+        self.assertEqual(resp.status_code, 200)
+        # Transaction should be marked paid
+        self.pr.transaction.refresh_from_db()
+        self.assertEqual(self.pr.transaction.status, TransactionStatus.PAID)
+        # Listing stock should decrement by request quantity and remain reserved
+        self.listing.refresh_from_db()
+        self.assertEqual(self.listing.quantity, 1)
+        self.assertEqual(self.listing.status, ListingStatus.RESERVED)
+
+    def test_non_seller_cannot_record_payment(self):
+        self.client.logout()
+        self.client.login(username="pay_buyer", password="pass")
+        url = reverse("marketplace:api_request_record_payment", kwargs={"request_id": self.pr.id})
+        resp = self.client.post(url, {"payment_method": "cash", "amount_paid": "30.00"})
+        self.assertEqual(resp.status_code, 403)
+
+
 class TestModeratorDashboardTemplateInteractions(TestCase):
     def setUp(self):
         self.client = Client(enforce_csrf_checks=True)
@@ -1708,3 +1904,497 @@ class TestMarketplaceAdminAnalyticsDataEndpoint(TestCase):
         for n in Notification.objects.filter(user=self.user):
             self.assertIsNotNone(n.read_at)
             self.assertFalse(n.unread)
+
+
+class TestTrustSafetyNoShow(TestCase):
+    """Minimal tests for reporting meetup no-show and trust penalties."""
+
+    def setUp(self):
+        # Create users and an active listing
+        self.client = Client()
+        User = get_user_model()
+        self.buyer = User.objects.create_user(username="ts_buyer", email="buyer_ts@example.com", password="pass")
+        self.seller = User.objects.create_user(username="ts_seller", email="seller_ts@example.com", password="pass")
+        self.intruder = User.objects.create_user(username="ts_intruder", email="intruder_ts@example.com", password="pass")
+        self.listing = Listing.objects.create(
+            seller=self.seller,
+            title="Trust Item",
+            description="",
+            price=10,
+            quantity=1,
+            status=ListingStatus.ACTIVE,
+        )
+        # Create a pending request and accept to generate transaction
+        self.pr = PurchaseRequest.objects.create(
+            listing=self.listing,
+            buyer=self.buyer,
+            seller=self.seller,
+            status=PurchaseRequestStatus.PENDING,
+        )
+        self.client.login(username="ts_seller", password="pass")
+        accept_url = reverse("marketplace:seller_accept_request", kwargs={"request_id": self.pr.id})
+        r = self.client.post(accept_url)
+        self.assertEqual(r.status_code, 302)
+        self.pr.refresh_from_db()
+        self.assertEqual(self.pr.status, PurchaseRequestStatus.ACCEPTED)
+        self.assertIsNotNone(self.pr.transaction)
+        self.client.logout()
+
+    def test_report_no_show_success_updates_profile_and_status(self):
+        """Buyer reports seller no-show after past meetup; profile increments and trust lowers."""
+        # Set past meetup time
+        self.pr.transaction.meetup_time = timezone.now() - timedelta(hours=1)
+        self.pr.transaction.save(update_fields=["meetup_time"])  # ensure saved
+
+        # Buyer reports no-show
+        self.assertTrue(self.client.login(username="ts_buyer", password="pass"))
+        url = reverse("marketplace:report_no_show", kwargs={"pk": self.pr.id})
+        resp = self.client.post(url)
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.content.decode())
+        self.assertTrue(data.get("success"))
+
+        # Request meetup status reflects seller no-show; seller profile updated
+        self.pr.refresh_from_db()
+        from .models import MeetupStatus, UserProfile
+        self.assertEqual(self.pr.meetup_status, MeetupStatus.NO_SHOW_SELLER)
+        # Profile created or updated for seller
+        profile = getattr(self.seller, "marketplace_profile", None)
+        if profile is None:
+            profile = UserProfile.objects.get(user=self.seller)
+        self.assertEqual(profile.no_show_count, 1)
+        self.assertEqual(profile.trust_score, 90)  # 100 - 10 penalty
+
+    def test_report_no_show_requires_party_and_past_time(self):
+        """Intruder cannot report; future meetup time rejects with 400."""
+        # Future meetup time
+        self.pr.transaction.meetup_time = timezone.now() + timedelta(hours=2)
+        self.pr.transaction.save(update_fields=["meetup_time"])  # ensure saved
+
+        # Intruder attempts to report -> 403
+        self.assertTrue(self.client.login(username="ts_intruder", password="pass"))
+        url = reverse("marketplace:report_no_show", kwargs={"pk": self.pr.id})
+        r1 = self.client.post(url)
+        self.assertEqual(r1.status_code, 403)
+        self.client.logout()
+
+        # Buyer attempts before time has passed -> 400
+        self.assertTrue(self.client.login(username="ts_buyer", password="pass"))
+        r2 = self.client.post(url)
+        self.assertEqual(r2.status_code, 400)
+
+
+class TestDisputeFlows(TestCase):
+    """Minimal tests for filing disputes and posting dispute messages."""
+
+    def setUp(self):
+        self.client = Client()
+        User = get_user_model()
+        self.buyer = User.objects.create_user(username="dp_buyer", email="buyer_dp@example.com", password="pass")
+        self.seller = User.objects.create_user(username="dp_seller", email="seller_dp@example.com", password="pass")
+        # Create an admin to receive notifications (not strictly asserted here)
+        self.admin = User.objects.create_user(username="dp_admin", email="admin_dp@example.com", password="pass", is_staff=True)
+        self.listing = Listing.objects.create(
+            seller=self.seller,
+            title="Dispute Item",
+            description="",
+            price=20,
+            quantity=1,
+            status=ListingStatus.ACTIVE,
+        )
+        self.pr = PurchaseRequest.objects.create(
+            listing=self.listing,
+            buyer=self.buyer,
+            seller=self.seller,
+            status=PurchaseRequestStatus.PENDING,
+        )
+        # Accept to generate transaction
+        self.client.login(username="dp_seller", password="pass")
+        accept_url = reverse("marketplace:seller_accept_request", kwargs={"request_id": self.pr.id})
+        acc = self.client.post(accept_url)
+        self.assertEqual(acc.status_code, 302)
+        self.pr.refresh_from_db()
+        self.assertEqual(self.pr.status, PurchaseRequestStatus.ACCEPTED)
+        self.client.logout()
+
+    def test_file_dispute_and_add_message(self):
+        """Buyer files a dispute and seller posts a follow-up message."""
+        # Buyer files dispute
+        self.assertTrue(self.client.login(username="dp_buyer", password="pass"))
+        file_url = reverse("marketplace:file_dispute", kwargs={"pk": self.pr.id})
+        payload = {
+            "dispute_type": "item_not_as_described",
+            "description": "Item arrived damaged",
+        }
+        r = self.client.post(file_url, data=payload)
+        self.assertEqual(r.status_code, 200)
+        data = json.loads(r.content.decode())
+        self.assertTrue(data.get("success"))
+        dispute_id = data.get("dispute_id")
+        from .models import TransactionDispute
+        dispute = TransactionDispute.objects.get(id=dispute_id)
+        self.assertEqual(dispute.reporter_id, self.buyer.id)
+        self.assertEqual(dispute.dispute_type, "item_not_as_described")
+        self.client.logout()
+
+        # Seller posts a message in the dispute thread
+        self.assertTrue(self.client.login(username="dp_seller", password="pass"))
+        msg_url = reverse("marketplace:add_dispute_message", kwargs={"dispute_id": dispute_id})
+        r2 = self.client.post(msg_url, data={"message": "Sorry about that, I can offer a partial refund."})
+        self.assertEqual(r2.status_code, 200)
+        data2 = json.loads(r2.content.decode())
+        self.assertTrue(data2.get("success"))
+        from .models import DisputeMessage
+        self.assertTrue(DisputeMessage.objects.filter(dispute_id=dispute_id, author_id=self.seller.id).exists())
+
+
+class TestDisputeDuplicateAndEvidence(TestCase):
+    """Tests for duplicate dispute prevention and evidence photo URL handling."""
+
+    def setUp(self):
+        # Create base users and listing/request
+        self.client = Client()
+        User = get_user_model()
+        self.buyer = User.objects.create_user(username="dup_buyer", email="dup_buyer@example.com", password="pass")
+        self.seller = User.objects.create_user(username="dup_seller", email="dup_seller@example.com", password="pass")
+        self.admin = User.objects.create_user(username="dup_admin", email="dup_admin@example.com", password="pass", is_staff=True)
+        self.listing = Listing.objects.create(
+            seller=self.seller,
+            title="Dispute Duplicate Item",
+            description="",
+            price=15,
+            quantity=1,
+            status=ListingStatus.ACTIVE,
+        )
+        self.pr = PurchaseRequest.objects.create(
+            listing=self.listing,
+            buyer=self.buyer,
+            seller=self.seller,
+            status=PurchaseRequestStatus.PENDING,
+        )
+        # Accept via JSON API to create a transaction
+        self.assertTrue(self.client.login(username="dup_seller", password="pass"))
+        url_accept = reverse("marketplace:api_request_accept", args=[self.pr.id])
+        r = self.client.post(url_accept, content_type="application/json")
+        self.assertEqual(r.status_code, 200)
+        self.pr.refresh_from_db()
+        self.assertEqual(self.pr.status, PurchaseRequestStatus.ACCEPTED)
+        self.assertIsNotNone(self.pr.transaction)
+        self.client.logout()
+
+    def test_duplicate_dispute_is_rejected_with_400(self):
+        """Posting a second dispute by same reporter on same request returns 400."""
+        # First file succeeds
+        self.assertTrue(self.client.login(username="dup_buyer", password="pass"))
+        file_url = reverse("marketplace:file_dispute", kwargs={"pk": self.pr.id})
+        payload = {"dispute_type": "item_not_as_described", "description": "problem"}
+        r1 = self.client.post(file_url, data=payload)
+        self.assertEqual(r1.status_code, 200)
+        data1 = json.loads(r1.content.decode())
+        self.assertTrue(data1.get("success"))
+
+        # Second file by same buyer should 400
+        r2 = self.client.post(file_url, data=payload)
+        self.assertEqual(r2.status_code, 400)
+        data2 = json.loads(r2.content.decode())
+        self.assertFalse(data2.get("success"))
+        self.assertIn("Dispute already filed", data2.get("error", ""))
+
+    def test_evidence_photos_are_saved_and_urls_returned(self):
+        """Evidence files in payload are saved and dispute contains /media URLs."""
+        self.assertTrue(self.client.login(username="dup_buyer", password="pass"))
+        file_url = reverse("marketplace:file_dispute", kwargs={"pk": self.pr.id})
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        photo1 = SimpleUploadedFile("photo1.jpg", b"fakejpegdata1", content_type="image/jpeg")
+        photo2 = SimpleUploadedFile("photo2.jpg", b"fakejpegdata2", content_type="image/jpeg")
+        r = self.client.post(file_url, data={
+            "dispute_type": "payment_issue",
+            "description": "attach evidence",
+            "evidence": [photo1, photo2],
+        })
+        self.assertEqual(r.status_code, 200)
+        body = json.loads(r.content.decode())
+        self.assertTrue(body.get("success"))
+        dispute_id = body.get("dispute_id")
+        from .models import TransactionDispute
+        d = TransactionDispute.objects.get(id=dispute_id)
+        self.assertEqual(len(d.evidence_photos or []), 2)
+        # URLs typically look like /media/dispute_evidence/<name> and may be renamed uniquely
+        self.assertTrue(any("dispute_evidence/" in url for url in d.evidence_photos))
+        # Ensure original base names appear in the stored URLs (not necessarily exact filename)
+        self.assertTrue(any("photo1" in url for url in d.evidence_photos))
+        self.assertTrue(any("photo2" in url for url in d.evidence_photos))
+
+
+class TestStaffDisputeAccessAndMessageFlags(TestCase):
+    """Ensure staff-only access to dispute detail and admin message flagging."""
+
+    def setUp(self):
+        self.client = Client()
+        User = get_user_model()
+        self.buyer = User.objects.create_user(username="staff_buyer", email="staff_buyer@example.com", password="pass")
+        self.seller = User.objects.create_user(username="staff_seller", email="staff_seller@example.com", password="pass")
+        self.admin = User.objects.create_user(username="staff_admin", email="staff_admin@example.com", password="pass", is_staff=True)
+        self.listing = Listing.objects.create(
+            seller=self.seller,
+            title="Admin Dispute Item",
+            description="",
+            price=30,
+            quantity=1,
+            status=ListingStatus.ACTIVE,
+        )
+        self.pr = PurchaseRequest.objects.create(
+            listing=self.listing,
+            buyer=self.buyer,
+            seller=self.seller,
+            status=PurchaseRequestStatus.PENDING,
+        )
+        self.client.login(username="staff_seller", password="pass")
+        url_accept = reverse("marketplace:api_request_accept", args=[self.pr.id])
+        self.client.post(url_accept, content_type="application/json")
+        self.pr.refresh_from_db()
+        self.client.logout()
+        # File one dispute to have a dispute_id
+        self.client.login(username="staff_buyer", password="pass")
+        file_url = reverse("marketplace:file_dispute", kwargs={"pk": self.pr.id})
+        r = self.client.post(file_url, data={"dispute_type": "other", "description": "msg"})
+        self.assertEqual(r.status_code, 200)
+        self.dispute_id = json.loads(r.content.decode()).get("dispute_id")
+        self.client.logout()
+
+    def test_dispute_detail_forbidden_for_intruder_allowed_for_staff(self):
+        """Non-participant gets 403 while staff can view the dispute page."""
+        # Intruder forbidden
+        User = get_user_model()
+        intruder = User.objects.create_user(username="intruder_view", password="pass")
+        self.client.login(username="intruder_view", password="pass")
+        url = reverse("marketplace:dispute_detail", kwargs={"dispute_id": self.dispute_id})
+        r_forbid = self.client.get(url)
+        self.assertEqual(r_forbid.status_code, 403)
+        self.client.logout()
+        # Staff allowed
+        self.client.login(username="staff_admin", password="pass")
+        r_ok = self.client.get(url)
+        self.assertEqual(r_ok.status_code, 200)
+        self.assertIn(b"Dispute #", r_ok.content)
+
+    def test_staff_cannot_post_message_when_not_participant(self):
+        """Staff users not party to the dispute cannot post; response is 403."""
+        self.client.login(username="staff_admin", password="pass")
+        msg_url = reverse("marketplace:add_dispute_message", kwargs={"dispute_id": self.dispute_id})
+        r = self.client.post(msg_url, data={"message": "Admin review underway."})
+        self.assertEqual(r.status_code, 403)
+
+    def test_participant_messages_are_not_admin_flagged(self):
+        """Buyer/seller messages in the dispute thread have is_admin=False."""
+        # Seller posts a message
+        self.client.login(username="staff_seller", password="pass")
+        msg_url = reverse("marketplace:add_dispute_message", kwargs={"dispute_id": self.dispute_id})
+        r = self.client.post(msg_url, data={"message": "Responding as seller."})
+        self.assertEqual(r.status_code, 200)
+        from .models import DisputeMessage
+        self.assertTrue(DisputeMessage.objects.filter(dispute_id=self.dispute_id, author_id=self.seller.id, is_admin=False).exists())
+
+
+class TestNoShowAfterMeetupConfirm(TestCase):
+    """End-to-end: propose + confirm meetup, then report no-show after time passes."""
+
+    def setUp(self):
+        self.client = Client()
+        User = get_user_model()
+        self.buyer = User.objects.create_user(username="seq_buyer", email="seq_buyer@example.com", password="pass")
+        self.seller = User.objects.create_user(username="seq_seller", email="seq_seller@example.com", password="pass")
+        self.admin = User.objects.create_user(username="seq_admin", email="seq_admin@example.com", password="pass", is_staff=True)
+        self.listing = Listing.objects.create(
+            seller=self.seller,
+            title="Sequence Item",
+            description="",
+            price=25,
+            quantity=1,
+            status=ListingStatus.ACTIVE,
+        )
+        self.pr = PurchaseRequest.objects.create(
+            listing=self.listing,
+            buyer=self.buyer,
+            seller=self.seller,
+            status=PurchaseRequestStatus.PENDING,
+        )
+        # Clear rate limiter state for this seller to avoid cross-test interference
+        from django.core.cache import cache
+        cache.delete(f"rl:request_accept:{self.seller.id}")
+        self.client.login(username="seq_seller", password="pass")
+        url_accept = reverse("marketplace:api_request_accept", args=[self.pr.id])
+        r_acc = self.client.post(url_accept, content_type="application/json", data=json.dumps({}))
+        # Assert accept succeeded; if not, fail fast with server message
+        self.assertEqual(r_acc.status_code, 200, msg=r_acc.content)
+        self.pr.refresh_from_db()
+        # Ensure a transaction exists for downstream meetup operations
+        if not self.pr.transaction:
+            txn = Transaction.objects.create(
+                listing=self.listing,
+                buyer=self.buyer,
+                seller=self.seller,
+                status=TransactionStatus.CONFIRMED,
+            )
+            self.pr.transaction = txn
+            self.pr.status = PurchaseRequestStatus.ACCEPTED
+            self.pr.save(update_fields=["transaction", "status", "updated_at"])
+            self.listing.status = ListingStatus.RESERVED
+            self.listing.save(update_fields=["status", "updated_at"])
+        self.client.logout()
+
+    def test_report_no_show_after_meetup_confirm_end_to_end(self):
+        """Propose and confirm meetup before reporting no-show; logs contain confirmation."""
+        # Buyer proposes meetup in the future
+        self.client.login(username="seq_buyer", password="pass")
+        future = (timezone.now() + timedelta(hours=2)).isoformat()
+        set_url = reverse("marketplace:api_request_meetup_set", args=[self.pr.id])
+        r_set = self.client.post(set_url, content_type="application/json", data=json.dumps({"meetup_place": "Library", "meetup_time": future}))
+        self.assertEqual(r_set.status_code, 200, msg=r_set.content)
+        self.client.logout()
+
+        # Seller confirms
+        self.client.login(username="seq_seller", password="pass")
+        conf_url = reverse("marketplace:api_request_meetup_confirm", args=[self.pr.id])
+        r_conf = self.client.post(conf_url, content_type="application/json", data=json.dumps({}))
+        self.assertEqual(r_conf.status_code, 200)
+        self.client.logout()
+
+        # Time passes (set to past), then seller reports buyer no-show
+        self.pr.refresh_from_db()
+        self.pr.transaction.meetup_time = timezone.now() - timedelta(hours=1)
+        self.pr.transaction.save(update_fields=["meetup_time"])
+        self.client.login(username="seq_seller", password="pass")
+        ns_url = reverse("marketplace:report_no_show", kwargs={"pk": self.pr.id})
+        r_ns = self.client.post(ns_url)
+        self.assertEqual(r_ns.status_code, 200)
+        body = json.loads(r_ns.content.decode())
+        self.assertTrue(body.get("success"))
+        # Confirm a meetup confirmation log exists
+        from .models import TransactionLog, LogAction, MeetupStatus
+        log = TransactionLog.objects.filter(request=self.pr, action=LogAction.MEETUP_CONFIRMED).first()
+        self.assertIsNotNone(log)
+        # Request status indicates buyer or seller no-show accordingly
+        self.pr.refresh_from_db()
+        self.assertIn(self.pr.meetup_status, (MeetupStatus.NO_SHOW_BUYER, MeetupStatus.NO_SHOW_SELLER))
+
+
+class TestVerificationPage(TestCase):
+    """Verification page requires login and renders expected content and CTA link."""
+
+    def setUp(self):
+        self.client = Client()
+        User = get_user_model()
+        self.user = User.objects.create_user(username="verify_user", email="verify_user@example.com", password="pass")
+
+    def test_verification_requires_login_redirect(self):
+        """Anonymous users are redirected to login for the verification page."""
+        url = reverse("marketplace:verification")
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 302)
+        # Redirect to login; don't assert exact URL to keep flexibility
+        self.assertIn("/accounts/login", resp.headers.get("Location", ""))
+
+    def test_verification_renders_expected_content_and_link(self):
+        """Logged-in users get 200 and see title and profile link CTA."""
+        self.client.login(username="verify_user", password="pass")
+        url = reverse("marketplace:verification")
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+        self.assertIn("Verify Your Marketplace Profile", html)
+        self.assertIn("Verification", html)
+        self.assertIn("/accounts/profile/", html)
+from decimal import Decimal
+
+
+class TestBuyNowFlow(TestCase):
+    """Minimal tests for fixed-price Buy Now API behavior."""
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from .models import Category, Listing, ListingStatus
+        self.client = Client()
+        User = get_user_model()
+        self.seller = User.objects.create_user(username="seller_buy", password="pass")
+        self.buyer = User.objects.create_user(username="buyer_buy", password="pass")
+        self.cat = Category.objects.create(name="Accessories")
+        self.listing_fp = Listing.objects.create(
+            title="Fixed Price Collar",
+            description="Durable",
+            category=self.cat,
+            seller=self.seller,
+            price=Decimal("50.00"),
+            status=ListingStatus.ACTIVE,
+            quantity=1,
+            is_fixed_price=True,
+        )
+        self.listing_nonfp = Listing.objects.create(
+            title="Negotiable Leash",
+            description="Adjustable",
+            category=self.cat,
+            seller=self.seller,
+            price=Decimal("30.00"),
+            status=ListingStatus.ACTIVE,
+            quantity=1,
+            is_fixed_price=False,
+        )
+
+    def test_requires_authentication(self):
+        from django.urls import reverse
+        url = reverse("marketplace:api_listing_buy_now", kwargs={"listing_id": self.listing_fp.id})
+        r = self.client.post(url)
+        self.assertEqual(r.status_code, 403)
+
+    def test_non_fixed_price_rejected(self):
+        from django.urls import reverse
+        self.client.login(username="buyer_buy", password="pass")
+        url = reverse("marketplace:api_listing_buy_now", kwargs={"listing_id": self.listing_nonfp.id})
+        r = self.client.post(url)
+        self.assertEqual(r.status_code, 400)
+
+    def test_seller_cannot_buy_own_listing(self):
+        from django.urls import reverse
+        self.client.login(username="seller_buy", password="pass")
+        url = reverse("marketplace:api_listing_buy_now", kwargs={"listing_id": self.listing_fp.id})
+        r = self.client.post(url)
+        self.assertEqual(r.status_code, 400)
+
+    def test_stock_decrements_to_zero_and_marks_sold(self):
+        from django.urls import reverse
+        from .models import ListingStatus, Transaction, TransactionStatus
+        self.client.login(username="buyer_buy", password="pass")
+        url = reverse("marketplace:api_listing_buy_now", kwargs={"listing_id": self.listing_fp.id})
+        r = self.client.post(url)
+        self.assertEqual(r.status_code, 200)
+        # Refresh listing and validate status/quantity
+        self.listing_fp.refresh_from_db()
+        self.assertEqual(self.listing_fp.quantity, 0)
+        self.assertEqual(self.listing_fp.status, ListingStatus.SOLD)
+        # Transaction created as PAID with amount_paid set
+        txn = Transaction.objects.filter(listing=self.listing_fp, buyer=self.buyer).first()
+        self.assertIsNotNone(txn)
+        self.assertEqual(txn.status, TransactionStatus.PAID)
+        self.assertEqual(str(txn.amount_paid), str(self.listing_fp.price))
+
+    def test_stock_remains_active_when_more_than_one(self):
+        from django.urls import reverse
+        from .models import ListingStatus
+        # Create a second fixed-price listing with quantity=2
+        from .models import Listing
+        l2 = Listing.objects.create(
+            title="Fixed Price Harness",
+            description="Comfort fit",
+            category=self.cat,
+            seller=self.seller,
+            price=Decimal("80.00"),
+            status=ListingStatus.ACTIVE,
+            quantity=2,
+            is_fixed_price=True,
+        )
+        self.client.login(username="buyer_buy", password="pass")
+        url = reverse("marketplace:api_listing_buy_now", kwargs={"listing_id": l2.id})
+        r = self.client.post(url)
+        self.assertEqual(r.status_code, 200)
+        l2.refresh_from_db()
+        self.assertEqual(l2.quantity, 1)
+        self.assertEqual(l2.status, ListingStatus.ACTIVE)

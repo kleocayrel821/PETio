@@ -1,0 +1,25 @@
+<!--
+  Template: Verification Page
+  Purpose: Provide guidance and CTA for users to verify their marketplace profile.
+-->
+{% extends "base.html" %}
+
+{% block title %}Verify Your Marketplace Profile{% endblock %}
+
+{% block content %}
+<section class="container" style="max-width: 720px; margin: 0 auto; padding: 1.5rem;">
+  <h1>Verification</h1>
+  <p style="color:#555;">Verifying your profile helps increase trust, improves your visibility, and may unlock additional marketplace features.</p>
+
+  <ol style="line-height:1.7;">
+    <li>Confirm your email address.</li>
+    <li>Optionally add a phone number for SMS meetup reminders.</li>
+    <li>Complete your profile details (location, avatar).</li>
+  </ol>
+
+  <div style="margin-top: 1rem;">
+    <a href="/accounts/profile/" class="btn" style="display:inline-block; background:#0366d6; color:#fff; padding:0.5rem 0.75rem; border-radius:4px; text-decoration:none;">Go to Profile Settings</a>
+  </div>
+  <p style="margin-top:0.75rem; color:#777;">Once verified, a badge will appear on your marketplace profile.</p>
+</section>
+{% endblock %}

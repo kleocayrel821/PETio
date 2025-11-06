@@ -257,6 +257,93 @@
 
   <!-- Unified Navigation Scripts -->
   <script src="{% static 'js/navigation.js' %}"></script>
+  <script>
+    /**
+     * Enhanced Button States utility.
+     * Toggles a loading state on a button: disables it, shows a spinner, and restores original content.
+     * Exposed globally as `setButtonLoading` for reuse across pages.
+     */
+    function setButtonLoading(button, loading = true) {
+      if (!button) return;
+      if (loading) {
+        button.disabled = true;
+        // Preserve original innerHTML to restore later
+        if (!button.dataset.originalText) {
+          button.dataset.originalText = button.innerHTML;
+        }
+        button.innerHTML = '<i class="fas fa-spinner loading-spinner mr-2"></i>Loading...';
+        button.classList.add('loading');
+      } else {
+        button.disabled = false;
+        if (button.dataset.originalText) {
+          button.innerHTML = button.dataset.originalText;
+          delete button.dataset.originalText;
+        }
+        button.classList.remove('loading');
+      }
+    }
+    // Make available on window for inline event handlers
+    window.setButtonLoading = setButtonLoading;
+
+    /**
+     * Lightweight global toast manager to replace intrusive alert() popups.
+     * Uses DaisyUI alert styles and renders non-blocking toasts in the bottom-right.
+     * Exposed as window.toastManager with convenience methods: success, error, warning, info.
+     */
+    (function(){
+      const ICONS = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+      };
+      const DURATIONS = { success: 4000, error: 6000, warning: 5000, info: 4000 };
+      function ensureContainer() {
+        let el = document.getElementById('appToastContainer');
+        if (!el) {
+          el = document.createElement('div');
+          el.id = 'appToastContainer';
+          // Position bottom-right and ensure it overlays above navbar/dropdowns
+          el.className = 'toast toast-bottom toast-end fixed right-4 bottom-4';
+          el.style.position = 'fixed';
+          el.style.right = '16px';
+          el.style.bottom = '16px';
+          el.style.zIndex = '2000';
+          document.body.appendChild(el);
+        }
+        return el;
+      }
+      function show(message, type = 'info', opts = {}) {
+        const container = ensureContainer();
+        const level = ['success','error','warning','info'].includes(type) ? type : 'info';
+        const alertEl = document.createElement('div');
+        alertEl.className = `alert alert-${level} shadow-md flex items-center gap-3`;
+        const icon = document.createElement('span');
+        icon.innerHTML = `<i class="fas ${ICONS[level]}"></i>`;
+        const text = document.createElement('span');
+        text.textContent = message || '';
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'btn btn-ghost btn-xs ml-2';
+        closeBtn.setAttribute('aria-label', 'Close notification');
+        closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+        closeBtn.addEventListener('click', () => alertEl.remove());
+        alertEl.appendChild(icon);
+        alertEl.appendChild(text);
+        alertEl.appendChild(closeBtn);
+        container.appendChild(alertEl);
+        const duration = typeof opts.duration === 'number' ? opts.duration : (DURATIONS[level] || 4000);
+        if (opts.autoDismiss !== false) setTimeout(() => alertEl.remove(), duration);
+        return alertEl;
+      }
+      window.toastManager = {
+        show,
+        success: (msg, opts) => show(msg, 'success', opts),
+        error: (msg, opts) => show(msg, 'error', opts),
+        warning: (msg, opts) => show(msg, 'warning', opts),
+        info: (msg, opts) => show(msg, 'info', opts)
+      };
+    })();
+  </script>
   {% block extra_js %}{% endblock %}
   {% block scripts %}{% endblock %}
 </body>

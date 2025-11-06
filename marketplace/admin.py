@@ -15,6 +15,9 @@ from .models import (
     RequestMessage,
     TransactionLog,
     Notification,
+    UserProfile,
+    TransactionDispute,
+    DisputeMessage,
 )
 
 
@@ -89,7 +92,7 @@ class TransactionAdmin(admin.ModelAdmin):
     list_filter = ("status",)
     search_fields = ("listing__title", "buyer__username", "seller__username")
     date_hierarchy = "created_at"
-    raw_id_fields = ("listing", "buyer", "seller")
+    raw_id_fields = ("listing", "buyer", "seller", "thread")
 
 
 # Report admin: moderation of user-submitted reports
@@ -212,9 +215,11 @@ class TransactionLogAdmin(admin.ModelAdmin):
 
 
 class NotificationAdmin(admin.ModelAdmin):
-    list_display = ("user", "type", "related_listing", "related_request", "title", "created_at", "read_at")
+    list_display = ("user", "type", "related_listing", "related_request", "related_thread", "title", "created_at", "read_at")
     list_filter = ("type",)
     search_fields = ("user__username", "title", "body")
+    date_hierarchy = "created_at"
+    raw_id_fields = ("user", "related_listing", "related_request", "related_thread")
     date_hierarchy = "created_at"
     raw_id_fields = ("user", "related_listing", "related_request")
 
@@ -223,3 +228,31 @@ admin.site.register(PurchaseRequest, PurchaseRequestAdmin)
 admin.site.register(RequestMessage, RequestMessageAdmin)
 admin.site.register(TransactionLog, TransactionLogAdmin)
 admin.site.register(Notification, NotificationAdmin)
+
+# Trust & Safety models admin
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ("user", "trust_score", "verified", "no_show_count", "created_at")
+    list_filter = ("verified",)
+    search_fields = ("user__username", "location")
+    raw_id_fields = ("user",)
+
+class TransactionDisputeAdmin(admin.ModelAdmin):
+    list_display = ("transaction", "reporter", "dispute_type", "status", "created_at")
+    list_filter = ("status", "dispute_type")
+    search_fields = ("transaction__listing__title", "reporter__username", "description")
+    raw_id_fields = ("transaction", "reporter")
+
+class DisputeMessageAdmin(admin.ModelAdmin):
+    list_display = ("dispute", "author", "short_message", "is_admin", "created_at")
+    search_fields = ("message", "author__username")
+    date_hierarchy = "created_at"
+    raw_id_fields = ("dispute", "author")
+
+    def short_message(self, obj):
+        return (obj.message or "")[:80]
+
+    short_message.short_description = "Message"
+
+admin.site.register(UserProfile, UserProfileAdmin)
+admin.site.register(TransactionDispute, TransactionDisputeAdmin)
+admin.site.register(DisputeMessage, DisputeMessageAdmin)

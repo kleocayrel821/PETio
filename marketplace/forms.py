@@ -31,6 +31,8 @@ class ListingForm(forms.ModelForm):
             "category",
             "price",
             "quantity",
+            "is_fixed_price",
+            "allow_offers",
             "description",
             "main_image",
         ]
@@ -56,6 +58,12 @@ class ListingForm(forms.ModelForm):
                 "inputmode": "numeric",
                 "placeholder": "e.g., 10",
                 "class": "input input-bordered w-full",
+            }),
+            "is_fixed_price": forms.CheckboxInput(attrs={
+                "class": "checkbox checkbox-primary",
+            }),
+            "allow_offers": forms.CheckboxInput(attrs={
+                "class": "checkbox checkbox-primary",
             }),
             "description": forms.Textarea(attrs={
                 "placeholder": "Describe the item, condition, size, and any important details",

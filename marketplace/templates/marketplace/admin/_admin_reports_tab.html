@@ -1,102 +1,255 @@
-{% comment %}Reports tab partial: expects reports, close_action_name{% endcomment %}
-<h3 class="text-xl font-semibold mb-3">Open Reports</h3>
+{% comment %}Reports tab partial: unified design; expects reports, close_action_name{% endcomment %}
 
-<div class="overflow-x-auto">
-  <table id="reports-table" class="table w-full">
-    <thead>
-      <tr>
-        <th>Report ID</th>
-        <th>Type</th>
-        <th>Target</th>
-        <th>Submitted</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in reports %}
-      <tr>
-        <td>{{ r.id }}</td>
-        <td>Listing</td>
-        <td><a href="{% url 'marketplace:listing_detail' r.listing_id %}" target="_blank">Listing #{{ r.listing_id }}</a></td>
-        <td>{{ r.created_at|date:"Y-m-d H:i" }}</td>
-        <td>
-          {% if r.status != 'closed' %}
-          <button class="btn btn-xs btn-success" data-action="close" data-id="{{ r.id }}">Close Report</button>
-          {% endif %}
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="5" id="reports-empty-state" class="text-base-content/60">No open reports.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<!-- Header Section with Search & Filters -->
+<div class="space-y-6">
+  <!-- Page Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h3 class="text-2xl font-semibold text-base-content">Open Reports</h3>
+      <p class="text-sm text-base-content/60 mt-1">Review and resolve community and listing reports</p>
+    </div>
+    <div class="badge badge-lg badge-warning" id="reports-count">
+      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8a6 6 0 11-12 0 6 6 0 0112 0z" />
+      </svg>
+      <span id="reports-count-text">0 Open</span>
+    </div>
+  </div>
+
+  <!-- Search & Filter Bar -->
+  <div class="card bg-base-100 shadow-sm border border-base-200">
+    <div class="card-body p-4">
+      <div class="flex flex-col lg:flex-row gap-3">
+        <!-- Search Input -->
+        <div class="flex-1 relative">
+          <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="text" id="search-reports" class="input input-bordered pl-10 w-full" placeholder="Search by target, ID, or type..." />
+        </div>
+
+        <!-- Filters -->
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="filter-type" class="select select-bordered w-40">
+            <option value="">All types</option>
+            <option value="Listing">Listing</option>
+            <option value="User">User</option>
+          </select>
+          <select id="filter-sort" class="select select-bordered w-40">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+          <div class="dropdown">
+            <label tabindex="0" class="btn btn-ghost">Bulk Actions</label>
+            <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52">
+              <li><button id="bulk-close" class="btn btn-ghost">Close Selected</button></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Skeleton -->
+  <div id="reports-skeleton" class="card bg-base-100 border border-base-200" style="display:none;">
+    <div class="card-body">
+      <div class="skeleton h-6 w-1/3 mb-3"></div>
+      <div class="skeleton h-4 w-full"></div>
+      <div class="skeleton h-4 w-11/12 mt-1"></div>
+      <div class="skeleton h-4 w-10/12 mt-1"></div>
+    </div>
+  </div>
+
+  <!-- Reports Table -->
+  <div class="overflow-x-auto">
+    <table id="reports-table" class="table table-compact w-full">
+      <thead class="sticky top-0 bg-base-200">
+        <tr>
+          <th><input type="checkbox" id="select-all-reports" class="checkbox checkbox-sm" /></th>
+          <th>ID</th>
+          <th>Type</th>
+          <th>Target</th>
+          <th>Submitted</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reports %}
+        <tr class="hover:bg-base-200/50 transition-colors" data-report-id="{{ r.id }}">
+          <td><input type="checkbox" class="checkbox checkbox-sm report-checkbox" value="{{ r.id }}" /></td>
+          <td class="font-mono text-sm text-base-content/70">#{{ r.id }}</td>
+          <td>{{ r.type|default:"Listing" }}</td>
+          <td>
+            {% if r.listing_id %}
+              <a href="{% url 'marketplace:listing_detail' r.listing_id %}" target="_blank" class="link">Listing #{{ r.listing_id }}</a>
+            {% else %}
+              <span class="text-base-content/70">{{ r.target|default:"—" }}</span>
+            {% endif %}
+          </td>
+          <td>{{ r.created_at|date:"Y-m-d H:i" }}</td>
+          <td>
+            {% if r.status != 'closed' %}
+            <div class="flex gap-2 justify-end">
+              <button class="btn btn-xs btn-success gap-1" data-action="close" data-id="{{ r.id }}" title="Close report">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Close
+              </button>
+            </div>
+            {% else %}
+              <span class="badge badge-success">Closed</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6">
+            <div class="flex flex-col items-center justify-center py-12 text-center">
+              <svg class="w-16 h-16 text-base-content/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              <h4 class="text-lg font-semibold text-base-content/60 mb-1">No Open Reports</h4>
+              <p class="text-sm text-base-content/40">All reports have been handled</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <script>
-  function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-      const cookies = document.cookie.split(';');
-      for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i].trim();
-        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-          break;
-        }
-      }
-    }
-    return cookieValue;
+  /**
+   * Get CSRF token via AdminUtils fallback.
+   * @returns {string|null}
+   */
+  function getCsrf() {
+    return (window.AdminUtils && typeof window.AdminUtils.getCSRFToken === 'function')
+      ? window.AdminUtils.getCSRFToken()
+      : (function(name){
+          let cookieValue = null;
+          if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i].trim();
+              if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+              }
+            }
+          }
+          return cookieValue;
+        })('csrftoken');
   }
 
-  const csrftoken = getCookie('csrftoken');
+  const csrftoken = getCsrf();
+  const selectedReports = new Set();
 
+  /**
+   * Show unified toast.
+   * @param {string} message
+   * @param {string} type
+   */
+  function toast(message, type) {
+    if (typeof showMarketplaceToast === 'function') showMarketplaceToast(message, type);
+  }
+
+  /**
+   * Fetch reports in JSON format and re-render table.
+   */
   async function fetchReports() {
+    const skeleton = document.getElementById('reports-skeleton');
+    const table = document.getElementById('reports-table');
     try {
+      skeleton && (skeleton.style.display = 'block');
+      table && (table.style.opacity = '0.5');
       const url = new URL(window.location.href);
       url.searchParams.set('format', 'json');
       const res = await fetch(url.toString(), { headers: { 'X-CSRFToken': csrftoken, 'Accept': 'application/json' } });
       const data = await res.json();
       if (data.status !== 'ok') throw new Error(data.message || 'Failed');
       renderReports(data.reports);
+      updateCount(data.reports?.length || 0);
     } catch (e) {
       console.error('Failed to fetch reports', e);
+      toast('Failed to load reports', 'error');
+    } finally {
+      skeleton && (skeleton.style.display = 'none');
+      table && (table.style.opacity = '1');
     }
   }
 
+  /**
+   * Render reports to table body.
+   * @param {Array} reports
+   */
   function renderReports(reports) {
     const tbody = document.querySelector('#reports-table tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
+    selectedReports.clear();
+    updateBulkState();
     if (!reports || reports.length === 0) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="5" id="reports-empty-state" class="text-base-content/60">No open reports.</td>`;
-      tbody.appendChild(tr);
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6">
+            <div class="flex flex-col items-center justify-center py-12 text-center">
+              <svg class="w-16 h-16 text-base-content/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              <h4 class="text-lg font-semibold text-base-content/60 mb-1">No Open Reports</h4>
+              <p class="text-sm text-base-content/40">All reports have been handled</p>
+            </div>
+          </td>
+        </tr>`;
       return;
     }
     for (const r of reports) {
       const tr = document.createElement('tr');
+      tr.className = 'hover:bg-base-200/50 transition-colors';
+      tr.dataset.reportId = r.id;
+      const targetUrl = buildListingUrlFromTarget(r.target);
       tr.innerHTML = `
-        <td>${r.id}</td>
-        <td>${r.type}</td>
-        <td><a href="${buildListingUrlFromTarget(r.target)}" target="_blank">${r.target}</a></td>
-        <td>${r.submitted}</td>
+        <td><input type="checkbox" class="checkbox checkbox-sm report-checkbox" value="${r.id}" /></td>
+        <td class="font-mono text-sm text-base-content/70">#${r.id}</td>
+        <td>${r.type || 'Listing'}</td>
+        <td>${targetUrl ? `<a href="${targetUrl}" target="_blank" class="link">${r.target}</a>` : `<span class="text-base-content/70">${r.target || '—'}</span>`}</td>
+        <td>${r.submitted || ''}</td>
         <td>
-          <button class="btn btn-xs btn-success" data-action="close" data-id="${r.id}">Close Report</button>
-        </td>
-      `;
+          <div class="flex gap-2 justify-end">
+            <button class="btn btn-xs btn-success gap-1" data-action="close" data-id="${r.id}" title="Close report">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              Close
+            </button>
+          </div>
+        </td>`;
       tbody.appendChild(tr);
     }
+    attachCheckboxListeners();
+    applyFilters();
   }
 
+  /**
+   * Build listing URL from target text like "Listing #123".
+   * @param {string} targetText
+   * @returns {string|null}
+   */
   function buildListingUrlFromTarget(targetText) {
-    // targetText like "Listing #123" -> extract id
-    const m = /Listing\s+#(\d+)/.exec(targetText);
+    const m = /Listing\s+#(\d+)/.exec(targetText || '');
     const id = m ? m[1] : null;
-    if (!id) return '#';
-    // Use server-generated URL pattern with placeholder replacement
+    if (!id) return null;
     return `{% url 'marketplace:listing_detail' 0 %}`.replace('/0/', `/${id}/`);
   }
 
+  /**
+   * POST helper for actions.
+   * @param {string} url
+   * @param {object} body
+   */
   async function postAction(url, body) {
     const res = await fetch(url, {
       method: 'POST',
@@ -105,31 +258,107 @@
         'X-CSRFToken': csrftoken,
         'Accept': 'application/json',
       },
-      body: new URLSearchParams(body).toString(),
+      body: new URLSearchParams(body || {}).toString(),
     });
     return res.json();
   }
 
+  /**
+   * Close a single report by ID.
+   * @param {string|number} reportId
+   */
   async function handleClose(reportId) {
-    const url = `{% url close_action_name 0 %}`.replace('/0/', `/${reportId}/`);
-    const data = await postAction(url, {});
-    if (data.status === 'ok') {
-      await fetchReports();
-    } else {
-      alert(data.message || 'Close failed');
+    const btn = document.querySelector(`button[data-action="close"][data-id="${reportId}"]`);
+    const originalHTML = btn ? btn.innerHTML : '';
+    try {
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Closing...'; }
+      const url = `{% url close_action_name 0 %}`.replace('/0/', `/${reportId}/`);
+      const data = await postAction(url, {});
+      if (data.status === 'ok') {
+        toast('Report closed', 'success');
+        await fetchReports();
+      } else {
+        throw new Error(data.message || 'Close failed');
+      }
+    } catch (err) {
+      console.error(err);
+      toast(err.message || 'Network error closing report', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
     }
   }
 
+  /** Bulk Close selected reports */
+  async function handleBulkClose() {
+    if (selectedReports.size === 0) return toast('No reports selected', 'warning');
+    const ids = Array.from(selectedReports);
+    for (const id of ids) { await handleClose(id, true); }
+    toast('Selected reports closed', 'success');
+  }
+
+  /** Update header open count */
+  function updateCount(count) {
+    const el = document.getElementById('reports-count-text');
+    if (el) el.textContent = `${count} Open`;
+  }
+
+  /** Attach checkbox listeners and Select All */
+  function attachCheckboxListeners() {
+    const all = document.getElementById('select-all-reports');
+    const boxes = Array.from(document.querySelectorAll('.report-checkbox'));
+    boxes.forEach(cb => cb.addEventListener('change', () => {
+      const id = cb.value; if (!id) return;
+      if (cb.checked) selectedReports.add(id); else selectedReports.delete(id);
+      updateBulkState();
+    }));
+    all && all.addEventListener('change', () => {
+      boxes.forEach(cb => { cb.checked = all.checked; const id = cb.value; if (cb.checked) selectedReports.add(id); else selectedReports.delete(id); });
+      updateBulkState();
+    });
+  }
+
+  /** Enable/disable bulk action based on selection */
+  function updateBulkState() {
+    const bulkBtn = document.getElementById('bulk-close');
+    if (bulkBtn) bulkBtn.disabled = selectedReports.size === 0;
+  }
+
+  /** Apply client-side search and sort filters */
+  function applyFilters() {
+    const term = (document.getElementById('search-reports')?.value || '').toLowerCase();
+    const type = document.getElementById('filter-type')?.value || '';
+    const sort = document.getElementById('filter-sort')?.value || 'newest';
+    const rows = Array.from(document.querySelectorAll('#reports-table tbody tr'));
+    rows.forEach(row => {
+      const idText = row.querySelector('td:nth-child(2)')?.textContent || '';
+      const typeText = row.querySelector('td:nth-child(3)')?.textContent || '';
+      const targetText = row.querySelector('td:nth-child(4)')?.textContent || '';
+      const matchesSearch = !term || idText.toLowerCase().includes(term) || typeText.toLowerCase().includes(term) || targetText.toLowerCase().includes(term);
+      const matchesType = !type || typeText === type;
+      row.style.display = (matchesSearch && matchesType) ? '' : 'none';
+    });
+    const visible = rows.filter(r => r.style.display !== 'none');
+    visible.sort((a, b) => {
+      const aDate = a.querySelector('td:nth-child(5)')?.textContent || '';
+      const bDate = b.querySelector('td:nth-child(5)')?.textContent || '';
+      return sort === 'newest' ? bDate.localeCompare(aDate) : aDate.localeCompare(bDate);
+    });
+    const tbody = document.querySelector('#reports-table tbody');
+    visible.forEach(r => tbody.appendChild(r));
+  }
+
+  // Event wiring
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
     const action = btn.getAttribute('data-action');
     const id = btn.getAttribute('data-id');
-    if (action === 'close' && id) {
-      e.preventDefault();
-      handleClose(id);
-    }
+    if (action === 'close' && id) { e.preventDefault(); handleClose(id); }
   });
+  document.getElementById('bulk-close')?.addEventListener('click', (e) => { e.preventDefault(); handleBulkClose(); });
+  document.getElementById('search-reports')?.addEventListener('input', () => applyFilters());
+  document.getElementById('filter-type')?.addEventListener('change', () => applyFilters());
+  document.getElementById('filter-sort')?.addEventListener('change', () => applyFilters());
 
   // Initial refresh to ensure table sync
   fetchReports();
