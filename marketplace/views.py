@@ -2590,8 +2590,10 @@ def api_listing_buy_now(request, listing_id):
     - Price must be set (non-null)
 
     Effects:
-    - Create or update a `Transaction` for the buyer to `PAID`
-    - Decrement `Listing.quantity`; set status to `SOLD` when 0, else remain `ACTIVE`
+    - Create or update a `Transaction` for the buyer to `AWAITING_PAYMENT`
+    - Optionally record `payment_method` if provided by client
+    - Decrement `Listing.quantity` to reserve one unit; set status to `PENDING` (reserved state)
+    - When stock hits zero, auto-archive or cascade-close open requests as needed
     - Start or attach to a `MessageThread` and post an initial message
     - Send lightweight notifications to buyer and seller
 
@@ -2617,31 +2619,53 @@ def api_listing_buy_now(request, listing_id):
     if buyer.id == seller.id:
         return JsonResponse({"error": "Seller cannot use Buy Now on own listing"}, status=400)
 
-    # Create or update transaction as PAID (direct checkout semantics)
+    # Optional payment method from JSON or form data
+    payment_method = None
+    ct = (request.content_type or "").lower()
+    if ct.startswith("application/json"):
+        try:
+            payload = json.loads(request.body.decode("utf-8") or "{}")
+        except Exception:
+            payload = {}
+        payment_method = (payload.get("payment_method") or "").strip() or None
+    else:
+        payment_method = (request.POST.get("payment_method") or "").strip() or None
+
+    # Create or update transaction as AWAITING_PAYMENT (two-step checkout semantics)
     txn, _ = Transaction.objects.get_or_create(
         listing=listing,
         buyer=buyer,
         seller=seller,
-        defaults={"status": TransactionStatus.PAID, "amount_paid": listing.price},
+        defaults={"status": TransactionStatus.AWAITING_PAYMENT}
     )
     updates = ["status"]
-    if txn.status != TransactionStatus.PAID:
-        txn.status = TransactionStatus.PAID
-    # Set amount_paid for clarity when not previously set
-    if txn.amount_paid is None:
-        txn.amount_paid = listing.price
-        updates.append("amount_paid")
+    if txn.status != TransactionStatus.AWAITING_PAYMENT:
+        txn.status = TransactionStatus.AWAITING_PAYMENT
+    # Persist valid payment method if supplied
+    valid_methods = {m.value for m in Transaction.PaymentMethod}
+    if payment_method and payment_method in valid_methods:
+        txn.payment_method = payment_method
+        updates.append("payment_method")
     txn.save(update_fields=updates)
 
-    # Decrement stock and set status accordingly
+    # Decrement stock to reserve and move listing to pending state
     listing.quantity = max(0, listing.quantity - 1)
-    if listing.quantity == 0:
-        listing.status = ListingStatus.SOLD
-        listing.save(update_fields=["quantity", "status"])
-        _cascade_close_open_requests_for_listing(listing, reason="sold out")
-    else:
-        listing.status = ListingStatus.ACTIVE
-        listing.save(update_fields=["quantity", "status"])
+    listing.status = ListingStatus.PENDING
+    listing.save(update_fields=["quantity", "status"])
+    # If reservation exhausted stock, consider auto-archiving and close open requests
+    if listing.quantity <= 0:
+        try:
+            has_open_reqs = PurchaseRequest.objects.filter(
+                listing=listing,
+                status__in=[PurchaseRequestStatus.PENDING, PurchaseRequestStatus.NEGOTIATING],
+            ).exists()
+        except Exception:
+            has_open_reqs = False
+        if has_open_reqs:
+            # Hide from catalog to reflect no available stock for other buyers
+            listing.status = ListingStatus.ARCHIVED
+            listing.save(update_fields=["status"])
+        _cascade_close_open_requests_for_listing(listing, reason="last unit reserved")
 
     # Create or attach to a conversation thread and post an initial system message
     try:
@@ -2651,11 +2675,11 @@ def api_listing_buy_now(request, listing_id):
         Message.objects.create(
             thread=thread,
             sender=buyer,
-            text=f"Buy Now purchase placed. Transaction #{txn.id}.",
+            text=f"Buy Now initiated. Transaction #{txn.id} awaiting payment.",
         )
         # Notify parties; keep body concise
-        _notify(seller, NotificationType.STATUS_CHANGED, listing=listing, message_text="Buy Now purchase", thread=thread)
-        _notify(buyer, NotificationType.STATUS_CHANGED, listing=listing, message_text="Buy Now purchase", thread=thread)
+        _notify(seller, NotificationType.STATUS_CHANGED, listing=listing, message_text="Buy Now initiated", thread=thread)
+        _notify(buyer, NotificationType.STATUS_CHANGED, listing=listing, message_text="Buy Now initiated", thread=thread)
     except Exception:
         # Do not fail primary flow if messaging/notifications error
         pass
