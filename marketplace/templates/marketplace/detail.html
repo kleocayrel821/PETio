@@ -106,7 +106,7 @@
                     </button>
                 </form>
                 {% if listing.is_fixed_price and listing.quantity > 0 and request.user.id != listing.seller_id %}
-                <button id="buyNowBtn" class="btn btn-success btn-block">
+                <button id="buyNowBtn" type="button" class="btn btn-success btn-block">
                     <i class="fas fa-bolt mr-2"></i>
                     Buy Now
                 </button>
@@ -293,6 +293,42 @@
     </form>
 </dialog>
 
+<!-- Buy Now: Payment Method Modal -->
+<dialog id="paymentModal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">Select Payment Method</h3>
+        <p class="text-sm text-base-content/70 mb-4">Choose how you intend to pay for this item. Your selection will be attached to the order and you can finalize payment with the seller.</p>
+        <div class="form-control mb-2">
+            <label class="label cursor-pointer">
+                <span class="label-text">Cash</span>
+                <input type="radio" name="paymentMethod" value="cash" class="radio" checked>
+            </label>
+        </div>
+        <div class="form-control mb-2">
+            <label class="label cursor-pointer">
+                <span class="label-text">Bank Transfer</span>
+                <input type="radio" name="paymentMethod" value="bank_transfer" class="radio">
+            </label>
+        </div>
+        <div class="form-control mb-4">
+            <label class="label cursor-pointer">
+                <span class="label-text">Other</span>
+                <input type="radio" name="paymentMethod" value="other" class="radio">
+            </label>
+        </div>
+        <div class="modal-action">
+            <button type="button" class="btn btn-ghost" onclick="document.getElementById('paymentModal').close()">Cancel</button>
+            <button type="button" id="confirmPaymentBtn" class="btn btn-success">
+                <i class="fas fa-check mr-2"></i>
+                Confirm and Create Order
+            </button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+    </dialog>
+
 <!-- Image Zoom Modal -->
 <dialog id="imageModal" class="modal">
     <div class="modal-box max-w-4xl">
@@ -456,44 +492,66 @@ function toggleWishlist() {
 }
 
 // Add click handler for wishlist button
-document.addEventListener('DOMContentLoaded', function() {
+// Attach wishlist and Buy Now handlers immediately (script runs after DOM)
+(function() {
     const wishlistBtn = document.querySelector('[title="Add to Wishlist"]');
-    if (wishlistBtn) {
-        wishlistBtn.addEventListener('click', toggleWishlist);
-    }
+    if (wishlistBtn) wishlistBtn.addEventListener('click', toggleWishlist);
 
-    // Buy Now handler
+    // Buy Now: open payment method modal
     const buyBtn = document.getElementById('buyNowBtn');
-    if (buyBtn) {
-        buyBtn.addEventListener('click', async () => {
+    if (!buyBtn) return;
+    buyBtn.addEventListener('click', (e) => {
+        // Guard against any default or bubbling that could trigger navigation
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        const modal = document.getElementById('paymentModal');
+        if (modal && typeof modal.showModal === 'function') {
+            modal.showModal();
+        }
+    });
+
+    // Confirm payment selection and create awaiting-payment transaction
+    const confirmBtn = document.getElementById('confirmPaymentBtn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', async () => {
+            const modal = document.getElementById('paymentModal');
+            const selected = document.querySelector('input[name="paymentMethod"]:checked');
+            const paymentMethod = selected ? selected.value : null;
             try {
                 const res = await fetch("{% url 'marketplace:api_listing_buy_now' listing.pk %}", {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [null, ''])[1],
-                        'Accept': 'application/json'
-                    }
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ payment_method: paymentMethod })
                 });
                 if (!res.ok) {
                     const body = await res.json().catch(() => ({}));
-                    const msg = body.error || 'Unable to complete Buy Now';
+                    const msg = body.error || 'Unable to create order';
                     showMarketplaceToast(msg, 'error');
                     return;
                 }
                 const data = await res.json();
-                showMarketplaceToast('Purchase completed via Buy Now!', 'success');
+                showMarketplaceToast('Order created. Awaiting payment.', 'success');
                 // Reflect quantity change immediately if present
                 const qtyEl = document.querySelector('.text-lg.font-semibold');
                 if (qtyEl && data.listing && typeof data.listing.quantity !== 'undefined') {
                     qtyEl.textContent = `${data.listing.quantity} Available`;
                 }
-                // Optional: redirect to transactions page
-                // window.location.href = "{% url 'marketplace:transactions' %}";
+                // Disable Buy Now and show progress
+                buyBtn.disabled = true;
+                buyBtn.classList.add('loading');
+                buyBtn.textContent = 'Redirecting…';
+                // Close modal and redirect to Transactions (confirmed tab)
+                if (modal) modal.close();
+                const txUrl = "{% url 'marketplace:transactions' %}?status=confirmed";
+                setTimeout(() => { window.location.href = txUrl; }, 800);
             } catch (e) {
-                showMarketplaceToast('Network error during Buy Now', 'error');
+                showMarketplaceToast('Network error creating order', 'error');
             }
         });
     }
-});
+})();
 </script>
 {% endblock %}
