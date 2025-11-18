@@ -1,3 +1,11 @@
+"""Social app data models, including posts, comments, profiles,
+and Phase 1 moderation models (reports, actions, suspensions).
+
+This file defines core social entities and introduces moderation-related
+structures to enable admin and moderator workflows such as reporting content,
+taking moderation actions, and temporarily suspending users.
+"""
+
 from django.db import models
 from django.conf import settings
 from django.urls import reverse
@@ -31,6 +39,9 @@ class Post(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     likes = models.ManyToManyField(settings.AUTH_USER_MODEL, through='Like', related_name='liked_posts')
     is_pinned = models.BooleanField(default=False)
+    # Moderation flags
+    is_flagged = models.BooleanField(default=False)
+    hidden_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         ordering = ['-is_pinned', '-created_at']
@@ -71,6 +82,9 @@ class Comment(models.Model):
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # Moderation flags
+    is_flagged = models.BooleanField(default=False)
+    hidden_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         ordering = ['created_at']
@@ -107,6 +121,10 @@ class UserProfile(models.Model):
     is_private = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # Moderation flags
+    is_suspended = models.BooleanField(default=False)
+    suspended_until = models.DateTimeField(null=True, blank=True)
+    suspension_reason = models.CharField(max_length=255, blank=True)
     
     def __str__(self):
         return f"{self.user.username}'s Profile"
@@ -165,3 +183,115 @@ class Announcement(models.Model):
 
     def __str__(self):
         return self.title
+
+
+# =============================
+# Moderation Models (Phase 1)
+# =============================
+
+class SocialReport(models.Model):
+    """User-submitted reports for content or user behavior.
+
+    Supports reporting posts, comments, or users with a type and status
+    tracked for moderation workflows.
+    """
+
+    REPORT_TYPES = [
+        ('spam', 'Spam'),
+        ('harassment', 'Harassment'),
+        ('inappropriate', 'Inappropriate Content'),
+        ('other', 'Other'),
+    ]
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('reviewing', 'Under Review'),
+        ('resolved', 'Resolved'),
+    ]
+
+    reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='social_reports_made')
+    reported_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='social_reports_received')
+    reported_post = models.ForeignKey('Post', on_delete=models.SET_NULL, null=True, blank=True, related_name='reports')
+    reported_comment = models.ForeignKey('Comment', on_delete=models.SET_NULL, null=True, blank=True, related_name='reports')
+
+    report_type = models.CharField(max_length=20, choices=REPORT_TYPES)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        target = self.reported_post or self.reported_comment or self.reported_user
+        return f"Report({self.get_report_type_display()}) by {self.reporter} on {target}"
+
+
+class ModerationAction(models.Model):
+    """Actions taken by moderators against users or content.
+
+    Actions include deleting/restoring content, warnings, suspensions, and bans.
+    """
+
+    ACTION_TYPES = [
+        ('delete_post', 'Delete Post'),
+        ('delete_comment', 'Delete Comment'),
+        ('restore_post', 'Restore Post'),
+        ('restore_comment', 'Restore Comment'),
+        ('hide_post', 'Hide Post'),
+        ('hide_comment', 'Hide Comment'),
+        ('warn', 'Warn'),
+        ('suspend', 'Suspend'),
+        ('ban', 'Ban'),
+        ('unsuspend', 'Unsuspend'),
+        ('resolve_report', 'Resolve Report'),
+        ('dismiss_report', 'Dismiss Report'),
+        ('note', 'Note'),
+    ]
+
+    moderator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='moderation_actions')
+    target_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='actions_against_user')
+    target_post = models.ForeignKey('Post', on_delete=models.SET_NULL, null=True, blank=True, related_name='actions_against_post')
+    target_comment = models.ForeignKey('Comment', on_delete=models.SET_NULL, null=True, blank=True, related_name='actions_against_comment')
+    related_report = models.ForeignKey('SocialReport', on_delete=models.SET_NULL, null=True, blank=True, related_name='actions')
+
+    action_type = models.CharField(max_length=30, choices=ACTION_TYPES)
+    reason = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.moderator} -> {self.action_type}"
+
+
+class UserSuspension(models.Model):
+    """Represents a suspension window for a user, created by a moderator."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='suspensions')
+    reason = models.TextField(blank=True)
+    start_at = models.DateTimeField(default=timezone.now)
+    end_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='suspensions_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-start_at']
+
+    def __str__(self):
+        return f"Suspension({self.user}) active={self.is_active}"
+
+    @property
+    def is_current(self):
+        """Return True if the suspension window includes now and is active."""
+        now = timezone.now()
+        if not self.is_active:
+            return False
+        if self.end_at is not None and now > self.end_at:
+            return False
+        return now >= self.start_at

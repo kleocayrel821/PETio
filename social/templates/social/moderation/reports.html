@@ -1,0 +1,84 @@
+{% extends "social/base_social.html" %}
+{% block social_title %}Reports{% endblock %}
+{% block sidebar %}{% include 'social/moderation/sidebar.html' %}{% endblock %}
+{% block social_content %}
+<div class="max-w-6xl mx-auto">
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold flex items-center gap-2">
+      <i class="fas fa-flag text-error"></i>
+      <span>Reports</span>
+    </h1>
+    <div class="flex items-center gap-2">
+      {% if pending_reports_count %}
+        <span class="badge badge-error">Pending: {{ pending_reports_count }}</span>
+      {% endif %}
+      {% if reviewing_reports_count %}
+        <span class="badge badge-warning">Reviewing: {{ reviewing_reports_count }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Status filter toolbar -->
+  <div class="join mb-6">
+    <a href="?status=" class="join-item btn btn-sm {% if not request.GET.status %}btn-primary{% else %}btn-ghost{% endif %}">All</a>
+    <a href="?status=pending" class="join-item btn btn-sm {% if request.GET.status == 'pending' %}btn-primary{% else %}btn-ghost{% endif %}">Pending</a>
+    <a href="?status=reviewing" class="join-item btn btn-sm {% if request.GET.status == 'reviewing' %}btn-primary{% else %}btn-ghost{% endif %}">Reviewing</a>
+    <a href="?status=resolved" class="join-item btn btn-sm {% if request.GET.status == 'resolved' %}btn-primary{% else %}btn-ghost{% endif %}">Resolved</a>
+  </div>
+
+  <div class="space-y-3">
+    {% for report in reports %}
+      <div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow">
+        <div class="card-body">
+          <!-- Top meta row -->
+          <div class="flex items-start justify-between">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="badge badge-sm {% if report.report_type == 'spam' %}badge-warning{% elif report.report_type == 'harassment' %}badge-error{% elif report.report_type == 'inappropriate' %}badge-warning{% else %}badge-info{% endif %}">
+                {{ report.get_report_type_display }}
+              </span>
+              <span class="badge badge-sm badge-ghost">
+                {% if report.status == 'pending' %}<i class="fas fa-clock mr-1"></i>{% elif report.status == 'reviewing' %}<i class="fas fa-eye mr-1"></i>{% elif report.status == 'resolved' %}<i class="fas fa-check mr-1"></i>{% endif %}
+                {{ report.get_status_display }}
+              </span>
+              {% if report.reporter %}
+                <span class="text-xs text-base-content/70">by @{{ report.reporter.username }}</span>
+              {% endif %}
+            </div>
+            <span class="text-xs text-base-content/60">{{ report.created_at|timesince }} ago</span>
+          </div>
+
+          <!-- Subject row -->
+          <div class="mt-2 text-sm font-semibold">
+            {% if report.reported_post %}
+              <i class="fas fa-file-alt text-primary"></i>
+              Post: <a class="link" href="{% url 'social:post_detail' report.reported_post.id %}">{{ report.reported_post.title|truncatewords:10 }}</a>
+            {% elif report.reported_comment %}
+              <i class="fas fa-comment text-info"></i>
+              Comment by <a class="link" href="{% url 'social:profile' report.reported_comment.author.username %}">@{{ report.reported_comment.author.username }}</a>
+            {% elif report.reported_user %}
+              <i class="fas fa-user text-warning"></i>
+              User: <a class="link" href="{% url 'social:profile' report.reported_user.username %}">@{{ report.reported_user.username }}</a>
+            {% else %}
+              <span class="text-base-content/60">No subject linked</span>
+            {% endif %}
+          </div>
+
+          <!-- Description -->
+          <p class="text-sm text-base-content/70 mt-2 line-clamp-2">{{ report.description|default:"No description." }}</p>
+
+          <div class="mt-3 flex items-center justify-end">
+            <a class="btn btn-xs btn-primary" href="{% url 'social:report_detail' report.pk %}">
+              <i class="fas fa-search"></i> Review
+            </a>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="text-center py-10">
+        <i class="fas fa-check-circle text-success text-4xl mb-3"></i>
+        <p class="text-base-content/60">No reports found.</p>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
