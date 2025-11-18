@@ -1,0 +1,62 @@
+{% extends 'social/base_social.html' %}
+{% load static %}
+
+{% comment %}
+Report a disturbing post: form to select report type and optional details.
+{% endcomment %}
+
+{% block social_title %}Report Post{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="card bg-base-100 shadow-lg">
+        <div class="card-body">
+            <h1 class="card-title text-xl">
+                <i class="fas fa-flag text-error"></i>
+                Report Post
+            </h1>
+
+            <p class="text-sm text-base-content/70 mb-4">
+                You’re reporting: <strong>{{ post.title }}</strong> by <strong>{{ post.author.username }}</strong>
+            </p>
+
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+
+                <div>
+                    <label class="label" for="id_report_type"><span class="label-text">Reason</span></label>
+                    {{ form.report_type }}
+                    {% if form.report_type.errors %}
+                        <p class="text-error text-sm mt-1">{{ form.report_type.errors|join:', ' }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="label" for="id_description"><span class="label-text">Details (optional)</span></label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                        <p class="text-error text-sm mt-1">{{ form.description.errors|join:', ' }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="flex gap-3 mt-4">
+                    <button type="submit" class="btn btn-error">
+                        <i class="fas fa-paper-plane"></i>
+                        Submit Report
+                    </button>
+                    <a class="btn btn-ghost" href="{% url 'social:post_detail' post.pk %}">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="alert alert-info mt-4">
+        <i class="fas fa-info-circle"></i>
+        <span>
+            Reports go to moderators for review. Abuse of reporting may lead to account actions.
+        </span>
+    </div>
+</div>
+{% endblock %}

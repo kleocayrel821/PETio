@@ -1,102 +1,127 @@
-{% extends 'base.html' %}
+{% extends 'social/base_social.html' %}
 
-{% block title %}Home - IOsocial{% endblock %}
+{% block social_title %}Home{% endblock %}
 
 {% block sidebar %}
-  {% include 'social/sidebar.html' with view_name='feed' %}
+  {% include 'social/sidebar.html' with view_name='home' %}
 {% endblock %}
 
-{% block content %}
-<div class="max-w-7xl mx-auto">
-    <!-- Hero Section -->
-    <div class="hero min-h-96 bg-gradient-to-r from-primary to-secondary rounded-lg mb-8">
-        <div class="hero-content text-center text-primary-content">
-            <div class="max-w-md">
-                <h1 class="mb-5 text-5xl font-bold">Welcome to IOsocial</h1>
-                <p class="mb-5">Connect, share, and engage with your community. Discover amazing content and build meaningful relationships.</p>
-                <a href="{% url 'social:feed' %}" class="btn btn-accent">Explore Feed</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="stat bg-base-100 shadow-lg rounded-lg">
-            <div class="stat-figure text-primary">
-                <i class="fas fa-users text-3xl"></i>
-            </div>
-            <div class="stat-title">Community Members</div>
-            <div class="stat-value text-primary">{{ total_users|default:"1K+" }}</div>
-            <div class="stat-desc">Growing every day</div>
-        </div>
-        
-        <div class="stat bg-base-100 shadow-lg rounded-lg">
-            <div class="stat-figure text-secondary">
-                <i class="fas fa-newspaper text-3xl"></i>
-            </div>
-            <div class="stat-title">Posts Shared</div>
-            <div class="stat-value text-secondary">{{ total_posts|default:"5K+" }}</div>
-            <div class="stat-desc">Stories and updates</div>
-        </div>
-        
-        <div class="stat bg-base-100 shadow-lg rounded-lg">
-            <div class="stat-figure text-accent">
-                <i class="fas fa-heart text-3xl"></i>
-            </div>
-            <div class="stat-title">Interactions</div>
-            <div class="stat-value text-accent">{{ total_interactions|default:"25K+" }}</div>
-            <div class="stat-desc">Likes and comments</div>
-        </div>
-    </div>
-
-    <!-- Features -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <div class="card bg-base-100 shadow-lg">
-            <div class="card-body text-center">
-                <i class="fas fa-stream text-4xl text-primary mb-4"></i>
-                <h2 class="card-title justify-center">Community Feed</h2>
-                <p>Stay updated with the latest posts from your community members.</p>
-                <div class="card-actions justify-center">
-                    <a href="{% url 'social:feed' %}" class="btn btn-primary">View Feed</a>
+{% block social_content %}
+<div class="min-h-screen bg-base-100">
+    <!-- Social Header Section -->
+    <div class="bg-gradient-to-r from-primary/15 to-primary/5 border-b border-base-300">
+        <div class="container mx-auto px-4 py-8">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div class="flex items-center gap-3">
+                    <div class="p-3 bg-primary/20 rounded-xl">
+                        <i class="fas fa-users text-primary text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl lg:text-3xl font-bold text-base-content">Welcome to IOsocial</h1>
+                        <p class="text-base-content/70 text-sm lg:text-base">Connect, share, and engage with your community</p>
+                    </div>
                 </div>
-            </div>
-        </div>
-        
-        <div class="card bg-base-100 shadow-lg">
-            <div class="card-body text-center">
-                <i class="fas fa-plus-circle text-4xl text-secondary mb-4"></i>
-                <h2 class="card-title justify-center">Share Your Story</h2>
-                <p>Create and share posts with images, videos, and rich content.</p>
-                <div class="card-actions justify-center">
-                    <a href="{% url 'social:create_post' %}" class="btn btn-secondary">Create Post</a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card bg-base-100 shadow-lg">
-            <div class="card-body text-center">
-                <i class="fas fa-tachometer-alt text-4xl text-accent mb-4"></i>
-                <h2 class="card-title justify-center">Your Dashboard</h2>
-                <p>Track your posts, engagement, and manage your social presence.</p>
-                <div class="card-actions justify-center">
-                    <a href="{% url 'social:dashboard' %}" class="btn btn-accent">View Dashboard</a>
+                <div class="flex items-center gap-2">
+                    <a href="{% url 'social:feed' %}" class="btn btn-primary btn-md lg:btn-lg">
+                        <i class="fas fa-stream"></i>
+                        Explore Feed
+                    </a>
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'social:create_post' %}" class="btn btn-outline btn-md lg:btn-lg">
+                        <i class="fas fa-plus"></i>
+                        Create Post
+                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
-    {% if not user.is_authenticated %}
-    <!-- Call to Action for Non-authenticated Users -->
-    <div class="card bg-base-100 shadow-lg">
-        <div class="card-body text-center">
-            <h2 class="card-title justify-center text-2xl mb-4">Join Our Community Today!</h2>
-            <p class="mb-6">Sign up to start sharing, connecting, and engaging with amazing people.</p>
-            <div class="card-actions justify-center gap-4">
-                <a href="{% url 'accounts:signup' %}" class="btn btn-primary">Sign Up</a>
-                <a href="{% url 'login' %}" class="btn btn-outline">Login</a>
+    <!-- Stats Cards -->
+    <div class="container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="card bg-gradient-to-r from-primary to-primary-focus text-white shadow-lg hover:shadow-xl transition-shadow">
+                <div class="card-body">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-2xl font-bold">{{ total_users|default:"1K+" }}</h3>
+                            <p class="opacity-90">Community Members</p>
+                        </div>
+                        <i class="fas fa-users text-3xl opacity-90"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card bg-gradient-to-r from-secondary to-secondary-focus text-white shadow-lg hover:shadow-xl transition-shadow">
+                <div class="card-body">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-2xl font-bold">{{ total_posts|default:"5K+" }}</h3>
+                            <p class="opacity-90">Posts Shared</p>
+                        </div>
+                        <i class="fas fa-newspaper text-3xl opacity-90"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card bg-gradient-to-r from-accent to-accent-focus text-white shadow-lg hover:shadow-xl transition-shadow">
+                <div class="card-body">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-2xl font-bold">{{ total_interactions|default:"25K+" }}</h3>
+                            <p class="opacity-90">Interactions</p>
+                        </div>
+                        <i class="fas fa-heart text-3xl opacity-90"></i>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- Features -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div class="card bg-base-100 shadow-lg">
+                <div class="card-body text-center">
+                    <i class="fas fa-stream text-4xl text-primary mb-4"></i>
+                    <h2 class="card-title justify-center">Community Feed</h2>
+                    <p>Stay updated with the latest posts from your community members.</p>
+                    <div class="card-actions justify-center">
+                        <a href="{% url 'social:feed' %}" class="btn btn-primary">View Feed</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-lg">
+                <div class="card-body text-center">
+                    <i class="fas fa-plus-circle text-4xl text-secondary mb-4"></i>
+                    <h2 class="card-title justify-center">Share Your Story</h2>
+                    <p>Create and share posts with images, videos, and rich content.</p>
+                    <div class="card-actions justify-center">
+                        <a href="{% url 'social:create_post' %}" class="btn btn-secondary">Create Post</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-lg">
+                <div class="card-body text-center">
+                    <i class="fas fa-tachometer-alt text-4xl text-accent mb-4"></i>
+                    <h2 class="card-title justify-center">Your Dashboard</h2>
+                    <p>Track your posts, engagement, and manage your social presence.</p>
+                    <div class="card-actions justify-center">
+                        <a href="{% url 'social:dashboard' %}" class="btn btn-accent">View Dashboard</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if not user.is_authenticated %}
+        <!-- Call to Action for Non-authenticated Users -->
+        <div class="card bg-base-100 shadow-lg">
+            <div class="card-body text-center">
+                <h2 class="card-title justify-center text-2xl mb-4">Join Our Community Today!</h2>
+                <p class="mb-6">Sign up to start sharing, connecting, and engaging with amazing people.</p>
+                <div class="card-actions justify-center gap-4">
+                    <a href="{% url 'accounts:signup' %}" class="btn btn-primary">Sign Up</a>
+                    <a href="{% url 'login' %}" class="btn btn-outline">Login</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 {% endblock %}

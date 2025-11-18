@@ -1,0 +1,160 @@
+{% extends "social/base_social.html" %}
+{% block social_title %}Report Detail{% endblock %}
+{% block sidebar %}{% include 'social/moderation/sidebar.html' %}{% endblock %}
+{% block social_content %}
+<div class="max-w-6xl mx-auto">
+  <!-- Header / Hero -->
+  <div class="mb-6">
+    <div class="flex items-start justify-between">
+      <div>
+        <h1 class="text-3xl font-bold flex items-center gap-3">
+          <span class="p-3 rounded-xl bg-error/10"><i class="fas fa-flag text-error"></i></span>
+          <span>Report #{{ report.pk }}</span>
+        </h1>
+        <p class="text-base-content/60 mt-1">Submitted {{ report.created_at|timesince }} ago</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="badge badge-sm {% if report.report_type == 'spam' %}badge-warning{% elif report.report_type == 'harassment' %}badge-error{% elif report.report_type == 'inappropriate' %}badge-warning{% else %}badge-info{% endif %}">{{ report.get_report_type_display }}</span>
+        <span class="badge badge-sm badge-ghost">
+          {% if report.status == 'pending' %}<i class="fas fa-clock mr-1"></i>{% elif report.status == 'reviewing' %}<i class="fas fa-eye mr-1"></i>{% elif report.status == 'resolved' %}<i class="fas fa-check mr-1"></i>{% endif %}
+          {{ report.get_status_display }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subject / Context card -->
+  <div class="card bg-base-100 shadow-sm mb-6">
+    <div class="card-body">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="lg:col-span-2">
+          <h2 class="card-title mb-2"><i class="fas fa-info-circle text-primary"></i> Context</h2>
+          <div class="text-sm text-base-content/70 space-y-2">
+            {% if report.reporter %}
+              <p>Reporter: <a class="link" href="{% url 'social:profile' report.reporter.username %}">@{{ report.reporter.username }}</a></p>
+            {% endif %}
+            {% if report.reported_post %}
+              <p>
+                <i class="fas fa-file-alt text-primary"></i>
+                Post: <a class="link" href="{% url 'social:post_detail' report.reported_post.id %}">{{ report.reported_post.title|default:"#" }}</a>
+              </p>
+            {% endif %}
+            {% if report.reported_comment %}
+              <p>
+                <i class="fas fa-comment text-info"></i>
+                Comment: <a class="link" href="{% url 'social:post_detail' report.reported_comment.post_id %}#comment-{{ report.reported_comment.id }}">{{ report.reported_comment.content|truncatechars:120 }}</a>
+              </p>
+            {% endif %}
+            {% if report.reported_user %}
+              <p>
+                <i class="fas fa-user text-warning"></i>
+                Reported User: <a class="link" href="{% url 'social:profile' report.reported_user.username %}">@{{ report.reported_user.username }}</a>
+              </p>
+            {% endif %}
+          </div>
+        </div>
+        <div>
+          <div class="bg-base-200 rounded-xl p-4">
+            <p class="text-xs text-base-content/60">Description</p>
+            <p class="text-sm mt-1">{{ report.description|default:"No description provided." }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content-specific moderation actions -->
+  {% if report.reported_post or report.reported_comment %}
+  <div class="card bg-base-100 shadow-sm mb-6">
+    <div class="card-body">
+      <h2 class="card-title"><i class="fas fa-tools text-primary"></i> Moderation Actions</h2>
+      <div class="flex flex-wrap items-center gap-2 mt-2">
+        {% if report.reported_post %}
+          <form method="POST" action="{% url 'social:approve_post' report.reported_post.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-xs btn-success"><i class="fas fa-check"></i> Approve Post</button>
+          </form>
+          <details class="dropdown dropdown-top">
+            <summary class="btn btn-xs btn-warning"><i class="fas fa-eye-slash"></i> Hide Post</summary>
+            <div class="dropdown-content p-3 bg-base-200 rounded-box w-72 shadow-lg border border-base-300 z-50">
+              <form method="POST" action="{% url 'social:hide_post' report.reported_post.id %}">
+                {% csrf_token %}
+                <label class="label"><span class="label-text text-xs">Reason</span></label>
+                <textarea name="reason" class="textarea textarea-bordered textarea-sm w-full" required></textarea>
+                <button type="submit" class="btn btn-xs btn-warning mt-2">Confirm Hide</button>
+              </form>
+            </div>
+          </details>
+          <details class="dropdown dropdown-top">
+            <summary class="btn btn-xs btn-error"><i class="fas fa-trash"></i> Delete Post</summary>
+            <div class="dropdown-content p-3 bg-base-200 rounded-box w-72 shadow-lg border border-base-300 z-50">
+              <form method="POST" action="{% url 'social:moderate_delete_post' report.reported_post.id %}" onsubmit="return confirm('Delete this post permanently?')">
+                {% csrf_token %}
+                <label class="label"><span class="label-text text-xs">Reason</span></label>
+                <textarea name="reason" class="textarea textarea-bordered textarea-sm w-full" required></textarea>
+                <button type="submit" class="btn btn-xs btn-error mt-2">Confirm Delete</button>
+              </form>
+            </div>
+          </details>
+        {% elif report.reported_comment %}
+          <form method="POST" action="{% url 'social:approve_comment' report.reported_comment.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-xs btn-success"><i class="fas fa-check"></i> Approve Comment</button>
+          </form>
+          <details class="dropdown dropdown-top">
+            <summary class="btn btn-xs btn-warning"><i class="fas fa-eye-slash"></i> Hide Comment</summary>
+            <div class="dropdown-content p-3 bg-base-200 rounded-box w-72 shadow-lg border border-base-300 z-50">
+              <form method="POST" action="{% url 'social:hide_comment' report.reported_comment.id %}">
+                {% csrf_token %}
+                <label class="label"><span class="label-text text-xs">Reason</span></label>
+                <textarea name="reason" class="textarea textarea-bordered textarea-sm w-full" required></textarea>
+                <button type="submit" class="btn btn-xs btn-warning mt-2">Confirm Hide</button>
+              </form>
+            </div>
+          </details>
+          <details class="dropdown dropdown-top">
+            <summary class="btn btn-xs btn-error"><i class="fas fa-trash"></i> Delete Comment</summary>
+            <div class="dropdown-content p-3 bg-base-200 rounded-box w-72 shadow-lg border border-base-300 z-50">
+              <form method="POST" action="{% url 'social:moderate_delete_comment' report.reported_comment.id %}" onsubmit="return confirm('Delete this comment permanently?')">
+                {% csrf_token %}
+                <label class="label"><span class="label-text text-xs">Reason</span></label>
+                <textarea name="reason" class="textarea textarea-bordered textarea-sm w-full" required></textarea>
+                <button type="submit" class="btn btn-xs btn-error mt-2">Confirm Delete</button>
+              </form>
+            </div>
+          </details>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Report resolution controls -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="card bg-base-100 shadow-sm">
+      <div class="card-body">
+        <h3 class="card-title text-sm"><i class="fas fa-check-circle text-success"></i> Resolve Report</h3>
+        <form method="POST" action="{% url 'social:resolve_report' report.pk %}">
+          {% csrf_token %}
+          <label class="label"><span class="label-text text-xs">Action Taken (optional)</span></label>
+          <input type="text" name="action_taken" class="input input-bordered input-sm w-full" placeholder="e.g., Post hidden" />
+          <label class="label"><span class="label-text text-xs">Resolution Notes</span></label>
+          <textarea name="resolution_notes" class="textarea textarea-bordered textarea-sm w-full h-28" required></textarea>
+          <button type="submit" class="btn btn-sm btn-success mt-3"><i class="fas fa-check"></i> Mark Resolved</button>
+        </form>
+      </div>
+    </div>
+    <div class="card bg-base-100 shadow-sm">
+      <div class="card-body">
+        <h3 class="card-title text-sm"><i class="fas fa-times-circle text-error"></i> Dismiss Report</h3>
+        <form method="POST" action="{% url 'social:dismiss_report' report.pk %}">
+          {% csrf_token %}
+          <label class="label"><span class="label-text text-xs">Reason for dismissal</span></label>
+          <textarea name="reason" class="textarea textarea-bordered textarea-sm w-full h-28" required></textarea>
+          <button type="submit" class="btn btn-sm btn-error mt-3"><i class="fas fa-times"></i> Dismiss</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

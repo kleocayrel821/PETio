@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load avatar %}
 
 {% block title %}My Dashboard - PETio Social{% endblock %}
 
@@ -168,7 +169,7 @@
                             {% if profile.avatar %}
                                 <img src="{{ profile.avatar.url }}" alt="{{ user.get_full_name|default:user.username }}" />
                             {% else %}
-                                <img src="https://ui-avatars.com/api/?name={{ user.get_full_name|default:user.username|urlencode }}&background=3B82F6&color=fff&size=80" alt="{{ user.get_full_name|default:user.username }}" />
+                                <img src="{% avatar_url user 80 %}" alt="{{ user.get_full_name|default:user.username }}" />
                             {% endif %}
                         </div>
                     </div>
@@ -217,7 +218,7 @@
                         <div class="flex items-start space-x-3 p-2 rounded hover:bg-base-200 transition-colors">
                             <div class="avatar">
                                 <div class="w-8 rounded-full">
-                                    <img src="https://ui-avatars.com/api/?name={{ notification.sender.username }}&background=3B82F6&color=fff&size=32" alt="{{ notification.sender.username }}" />
+                                    <img src="{% avatar_url notification.sender 32 %}" alt="{{ notification.sender.username }}" />
                                 </div>
                             </div>
                             <div class="flex-1 min-w-0">
