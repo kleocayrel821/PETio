@@ -8,6 +8,9 @@ from .models import (
     UserProfile,
     Notification,
     Announcement,
+    SocialReport,
+    ModerationAction,
+    UserSuspension,
 )
 
 
@@ -71,3 +74,53 @@ class AnnouncementAdmin(admin.ModelAdmin):
     list_display = ("title", "is_active", "start_at", "end_at", "created_at")
     search_fields = ("title", "content")
     list_filter = ("is_active", "created_at")
+
+
+@admin.register(SocialReport)
+class SocialReportAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "report_type",
+        "status",
+        "reporter",
+        "reported_user",
+        "reported_post",
+        "reported_comment",
+        "created_at",
+    )
+    search_fields = (
+        "description",
+        "reporter__username",
+        "reported_user__username",
+        "reported_post__title",
+    )
+    list_filter = ("report_type", "status", "created_at")
+    autocomplete_fields = ("reporter", "reported_user", "reported_post", "reported_comment")
+
+
+@admin.register(ModerationAction)
+class ModerationActionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "action_type",
+        "moderator",
+        "target_user",
+        "target_post",
+        "target_comment",
+        "created_at",
+    )
+    search_fields = (
+        "moderator__username",
+        "target_user__username",
+        "reason",
+    )
+    list_filter = ("action_type", "created_at")
+    autocomplete_fields = ("moderator", "target_user", "target_post", "target_comment", "related_report")
+
+
+@admin.register(UserSuspension)
+class UserSuspensionAdmin(admin.ModelAdmin):
+    list_display = ("user", "is_active", "start_at", "end_at", "created_by")
+    search_fields = ("user__username", "reason")
+    list_filter = ("is_active", "start_at")
+    autocomplete_fields = ("user", "created_by")

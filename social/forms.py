@@ -1,5 +1,5 @@
 from django import forms
-from .models import Post, Comment, UserProfile
+from .models import Post, Comment, UserProfile, SocialReport
 
 
 class PostForm(forms.ModelForm):
@@ -93,3 +93,33 @@ class ProfileForm(forms.ModelForm):
                 "class": "toggle toggle-primary",
             }),
         }
+
+
+class SocialReportForm(forms.ModelForm):
+    """
+    Form used by users to report a post.
+
+    Captures the `report_type` and an optional `description` explaining
+    why the content is disturbing. Keeps widgets consistent with the
+    existing UI styles.
+    """
+
+    class Meta:
+        model = SocialReport
+        fields = ["report_type", "description"]
+        widgets = {
+            "report_type": forms.Select(attrs={
+                "class": "select select-bordered w-full",
+            }),
+            "description": forms.Textarea(attrs={
+                "class": "textarea textarea-bordered w-full min-h-[120px]",
+                "placeholder": "Provide details (optional)",
+            }),
+        }
+
+    def clean_description(self):
+        """Normalize whitespace; allow empty but limit max length."""
+        desc = (self.cleaned_data.get("description") or "").strip()
+        if len(desc) > 1000:
+            raise forms.ValidationError("Description must be at most 1000 characters.")
+        return desc

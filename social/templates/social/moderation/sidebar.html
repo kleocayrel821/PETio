@@ -1,0 +1,61 @@
+<!-- Moderation Sidebar Navigation -->
+<div class="space-y-2">
+    <div class="px-4 py-2">
+        <h3 class="text-xs font-semibold text-base-content/60 uppercase tracking-wider">
+            <i class="fas fa-shield-alt mr-2"></i>Moderation
+        </h3>
+    </div>
+    
+    <a href="{% url 'social:moderation_dashboard' %}"
+       class="flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'moderation_dashboard' %}bg-primary text-primary-content{% else %}hover:bg-base-200{% endif %}">
+        <i class="fas fa-tachometer-alt w-5"></i>
+        <span>Dashboard</span>
+    </a>
+    
+    <a href="{% url 'social:moderation_reports' %}"
+       class="flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'moderation_reports' or request.resolver_match.url_name == 'report_detail' %}bg-primary text-primary-content{% else %}hover:bg-base-200{% endif %}">
+        <i class="fas fa-flag w-5"></i>
+        <span>Reports</span>
+        {% if pending_reports_count and pending_reports_count > 0 %}
+            <span class="badge badge-error badge-sm ml-auto">{{ pending_reports_count }}</span>
+        {% endif %}
+    </a>
+    
+    <a href="{% url 'social:moderation_queue' %}"
+       class="flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'moderation_queue' %}bg-primary text-primary-content{% else %}hover:bg-base-200{% endif %}">
+        <i class="fas fa-layer-group w-5"></i>
+        <span>Queue</span>
+    </a>
+    
+    <a href="{% url 'social:moderation_users' %}"
+       class="flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'moderation_users' %}bg-primary text-primary-content{% else %}hover:bg-base-200{% endif %}">
+        <i class="fas fa-users-cog w-5"></i>
+        <span>Users</span>
+    </a>
+    
+    <a href="{% url 'social:moderation_logs' %}"
+       class="flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'moderation_logs' %}bg-primary text-primary-content{% else %}hover:bg-base-200{% endif %}">
+        <i class="fas fa-history w-5"></i>
+        <span>Logs</span>
+    </a>
+    
+    <div class="divider my-2"></div>
+    
+    <div class="px-4 py-2">
+        <h3 class="text-xs font-semibold text-base-content/60 uppercase tracking-wider">
+            <i class="fas fa-stream mr-2"></i>Social
+        </h3>
+    </div>
+    
+    <a href="{% url 'social:feed' %}"
+       class="flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors hover:bg-base-200">
+        <i class="fas fa-home w-5"></i>
+        <span>Back to Feed</span>
+    </a>
+    
+    <a href="{% url 'social:dashboard' %}"
+       class="flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors hover:bg-base-200">
+        <i class="fas fa-user w-5"></i>
+        <span>My Dashboard</span>
+    </a>
+</div>

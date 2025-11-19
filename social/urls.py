@@ -1,5 +1,10 @@
 from django.urls import path
 from . import views
+from .moderation_views import (
+    ModerationDashboardView,
+    ModerationReportsView,
+    ReportDetailView,
+)
 
 app_name = 'social'
 
@@ -15,6 +20,7 @@ urlpatterns = [
     path('post/<int:pk>/', views.post_detail, name='post_detail'),
     path('post/<int:pk>/edit/', views.edit_post, name='edit_post'),
     path('post/<int:pk>/delete/', views.delete_post, name='delete_post'),
+    path('post/<int:pk>/report/', views.report_post, name='report_post'),
     path('post/<int:post_id>/comment/', views.comment_create, name='comment_create'),
     
     # AJAX endpoints
@@ -36,4 +42,31 @@ urlpatterns = [
     path('notifications/<int:pk>/delete/', views.delete_notification, name='delete_notification'),
     path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
     path('notifications/clear-all/', views.clear_all_notifications, name='clear_all_notifications'),
+
+    # Moderation endpoints
+    path('moderation/', ModerationDashboardView.as_view(), name='moderation_dashboard'),
+    path('moderation/reports/', ModerationReportsView.as_view(), name='moderation_reports'),
+    # Moderation - Content Actions
+    path('moderation/post/<int:post_id>/approve/', views.approve_post, name='approve_post'),
+    path('moderation/post/<int:post_id>/hide/', views.hide_post, name='hide_post'),
+    path('moderation/post/<int:post_id>/delete/', views.moderate_delete_post, name='moderate_delete_post'),
+    path('moderation/comment/<int:comment_id>/approve/', views.approve_comment, name='approve_comment'),
+    path('moderation/comment/<int:comment_id>/hide/', views.hide_comment, name='hide_comment'),
+    path('moderation/comment/<int:comment_id>/delete/', views.moderate_delete_comment, name='moderate_delete_comment'),
+
+    # Moderation - User Actions
+    path('moderation/user/<int:user_id>/warn/', views.warn_user, name='warn_user'),
+    path('moderation/user/<int:user_id>/suspend/', views.suspend_user, name='suspend_user'),
+    path('moderation/user/<int:user_id>/ban/', views.ban_user, name='ban_user'),
+    path('moderation/user/<int:user_id>/unsuspend/', views.unsuspend_user, name='unsuspend_user'),
+
+    # Moderation - Report Actions
+    path('moderation/report/<int:pk>/resolve/', views.resolve_report, name='resolve_report'),
+    path('moderation/report/<int:pk>/dismiss/', views.dismiss_report, name='dismiss_report'),
+
+    # Moderation - Views (FBVs)
+    path('moderation/queue/', views.moderation_queue, name='moderation_queue'),
+    path('moderation/users/', views.moderation_users, name='moderation_users'),
+    path('moderation/logs/', views.moderation_logs, name='moderation_logs'),
+    path('report/<int:pk>/', ReportDetailView.as_view(), name='report_detail'),
 ]

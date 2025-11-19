@@ -1,0 +1,132 @@
+{% extends "social/base_social.html" %}
+{% block social_title %}Moderation Logs{% endblock %}
+{% block sidebar %}{% include 'social/moderation/sidebar.html' %}{% endblock %}
+{% block social_content %}
+<div class="max-w-6xl mx-auto">
+  <h1 class="text-2xl font-bold mb-4 flex items-center gap-2">
+    <i class="fas fa-history"></i>
+    <span>Moderation Logs</span>
+  </h1>
+
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
+    <div class="stats bg-base-100 shadow col-span-1 lg:col-span-4">
+      <div class="stat">
+        <div class="stat-title">Total Actions</div>
+        <div class="stat-value text-primary">{{ log_stats.total_actions }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-title">Today</div>
+        <div class="stat-value text-secondary">{{ log_stats.today_actions }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-title">Last 7 Days</div>
+        <div class="stat-value">{{ log_stats.this_week_actions }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 mb-6">
+    <div class="card-body">
+      <form method="get" action="" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div>
+          <label class="label"><span class="label-text">Moderator</span></label>
+          <select name="moderator" class="select select-bordered w-full">
+            <option value="">All</option>
+            {% for mod in moderators %}
+              <option value="{{ mod.username }}" {% if moderator_filter == mod.username %}selected{% endif %}>@{{ mod.username }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="label"><span class="label-text">Action Type</span></label>
+          <select name="action_type" class="select select-bordered w-full">
+            <option value="">All</option>
+            {% for key,label in action_types %}
+              <option value="{{ key }}" {% if action_type_filter == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="label"><span class="label-text">Date From</span></label>
+          <input type="date" name="date_from" value="{{ date_from }}" class="input input-bordered w-full" />
+        </div>
+        <div>
+          <label class="label"><span class="label-text">Date To</span></label>
+          <input type="date" name="date_to" value="{{ date_to }}" class="input input-bordered w-full" />
+        </div>
+        <div class="md:col-span-3 lg:col-span-2">
+          <label class="label"><span class="label-text">Search</span></label>
+          <input type="text" name="search" placeholder="Reason, moderator, target user" value="{{ search_query }}" class="input input-bordered w-full" />
+        </div>
+        <div class="md:col-span-3 lg:col-span-1 flex items-end gap-2">
+          <button type="submit" class="btn btn-primary w-full">Apply</button>
+          <a href="{% url 'social:moderation_logs' %}" class="btn btn-ghost">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="space-y-2">
+    {% for action in page_obj %}
+      <div class="card bg-base-100">
+        <div class="card-body">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="font-semibold text-sm">@{{ action.moderator.username }}</span>
+            <span class="badge badge-ghost">{{ action.get_action_type_display }}</span>
+            <span class="text-xs text-base-content/60 ml-auto">{{ action.created_at|date:"Y-m-d H:i" }}</span>
+          </div>
+          {% if action.reason %}
+            <p class="text-sm text-base-content/70">{{ action.reason }}</p>
+          {% endif %}
+          <div class="mt-2 text-xs text-base-content/70 flex flex-wrap gap-3">
+            {% if action.target_user %}
+              <span>
+                User:
+                <a class="link" href="{% url 'social:profile' action.target_user.username %}">@{{ action.target_user.username }}</a>
+              </span>
+            {% endif %}
+            {% if action.target_post %}
+              <span>
+                Post:
+                <a class="link" href="{% url 'social:post_detail' action.target_post.id %}">{{ action.target_post.title|default:"#" }}</a>
+              </span>
+            {% endif %}
+            {% if action.target_comment %}
+              <span>
+                Comment:
+                <a class="link" href="{% url 'social:post_detail' action.target_comment.post_id %}#comment-{{ action.target_comment.id }}">
+                  {{ action.target_comment.content|truncatechars:60 }}
+                </a>
+              </span>
+            {% endif %}
+            {% if action.related_report %}
+              <span>
+                Report:
+                <a class="link" href="{% url 'social:report_detail' action.related_report.id %}">#{{ action.related_report.id }}</a>
+              </span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <p class="text-base-content/60">No actions match your filters.</p>
+    {% endfor %}
+  </div>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+    <div class="join mt-6">
+      {% if page_obj.has_previous %}
+        <a class="join-item btn" href="?page={{ page_obj.previous_page_number }}&moderator={{ moderator_filter }}&action_type={{ action_type_filter }}&date_from={{ date_from }}&date_to={{ date_to }}&search={{ search_query }}">« Prev</a>
+      {% else %}
+        <button class="join-item btn" disabled>« Prev</button>
+      {% endif %}
+      <button class="join-item btn btn-ghost">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</button>
+      {% if page_obj.has_next %}
+        <a class="join-item btn" href="?page={{ page_obj.next_page_number }}&moderator={{ moderator_filter }}&action_type={{ action_type_filter }}&date_from={{ date_from }}&date_to={{ date_to }}&search={{ search_query }}">Next »</a>
+      {% else %}
+        <button class="join-item btn" disabled>Next »</button>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

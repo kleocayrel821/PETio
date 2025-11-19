@@ -1,0 +1,385 @@
+{% extends "social/base_social.html" %}
+
+{% block social_title %}Moderation Dashboard{% endblock %}
+
+{% block sidebar %}
+  {% include 'social/moderation/sidebar.html' %}
+{% endblock %}
+
+{% block social_content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Header (Sticky) -->
+    <div class="sticky top-0 z-30 bg-base-100/90 backdrop-blur mb-8 shadow-sm">
+        <div class="flex items-center justify-between py-4 px-2">
+            <div>
+                <h1 class="text-3xl font-bold mb-2 flex items-center gap-3">
+                    <div class="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                        <i class="fas fa-shield-alt text-2xl"></i>
+                    </div>
+                    <span>Moderation Dashboard</span>
+                </h1>
+                <p class="text-base-content/60">Monitor and manage community content and user behavior</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <button class="btn btn-ghost btn-circle">
+                        <i class="fas fa-bell text-xl"></i>
+                    </button>
+                    <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+                </div>
+                <span class="badge badge-lg text-white bg-gradient-to-r from-blue-500 to-indigo-600">
+                    <i class="fas fa-user-shield mr-2"></i>
+                    Moderator
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <!-- Pending Reports Card -->
+        <div class="card bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 rounded-xl cursor-pointer">
+            <div class="card-body">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="p-3 bg-white/20 rounded-full">
+                        <i class="fas fa-flag text-2xl"></i>
+                    </div>
+                    <div class="badge badge-error badge-lg">URGENT</div>
+                </div>
+                <h3 class="text-3xl font-bold mb-1">{{ pending_reports_count }}</h3>
+                <p class="opacity-90 text-sm mb-3">Pending Reports</p>
+                <a href="{% url 'social:moderation_reports' %}?status=pending"
+                   class="btn btn-sm bg-white/20 border-white/30 hover:bg-white/30 text-white transition-all duration-300">
+                    Review Now <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Reviewing Reports Card -->
+        <div class="card bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 rounded-xl cursor-pointer">
+            <div class="card-body">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="p-3 bg-white/20 rounded-full">
+                        <i class="fas fa-eye text-2xl"></i>
+                    </div>
+                </div>
+                <h3 class="text-3xl font-bold mb-1">{{ reviewing_reports_count }}</h3>
+                <p class="opacity-90 text-sm mb-3">Under Review</p>
+                <a href="{% url 'social:moderation_reports' %}?status=reviewing"
+                   class="btn btn-sm bg-white/20 border-white/30 hover:bg-white/30 text-white transition-all duration-300">
+                    View All <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Flagged Posts Card -->
+        <div class="card bg-gradient-to-br from-yellow-500 to-yellow-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 rounded-xl cursor-pointer">
+            <div class="card-body">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="p-3 bg-white/20 rounded-full">
+                        <i class="fas fa-file-alt text-2xl"></i>
+                    </div>
+                </div>
+                <h3 class="text-3xl font-bold mb-1">{{ flagged_posts_count }}</h3>
+                <p class="opacity-90 text-sm mb-3">Flagged Posts</p>
+                <a href="{% url 'social:moderation_queue' %}?type=posts"
+                   class="btn btn-sm bg-white/20 border-white/30 hover:bg-white/30 text-white transition-all duration-300">
+                    Review <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Flagged Comments Card -->
+        <div class="card bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 rounded-xl cursor-pointer">
+            <div class="card-body">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="p-3 bg-white/20 rounded-full">
+                        <i class="fas fa-comment text-2xl"></i>
+                    </div>
+                </div>
+                <h3 class="text-3xl font-bold mb-1">{{ flagged_comments_count }}</h3>
+                <p class="opacity-90 text-sm mb-3">Flagged Comments</p>
+                <a href="{% url 'social:moderation_queue' %}?type=comments"
+                   class="btn btn-sm bg-white/20 border-white/30 hover:bg-white/30 text-white transition-all duration-300">
+                    Review <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Suspended Users Card -->
+        <div class="card bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 rounded-xl cursor-pointer">
+            <div class="card-body">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="p-3 bg-white/20 rounded-full">
+                        <i class="fas fa-user-slash text-2xl"></i>
+                    </div>
+                </div>
+                <h3 class="text-3xl font-bold mb-1">{{ suspended_users_count }}</h3>
+                <p class="opacity-90 text-sm mb-3">Suspended Users</p>
+                <a href="{% url 'social:moderation_users' %}?status=suspended"
+                   class="btn btn-sm bg-white/20 border-white/30 hover:bg-white/30 text-white transition-all duration-300">
+                    Manage <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Overview -->
+    <div class="card bg-base-100 shadow-lg mb-8 rounded-xl">
+        <div class="card-body">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="card-title">
+                <i class="fas fa-chart-line text-primary"></i>
+                Weekly Overview
+              </h2>
+              <div>
+                <label class="label hidden md:flex"><span class="label-text text-xs">Range</span></label>
+                <select class="select select-bordered select-sm w-32">
+                  <option selected>Last 7 days</option>
+                  <option>Last 30 days</option>
+                  <option>Last 90 days</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="stat bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-lg p-4 shadow hover:shadow-xl transition-all duration-300">
+                    <div class="stat-title text-xs">Reports Created</div>
+                    <div class="stat-value text-2xl">{{ weekly_stats.reports_created }}</div>
+                    <div class="stat-desc">Last 7 days</div>
+                </div>
+                <div class="stat bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-lg p-4 shadow hover:shadow-xl transition-all duration-300">
+                    <div class="stat-title text-xs">Reports Resolved</div>
+                    <div class="stat-value text-2xl">{{ weekly_stats.reports_resolved }}</div>
+                    <div class="stat-desc">Last 7 days</div>
+                </div>
+                <div class="stat bg-gradient-to-br from-yellow-500 to-amber-600 text-white rounded-lg p-4 shadow hover:shadow-xl transition-all duration-300">
+                    <div class="stat-title text-xs">Actions Taken</div>
+                    <div class="stat-value text-2xl">{{ weekly_stats.actions_taken }}</div>
+                    <div class="stat-desc">Last 7 days</div>
+                </div>
+                <div class="stat bg-gradient-to-br from-red-500 to-rose-600 text-white rounded-lg p-4 shadow hover:shadow-xl transition-all duration-300">
+                    <div class="stat-title text-xs">Users Suspended</div>
+                    <div class="stat-value text-2xl">{{ weekly_stats.users_suspended }}</div>
+                    <div class="stat-desc">Last 7 days</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Recent Reports -->
+        <div class="card bg-base-100 shadow-lg">
+            <div class="card-body">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="card-title">
+                        <i class="fas fa-flag text-error"></i>
+                        Recent Reports
+                    </h2>
+                    <a href="{% url 'social:moderation_reports' %}" class="btn btn-ghost btn-sm transition-all duration-300">
+                        View All <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+
+                <div class="space-y-3">
+                    {% for report in recent_reports %}
+                    <div class="group border-l-4 {% if report.status == 'pending' %}border-error{% else %}border-warning{% endif %} pl-3 bg-base-200 p-3 rounded-r-lg hover:bg-base-300 transition-all duration-300">
+                        <div class="flex items-start justify-between mb-2">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="badge badge-sm {% if report.report_type == 'spam' %}badge-warning{% elif report.report_type == 'harassment' %}badge-error{% elif report.report_type == 'inappropriate' %}badge-warning{% else %}badge-info{% endif %}">
+                                    {{ report.get_report_type_display }}
+                                </span>
+                                <span class="badge badge-sm badge-ghost">
+                                    {% if report.status == 'pending' %}
+                                        <i class="fas fa-clock mr-1"></i>
+                                    {% elif report.status == 'reviewing' %}
+                                        <i class="fas fa-eye mr-1"></i>
+                                    {% endif %}
+                                    {{ report.get_status_display }}
+                                </span>
+                            </div>
+                            <span class="text-xs text-base-content/60">{{ report.created_at|timesince }} ago</span>
+                        </div>
+                        
+                        <p class="text-sm font-semibold mb-1">
+                            {% if report.reported_post %}
+                                <i class="fas fa-file-alt text-primary"></i> Post: {{ report.reported_post.title|truncatewords:8 }}
+                            {% elif report.reported_comment %}
+                                <i class="fas fa-comment text-info"></i> Comment by {{ report.reported_comment.author.username }}
+                            {% elif report.reported_user %}
+                                <i class="fas fa-user text-warning"></i> User: {{ report.reported_user.username }}
+                            {% endif %}
+                        </p>
+                        
+                        <p class="text-xs text-base-content/70 mb-2">
+                            Reported by {{ report.reporter.username }}
+                        </p>
+                        
+                        <p class="text-xs text-base-content/60 mb-2 line-clamp-2">{{ report.description }}</p>
+                        
+                        <a href="{% url 'social:report_detail' report.pk %}" class="btn btn-xs btn-primary transition-all duration-300">
+                            <i class="fas fa-search"></i> Review Report
+                        </a>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-8">
+                        <i class="fas fa-check-circle text-4xl text-success mb-3"></i>
+                        <p class="text-base-content/60">No pending reports</p>
+                        <p class="text-sm text-base-content/50">Great job! Everything is under control.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Moderation Actions -->
+        <div class="card bg-base-100 shadow-lg rounded-xl">
+            <div class="card-body">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="card-title">
+                        <i class="fas fa-history text-primary"></i>
+                        Recent Actions
+                    </h2>
+                    <a href="{% url 'social:moderation_logs' %}" class="btn btn-ghost btn-sm transition-all duration-300">
+                        View All <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+
+                <div class="space-y-3 max-h-96 overflow-y-auto">
+                    {% for action in recent_actions %}
+                    <div class="flex items-start space-x-3 p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-all duration-300">
+                        <div class="avatar placeholder">
+                            <div class="w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                                <span class="text-sm">{{ action.moderator.username|first|upper }}</span>
+                            </div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-semibold text-sm">{{ action.moderator.username }}</span>
+                                {% if action.action_type == 'delete_post' or action.action_type == 'delete_comment' %}
+                                    <span class="badge badge-error badge-xs">
+                                        <i class="fas fa-trash mr-1"></i>{{ action.get_action_type_display }}
+                                    </span>
+                                {% elif action.action_type == 'warn' %}
+                                    <span class="badge badge-warning badge-xs">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>{{ action.get_action_type_display }}
+                                    </span>
+                                {% elif action.action_type == 'suspend' or action.action_type == 'ban' %}
+                                    <span class="badge badge-error badge-xs">
+                                        <i class="fas fa-ban mr-1"></i>{{ action.get_action_type_display }}
+                                    </span>
+                                {% elif action.action_type == 'restore_post' or action.action_type == 'restore_comment' %}
+                                    <span class="badge badge-success badge-xs">
+                                        <i class="fas fa-undo mr-1"></i>{{ action.get_action_type_display }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-info badge-xs">{{ action.get_action_type_display }}</span>
+                                {% endif %}
+                            </div>
+                            
+                            <p class="text-sm text-base-content/80 mb-1">
+                                {% if action.target_user %}
+                                    Target: <span class="font-medium">{{ action.target_user.username }}</span>
+                                {% elif action.target_post %}
+                                    Post: <span class="font-medium">{{ action.target_post.title|truncatewords:6 }}</span>
+                                {% elif action.target_comment %}
+                                    Comment #{{ action.target_comment.id }}
+                                {% endif %}
+                            </p>
+                            
+                            <p class="text-xs text-base-content/60 line-clamp-1">{{ action.reason|truncatewords:15 }}</p>
+                            <p class="text-xs text-base-content/50 mt-1">{{ action.created_at|timesince }} ago</p>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-8">
+                        <i class="fas fa-history text-4xl text-base-content/30 mb-3"></i>
+                        <p class="text-base-content/60">No recent actions</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Your Moderation Stats (if moderator) -->
+    {% if moderator_stats %}
+        <div class="card bg-base-100 shadow-lg mt-6 rounded-xl">
+            <div class="card-body">
+                <h2 class="card-title mb-4">
+                    <i class="fas fa-user-shield text-success"></i>
+                    Your Activity (Last 30 Days)
+                </h2>
+            <div class="flex items-center justify-between">
+                <div class="stats stats-horizontal shadow">
+                    <div class="stat">
+                        <div class="stat-title">Total Actions</div>
+                        <div class="stat-value text-primary">{{ user_actions_count }}</div>
+                        <div class="stat-desc">All time</div>
+                    </div>
+                    
+                    {% for stat in moderator_stats|slice:":3" %}
+                    <div class="stat">
+                        <div class="stat-title">{{ stat.action_type|title }}</div>
+                        <div class="stat-value text-secondary">{{ stat.count }}</div>
+                        <div class="stat-desc">Last 30 days</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="card bg-base-100 shadow-lg mt-6 rounded-xl">
+        <div class="card-body">
+            <h2 class="card-title mb-4">
+                <i class="fas fa-bolt text-warning"></i>
+                Quick Actions
+            </h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <a href="{% url 'social:moderation_reports' %}?status=pending" class="group card card-bordered rounded-xl p-5 hover:border-primary transition-all duration-300">
+                    <div class="text-center space-y-2">
+                        <i class="fas fa-flag text-2xl group-hover:text-primary transition-colors"></i>
+                        <div class="font-semibold">Review Reports</div>
+                    </div>
+                </a>
+                <a href="{% url 'social:moderation_queue' %}" class="group card card-bordered rounded-xl p-5 hover:border-primary transition-all duration-300">
+                    <div class="text-center space-y-2">
+                        <i class="fas fa-layer-group text-2xl group-hover:text-primary transition-colors"></i>
+                        <div class="font-semibold">Moderation Queue</div>
+                    </div>
+                </a>
+                <a href="{% url 'social:moderation_users' %}" class="group card card-bordered rounded-xl p-5 hover:border-primary transition-all duration-300">
+                    <div class="text-center space-y-2">
+                        <i class="fas fa-users-cog text-2xl group-hover:text-primary transition-colors"></i>
+                        <div class="font-semibold">Manage Users</div>
+                    </div>
+                </a>
+                <a href="{% url 'social:moderation_logs' %}" class="group card card-bordered rounded-xl p-5 hover:border-primary transition-all duration-300">
+                    <div class="text-center space-y-2">
+                        <i class="fas fa-history text-2xl group-hover:text-primary transition-colors"></i>
+                        <div class="font-semibold">View Logs</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh stats every 60 seconds
+setInterval(function() {
+    // Refresh page to update stats
+    location.reload();
+}, 60000);
+
+// Add tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize any tooltips or interactive elements here
+    console.log('Moderation dashboard loaded');
+});
+</script>
+{% endblock %}

@@ -4,15 +4,23 @@ from django.contrib.auth import get_user_model
 from django.contrib import messages
 from django.http import JsonResponse
 from django.core.paginator import Paginator
+from django.db import transaction, models
 from django.db.models import Q, Count
-from datetime import timedelta
+from datetime import timedelta, datetime
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
-from .models import Post, Category, Comment, Like, UserProfile, Follow, Notification
+from .models import Post, Category, Comment, Like, UserProfile, Follow, Notification, SocialReport, ModerationAction, UserSuspension
+from .mixins import ModeratorRequiredMixin  # for parity with permissions logic
+from .permissions import is_moderator
+from .decorators import moderator_required, admin_required
 import json
 from .forms import PostForm, CommentForm, ProfileForm
 from django.urls import reverse
+from .forms import PostForm, CommentForm, ProfileForm, SocialReportForm
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Use the project's configured User model (supports custom accounts.User)
 User = get_user_model()
@@ -88,6 +96,8 @@ def feed(request):
         'search_query': search_query,
         'sort_by': sort_by,
     }
+    # Add moderation-related context for moderators
+    context.update(get_moderation_context(request))
     
     return render(request, 'social/feed.html', context)
 
@@ -407,6 +417,54 @@ def delete_post(request, pk):
 
 
 @login_required
+def report_post(request, pk):
+    """
+    Allow a logged-in user to report a disturbing post.
+
+    GET: Render a small form to select a report type and provide an optional
+    description.
+    POST: Create a `SocialReport` for the post, flag the post for moderation,
+    and redirect back to the post detail with a success message.
+    """
+    post = get_object_or_404(Post, pk=pk)
+
+    # Authors should not report their own post (use edit/delete instead)
+    if request.user == post.author:
+        messages.info(request, 'You can edit or delete your own post instead of reporting it.')
+        logger.warning('Self-report attempted: user=%s post_id=%s', request.user.username, post.pk)
+        return redirect('social:post_detail', pk=pk)
+
+    if request.method == 'POST':
+        form = SocialReportForm(request.POST)
+        if form.is_valid():
+            report = form.save(commit=False)
+            report.reporter = request.user
+            report.reported_post = post
+            report.reported_user = post.author
+            report.save()
+            logger.info('SocialReport created: id=%s type=%s reporter=%s post_id=%s', report.pk, report.report_type, request.user.username, post.pk)
+
+            # Flag the post so it appears in the moderation queue
+            if not post.is_flagged:
+                post.is_flagged = True
+                post.save(update_fields=['is_flagged'])
+
+            messages.success(request, 'Thanks for reporting. Our moderators will review it soon.')
+            return redirect('social:post_detail', pk=pk)
+        else:
+            messages.error(request, 'Please fix the errors below and resubmit.')
+            logger.error('Report form invalid for post_id=%s errors=%s', post.pk, form.errors)
+    else:
+        form = SocialReportForm()
+
+    context = {
+        'post': post,
+        'form': form,
+    }
+    return render(request, 'social/report_post.html', context)
+
+
+@login_required
 def notification_count(request):
     """Get unread notification count (AJAX)"""
     count = Notification.objects.filter(recipient=request.user, is_read=False).count()
@@ -531,3 +589,885 @@ def edit_profile(request):
         form = ProfileForm(instance=profile)
     
     return render(request, 'social/edit_profile.html', {'form': form, 'profile': profile})
+
+
+def get_moderation_context(request):
+    """
+    Helper function to get moderation-related context data.
+    Used to populate sidebar badges and notification counts.
+
+    Returns empty dict for non-authenticated users or non-moderators.
+    """
+    # Bail out early if not authenticated
+    if not request.user.is_authenticated:
+        return {}
+
+    # Only active for moderators/staff
+    if not is_moderator(request.user):
+        return {}
+
+    context = {
+        'is_moderator': True,
+        'pending_reports_count': SocialReport.objects.filter(status='pending').count(),
+        'reviewing_reports_count': SocialReport.objects.filter(status='reviewing').count(),
+        'flagged_posts_count': Post.objects.filter(is_flagged=True).count(),
+        'flagged_comments_count': Comment.objects.filter(is_flagged=True).count(),
+    }
+
+    return context
+
+
+# =============================
+# Phase 3: Moderation Actions
+# =============================
+
+@moderator_required
+@require_POST
+def approve_post(request, post_id):
+    """
+    Approve a flagged post (make it visible again).
+    AJAX endpoint.
+    """
+    post = get_object_or_404(Post, pk=post_id)
+
+    # Update post visibility and flags to restore
+    post.is_flagged = False
+    post.hidden_at = None
+    post.save(update_fields=['is_flagged', 'hidden_at'])
+
+    # Log the action
+    ModerationAction.objects.create(
+        moderator=request.user,
+        action_type='restore_post',
+        target_post=post,
+        target_user=post.author,
+        reason=request.POST.get('reason', 'Post approved by moderator'),
+    )
+
+    messages.success(request, f'Post "{post.title}" has been approved.')
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'message': 'Post approved successfully'
+        })
+
+    return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+
+@moderator_required
+@require_POST
+def hide_post(request, post_id):
+    """
+    Hide a post without deleting it (soft delete).
+    AJAX endpoint.
+    """
+    post = get_object_or_404(Post, pk=post_id)
+    reason = request.POST.get('reason', '').strip()
+
+    if not reason:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'error': 'Reason is required'
+            }, status=400)
+        messages.error(request, 'Reason is required to hide content.')
+        return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+    # Hide the post by setting hidden_at
+    post.hidden_at = timezone.now()
+    post.save(update_fields=['hidden_at'])
+
+    # Log the action
+    action = ModerationAction.objects.create(
+        moderator=request.user,
+        action_type='hide_post',
+        target_post=post,
+        target_user=post.author,
+        reason=reason,
+    )
+
+    # Notify the post author
+    Notification.objects.create(
+        recipient=post.author,
+        sender=request.user,
+        notification_type='mention',  # Using existing type
+        post=post,
+        message=f'Your post has been hidden by moderation: {reason}'
+    )
+
+    messages.success(request, f'Post "{post.title}" has been hidden.')
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'message': 'Post hidden successfully',
+            'action_id': action.id
+        })
+
+    return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+
+@moderator_required
+@require_POST
+def moderate_delete_post(request, post_id):
+    """
+    Permanently delete a post (hard delete).
+    Only for severe violations.
+    """
+    post = get_object_or_404(Post, pk=post_id)
+    reason = request.POST.get('reason', '').strip()
+
+    if not reason:
+        messages.error(request, 'Reason is required to delete content.')
+        return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+    # Store post info before deletion
+    post_title = post.title
+    post_author = post.author
+
+    # Log the action before deleting
+    action = ModerationAction.objects.create(
+        moderator=request.user,
+        action_type='delete_post',
+        target_user=post_author,
+        target_post=post,
+        reason=reason,
+    )
+
+    # Notify the author
+    Notification.objects.create(
+        recipient=post_author,
+        sender=request.user,
+        notification_type='mention',
+        message=f'Your post "{post_title}" was removed for violating community guidelines: {reason}'
+    )
+
+    # Delete the post
+    post.delete()
+
+    messages.success(request, f'Post "{post_title}" has been permanently deleted.')
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'message': 'Post deleted successfully',
+            'action_id': action.id
+        })
+
+    return redirect('social:moderation_dashboard')
+
+
+@moderator_required
+@require_POST
+def approve_comment(request, comment_id):
+    """
+    Approve a flagged comment.
+    AJAX endpoint.
+    """
+    comment = get_object_or_404(Comment, pk=comment_id)
+
+    comment.is_flagged = False
+    comment.hidden_at = None
+    comment.save(update_fields=['is_flagged', 'hidden_at'])
+
+    ModerationAction.objects.create(
+        moderator=request.user,
+        action_type='restore_comment',
+        target_comment=comment,
+        target_user=comment.author,
+        reason=request.POST.get('reason', 'Comment approved by moderator'),
+    )
+
+    messages.success(request, 'Comment has been approved.')
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'message': 'Comment approved'})
+
+    return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+
+@moderator_required
+@require_POST
+def hide_comment(request, comment_id):
+    """
+    Hide a comment without deleting it.
+    AJAX endpoint.
+    """
+    comment = get_object_or_404(Comment, pk=comment_id)
+    reason = request.POST.get('reason', '').strip()
+
+    if not reason:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': 'Reason required'}, status=400)
+        messages.error(request, 'Reason is required.')
+        return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+    comment.hidden_at = timezone.now()
+    comment.save(update_fields=['hidden_at'])
+
+    action = ModerationAction.objects.create(
+        moderator=request.user,
+        action_type='hide_comment',
+        target_comment=comment,
+        target_user=comment.author,
+        reason=reason,
+    )
+
+    Notification.objects.create(
+        recipient=comment.author,
+        sender=request.user,
+        notification_type='mention',
+        comment=comment,
+        message=f'Your comment was hidden by moderation: {reason}'
+    )
+
+    messages.success(request, 'Comment has been hidden.')
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'action_id': action.id})
+
+    return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+
+@moderator_required
+@require_POST
+def moderate_delete_comment(request, comment_id):
+    """
+    Permanently delete a comment.
+    """
+    comment = get_object_or_404(Comment, pk=comment_id)
+    reason = request.POST.get('reason', '').strip()
+
+    if not reason:
+        messages.error(request, 'Reason is required to delete content.')
+        return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+    comment_author = comment.author
+    comment_content = (comment.content or '')[:50]
+
+    action = ModerationAction.objects.create(
+        moderator=request.user,
+        action_type='delete_comment',
+        target_user=comment_author,
+        target_comment=comment,
+        reason=reason,
+    )
+
+    Notification.objects.create(
+        recipient=comment_author,
+        sender=request.user,
+        notification_type='mention',
+        message=f'Your comment was removed for violating guidelines: {reason}'
+    )
+
+    comment.delete()
+
+    messages.success(request, 'Comment has been deleted.')
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'action_id': action.id})
+
+    return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+
+@moderator_required
+@require_POST
+def warn_user(request, user_id):
+    """
+    Issue a warning to a user.
+    Increments warning count (derived from actions) and may auto-suspend.
+    """
+    target_user = get_object_or_404(User, pk=user_id)
+    reason = request.POST.get('reason', '').strip()
+    warning_message = request.POST.get('message', '').strip()
+
+    if not reason:
+        messages.error(request, 'Reason is required to issue a warning.')
+        return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+    # Ensure profile exists
+    profile, _ = UserProfile.objects.get_or_create(user=target_user)
+
+    # Log the warning action
+    ModerationAction.objects.create(
+        moderator=request.user,
+        action_type='warn',
+        target_user=target_user,
+        reason=reason,
+    )
+
+    # Compute current warning count from actions
+    warnings_count = ModerationAction.objects.filter(
+        target_user=target_user, action_type='warn'
+    ).count()
+
+    # Notify the user
+    message = warning_message or f'You have received a warning from moderation: {reason}'
+    Notification.objects.create(
+        recipient=target_user,
+        sender=request.user,
+        notification_type='mention',
+        message=message
+    )
+
+    # Auto-suspend after threshold (e.g., 3 warnings)
+    if warnings_count >= 3 and not profile.is_suspended:
+        suspension_end = timezone.now() + timedelta(days=7)
+        profile.is_suspended = True
+        profile.suspended_until = suspension_end
+        profile.suspension_reason = 'Automatic suspension after 3 warnings'
+        profile.save(update_fields=['is_suspended', 'suspended_until', 'suspension_reason'])
+
+        # Create suspension record
+        UserSuspension.objects.create(
+            user=target_user,
+            reason='Automatic suspension after 3 warnings',
+            end_at=suspension_end,
+            is_active=True,
+            created_by=request.user,
+        )
+
+        messages.warning(
+            request,
+            'Warning issued. User has been automatically suspended for 7 days (3+ warnings).'
+        )
+    else:
+        messages.success(
+            request,
+            f'Warning issued to {target_user.username}. Total warnings: {warnings_count}'
+        )
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'warnings_count': warnings_count,
+        })
+
+    return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+
+@admin_required
+@require_POST
+@transaction.atomic
+def suspend_user(request, user_id):
+    """
+    Suspend a user for a specified duration.
+    Only admins can suspend users.
+    """
+    target_user = get_object_or_404(User, pk=user_id)
+    reason = request.POST.get('reason', '').strip()
+    duration_days = request.POST.get('duration_days', '').strip()
+
+    if not reason:
+        messages.error(request, 'Reason is required to suspend a user.')
+        return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+    # Parse duration
+    try:
+        days = int(duration_days) if duration_days else 7
+        if days <= 0:
+            raise ValueError()
+    except ValueError:
+        messages.error(request, 'Invalid suspension duration.')
+        return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+    # Calculate end date
+    suspension_end = timezone.now() + timedelta(days=days)
+
+    # Get or create profile
+    profile, _ = UserProfile.objects.get_or_create(user=target_user)
+    profile.is_suspended = True
+    profile.suspended_until = suspension_end
+    profile.suspension_reason = reason
+    profile.save(update_fields=['is_suspended', 'suspended_until', 'suspension_reason'])
+
+    # Create suspension record
+    suspension = UserSuspension.objects.create(
+        user=target_user,
+        reason=reason,
+        end_at=suspension_end,
+        is_active=True,
+        created_by=request.user,
+    )
+
+    # Log the action
+    ModerationAction.objects.create(
+        moderator=request.user,
+        action_type='suspend',
+        target_user=target_user,
+        reason=f'Duration: {days} days\n{reason}',
+    )
+
+    # Notify the user
+    Notification.objects.create(
+        recipient=target_user,
+        sender=request.user,
+        notification_type='mention',
+        message=f'Your account has been suspended for {days} days. Reason: {reason}'
+    )
+
+    messages.success(
+        request,
+        f'User {target_user.username} has been suspended for {days} days.'
+    )
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'suspension_id': suspension.id,
+            'end_date': suspension_end.isoformat(),
+        })
+
+    return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+
+@admin_required
+@require_POST
+@transaction.atomic
+def ban_user(request, user_id):
+    """
+    Permanently ban a user.
+    Only admins can ban users.
+    """
+    target_user = get_object_or_404(User, pk=user_id)
+    reason = request.POST.get('reason', '').strip()
+
+    if not reason:
+        messages.error(request, 'Reason is required to ban a user.')
+        return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+    # Get or create profile
+    profile, _ = UserProfile.objects.get_or_create(user=target_user)
+    profile.is_suspended = True
+    profile.suspended_until = None  # Permanent
+    profile.suspension_reason = reason
+    profile.save(update_fields=['is_suspended', 'suspended_until', 'suspension_reason'])
+
+    # Create permanent suspension record
+    suspension = UserSuspension.objects.create(
+        user=target_user,
+        reason=reason,
+        end_at=None,  # Permanent ban
+        is_active=True,
+        created_by=request.user,
+    )
+
+    # Log the action
+    ModerationAction.objects.create(
+        moderator=request.user,
+        action_type='ban',
+        target_user=target_user,
+        reason=f'Permanent ban\n{reason}',
+    )
+
+    # Notify the user
+    Notification.objects.create(
+        recipient=target_user,
+        sender=request.user,
+        notification_type='mention',
+        message=f'Your account has been permanently banned. Reason: {reason}'
+    )
+
+    messages.success(request, f'User {target_user.username} has been permanently banned.')
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'suspension_id': suspension.id,
+        })
+
+    return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+
+@admin_required
+@require_POST
+@transaction.atomic
+def unsuspend_user(request, user_id):
+    """
+    Lift a user's suspension early.
+    Only admins can unsuspend users.
+    """
+    target_user = get_object_or_404(User, pk=user_id)
+    reason = request.POST.get('reason', 'Suspension lifted by administrator').strip()
+
+    # Get profile
+    profile = get_object_or_404(UserProfile, user=target_user)
+
+    if not profile.is_suspended:
+        messages.warning(request, 'User is not currently suspended.')
+        return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+    # Update profile
+    profile.is_suspended = False
+    profile.suspended_until = None
+    profile.suspension_reason = ''
+    profile.save(update_fields=['is_suspended', 'suspended_until', 'suspension_reason'])
+
+    # Deactivate active suspensions
+    now = timezone.now()
+    UserSuspension.objects.filter(user=target_user, is_active=True).update(is_active=False, end_at=now)
+
+    # Log the action
+    ModerationAction.objects.create(
+        moderator=request.user,
+        action_type='unsuspend',
+        target_user=target_user,
+        reason=reason,
+    )
+
+    # Notify the user
+    Notification.objects.create(
+        recipient=target_user,
+        sender=request.user,
+        notification_type='mention',
+        message='Your suspension has been lifted. Welcome back!'
+    )
+
+    messages.success(request, f'Suspension lifted for {target_user.username}.')
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True})
+
+    return redirect(request.META.get('HTTP_REFERER', 'social:moderation_dashboard'))
+
+
+@moderator_required
+@require_POST
+@transaction.atomic
+def resolve_report(request, pk):
+    """
+    Resolve a report as handled.
+    Requires resolution notes.
+    """
+    report = get_object_or_404(SocialReport, pk=pk)
+    resolution_notes = request.POST.get('resolution_notes', '').strip()
+    action_taken = request.POST.get('action_taken', '').strip()
+
+    if not resolution_notes:
+        messages.error(request, 'Resolution notes are required.')
+        return redirect('social:report_detail', pk=pk)
+
+    # Update report status
+    report.status = 'resolved'
+    report.save(update_fields=['status'])
+
+    # Log the action
+    ModerationAction.objects.create(
+        moderator=request.user,
+        action_type='resolve_report',
+        related_report=report,
+        reason=f'Report resolved: {action_taken}\n{resolution_notes}',
+    )
+
+    # Notify reporter
+    if report.reporter:
+        Notification.objects.create(
+            recipient=report.reporter,
+            sender=request.user,
+            notification_type='mention',
+            message='Your report has been reviewed and action has been taken. Thank you for helping keep our community safe.'
+        )
+
+    messages.success(request, f'Report #{report.id} has been resolved.')
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True})
+
+    return redirect('social:moderation_reports')
+
+
+@moderator_required
+@require_POST
+@transaction.atomic
+def dismiss_report(request, pk):
+    """
+    Dismiss a report as invalid or not actionable.
+    """
+    report = get_object_or_404(SocialReport, pk=pk)
+    reason = request.POST.get('reason', '').strip()
+
+    if not reason:
+        messages.error(request, 'Reason for dismissal is required.')
+        return redirect('social:report_detail', pk=pk)
+
+    # Update report (use resolved to indicate closure; no 'dismissed' status available)
+    report.status = 'resolved'
+    report.save(update_fields=['status'])
+
+    # Unflag content if applicable and no other pending/reviewing reports
+    if report.reported_post:
+        post = report.reported_post
+        other_pending = SocialReport.objects.filter(
+            reported_post=post,
+            status__in=['pending', 'reviewing']
+        ).exclude(pk=report.pk).exists()
+        if not other_pending:
+            post.is_flagged = False
+            post.hidden_at = None
+            post.save(update_fields=['is_flagged', 'hidden_at'])
+    if report.reported_comment:
+        comment = report.reported_comment
+        other_pending_c = SocialReport.objects.filter(
+            reported_comment=comment,
+            status__in=['pending', 'reviewing']
+        ).exclude(pk=report.pk).exists()
+        if not other_pending_c:
+            comment.is_flagged = False
+            comment.hidden_at = None
+            comment.save(update_fields=['is_flagged', 'hidden_at'])
+
+    # Log the action
+    ModerationAction.objects.create(
+        moderator=request.user,
+        action_type='dismiss_report',
+        related_report=report,
+        reason=reason,
+    )
+
+    messages.success(request, f'Report #{report.id} has been dismissed.')
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True})
+
+    return redirect('social:moderation_reports')
+
+
+@moderator_required
+def moderation_queue(request):
+    """
+    Show all flagged content that needs review (posts and comments).
+    Combines flagged posts and comments into a unified queue.
+    """
+    from django.db.models import Q
+    from itertools import chain
+
+    # Get filter parameters
+    content_type_filter = request.GET.get('type', '')  # 'posts' or 'comments'
+    sort_by = request.GET.get('sort', 'newest')
+
+    # Get flagged content
+    if content_type_filter == 'posts' or not content_type_filter:
+        flagged_posts = Post.objects.filter(
+            Q(is_flagged=True) | Q(hidden_at__isnull=False)
+        ).select_related('author', 'category').prefetch_related('reports').order_by('-created_at')
+    else:
+        flagged_posts = Post.objects.none()
+
+    if content_type_filter == 'comments' or not content_type_filter:
+        flagged_comments = Comment.objects.filter(
+            Q(is_flagged=True) | Q(hidden_at__isnull=False)
+        ).select_related('author', 'post').prefetch_related('reports').order_by('-created_at')
+    else:
+        flagged_comments = Comment.objects.none()
+
+    # Sort options
+    if sort_by == 'reports':
+        # Sort by number of reports
+        flagged_posts = flagged_posts.annotate(
+            report_count=Count('reports')
+        ).order_by('-report_count', '-created_at')
+        flagged_comments = flagged_comments.annotate(
+            report_count=Count('reports')
+        ).order_by('-report_count', '-created_at')
+    elif sort_by == 'oldest':
+        flagged_posts = flagged_posts.order_by('created_at')
+        flagged_comments = flagged_comments.order_by('created_at')
+
+    # Combine and paginate
+    if content_type_filter == 'posts':
+        combined_items = list(flagged_posts)
+    elif content_type_filter == 'comments':
+        combined_items = list(flagged_comments)
+    else:
+        # Combine both, sort by created_at or hidden_at if present
+        def sort_key(x):
+            return x.hidden_at or x.created_at
+        combined_items = sorted(
+            chain(flagged_posts, flagged_comments),
+            key=sort_key,
+            reverse=True
+        )
+
+    # Pagination
+    paginator = Paginator(combined_items, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Stats
+    queue_stats = {
+        'total_flagged': len(combined_items),
+        'flagged_posts': flagged_posts.count(),
+        'flagged_comments': flagged_comments.count(),
+        'hidden_posts': Post.objects.filter(hidden_at__isnull=False).count(),
+        'hidden_comments': Comment.objects.filter(hidden_at__isnull=False).count(),
+    }
+
+    context = {
+        'page_obj': page_obj,
+        'content_type_filter': content_type_filter,
+        'sort_by': sort_by,
+        'queue_stats': queue_stats,
+    }
+
+    return render(request, 'social/moderation/queue.html', context)
+
+
+@moderator_required
+def moderation_users(request):
+    """
+    View and manage users with moderation issues.
+    Shows suspended users, users with warnings, and recently reported users.
+    """
+    from django.db.models import Count, Q
+
+    # Get filter parameters
+    status_filter = request.GET.get('status', '')  # 'suspended', 'warned', 'reported'
+    search_query = request.GET.get('search', '')
+
+    # Base queryset
+    users = User.objects.select_related('social_profile').annotate(
+        report_count=Count('social_reports_received', distinct=True),
+        warning_count=Count(
+            'actions_against_user',
+            filter=Q(actions_against_user__action_type='warn'),
+            distinct=True,
+        ),
+        is_suspended_flag=models.F('social_profile__is_suspended')
+    )
+
+    # Apply filters
+    if status_filter == 'suspended':
+        users = users.filter(social_profile__is_suspended=True)
+    elif status_filter == 'warned':
+        users = users.filter(actions_against_user__action_type='warn').distinct()
+    elif status_filter == 'reported':
+        users = users.filter(social_reports_received__isnull=False).distinct()
+
+    if search_query:
+        users = users.filter(
+            Q(username__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query)
+        )
+
+    # Order by priority (suspended > warnings > reports)
+    users = users.order_by(
+        '-is_suspended_flag',
+        '-warning_count',
+        '-report_count',
+        '-date_joined'
+    )
+
+    # Pagination
+    paginator = Paginator(users, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Stats
+    user_stats = {
+        'total_users': User.objects.count(),
+        'suspended_users': UserProfile.objects.filter(is_suspended=True).count(),
+        'warned_users': User.objects.filter(actions_against_user__action_type='warn').distinct().count(),
+        'reported_users': User.objects.filter(social_reports_received__isnull=False).distinct().count(),
+    }
+
+    context = {
+        'page_obj': page_obj,
+        'status_filter': status_filter,
+        'search_query': search_query,
+        'user_stats': user_stats,
+    }
+
+    return render(request, 'social/moderation/users.html', context)
+
+
+@moderator_required
+def moderation_logs(request):
+    """
+    View complete audit log of all moderation actions.
+    Filterable by moderator, action type, date range, and search.
+    """
+    from django.db.models import Q
+    from django.utils import timezone
+
+    # Get filter parameters
+    moderator_filter = request.GET.get('moderator', '')
+    action_type_filter = request.GET.get('action_type', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    search_query = request.GET.get('search', '')
+
+    # Base queryset
+    actions = ModerationAction.objects.select_related(
+        'moderator',
+        'target_user',
+        'target_post',
+        'target_comment',
+        'related_report'
+    ).order_by('-created_at')
+
+    # Apply filters
+    if moderator_filter:
+        actions = actions.filter(moderator__username=moderator_filter)
+
+    if action_type_filter:
+        actions = actions.filter(action_type=action_type_filter)
+
+    if date_from:
+        try:
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+            actions = actions.filter(created_at__gte=date_from_obj)
+        except ValueError:
+            pass
+
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d')
+            actions = actions.filter(created_at__lte=date_to_obj)
+        except ValueError:
+            pass
+
+    if search_query:
+        actions = actions.filter(
+            Q(reason__icontains=search_query) |
+            Q(moderator__username__icontains=search_query) |
+            Q(target_user__username__icontains=search_query)
+        )
+
+    # Pagination
+    paginator = Paginator(actions, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Moderators for filter dropdown
+    moderators = User.objects.filter(
+        Q(is_staff=True) | Q(groups__name='Moderators')
+    ).distinct().order_by('username')
+
+    # Stats
+    from datetime import timedelta as _timedelta
+    log_stats = {
+        'total_actions': ModerationAction.objects.count(),
+        'today_actions': ModerationAction.objects.filter(
+            created_at__gte=timezone.now().date()
+        ).count(),
+        'this_week_actions': ModerationAction.objects.filter(
+            created_at__gte=timezone.now() - _timedelta(days=7)
+        ).count(),
+    }
+
+    context = {
+        'page_obj': page_obj,
+        'moderator_filter': moderator_filter,
+        'action_type_filter': action_type_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        'search_query': search_query,
+        'moderators': moderators,
+        'action_types': ModerationAction.ACTION_TYPES,
+        'log_stats': log_stats,
+    }
+
+    return render(request, 'social/moderation/logs.html', context)

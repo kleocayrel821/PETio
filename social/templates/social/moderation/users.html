@@ -1,0 +1,84 @@
+{% extends "social/base_social.html" %}
+{% block social_title %}Moderation Users{% endblock %}
+{% block sidebar %}{% include 'social/moderation/sidebar.html' %}{% endblock %}
+{% block social_content %}
+<div class="max-w-5xl mx-auto">
+  <h1 class="text-2xl font-bold mb-4"><i class="fas fa-users-cog"></i> Suspended Users</h1>
+  <div class="space-y-2">
+    {% for profile in suspended_profiles %}
+      <div class="card bg-base-100">
+        <div class="card-body">
+          <p class="font-medium">{{ profile.user.username }}</p>
+          {% if profile.suspended_until %}
+            <p class="text-xs text-base-content/60">Until: {{ profile.suspended_until|date:"Y-m-d H:i" }}</p>
+          {% endif %}
+          {% if profile.suspension_reason %}
+            <p class="text-xs text-base-content/70">{{ profile.suspension_reason }}</p>
+          {% endif %}
+
+          <div class="divider my-2"></div>
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Unsuspend -->
+            <details class="dropdown">
+              <summary class="btn btn-xs btn-success"><i class="fas fa-unlock"></i> Unsuspend</summary>
+              <div class="dropdown-content p-2 bg-base-200 rounded-box w-64">
+                <form method="POST" action="{% url 'social:unsuspend_user' profile.user.id %}">
+                  {% csrf_token %}
+                  <label class="label"><span class="label-text text-xs">Reason (optional)</span></label>
+                  <input type="text" name="reason" class="input input-sm w-full" placeholder="e.g., Appeal approved" />
+                  <button type="submit" class="btn btn-xs btn-success mt-2">Confirm Unsuspend</button>
+                </form>
+              </div>
+            </details>
+
+            <!-- Warn -->
+            <details class="dropdown">
+              <summary class="btn btn-xs btn-warning"><i class="fas fa-exclamation-triangle"></i> Warn</summary>
+              <div class="dropdown-content p-2 bg-base-200 rounded-box w-64">
+                <form method="POST" action="{% url 'social:warn_user' profile.user.id %}">
+                  {% csrf_token %}
+                  <label class="label"><span class="label-text text-xs">Reason</span></label>
+                  <textarea name="reason" class="textarea textarea-sm w-full" required></textarea>
+                  <label class="label"><span class="label-text text-xs">Message (optional)</span></label>
+                  <input type="text" name="message" class="input input-sm w-full" placeholder="Custom message to user" />
+                  <button type="submit" class="btn btn-xs btn-warning mt-2">Send Warning</button>
+                </form>
+              </div>
+            </details>
+
+            <!-- Suspend -->
+            <details class="dropdown">
+              <summary class="btn btn-xs btn-error"><i class="fas fa-user-slash"></i> Suspend</summary>
+              <div class="dropdown-content p-2 bg-base-200 rounded-box w-64">
+                <form method="POST" action="{% url 'social:suspend_user' profile.user.id %}">
+                  {% csrf_token %}
+                  <label class="label"><span class="label-text text-xs">Reason</span></label>
+                  <textarea name="reason" class="textarea textarea-sm w-full" required></textarea>
+                  <label class="label"><span class="label-text text-xs">Duration (days)</span></label>
+                  <input type="number" name="duration_days" class="input input-sm w-full" value="7" min="1" required />
+                  <button type="submit" class="btn btn-xs btn-error mt-2">Confirm Suspend</button>
+                </form>
+              </div>
+            </details>
+
+            <!-- Ban -->
+            <details class="dropdown">
+              <summary class="btn btn-xs btn-outline btn-error"><i class="fas fa-ban"></i> Ban</summary>
+              <div class="dropdown-content p-2 bg-base-200 rounded-box w-64">
+                <form method="POST" action="{% url 'social:ban_user' profile.user.id %}" onsubmit="return confirm('Permanently ban this user?')">
+                  {% csrf_token %}
+                  <label class="label"><span class="label-text text-xs">Reason</span></label>
+                  <textarea name="reason" class="textarea textarea-sm w-full" required></textarea>
+                  <button type="submit" class="btn btn-xs btn-outline btn-error mt-2">Confirm Ban</button>
+                </form>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <p class="text-base-content/60">No suspended users.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
