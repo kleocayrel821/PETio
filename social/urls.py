@@ -26,6 +26,9 @@ urlpatterns = [
     # AJAX endpoints
     path('post/<int:post_id>/like/', views.toggle_like, name='toggle_like'),
     path('user/<int:user_id>/follow/', views.toggle_follow, name='toggle_follow'),
+    path('user/<int:user_id>/followers/', views.user_followers, name='user_followers'),
+    path('user/<int:user_id>/following/', views.user_following, name='user_following'),
+    path('user/<int:user_id>/likes/', views.user_likes, name='user_likes'),
     
     # User profiles (ensure 'edit' route precedes '<username>' route)
     path('profile/edit/', views.edit_profile, name='edit_profile'),

@@ -15,6 +15,8 @@ from .mixins import ModeratorRequiredMixin  # for parity with permissions logic
 from .permissions import is_moderator
 from .decorators import moderator_required, admin_required
 import json
+from .forms import PostForm, CommentForm, ProfileForm
+from django.urls import reverse
 from .forms import PostForm, CommentForm, ProfileForm, SocialReportForm
 import logging
 
@@ -315,12 +317,20 @@ def profile(request, username=None):
     if request.user.is_authenticated and request.user != user:
         is_following = Follow.objects.filter(follower=request.user, following=user).exists()
     
+    # Likes data: viewer's liked posts for heart state, and profile user's total likes
+    viewer_liked_post_ids = []
+    if request.user.is_authenticated:
+        viewer_liked_post_ids = list(Like.objects.filter(user=request.user).values_list('post_id', flat=True))
+    profile_likes_count = Like.objects.filter(user=user).count()
+    
     context = {
         'profile_user': user,
         'profile': profile,
         'user_posts': user_posts,
         'is_following': is_following,
         'is_own_profile': request.user == user,
+        'viewer_liked_post_ids': viewer_liked_post_ids,
+        'profile_likes_count': profile_likes_count,
     }
     
     return render(request, 'social/profile.html', context)
@@ -459,6 +469,67 @@ def notification_count(request):
     """Get unread notification count (AJAX)"""
     count = Notification.objects.filter(recipient=request.user, is_read=False).count()
     return JsonResponse({'count': count})
+
+
+@login_required
+def user_followers(request, user_id):
+    """Return followers of a user as JSON"""
+    user = get_object_or_404(User, id=user_id)
+    qs = Follow.objects.filter(following=user).select_related('follower')
+    results = []
+    for rel in qs[:100]:
+        u = rel.follower
+        avatar_url = getattr(getattr(u, 'social_profile', None), 'avatar', None)
+        avatar_url = avatar_url.url if avatar_url else None
+        results.append({
+            'id': u.id,
+            'username': u.username,
+            'avatar_url': avatar_url,
+            'profile_url': reverse('social:profile', kwargs={'username': u.username}),
+            'extra': f"Following since {rel.created_at.strftime('%b %d, %Y')}"
+        })
+    return JsonResponse({'count': qs.count(), 'results': results})
+
+
+@login_required
+def user_following(request, user_id):
+    """Return users that the given user is following as JSON"""
+    user = get_object_or_404(User, id=user_id)
+    qs = Follow.objects.filter(follower=user).select_related('following')
+    results = []
+    for rel in qs[:100]:
+        u = rel.following
+        avatar_url = getattr(getattr(u, 'social_profile', None), 'avatar', None)
+        avatar_url = avatar_url.url if avatar_url else None
+        results.append({
+            'id': u.id,
+            'username': u.username,
+            'avatar_url': avatar_url,
+            'profile_url': reverse('social:profile', kwargs={'username': u.username}),
+            'extra': f"Followed since {rel.created_at.strftime('%b %d, %Y')}"
+        })
+    return JsonResponse({'count': qs.count(), 'results': results})
+
+
+@login_required
+def user_likes(request, user_id):
+    """Return posts liked by the user as JSON"""
+    user = get_object_or_404(User, id=user_id)
+    qs = Like.objects.filter(user=user).select_related('post')
+    results = []
+    for like in qs[:100]:
+        p = like.post
+        image_url = p.image.url if p.image else None
+        excerpt = (p.content[:140] + '...') if p.content and len(p.content) > 140 else p.content
+        results.append({
+            'id': p.id,
+            'title': p.title,
+            'excerpt': excerpt,
+            'created_at': p.created_at.strftime('%b %d, %Y'),
+            'image_url': image_url,
+            'url': reverse('social:post_detail', kwargs={'pk': p.id})
+        })
+    return JsonResponse({'count': qs.count(), 'results': results})
 
 
 @login_required

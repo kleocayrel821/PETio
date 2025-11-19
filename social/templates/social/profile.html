@@ -783,26 +783,26 @@
             </div>
         </div>
 
-        <!-- Stats -->
+        <!-- Stats (clickable) -->
         <div class="profile-stats">
-            <a href="#" class="stat-item">
+            <a class="stat-item" href="#postsSection" title="View posts">
                 <i class="fas fa-file-alt"></i>
-                <span class="stat-number">{{ user_posts.count }}</span>
+                <span class="stat-number" id="postsCount">{{ user_posts.count }}</span>
                 <span class="stat-label">Posts</span>
             </a>
-            <a href="#" class="stat-item">
+            <a class="stat-item" href="#" onclick="openFollowers({{ profile_user.id }}); return false;" title="View followers">
                 <i class="fas fa-user-friends"></i>
-                <span class="stat-number">{{ profile.follower_count }}</span>
+                <span class="stat-number" id="followersCount">{{ profile.follower_count }}</span>
                 <span class="stat-label">Followers</span>
             </a>
-            <a href="#" class="stat-item">
+            <a class="stat-item" href="#" onclick="openFollowing({{ profile_user.id }}); return false;" title="View following">
                 <i class="fas fa-user-plus"></i>
-                <span class="stat-number">{{ profile.following_count }}</span>
+                <span class="stat-number" id="followingCount">{{ profile.following_count }}</span>
                 <span class="stat-label">Following</span>
             </a>
-            <a href="#" class="stat-item">
+            <a class="stat-item" href="#" onclick="openLikes({{ profile_user.id }}); return false;" title="View likes">
                 <i class="fas fa-heart"></i>
-                <span class="stat-number">{{ user_liked_posts|length|default:0 }}</span>
+                <span class="stat-number" id="likesCount">{{ profile_likes_count }}</span>
                 <span class="stat-label">Likes</span>
             </a>
         </div>
@@ -812,11 +812,8 @@
     <div class="modern-card accent-border" style="margin-top: 12px;">
         <h3 class="card-title"><i class="fas fa-bolt"></i> Quick Actions</h3>
         <div class="icon-grid" style="margin-top: 10px;">
-            <a class="icon-item" href="#" title="Message">
-                <i class="fas fa-envelope"></i>
-                <span>Message</span>
-            </a>
-            <a class="icon-item" href="#" title="Share">
+            <!-- Message removed per requirement -->
+            <a class="icon-item" href="#" onclick="shareProfile(); return false;" title="Share profile">
                 <i class="fas fa-share-alt"></i>
                 <span>Share</span>
             </a>
@@ -900,7 +897,7 @@
   </div>
 
   <!-- Posts Section -->
-  <div class="posts-section">
+  <div class="posts-section" id="postsSection">
     {% if user_posts %}
         <!-- Posts Header -->
         <div class="posts-header">
@@ -966,7 +963,7 @@
                 <!-- Post Engagement -->
                 <div class="post-engagement">
                     <div class="engagement-buttons">
-                        <button class="engagement-btn {% if post.id in user_liked_posts %}liked{% endif %}" 
+                        <button class="engagement-btn {% if post.id in viewer_liked_post_ids %}liked{% endif %}" 
                                 onclick="event.stopPropagation(); toggleLike({{ post.id }})">
                             <i class="fas fa-heart"></i>
                             <span>{{ post.likes.count }}</span>
@@ -1006,42 +1003,73 @@
   </div>
 </div>
 
+<!-- Simple Modal for Followers/Following/Likes -->
+<div id="listModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:#fff; color:#111; width:92%; max-width:640px; border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid rgba(0,0,0,0.08);">
+      <h3 id="listModalTitle" class="card-title" style="margin:0;">List</h3>
+      <button onclick="closeListModal()" class="btn btn-ghost btn-sm"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="listModalBody" style="max-height:60vh; overflow:auto; padding:12px 16px;"></div>
+  </div>
+  
+  <!-- lightweight styles to match existing components -->
+  <style>
+    .user-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; }
+    .user-row:hover { background: rgba(0,0,0,0.04); }
+    .user-avatar { width:36px; height:36px; border-radius:50%; object-fit:cover; background:#eee; }
+    .user-name { font-weight:600; }
+    .subtle { opacity:0.8; font-size: 12px; }
+    .post-row { padding:10px 12px; border-radius:8px; display:flex; gap:10px; align-items:flex-start; }
+    .post-row:hover { background: rgba(0,0,0,0.04); }
+    .post-thumb { width:56px; height:56px; border-radius:8px; object-fit:cover; background:#eee; }
+    .post-title { font-weight:600; margin-bottom:4px; }
+    .post-excerpt { opacity:0.85; font-size: 13px; }
+  </style>
+</div>
+
 {% block extra_js %}
 <script>
 function toggleFollow(userId) {
     const button = document.querySelector('.btn-following, .btn-follow');
+    if (!button) return;
     const originalContent = button.innerHTML;
-    
+
     // Show loading state
     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
     button.disabled = true;
-    
-    fetch(`/social/follow/${userId}/`, {
+
+    const csrfToken = (document.cookie.match(/csrftoken=([^;]+)/) || [null, ''])[1];
+    const url = "{% url 'social:toggle_follow' profile_user.id %}";
+
+    fetch(url, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-CSRFToken': csrfToken,
+            'Accept': 'application/json',
             'Content-Type': 'application/json',
         },
+        body: JSON.stringify({})
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            if (data.is_following) {
+        if (data && typeof data.following !== 'undefined') {
+            if (data.following) {
                 button.className = 'btn-modern btn-following';
                 button.innerHTML = '<i class="fas fa-check"></i> <span class="follow-text">Following</span>';
             } else {
                 button.className = 'btn-modern btn-follow';
                 button.innerHTML = '<i class="fas fa-plus"></i> Follow';
             }
-            
+
             // Update follower count if element exists
-            const followerCount = document.querySelector('.stat-item .stat-number');
-            if (followerCount && data.followers_count !== undefined) {
-                followerCount.textContent = data.followers_count;
+            const followerCountEl = document.getElementById('followersCount');
+            if (followerCountEl && typeof data.follower_count !== 'undefined') {
+                followerCountEl.textContent = data.follower_count;
             }
         } else {
             button.innerHTML = originalContent;
-            alert('Error: ' + data.error);
+            alert('Error: ' + (data && data.error ? data.error : 'Unable to toggle follow'));
         }
         button.disabled = false;
     })
@@ -1188,6 +1216,117 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// --- Modal helpers ---
+function openListModal(title) {
+  const m = document.getElementById('listModal');
+  const t = document.getElementById('listModalTitle');
+  const b = document.getElementById('listModalBody');
+  if (!m || !t || !b) return;
+  t.textContent = title;
+  b.innerHTML = '<div style="padding:12px 0; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+  m.style.display = 'flex';
+}
+
+function closeListModal() {
+  const m = document.getElementById('listModal');
+  if (m) m.style.display = 'none';
+}
+
+function renderUsers(items) {
+  const body = document.getElementById('listModalBody');
+  if (!body) return;
+  if (!items || items.length === 0) {
+    body.innerHTML = '<p class="subtle">No users found.</p>';
+    return;
+  }
+  body.innerHTML = items.map(u => `
+    <a class="user-row" href="${u.profile_url}" title="View profile">
+      <img class="user-avatar" src="${u.avatar_url || '/static/img/default-avatar.png'}" alt="${u.username}">
+      <div>
+        <div class="user-name">${u.username}</div>
+        ${u.extra ? `<div class="subtle">${u.extra}</div>` : ''}
+      </div>
+    </a>
+  `).join('');
+}
+
+function renderPosts(items) {
+  const body = document.getElementById('listModalBody');
+  if (!body) return;
+  if (!items || items.length === 0) {
+    body.innerHTML = '<p class="subtle">No liked posts.</p>';
+    return;
+  }
+  body.innerHTML = items.map(p => `
+    <a class="post-row" href="${p.url}" title="Open post">
+      ${p.image_url ? `<img class='post-thumb' src='${p.image_url}' alt='${p.title || 'Post'}'>` : ''}
+      <div>
+        <div class="post-title">${p.title || 'Untitled post'}</div>
+        <div class="post-excerpt">${p.excerpt || ''}</div>
+        <div class="subtle">${p.created_at}</div>
+      </div>
+    </a>
+  `).join('');
+}
+
+// --- Click actions for stats ---
+function openFollowers(userId) {
+  openListModal('Followers');
+  const url = "{% url 'social:user_followers' profile_user.id %}";
+  fetch(url, { headers: { 'Accept': 'application/json' }})
+    .then(r => r.json())
+    .then(d => renderUsers(d.results))
+    .catch(() => {
+      const body = document.getElementById('listModalBody');
+      if (body) body.innerHTML = '<p class="subtle">Failed to load followers.</p>';
+    });
+}
+
+function openFollowing(userId) {
+  openListModal('Following');
+  const url = "{% url 'social:user_following' profile_user.id %}";
+  fetch(url, { headers: { 'Accept': 'application/json' }})
+    .then(r => r.json())
+    .then(d => renderUsers(d.results))
+    .catch(() => {
+      const body = document.getElementById('listModalBody');
+      if (body) body.innerHTML = '<p class="subtle">Failed to load following.</p>';
+    });
+}
+
+function openLikes(userId) {
+  openListModal('Liked Posts');
+  const url = "{% url 'social:user_likes' profile_user.id %}";
+  fetch(url, { headers: { 'Accept': 'application/json' }})
+    .then(r => r.json())
+    .then(d => renderPosts(d.results))
+    .catch(() => {
+      const body = document.getElementById('listModalBody');
+      if (body) body.innerHTML = '<p class="subtle">Failed to load likes.</p>';
+    });
+}
+
+// --- Share action ---
+function shareProfile() {
+  const shareData = {
+    title: '{{ profile_user.username }} on PETio',
+    text: 'Check out this PETio profile',
+    url: window.location.href
+  };
+  if (navigator.share) {
+    navigator.share(shareData).catch(() => {});
+  } else {
+    // Fallback: copy link
+    const ta = document.createElement('textarea');
+    ta.value = shareData.url;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    alert('Profile link copied to clipboard');
+  }
+}
 </script>
 {% endblock %}
 {% endblock %}
