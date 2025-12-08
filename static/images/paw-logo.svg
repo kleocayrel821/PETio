@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <style>
+      .accent{fill:#7c3aed;stroke:#7c3aed;}
+    </style>
+  </defs>
+  <circle cx="128" cy="128" r="112" fill="none" stroke="#7c3aed" stroke-width="16"/>
+  <circle class="accent" cx="92" cy="80" r="18"/>
+  <circle class="accent" cx="128" cy="68" r="18"/>
+  <circle class="accent" cx="164" cy="80" r="18"/>
+  <circle class="accent" cx="146" cy="108" r="16"/>
+  <path class="accent" d="M83 146c0-24 45-24 45 0s-45 24-45 0z"/>
+  <path class="accent" d="M128 146c0-24 45-24 45 0s-45 24-45 0z"/>
+</svg>

@@ -34,7 +34,7 @@
     <!-- Welcome Header -->
     <!-- <div class="text-center">
         <h1 class="section-title justify-center text-3xl mb-2">
-            <i class="fas fa-home text-purple-400"></i>
+            <i class="fas fa-home text-[#1f456e]"></i>
             Welcome to PETio
         </h1>
         <p class="text-gray-400 text-lg">Your smart pet feeding companion</p>
@@ -45,7 +45,7 @@
         <!-- Feed Now Card -->
         <div class="enhanced-card">
             <div class="section-title">
-                <i class="fas fa-utensils text-orange-400"></i>
+                <i class="fas fa-utensils text-[#1f456e]"></i>
                 Feed Now
             </div>
             <div class="space-y-4">
@@ -53,7 +53,7 @@
                 <div>
                     <label class="subsection-title flex items-center gap-2">
                         <i class="fas fa-balance-scale text-teal-400"></i>
-                        Portion Size: <span id="portionDisplay" class="text-purple-400 font-bold">25 grams</span>
+                        Portion Size: <span id="portionDisplay" class="text-[#1f456e] font-bold">25 grams</span>
                     </label>
                     <div class="relative">
                         <input 
@@ -94,14 +94,14 @@
         <!-- Quick Schedule Card -->
         <div class="enhanced-card">
             <div class="section-title">
-                <i class="fas fa-clock text-teal-400"></i>
+                <i class="fas fa-clock text-[#1f456e]"></i>
                 Quick Schedule
             </div>
             <form id="quickScheduleForm" class="space-y-4">
                 <!-- Time Input -->
                 <div>
                     <label class="subsection-title">
-                        <i class="fas fa-time text-purple-400"></i>
+                        <i class="fas fa-time text-[#1f456e]"></i>
                         Feeding Time
                     </label>
                     <input 
@@ -182,7 +182,7 @@
     <!-- Recent Activity Card -->
     <div class="enhanced-card">
         <div class="section-title">
-            <i class="fas fa-history text-green-400"></i>
+            <i class="fas fa-history text-[#1f456e]"></i>
             Recent Activity
         </div>
         <div class="overflow-x-auto">
@@ -216,7 +216,7 @@
     <!-- Quick Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="enhanced-card text-center">
-            <div class="text-2xl font-bold text-purple-400" id="todayFeedings">-</div>
+            <div class="text-2xl font-bold text-[#1f456e]" id="todayFeedings">-</div>
             <div class="text-sm text-gray-400">Today's Feedings</div>
         </div>
         <div class="enhanced-card text-center">
@@ -231,6 +231,10 @@
 </div>
 
 <style>
+/* Controller Feed Now & Quick Schedule icon color overrides */
+.section-title .fa-utensils { color: #1f456e !important; }
+.section-title .fa-clock { color: #1f456e !important; }
+.section-title .fa-history { color: #1f456e !important; }
 /* Day Toggle Styling */
 .day-toggle {
     cursor: pointer;
@@ -255,16 +259,22 @@
 }
 
 .day-toggle input:checked + .day-label {
-    background: var(--primary-blue);
+    background: #1f456e;
     color: white;
-    border-color: rgba(139, 92, 246, 0.5);
-    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+    border-color: rgba(31, 69, 110, 0.5);
+    box-shadow: 0 0 0 2px rgba(31, 69, 110, 0.2);
 }
 
 /* Progress Bar for Portion Slider */
 .range-enhanced {
-    background: linear-gradient(to right, var(--primary-blue) 0%, var(--primary-blue) 25%, var(--bg-secondary) 25%, var(--bg-secondary) 100%);
+    background: linear-gradient(to right, #1f456e 0%, #1f456e 25%, var(--bg-secondary) 25%, var(--bg-secondary) 100%);
+    accent-color: #1f456e;
 }
+.range-enhanced::-webkit-slider-thumb { background: #1f456e; }
+.range-enhanced::-moz-range-thumb { background: #1f456e; }
+
+.form-control-enhanced:focus { border-color: #1f456e; box-shadow: 0 0 0 4px rgba(31, 69, 110, 0.15); outline: none; }
+.form-control-enhanced:focus-visible { outline-color: #1f456e; }
 
 /* Status Badge Variants */
 .status-success {
@@ -381,7 +391,7 @@ function updatePortionDisplay(value) {
     // Update slider background gradient
     const slider = document.getElementById('portionSlider');
     const percentage = ((value - slider.min) / (slider.max - slider.min)) * 100;
-    slider.style.background = `linear-gradient(to right, var(--primary-blue) 0%, var(--primary-blue) ${percentage}%, var(--bg-secondary) ${percentage}%, var(--bg-secondary) 100%)`;
+    slider.style.background = `linear-gradient(to right, #1f456e 0%, #1f456e ${percentage}%, var(--bg-secondary) ${percentage}%, var(--bg-secondary) 100%)`;
 }
 
 // Feed Now function
@@ -501,7 +511,7 @@ async function loadRecentActivity() {
                     <td class="font-mono text-sm">${new Date(log.timestamp).toLocaleString()}</td>
                     <td>
                         <span class="flex items-center gap-2">
-                            <i class="fas fa-${getFeedTypeIcon(log.feed_type)} text-purple-400"></i>
+                            <i class="fas fa-${getFeedTypeIcon(log.feed_type)} text-[#1f456e]"></i>
                             ${getFeedTypeLabel(log.feed_type)}
                             ${log.action === 'feed' ? 'Manual Feed' : 'Scheduled Feed'}
                         </span>

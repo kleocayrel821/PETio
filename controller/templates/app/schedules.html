@@ -15,7 +15,7 @@
     <!-- Add Schedule Card -->
     <div class="enhanced-card">
         <div class="section-title">
-            <i class="fas fa-plus-circle text-green-400"></i>
+            <i class="fas fa-plus-circle text-[#1f456e]"></i>
             Add New Schedule
         </div>
         <form id="addScheduleForm" class="space-y-6">
@@ -23,7 +23,7 @@
                 <!-- Time Input -->
                 <div>
                     <label class="subsection-title">
-                        <i class="fas fa-clock text-purple-400"></i>
+                        <i class="fas fa-clock text-[#1f456e]"></i>
                         Feeding Time
                     </label>
                     <input 
@@ -122,7 +122,7 @@
     <div class="enhanced-card">
         <div class="section-title justify-between">
             <span>
-                <i class="fas fa-list text-blue-400"></i>
+                <i class="fas fa-list text-[#1f456e]"></i>
                 Active Schedules
             </span>
             <div class="flex items-center gap-4">
@@ -137,14 +137,14 @@
                     class="btn btn-enhanced btn-ghost btn-sm"
                     onclick="loadSchedules()"
                 >
-                    <i class="fas fa-sync-alt"></i>
+                    <i class="fas fa-sync-alt text-[#1f456e]"></i>
                 </button>
             </div>
         </div>
 
         <!-- Loading State -->
         <div id="schedulesLoading" class="text-center py-8">
-            <i class="fas fa-spinner fa-spin text-purple-400 text-2xl mb-2"></i>
+            <i class="fas fa-spinner fa-spin text-[#1f456e] text-2xl mb-2"></i>
             <div class="text-gray-400">Loading schedules...</div>
         </div>
 
@@ -324,10 +324,14 @@
 }
 
 .day-toggle-large input:checked + .day-label-large {
-    background: var(--primary-blue);
+    background: #1f456e;
     color: white;
-    border-color: rgba(139, 92, 246, 0.5);
-    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+    border-color: rgba(31, 69, 110, 0.5);
+    box-shadow: 0 0 0 2px rgba(31, 69, 110, 0.2);
+}
+.day-toggle-large input:focus + .day-label-large {
+    outline: 2px solid #1f456e;
+    outline-offset: 2px;
 }
 
 /* Status Badge Styles */
@@ -351,7 +355,7 @@
 }
 
 .day-pill {
-    background: var(--primary-blue);
+    background: #1f456e;
     color: white;
     padding: 0.125rem 0.5rem;
     border-radius: 12px;
@@ -429,6 +433,11 @@
     color: var(--text-primary);
 }
 
+/* Controller schedules specific color overrides */
+.section-title .fa-plus-circle { color: #1f456e !important; }
+.form-control-enhanced:focus { border-color: #1f456e; box-shadow: 0 0 0 4px rgba(31,69,110,0.15); outline: none; }
+.form-control-enhanced:focus-visible { outline-color: #1f456e; }
+
 /* Action Button Styles */
 .action-btn {
     padding: 0.5rem;
@@ -442,14 +451,18 @@
 }
 
 .action-btn-edit {
-    background: rgba(59, 130, 246, 0.2);
-    color: var(--primary-blue);
+    background: rgba(31, 69, 110, 0.15);
+    color: #1f456e;
 }
 
 .action-btn-edit:hover {
-    background: rgba(59, 130, 246, 0.3);
+    background: rgba(31, 69, 110, 0.25);
     transform: scale(1.05);
 }
+
+/* Ensure icon color for list and refresh in header */
+.section-title .fa-list { color: #1f456e !important; }
+#refreshSchedules i { color: #1f456e !important; }
 
 .action-btn-delete {
     background: rgba(239, 68, 68, 0.2);
@@ -680,7 +693,7 @@ function renderSchedules() {
                     title="${schedule.enabled ? 'Disable' : 'Enable'} schedule"
                 ></div>
             </td>
-            <td class="font-mono font-semibold text-purple-400 whitespace-nowrap">
+            <td class="font-mono font-semibold text-[#1f456e] whitespace-nowrap">
                 ${formatTime(schedule.time)}
             </td>
             <td class="max-w-[8rem] sm:max-w-none truncate">

@@ -39,6 +39,7 @@ class Post(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     likes = models.ManyToManyField(settings.AUTH_USER_MODEL, through='Like', related_name='liked_posts')
     is_pinned = models.BooleanField(default=False)
+    repost_of = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='reposts')
     # Moderation flags
     is_flagged = models.BooleanField(default=False)
     hidden_at = models.DateTimeField(null=True, blank=True)
@@ -59,6 +60,28 @@ class Post(models.Model):
     @property
     def comment_count(self):
         return self.comments.count()
+
+    @property
+    def share_count(self):
+        return self.reposts.count()
+
+
+class PostImage(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='social/posts/')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['created_at', 'id']
+
+
+class PostVideo(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='videos')
+    file = models.FileField(upload_to='social/posts/videos/')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['created_at', 'id']
 
 
 class Like(models.Model):
@@ -149,6 +172,7 @@ class Notification(models.Model):
         ('comment', 'Comment'),
         ('follow', 'Follow'),
         ('mention', 'Mention'),
+        ('share', 'Share'),
     ]
     
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='social_notifications')

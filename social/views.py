@@ -10,7 +10,7 @@ from datetime import timedelta, datetime
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
-from .models import Post, Category, Comment, Like, UserProfile, Follow, Notification, SocialReport, ModerationAction, UserSuspension
+from .models import Post, Category, Comment, Like, UserProfile, Follow, Notification, SocialReport, ModerationAction, UserSuspension, PostImage, PostVideo
 from .mixins import ModeratorRequiredMixin  # for parity with permissions logic
 from .permissions import is_moderator
 from .decorators import moderator_required, admin_required
@@ -44,17 +44,10 @@ def home(request):
 
 def feed(request):
     """Community feed showing all posts"""
-    # Get filter parameters
-    category_filter = request.GET.get('category')
     search_query = request.GET.get('search')
     sort_by = request.GET.get('sort', 'recent')
     
-    # Base queryset
-    posts = Post.objects.select_related('author', 'category').prefetch_related('likes', 'comments')
-    
-    # Apply filters
-    if category_filter:
-        posts = posts.filter(category__name__iexact=category_filter)
+    posts = Post.objects.select_related('author').prefetch_related('likes', 'comments', 'images', 'videos')
     
     if search_query:
         posts = posts.filter(
@@ -62,43 +55,66 @@ def feed(request):
             Q(content__icontains=search_query) |
             Q(author__username__icontains=search_query)
         )
+
+    user_results = []
+    if search_query:
+        user_results = (
+            User.objects
+            .select_related('social_profile')
+            .filter(
+                Q(username__icontains=search_query) |
+                Q(first_name__icontains=search_query) |
+                Q(last_name__icontains=search_query) |
+                Q(social_profile__bio__icontains=search_query) |
+                Q(social_profile__location__icontains=search_query)
+            )
+            .annotate(
+                followers_count=Count('social_followers_set'),
+                post_count=Count('social_posts')
+            )
+            .order_by('-followers_count', '-post_count', '-date_joined')[:20]
+        )
     
-    # Apply sorting
     if sort_by == 'popular':
-        # Avoid property name conflict by using a different annotation name
         posts = posts.annotate(likes_count=Count('likes')).order_by('-likes_count', '-created_at')
-    elif sort_by == 'recent':
+    else:
         posts = posts.order_by('-is_pinned', '-created_at')
     
-    # Pagination
     paginator = Paginator(posts, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    # Get categories for filter and popular categories for sidebar
-    categories = Category.objects.all()
-    popular_categories = Category.objects.annotate(posts_count=Count('post', distinct=True)).order_by('-posts_count', 'name')[:5]
-    
-    # Community stats for sidebar
     week_ago = timezone.now() - timedelta(days=7)
     community_stats = {
         'total_posts': Post.objects.count(),
         'active_members': User.objects.annotate(post_count=Count('social_posts')).filter(post_count__gt=0).count(),
         'this_week_posts': Post.objects.filter(created_at__gte=week_ago).count(),
     }
+    friend_suggestions = []
+    if request.user.is_authenticated:
+        following_ids = Follow.objects.filter(follower=request.user).values_list('following_id', flat=True)
+        friend_suggestions = (
+            User.objects
+            .exclude(id__in=list(following_ids))
+            .exclude(id=request.user.id)
+            .filter(is_staff=False, is_superuser=False)
+            .annotate(
+                followers_count=Count('social_followers_set'),
+                post_count=Count('social_posts')
+            )
+            .order_by('-followers_count', '-post_count', '-date_joined')[:6]
+        )
     
     context = {
         'page_obj': page_obj,
-        'categories': categories,
-        'popular_categories': popular_categories,
         'community_stats': community_stats,
-        'current_category': category_filter,
         'search_query': search_query,
         'sort_by': sort_by,
+        'search_type': 'all',
+        'user_results': user_results,
+        'friend_suggestions': friend_suggestions,
     }
-    # Add moderation-related context for moderators
     context.update(get_moderation_context(request))
-    
     return render(request, 'social/feed.html', context)
 
 
@@ -115,22 +131,26 @@ def create_post(request):
             post = form.save(commit=False)
             post.author = request.user
             post.save()
+            from .models import PostImage, PostVideo
+            files = request.FILES.getlist('images') or request.FILES.getlist('media')
+            for f in files:
+                ct = getattr(f, 'content_type', '') or ''
+                if ct.startswith('image/'):
+                    PostImage.objects.create(post=post, image=f)
+                elif ct.startswith('video/'):
+                    PostVideo.objects.create(post=post, file=f)
             messages.success(request, 'Post created successfully!')
             return redirect('social:post_detail', pk=post.pk)
         else:
-            # Re-render template with errors but maintain existing mockup UI
-            categories = Category.objects.all()
             return render(request, 'social/create_post.html', {
-                'categories': categories,
                 'form_errors': form.errors,
             })
-    categories = Category.objects.all()
-    return render(request, 'social/create_post.html', {'categories': categories})
+    return render(request, 'social/create_post.html')
 
 
 def post_detail(request, pk):
     """Detailed view of a single post"""
-    post = get_object_or_404(Post, pk=pk)
+    post = get_object_or_404(Post.objects.prefetch_related('images', 'videos', 'likes', 'comments'), pk=pk)
     comments = post.comments.filter(parent=None).select_related('author').prefetch_related('replies')
     
     # Handle comment submission via normal POST
@@ -310,7 +330,7 @@ def profile(request, username=None):
         user = request.user
     
     profile, created = UserProfile.objects.get_or_create(user=user)
-    user_posts = Post.objects.filter(author=user).order_by('-created_at')[:10]
+    user_posts = Post.objects.filter(author=user).prefetch_related('images', 'videos', 'likes', 'comments').order_by('-created_at')[:10]
     
     # Check if current user follows this profile
     is_following = False
@@ -394,14 +414,46 @@ def edit_post(request, pk):
         form = PostForm(request.POST, request.FILES, instance=post)
         if form.is_valid():
             form.save()
+            # Handle featured image replace/clear (not part of PostForm)
+            try:
+                if request.POST.get('image-clear'):
+                    post.image = None
+                    post.save(update_fields=['image'])
+                elif 'image' in request.FILES:
+                    post.image = request.FILES['image']
+                    post.save(update_fields=['image'])
+            except Exception as e:
+                logger.error('Failed to update featured image for post_id=%s error=%s', post.pk, e)
+            # Remove selected existing additional images
+            remove_ids = request.POST.getlist('remove_image_ids')
+            if remove_ids:
+                try:
+                    PostImage.objects.filter(post=post, id__in=remove_ids).delete()
+                except Exception as e:
+                    logger.error('Failed to remove images for post_id=%s ids=%s error=%s', post.pk, remove_ids, e)
+            # Add newly selected additional media (images/videos)
+            files = request.FILES.getlist('images')
+            for f in files:
+                ct = getattr(f, 'content_type', '') or ''
+                if ct.startswith('image/'):
+                    PostImage.objects.create(post=post, image=f)
+                elif ct.startswith('video/'):
+                    from .models import PostVideo
+                    PostVideo.objects.create(post=post, file=f)
+            # Remove selected existing videos
+            remove_vid_ids = request.POST.getlist('remove_video_ids')
+            if remove_vid_ids:
+                try:
+                    from .models import PostVideo
+                    PostVideo.objects.filter(post=post, id__in=remove_vid_ids).delete()
+                except Exception as e:
+                    logger.error('Failed to remove videos for post_id=%s ids=%s error=%s', post.pk, remove_vid_ids, e)
             messages.success(request, 'Post updated successfully!')
             return redirect('social:post_detail', pk=post.pk)
         else:
             messages.error(request, 'Please correct the errors below.')
-    categories = Category.objects.all()
     context = {
         'post': post,
-        'categories': categories,
     }
     return render(request, 'social/edit_post.html', context)
 
@@ -412,6 +464,8 @@ def delete_post(request, pk):
     """Delete a post"""
     post = get_object_or_404(Post, pk=pk, author=request.user)
     post.delete()
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'post_id': pk})
     messages.success(request, 'Post deleted successfully!')
     return redirect('social:dashboard')
 
@@ -1471,3 +1525,41 @@ def moderation_logs(request):
     }
 
     return render(request, 'social/moderation/logs.html', context)
+@login_required
+@require_POST
+def repost_post(request, pk):
+    original = get_object_or_404(Post, pk=pk)
+    title = f"Shared from @{original.author.username}: {original.title}"
+    link = request.build_absolute_uri(reverse('social:post_detail', kwargs={'pk': original.pk}))
+    caption = (request.POST.get('caption') or '').strip()
+    if caption:
+        content = caption
+    else:
+        excerpt = (original.content[:180] + '...') if original.content and len(original.content) > 180 else (original.content or '')
+        content = f"Shared from @{original.author.username}\n\n{excerpt}"
+    new_post = Post.objects.create(title=title, content=content, author=request.user, category=original.category, repost_of=original)
+    # Attach media from original post
+    if original.image:
+        new_post.image = original.image
+        new_post.save(update_fields=['image'])
+    for img in original.images.all():
+        PostImage.objects.create(post=new_post, image=img.image)
+    for vid in original.videos.all():
+        PostVideo.objects.create(post=new_post, file=vid.file)
+    # Notify original author
+    if original.author != request.user:
+        try:
+            Notification.objects.create(
+                recipient=original.author,
+                sender=request.user,
+                notification_type='share',
+                post=new_post,
+                message=f"shared your post"
+            )
+        except Exception:
+            pass
+    redirect_target = request.POST.get('redirect', '')
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'post_id': new_post.pk})
+    messages.success(request, 'Post shared successfully!')
+    return redirect('social:feed')

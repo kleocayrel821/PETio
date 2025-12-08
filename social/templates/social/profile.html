@@ -1,32 +1,35 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load avatar %}
 
 {% block title %}{{ profile_user.username }} (@{{ profile_user.username }}) • PETio{% endblock %}
+
+{% block body_class %} class="social-no-gradient" {% endblock %}
 
 {% block extra_head %}
 <style>
     :root {
-        --primary-color: #1da1f2;
-        --secondary-color: #14171a;
-        --accent-color: #e1306c;
-        --success-color: #1db954;
-        --background-color: #f7f9fa;
+        --primary-color: #9370DB; /* Medium Purple */
+        --secondary-color: #F472B6; /* Pink accent */
+        --accent-color: #A78BFA; /* Soft violet */
+        --success-color: #22c55e;
+        --background-color: #f6f7fb;
         --card-background: #ffffff;
-        --text-primary: #14171a;
-        --text-secondary: #657786;
-        --border-color: #e1e8ed;
-        --hover-color: #f7f9fa;
+        --text-primary: #1e293b;
+        --text-secondary: #475569;
+        --border-color: rgba(147,112,219,0.25);
+        --hover-color: #f1f5f9;
     }
 
     body {
         background-color: var(--background-color);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-family: 'Rubik', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     /* Cover Photo & Header */
     .profile-cover {
         height: 200px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #6d28d9 0%, #ec4899 100%);
         position: relative;
         overflow: hidden;
     }
@@ -42,7 +45,8 @@
     }
 
     .profile-info-container {
-        max-width: 600px;
+        max-width: 900px;
+        width: 100%;
         margin: 0 auto;
         padding: 0 20px;
         position: relative;
@@ -73,13 +77,25 @@
 
     /* Compact header card padding and denser look */
     .profile-header-content {
-        background: var(--card-background);
-        border-radius: 16px;
-        padding: 70px 20px 20px 160px;
-        margin-top: -40px;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-        border: 1px solid var(--border-color);
+        background: rgba(255,255,255,0.85);
+        border-radius: 12px;
+        padding: 8px 8px 4px 108px;
+        margin-top: -4px;
+        box-shadow: 0 10px 24px rgba(124,58,237,0.08);
+        border: none;
         position: relative;
+        backdrop-filter: saturate(180%) blur(6px);
+    }
+    .profile-header-content::after {
+        content: "";
+        position: absolute;
+        left: 8px;
+        right: 8px;
+        bottom: -2px;
+        height: 2px;
+        background: linear-gradient(90deg, var(--primary-color) 0%, #4c1d95 100%);
+        border-radius: 2px;
+        opacity: 0.6;
     }
 
     .profile-actions-header {
@@ -90,7 +106,7 @@
 
     .profile-name {
         font-size: 1.5rem;
-        font-weight: 800;
+        font-weight: 700;
         color: var(--text-primary);
         margin: 0;
         line-height: 1.2;
@@ -98,8 +114,8 @@
 
     .profile-username {
         color: var(--text-secondary);
-        font-size: 1rem;
-        margin: 2px 0 15px;
+        font-size: 0.95rem;
+        margin: 0 0 6px;
     }
 
     .profile-bio {
@@ -112,8 +128,8 @@
     .profile-meta {
         display: flex;
         flex-wrap: wrap;
-        gap: 15px;
-        margin: 15px 0;
+        gap: 10px;
+        margin: 6px 0;
         color: var(--text-secondary);
         font-size: 0.9rem;
     }
@@ -126,27 +142,33 @@
 
     /* More compact stats and grid layout */
     .profile-stats {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-        margin: 16px 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 8px 0;
+        align-items: center;
+        justify-content: center;
+        transform: translateX(-44px);
     }
 
     .stat-item {
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         color: var(--text-primary);
         text-decoration: none;
         transition: all 0.2s ease;
-        background: var(--card-background);
+        background: transparent;
         border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-        min-height: 60px;
+        border-radius: 9999px; /* pill */
+        padding: 6px 10px;
+        box-shadow: none;
+        min-height: auto;
         justify-content: flex-start;
+        text-align: left;
     }
+
+    .stat-item i { margin-right: 4px; }
 
     .stat-item:hover {
         color: var(--primary-color);
@@ -157,12 +179,12 @@
 
     .stat-number {
         font-weight: 700;
-        font-size: 1rem;
+        font-size: 0.9rem;
     }
 
     .stat-label {
         color: var(--text-secondary);
-        font-size: 0.9rem;
+        font-size: 0.8rem;
     }
 
     /* Modern Buttons */
@@ -245,13 +267,13 @@
 
     .post-item {
         background: var(--card-background);
-        border-left: 4px solid rgba(29,161,242,0.25);
-        border-right: 1px solid var(--border-color);
-        border-bottom: 1px solid var(--border-color);
-        padding: 20px;
+        border: 1px solid var(--border-color);
+        border-radius: 22px;
+        padding: 16px;
         transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
         cursor: pointer;
-        box-shadow: 0 6px 12px rgba(0,0,0,0.06);
+        box-shadow: 0 10px 24px rgba(17,24,39,0.06);
+        margin-bottom: 16px;
     }
 
     .post-item:hover {
@@ -421,6 +443,8 @@
         .profile-stats {
             flex-wrap: wrap;
             gap: 15px;
+            justify-content: center;
+            transform: none;
         }
     }
 
@@ -467,10 +491,10 @@
         border-left: 4px solid var(--primary-color);
     }
     .gradient-card {
-        background: linear-gradient(135deg, #1da1f2 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--primary-color) 0%, #ec4899 100%);
         color: white;
         border-radius: 16px;
-        box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+        box-shadow: 0 16px 32px rgba(109,40,217,0.25);
     }
     .card-title {
         display: flex;
@@ -573,7 +597,7 @@
 
     /* Verified badge styles */
     .verified-badge {
-        color: #1da1f2;
+        color: var(--primary-color);
         margin-left: 8px;
         font-size: 1.2rem;
     }
@@ -706,7 +730,7 @@
 {% endblock %}
 
 {% block sidebar %}
-  {% include 'social/sidebar.html' with view_name='dashboard' %}
+  {% include 'social/sidebar.html' with view_name='my_profile' %}
 {% endblock %}
 
 {% block content %}
@@ -719,7 +743,7 @@
     <!-- Avatar -->
     <div class="profile-avatar-container">
         {% if profile.avatar %}
-            <img src="{{ profile.avatar.url }}" alt="{{ profile_user.username }}" class="profile-avatar">
+            <img src="{{ profile.avatar.url }}" alt="{{ profile_user.username }}" class="profile-avatar" data-viewer="image" data-group="profile-{{ profile_user.id }}">
         {% else %}
             <div class="profile-avatar">
                 <i class="fas fa-user"></i>
@@ -728,7 +752,7 @@
     </div>
 
     <!-- Profile Header Content -->
-    <div class="profile-header-content accent-border">
+    <div class="profile-header-content">
         <!-- Action Buttons -->
         <div class="profile-actions-header">
             {% if not is_own_profile %}
@@ -767,18 +791,18 @@
         <div class="profile-meta">
             {% if profile.location %}
                 <div class="profile-meta-item">
-                    <i class="fas fa-map-marker-alt"></i>
+                    <span class="icon-badge-soft"><i class="fas fa-map-marker-alt"></i></span>
                     <span>{{ profile.location }}</span>
                 </div>
             {% endif %}
             {% if profile.website %}
                 <div class="profile-meta-item">
-                    <i class="fas fa-link"></i>
+                    <span class="icon-badge-soft"><i class="fas fa-link"></i></span>
                     <a href="{{ profile.website }}" target="_blank" rel="noopener">{{ profile.website|slice:":30" }}{% if profile.website|length > 30 %}...{% endif %}</a>
                 </div>
             {% endif %}
             <div class="profile-meta-item">
-                <i class="fas fa-calendar-alt"></i>
+                <span class="icon-badge-soft"><i class="fas fa-calendar-alt"></i></span>
                 <span>Joined {{ profile_user.date_joined|date:"F Y" }}</span>
             </div>
         </div>
@@ -786,22 +810,22 @@
         <!-- Stats (clickable) -->
         <div class="profile-stats">
             <a class="stat-item" href="#postsSection" title="View posts">
-                <i class="fas fa-file-alt"></i>
+                <span class="icon-badge-soft"><i class="fas fa-file-alt"></i></span>
                 <span class="stat-number" id="postsCount">{{ user_posts.count }}</span>
                 <span class="stat-label">Posts</span>
             </a>
             <a class="stat-item" href="#" onclick="openFollowers({{ profile_user.id }}); return false;" title="View followers">
-                <i class="fas fa-user-friends"></i>
+                <span class="icon-badge-soft"><i class="fas fa-user-friends"></i></span>
                 <span class="stat-number" id="followersCount">{{ profile.follower_count }}</span>
                 <span class="stat-label">Followers</span>
             </a>
             <a class="stat-item" href="#" onclick="openFollowing({{ profile_user.id }}); return false;" title="View following">
-                <i class="fas fa-user-plus"></i>
+                <span class="icon-badge-soft"><i class="fas fa-user-plus"></i></span>
                 <span class="stat-number" id="followingCount">{{ profile.following_count }}</span>
                 <span class="stat-label">Following</span>
             </a>
             <a class="stat-item" href="#" onclick="openLikes({{ profile_user.id }}); return false;" title="View likes">
-                <i class="fas fa-heart"></i>
+                <span class="icon-badge-soft"><i class="fas fa-heart"></i></span>
                 <span class="stat-number" id="likesCount">{{ profile_likes_count }}</span>
                 <span class="stat-label">Likes</span>
             </a>
@@ -809,92 +833,29 @@
     </div>
 
     
-    <div class="modern-card accent-border" style="margin-top: 12px;">
-        <h3 class="card-title"><i class="fas fa-bolt"></i> Quick Actions</h3>
-        <div class="icon-grid" style="margin-top: 10px;">
-            <!-- Message removed per requirement -->
-            <a class="icon-item" href="#" onclick="shareProfile(); return false;" title="Share profile">
-                <i class="fas fa-share-alt"></i>
-                <span>Share</span>
-            </a>
-            {% if is_own_profile %}
-            <a class="icon-item" href="{% url 'social:create_post' %}" title="Create Post">
-                <i class="fas fa-plus-circle"></i>
-                <span>Create</span>
-            </a>
-            <a class="icon-item" href="{% url 'social:edit_profile' %}" title="Edit Profile">
-                <i class="fas fa-user-cog"></i>
-                <span>Edit</span>
-            </a>
-            <a class="icon-item" href="{% url 'social:dashboard' %}" title="Dashboard">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-            </a>
-            {% else %}
-            <a class="icon-item" href="#" onclick="toggleFollow({{ profile_user.id }})" title="Follow">
-                <i class="fas fa-user-plus"></i>
-                <span>Follow</span>
-            </a>
-            <a class="icon-item" href="{% url 'social:feed' %}" title="View Feed">
-                <i class="fas fa-stream"></i>
-                <span>Feed</span>
-            </a>
-            <a class="icon-item" href="#" title="Recommend">
-                <i class="fas fa-thumbs-up"></i>
-                <span>Recommend</span>
-            </a>
-            {% endif %}
+    {% if is_own_profile %}
+    <div class="enhanced-card hover-lift" style="margin-top: 12px;">
+        <div class="flex items-center gap-3">
+            <div class="avatar">
+                <div class="w-12 rounded-full">
+                    <a href="{% url 'social:my_profile' %}" class="block">
+                        <img src="{% avatar_url user 96 %}" alt="{{ user.username }}" />
+                    </a>
+                </div>
+            </div>
+            <div class="flex-1 bg-white rounded-full border border-gray-200 px-4 py-3 flex items-center gap-3 min-w-0 shadow-sm">
+                <a href="{% url 'social:create_post' %}" class="flex-1 text-gray-500 hover:text-gray-700 transition-colors duration-200 min-w-0 truncate">
+                    What's on your mind, {{ user.first_name|default:user.username }}?
+                </a>
+            </div>
         </div>
     </div>
+    {% endif %}
   </div>
 
-  <!-- Enhanced Seller Ratings -->
-  <div class="modern-card gradient-card" style="margin: 16px auto; max-width: 900px;">
-      <div class="flex items-center justify-between" style="gap: 16px;">
-          <div>
-              <h3 class="card-title"><i class="fas fa-award"></i> Seller Ratings</h3>
-              <p style="opacity:0.85; margin-top: 6px;">Response rate, reliability, and community trust</p>
-              <div style="display:grid; grid-template-columns:repeat(2,1fr); gap: 10px; margin-top: 12px;">
-                  <div style="display:flex; align-items:center; gap:8px;">
-                      <i class="fas fa-reply"></i><span>Response Rate</span>
-                  </div>
-                  <div style="display:flex; align-items:center; gap:8px;">
-                      <i class="fas fa-shield-alt"></i><span>Reliability</span>
-                  </div>
-                  <div style="display:flex; align-items:center; gap:8px;">
-                      <i class="fas fa-handshake"></i><span>Engagement</span>
-                  </div>
-                  <div style="display:flex; align-items:center; gap:8px;">
-                      <i class="fas fa-star"></i><span>Quality</span>
-                  </div>
-              </div>
-          </div>
-          <div class="progress-ring" style="--percent: {{ profile.seller_rating|default:85 }}">
-            <div class="progress-inner">{{ profile.seller_rating|default:85 }}%</div>
-          </div>
-      </div>
-  </div>
+  
 
-  <!-- Activity Timeline -->
-  <div class="modern-card accent-border" style="margin: 16px auto; max-width: 900px;">
-      <h3 class="card-title"><i class="fas fa-stream"></i> Activity Timeline</h3>
-      <div class="timeline" style="margin-top: 10px;">
-          <div class="timeline-item">
-              <div class="timeline-title"><i class="fas fa-user-check"></i> Joined PETio</div>
-              <div class="timeline-meta">{{ profile_user.date_joined|date:"M d, Y" }}</div>
-          </div>
-          {% if user_posts and user_posts.0 %}
-          <div class="timeline-item">
-              <div class="timeline-title"><i class="fas fa-pen-nib"></i> Latest Post</div>
-              <div class="timeline-meta">{{ user_posts.0.created_at|date:"M d, Y" }}</div>
-          </div>
-          {% endif %}
-          <div class="timeline-item">
-              <div class="timeline-title"><i class="fas fa-users"></i> Community Growth</div>
-              <div class="timeline-meta">Followers: {{ profile.follower_count }} • Following: {{ profile.following_count }}</div>
-          </div>
-      </div>
-  </div>
+  
 
   <!-- Posts Section -->
   <div class="posts-section" id="postsSection">
@@ -902,7 +863,7 @@
         <!-- Posts Header -->
         <div class="posts-header">
             <h2 class="posts-title">
-                <i class="fas fa-newspaper"></i>
+                <span class="icon-badge-soft icon-inline"><i class="fas fa-newspaper"></i></span>
                 Posts
             </h2>
         </div>
@@ -910,20 +871,33 @@
         <!-- Posts List -->
         {% for post in user_posts %}
             <div class="post-item" onclick="window.location.href='{% url 'social:post_detail' post.id %}'">
-                <!-- Post Header -->
-                <div class="post-header">
-                    <div class="post-meta">
-                        <span>{{ post.created_at|date:"M d" }}</span>
-                        {% if post.category %}
-                            <span class="category-badge">{{ post.category.name }}</span>
-                        {% endif %}
+                <!-- Post Header with author and time -->
+                <div class="post-header flex justify-between items-start">
+                    <div class="flex items-start gap-3">
+                        <div class="avatar">
+                            <div class="w-12 rounded-full">
+                                <a href="{% url 'social:profile' post.author.username %}" class="block">
+                                    <img src="{% avatar_url post.author 96 %}" alt="{{ post.author.username }}" />
+                                </a>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 mb-2">
+                                <h4 class="font-semibold">
+                                    <a href="{% url 'social:profile' post.author.username %}" class="hover:text-primary">
+                                        {{ post.author.get_full_name|default:post.author.username }}
+                                    </a>
+                                </h4>
+                                <span class="text-sm text-base-content/60">{{ post.created_at|timesince }} ago</span>
+                            </div>
+                        </div>
                     </div>
                     {% if is_own_profile %}
                         <div class="dropdown dropdown-end">
-                            <label tabindex="0" class="btn btn-ghost btn-sm">
+                            <label tabindex="0" class="btn btn-ghost btn-sm" onclick="event.stopPropagation()">
                                 <i class="fas fa-ellipsis-h"></i>
                             </label>
-                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52" onclick="event.stopPropagation()">
                                 <li><a href="{% url 'social:edit_post' post.pk %}"><i class="fas fa-edit"></i> Edit</a></li>
                                 <li><a href="{% url 'social:post_detail' post.pk %}"><i class="fas fa-eye"></i> View</a></li>
                                 <li>
@@ -956,9 +930,53 @@
                     {% endif %}
                 </div>
 
-                {% if post.image %}
-                    <img src="{{ post.image.url }}" alt="{{ post.title }}" class="post-image">
+                {% with imgs=post.images.all %}
+                {% if imgs|length > 1 %}
+                <div class="mb-4 grid grid-cols-2 gap-3">
+                    {% for img in imgs %}
+                    <a href="{% url 'social:post_detail' post.pk %}" class="block">
+                        <img src="{{ img.image.url }}" alt="{{ post.title }}"
+                             loading="lazy"
+                             data-viewer="image" data-group="post-{{ post.pk }}"
+                             class="rounded-lg w-full object-cover max-h-64 sm:max-h-72 md:max-h-80" />
+                    </a>
+                    {% endfor %}
+                </div>
+                {% elif imgs|length == 1 %}
+                <div class="mb-4">
+                    {% for img in imgs %}
+                    <a href="{% url 'social:post_detail' post.pk %}" class="block">
+                        <img src="{{ img.image.url }}" alt="{{ post.title }}"
+                             loading="lazy"
+                             data-viewer="image" data-group="post-{{ post.pk }}"
+                             class="rounded-lg w-full object-cover max-h-64 sm:max-h-72 md:max-h-80" />
+                    </a>
+                    {% endfor %}
+                </div>
+                {% elif post.image %}
+                <div class="mb-4">
+                    <a href="{% url 'social:post_detail' post.pk %}" class="block">
+                        <img src="{{ post.image.url }}" alt="{{ post.title }}"
+                             loading="lazy"
+                             data-viewer="image" data-group="post-{{ post.pk }}"
+                             class="rounded-lg w-full object-cover max-h-64 sm:max-h-72 md:max-h-80" />
+                    </a>
+                </div>
                 {% endif %}
+                {% endwith %}
+
+                {% with vids=post.videos.all %}
+                {% if vids|length > 0 %}
+                <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {% for v in vids %}
+                    <a href="{% url 'social:post_detail' post.pk %}" class="block">
+                        <video src="{{ v.file.url }}" preload="metadata" controls
+                               class="rounded-lg w-full object-cover max-h-64 sm:max-h-72 md:max-h-80"></video>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
 
                 <!-- Post Engagement -->
                 <div class="post-engagement">

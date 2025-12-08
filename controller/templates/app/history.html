@@ -40,7 +40,7 @@
     <!-- Filters Card -->
     <div class="enhanced-card">
         <div class="section-title">
-            <i class="fas fa-filter text-purple-400"></i>
+            <i class="fas fa-filter text-[#1f456e]"></i>
             Filter & Search
         </div>
         <div class="space-y-4">
@@ -79,7 +79,6 @@
                         <option value="">All Types</option>
                         <option value="manual">Manual Button</option>
                         <option value="scheduled">Schedule</option>
-                        <option value="automatic">Automatic Button</option>
                     </select>
                 </div>
             </div>
@@ -89,7 +88,7 @@
                 <!-- Search Input -->
                 <div class="flex-1">
                     <label class="subsection-title">
-                        <i class="fas fa-search text-teal-400"></i>
+                        <i class="fas fa-search text-[#1f456e]"></i>
                         Search Logs
                     </label>
                     <input 
@@ -107,7 +106,7 @@
                         class="btn btn-enhanced btn-primary-enhanced"
                         onclick="applyFilters()"
                     >
-                        <i class="fas fa-search"></i>
+                        <i class="fas fa-search text-[#1f456e]"></i>
                         Apply Filters
                     </button>
                     <button 
@@ -162,8 +161,8 @@
             </div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon bg-purple-500/20">
-                <i class="fas fa-calendar-day text-purple-400"></i>
+            <div class="stat-icon bg-[#1f456e]/20">
+                <i class="fas fa-calendar-day text-[#1f456e]"></i>
             </div>
             <div class="stat-content">
                 <div class="stat-value" id="todayFeeds">-</div>
@@ -185,7 +184,7 @@
     <div class="enhanced-card">
         <div class="section-title justify-between">
             <span>
-                <i class="fas fa-table text-blue-400"></i>
+                <i class="fas fa-table text-[#1f456e]"></i>
                 Feeding Logs
             </span>
             <div class="flex items-center gap-4">
@@ -200,14 +199,14 @@
                     onclick="exportLogs()"
                     title="Export to CSV"
                 >
-                    <i class="fas fa-download"></i>
+                    <i class="fas fa-download text-[#1f456e]"></i>
                 </button>
             </div>
         </div>
 
         <!-- Loading State -->
         <div id="logsLoading" class="text-center py-8">
-            <i class="fas fa-spinner fa-spin text-purple-400 text-2xl mb-2"></i>
+            <i class="fas fa-spinner fa-spin text-[#1f456e] text-2xl mb-2"></i>
             <div class="text-gray-400">Loading feeding logs...</div>
         </div>
 
@@ -252,7 +251,7 @@
                     class="btn btn-enhanced btn-ghost"
                     onclick="clearFilters()"
                 >
-                    <i class="fas fa-filter"></i>
+                    <i class="fas fa-filter text-[#1f456e]"></i>
                     Clear Filters
                 </button>
             </div>
@@ -380,6 +379,18 @@
     background: var(--bg-card-hover);
 }
 
+.section-title i.fa-filter { color: #1f456e !important; }
+.subsection-title i.fa-search { color: #1f456e !important; }
+.btn i.fa-search { color: #1f456e !important; }
+input[type="date"].form-control-enhanced:focus { border-color: #1f456e; box-shadow: 0 0 0 4px rgba(31,69,110,0.15); }
+.section-title i.fa-table { color: #1f456e !important; }
+#exportLogs { background: rgba(31,69,110,0.12); }
+#exportLogs:hover { background: rgba(31,69,110,0.18); }
+#exportLogs i.fa-download { color: #1f456e !important; }
+
+.form-control-enhanced:focus { border-color: #1f456e; box-shadow: 0 0 0 4px rgba(31,69,110,0.15); outline: none; }
+.form-control-enhanced:focus-visible { outline-color: #1f456e; }
+
 /* Sortable Headers */
 .sortable {
     cursor: pointer;
@@ -414,7 +425,7 @@
 
 /* Filter Chips */
 .filter-chip {
-    background: var(--primary-purple);
+    background: #1f456e;
     color: white;
     padding: 0.25rem 0.75rem;
     border-radius: 16px;
@@ -612,7 +623,7 @@ function renderLogs() {
     tbody.innerHTML = logs.map(log => `
         <tr class="log-row" data-id="${log.id}">
             <td class="font-mono">
-                <div class="font-semibold text-purple-400">
+                <div class="font-semibold text-[#1f456e]">
                     ${formatDate(log.timestamp)}
                 </div>
                 <div class="text-sm text-gray-400">

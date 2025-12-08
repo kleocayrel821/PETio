@@ -5,26 +5,24 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'social/css/style.css' %}">
+<link rel="stylesheet" href="{% static 'social/css/gradient-mesh.css' %}">
 {% block social_extra_head %}{% endblock %}
 {% endblock %}
 
 {% block app_nav %}
 <div class="tabs tabs-boxed social-nav">
     <a href="{% url 'social:home' %}" class="tab nav-link {% if request.resolver_match.url_name == 'home' %}tab-active{% endif %}">
-        <i class="fas fa-home mr-2"></i>Home
+        <span class="icon-badge-soft icon-inline"><i class="fas fa-home"></i></span>Home
     </a>
     <a href="{% url 'social:feed' %}" class="tab nav-link {% if request.resolver_match.url_name == 'feed' %}tab-active{% endif %}">
-        <i class="fas fa-stream mr-2"></i>Feed
+        <span class="icon-badge-soft icon-inline"><i class="fas fa-stream"></i></span>Feed
     </a>
     <a href="{% url 'social:dashboard' %}" class="tab nav-link {% if request.resolver_match.url_name == 'dashboard' %}tab-active{% endif %}">
-        <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+        <span class="icon-badge-soft icon-inline"><i class="fas fa-tachometer-alt"></i></span>Dashboard
     </a>
     <a href="{% url 'social:notifications' %}" class="tab nav-link {% if request.resolver_match.url_name == 'notifications' %}tab-active{% endif %}">
-        <i class="fas fa-bell mr-2"></i>Notifications
+        <span class="icon-badge-soft icon-inline"><i class="fas fa-bell"></i></span>Notifications
         <span id="notifBadge" class="badge badge-primary ml-2" {% if unread_notifications_count|default:0 == 0 %}style="display:none;"{% endif %}>{{ unread_notifications_count|default:0 }}</span>
-    </a>
-    <a href="{% url 'social:create_post' %}" class="tab nav-link {% if request.resolver_match.url_name == 'create_post' %}tab-active{% endif %}">
-        <i class="fas fa-plus mr-2"></i>Create Post
     </a>
 </div>
 {% endblock %}

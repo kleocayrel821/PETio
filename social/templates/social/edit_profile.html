@@ -15,14 +15,15 @@
         background: white;
         border-radius: 20px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
+        overflow: visible;
     }
     
     .profile-edit-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--primary-color) 0%, #ec4899 100%);
         color: white;
         padding: 2rem;
         text-align: center;
+        box-shadow: 0 16px 32px rgba(109,40,217,0.25);
     }
     
     .profile-edit-header h1 {
@@ -57,18 +58,19 @@
     .form-input {
         width: 100%;
         padding: 0.75rem 1rem;
-        border: 2px solid #e5e7eb;
-        border-radius: 12px;
+        border: 1px solid rgba(147,112,219,0.25);
+        border-radius: 14px;
         font-size: 1rem;
         transition: all 0.3s ease;
-        background: #f9fafb;
+        background: rgba(255,255,255,0.9);
+        backdrop-filter: saturate(160%) blur(4px);
     }
     
     .form-input:focus {
         outline: none;
-        border-color: #667eea;
-        background: white;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        border-color: var(--primary-color);
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(147, 112, 219, 0.18);
     }
     
     .form-textarea {
@@ -86,10 +88,11 @@
         align-items: center;
         gap: 0.75rem;
         padding: 1rem;
-        background: #f3f4f6;
-        border-radius: 12px;
-        border: 2px solid #e5e7eb;
+        background: rgba(255,255,255,0.86);
+        border-radius: 14px;
+        border: 1px solid rgba(147,112,219,0.25);
         transition: all 0.3s ease;
+        backdrop-filter: saturate(160%) blur(4px);
     }
     
     .form-checkbox-container:hover {
@@ -99,7 +102,7 @@
     .form-checkbox {
         width: 20px;
         height: 20px;
-        accent-color: #667eea;
+        accent-color: var(--primary-color);
     }
     
     .checkbox-label {
@@ -118,9 +121,14 @@
         display: flex;
         gap: 1rem;
         justify-content: flex-end;
+        align-items: center;
         padding-top: 2rem;
         border-top: 1px solid #e5e7eb;
         margin-top: 2rem;
+    }
+    .form-actions .btn {
+        width: auto;
+        flex-shrink: 1;
     }
     
     .btn {
@@ -132,16 +140,20 @@
         cursor: pointer;
         transition: all 0.3s ease;
         font-size: 1rem;
+        box-sizing: border-box;
     }
     
     .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
         color: white;
+        box-shadow: 0 4px 12px rgba(17,24,39,0.08);
+        border: none;
+        border-radius: 14px;
     }
     
     .btn-primary:hover {
         transform: translateY(-2px);
-        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 10px 22px rgba(109,40,217,0.25);
     }
     
     .btn-secondary {
@@ -177,13 +189,14 @@
         width: 60px;
         height: 60px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--primary-color) 0%, #ec4899 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
         font-size: 1.5rem;
         font-weight: 600;
+        box-shadow: 0 10px 22px rgba(109,40,217,0.25);
     }
     
     .error-message {

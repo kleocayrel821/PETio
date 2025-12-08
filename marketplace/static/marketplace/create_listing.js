@@ -100,7 +100,7 @@
     });
   }
 
-  function setupPreview({ modalEl, titleInput, priceInput, quantityInput, categorySelect, descInput, previewTitleEl, previewPriceEl, previewStockEl, previewCategoryEl, previewDescEl, previewImgEl, previewPlaceholderEl }) {
+  function setupPreview({ modalEl, titleInput, priceInput, quantityInput, categorySelect, descInput, previewTitleEl, previewPriceEl, previewStockEl, previewCategoryEl, previewDescEl, previewImgEl, previewPlaceholderEl, sourceImgEl }) {
     return () => {
       if (!modalEl) return;
       // Populate
@@ -109,6 +109,9 @@
       if (previewStockEl) previewStockEl.textContent = `Stock: ${quantityInput?.value || '—'}`;
       if (previewCategoryEl) previewCategoryEl.textContent = categorySelect?.selectedOptions?.[0]?.text || 'Uncategorized';
       if (previewDescEl) previewDescEl.textContent = descInput?.value || 'No description provided.';
+      if (sourceImgEl && sourceImgEl.src && previewImgEl) {
+        previewImgEl.src = sourceImgEl.src;
+      }
       if (previewImgEl && previewImgEl.src) {
         previewImgEl.classList.remove('hidden');
         previewPlaceholderEl?.classList.add('hidden');
@@ -242,6 +245,7 @@
         previewDescEl,
         previewImgEl: previewModalImg,
         previewPlaceholderEl,
+        sourceImgEl: previewImgEl,
       });
       previewBtn && previewBtn.addEventListener('click', applyPreview);
     }

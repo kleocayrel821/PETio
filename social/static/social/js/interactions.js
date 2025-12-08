@@ -57,3 +57,33 @@ function toggleFollow(userId, button) {
 window.toggleLike = toggleLike;
 window.submitComment = submitComment;
 window.toggleFollow = toggleFollow;
+
+document.addEventListener('DOMContentLoaded', function() {
+  const postsContainer = document.getElementById('feed-posts');
+  const sentinel = document.getElementById('feed-more-sentinel');
+  if (!postsContainer || !sentinel) return;
+  let nextUrl = sentinel.dataset.nextUrl || '';
+  if (!nextUrl) return;
+  let loading = false;
+  const io = new IntersectionObserver(async entries => {
+    if (!entries.some(e => e.isIntersecting)) return;
+    if (loading) return;
+    if (!nextUrl) { io.disconnect(); return; }
+    loading = true;
+    try {
+      const res = await fetch(nextUrl, { method: 'GET' });
+      const html = await res.text();
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const newPosts = doc.querySelector('#feed-posts');
+      if (newPosts) {
+        const children = Array.from(newPosts.children);
+        for (const el of children) postsContainer.appendChild(el);
+      }
+      const newSent = doc.querySelector('#feed-more-sentinel');
+      nextUrl = newSent ? (newSent.dataset.nextUrl || '') : '';
+      if (!nextUrl) io.disconnect();
+    } catch (_) {}
+    loading = false;
+  }, { rootMargin: '600px 0px' });
+  io.observe(sentinel);
+});

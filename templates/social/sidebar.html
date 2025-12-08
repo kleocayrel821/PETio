@@ -16,8 +16,8 @@ Expects: view_name set to one of: feed, dashboard, notifications, create_post
     <i class="fas fa-bell"></i>
     <span>Notifications</span>
   </a>
-  <a href="{% url 'social:create_post' %}" class="sidebar-item {% if view_name == 'create_post' %}active{% endif %}">
-    <i class="fas fa-plus"></i>
-    <span>Create Post</span>
+  <a href="{% url 'social:my_profile' %}" class="sidebar-item {% if view_name == 'my_profile' %}active{% endif %}">
+    <i class="fas fa-user"></i>
+    <span>My Profile</span>
   </a>
 </nav>

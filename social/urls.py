@@ -20,6 +20,7 @@ urlpatterns = [
     path('post/<int:pk>/', views.post_detail, name='post_detail'),
     path('post/<int:pk>/edit/', views.edit_post, name='edit_post'),
     path('post/<int:pk>/delete/', views.delete_post, name='delete_post'),
+    path('post/<int:pk>/repost/', views.repost_post, name='repost_post'),
     path('post/<int:pk>/report/', views.report_post, name='report_post'),
     path('post/<int:post_id>/comment/', views.comment_create, name='comment_create'),
     
