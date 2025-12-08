@@ -1,5 +1,6 @@
 <!-- Project Global Base Template -->
 {% load static %}
+{% load avatar %}
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
@@ -7,6 +8,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PETio{% endblock %}</title>
   <meta name="csrf-token" content="{{ csrf_token }}">
+  <link rel="icon" href="{% static 'images/paw-logo.svg' %}" type="image/svg+xml">
+  <link rel="alternate icon" type="image/png" href="{{ MEDIA_URL }}PETiologo.png">
   <!-- DaisyUI + Tailwind CSS -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.tailwindcss.com"></script>
@@ -16,33 +19,27 @@
   <!-- Global CSS Variables and Enhanced UI Classes -->
   <style>
     :root {
-      /* Clean Light Color Palette */
-      --primary-blue: #3b82f6;
-      --accent-emerald: #10b981;
-      --accent-amber: #f59e0b;
+      --primary-blue: #8b5cf6;
+      --accent-emerald: #f472b6;
+      --accent-amber: #fb7185;
       --success-green: #22c55e;
       --warning-orange: #f97316;
       --error-red: #ef4444;
-
-      /* Background Variations */
       --bg-primary: #ffffff;
-      --bg-secondary: #f8fafc;
+      --bg-secondary: #f3f4f6;
       --bg-card: #ffffff;
-      --bg-card-hover: #f1f5f9;
-
-      /* Text Colors */
-      --text-primary: #1e293b;
-      --text-secondary: #475569;
-      --text-muted: #64748b;
-
-      /* Shadows */
-      --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-      --shadow-card-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-
-      /* Transitions */
+      --bg-card-hover: #f8fafc;
+      --text-primary: #1f2937;
+      --text-secondary: #4b5563;
+      --text-muted: #6b7280;
+      --shadow-card: 0 8px 24px rgba(17, 24, 39, 0.08);
+      --shadow-card-hover: 0 18px 40px rgba(17, 24, 39, 0.12);
       --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       --transition-fast: all 0.15s ease-in-out;
       --transition-medium: all 0.25s ease-in-out;
+      --gradient-soft: linear-gradient(135deg, #e9d5ff 0%, #fecdd3 100%);
+      --glass-bg: rgba(255,255,255,0.65);
+      --glass-border: 1px solid rgba(255,255,255,0.35);
     }
 
     body {
@@ -73,16 +70,16 @@
     /* Enhanced Card Styling */
     .enhanced-card {
       background: var(--bg-card);
-      border-radius: 12px;
+      border-radius: 20px;
       box-shadow: var(--shadow-card);
       padding: 1.5rem;
       transition: var(--transition-smooth);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(17, 24, 39, 0.06);
     }
     .enhanced-card:hover {
       box-shadow: var(--shadow-card-hover);
       background: var(--bg-card-hover);
-      transform: translateY(-2px);
+      transform: translateY(-3px);
     }
 
     /* Button Enhancements */
@@ -106,15 +103,15 @@
       position: relative;
       transition: var(--transition-medium);
       background: var(--bg-secondary);
-      border: 2px solid rgba(255,255,255,0.1);
-      border-radius: 8px;
+      border: 1.5px solid rgba(17,24,39,0.08);
+      border-radius: 14px;
       color: var(--text-primary);
-      padding: 0.75rem;
+      padding: 0.85rem 1rem;
     }
-    .form-control-enhanced:focus { border-color: var(--primary-blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); outline: none; transform: translateY(-2px); }
+    .form-control-enhanced:focus { border-color: var(--primary-blue); box-shadow: 0 0 0 4px rgba(139,92,246,0.15); outline: none; transform: translateY(-2px); }
 
     /* Table Enhancements */
-    .enhanced-table { background: var(--bg-card); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-card); }
+    .enhanced-table { background: var(--bg-card); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow-card); }
     .enhanced-table th { background: var(--bg-secondary); color: var(--text-primary); font-weight: 600; padding: 1rem; border-bottom: 2px solid rgba(255,255,255,0.1); }
     .enhanced-table td { padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); transition: var(--transition-fast); }
     .enhanced-table tbody tr { transition: var(--transition-fast); }
@@ -122,7 +119,7 @@
     .enhanced-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
 
     /* Status Badges */
-    .status-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; transition: var(--transition-fast); }
+    .status-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.9rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 600; transition: var(--transition-fast); }
     .status-badge:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .status-enabled { background: rgba(16,185,129,0.2); color: var(--success-green); border: 1px solid rgba(16,185,129,0.3); }
     .status-disabled { background: rgba(156,163,175,0.2); color: var(--text-muted); border: 1px solid rgba(156,163,175,0.3); }
@@ -132,8 +129,8 @@
     @media (min-width: 768px) { .responsive-grid { grid-template-columns: repeat(2, 1fr); } }
 
     /* Slider Enhancements */
-    .range-enhanced { appearance: none; background: var(--bg-secondary); height: 8px; border-radius: 4px; outline: none; transition: var(--transition-fast); }
-    .range-enhanced::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--primary-blue); cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: var(--transition-fast); }
+    .range-enhanced { appearance: none; background: var(--bg-secondary); height: 10px; border-radius: 6px; outline: none; transition: var(--transition-fast); }
+    .range-enhanced::-webkit-slider-thumb { appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--primary-blue); cursor: pointer; box-shadow: 0 2px 6px rgba(17,24,39,0.15); transition: var(--transition-fast); }
     .range-enhanced::-webkit-slider-thumb:hover { transform: scale(1.1); box-shadow: 0 4px 8px rgba(0,0,0,0.4); }
 
     /* Pagination Enhancements */
@@ -145,7 +142,29 @@
 
     /* Reduced Motion */
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
+    img { transition: none; }
+    img[data-viewer] { transition: var(--transition-fast); }
+    img[data-viewer]:hover { transform: scale(1.02); filter: brightness(1.03); box-shadow: 0 6px 16px rgba(0,0,0,0.18); }
+    .top-navbar .logo img:hover, .avatar img:hover { transform: none; filter: none; box-shadow: none; }
+    .btn { padding: 0.55rem 0.9rem; line-height: 1.2; }
+    .btn.btn-sm { padding: 0.5rem 0.75rem; }
+    .btn.btn-xs { padding: 0.375rem 0.6rem; }
+    .btn.btn-lg { padding: 0.8rem 1.1rem; }
+    .btn-circle { width: 2.5rem; height: 2.5rem; }
+    .btn-circle.btn-sm { width: 2rem; height: 2rem; }
   </style>
+  {% if current_app == 'social' %}
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    </style>
+    <link rel="stylesheet" href="{% static 'social/css/style.css' %}">
+  {% elif current_app == 'controller' or current_app == 'marketplace' %}
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    </style>
+  {% endif %}
   <!-- Unified navigation stylesheet -->
   <link rel="stylesheet" href="{% static 'css/navigation.css' %}">
   <link rel="stylesheet" href="{% static 'css/auth.css' %}">
@@ -156,15 +175,15 @@
   <!-- Unified Global Navbar -->
   <nav class="top-navbar">
     <div class="nav-left">
+      <button id="globalMenuToggle" class="icon-btn hamburger-btn" aria-label="Open menu" aria-controls="globalAppMenu" aria-expanded="false">
+        <span class="hamburger-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span class="hamburger-label">Menu</span>
+      </button>
       <a href="{% url 'home' %}" class="logo" aria-label="PETio Home">
-        <img src="{{ MEDIA_URL }}logo/logoPETIO-removebg-preview.png" alt="PETio logo" />
+        <img src="{{ MEDIA_URL }}PETiologo.png" alt="PETio logo" />
       </a>
     </div>
     <div class="nav-center">
-      {% if user.is_authenticated %}
-        {% include 'components/app_switcher.html' %}
-      {% endif %}
-      <!-- Keep legacy app_nav block hidden during migration -->
       <div style="display:none;">
         {% block app_nav %}{% endblock %}
       </div>
@@ -192,18 +211,24 @@
             ></span>
           </a>
 
-          {# Create action: only visible for Social and Marketplace #}
+          {# Create action: only visible for Marketplace #}
+          {% if current_app == 'marketplace' %}
           <a
             class="btn-create"
             aria-label="Create"
-            href="{% if current_app == 'social' %}{% url 'social:create_post' %}{% elif current_app == 'marketplace' %}{% url 'marketplace:listing_create' %}{% endif %}"
+            href="{% url 'marketplace:listing_create' %}"
           >+ Create</a>
+          {% endif %}
         {% endif %}
 
         {# Profile dropdown #}
         <div class="profile-menu">
           <button id="profileToggle" class="icon-btn profile-btn" aria-haspopup="true" aria-expanded="false">
-            <i class="fas fa-user-circle"></i>
+            <span class="avatar" style="margin-right:8px;">
+              <span class="w-7 rounded-full" style="display:inline-block; width:28px; height:28px; overflow:hidden; border-radius:9999px;">
+                <img src="{% avatar_url user 56 %}" alt="{{ user.username }}" style="width:100%; height:100%; object-fit:cover;" />
+              </span>
+            </span>
             <span class="profile-name">{{ user.get_short_name|default:user.username }}</span>
             <i class="fas fa-chevron-down"></i>
           </button>
@@ -235,6 +260,39 @@
     </div>
   </nav>
 
+  <div id="globalAppMenu" class="global-app-menu" role="menu" aria-labelledby="globalMenuToggle">
+    <div class="global-app-menu__header">
+      <img src="{{ MEDIA_URL }}PETiologo.png" alt="PETio" />
+    </div>
+    <div class="global-app-menu__list">
+      <a href="{% url 'home' %}" class="app-dropdown__item {% if current_app == 'controller' or current_app is None %}active{% endif %}" role="menuitem">
+        <span class="app-dropdown__icon">🎮</span>
+        <div class="app-dropdown__meta">
+          <div class="app-dropdown__title">Controller</div>
+          <div class="app-dropdown__desc">Feed & Schedule Management</div>
+        </div>
+        <i class="fas fa-chevron-right item-chevron"></i>
+      </a>
+      <a href="{% url 'social:feed' %}" class="app-dropdown__item {% if current_app == 'social' %}active{% endif %}" role="menuitem">
+        <span class="app-dropdown__icon">👥</span>
+        <div class="app-dropdown__meta">
+          <div class="app-dropdown__title">Social</div>
+          <div class="app-dropdown__desc">Community & Sharing</div>
+        </div>
+        <i class="fas fa-chevron-right item-chevron"></i>
+      </a>
+      <a href="{% url 'marketplace:home' %}" class="app-dropdown__item {% if current_app == 'marketplace' %}active{% endif %}" role="menuitem">
+        <span class="app-dropdown__icon">🛒</span>
+        <div class="app-dropdown__meta">
+          <div class="app-dropdown__title">Marketplace</div>
+          <div class="app-dropdown__desc">Products & Services</div>
+        </div>
+        <i class="fas fa-chevron-right item-chevron"></i>
+      </a>
+    </div>
+  </div>
+  <div id="globalMenuBackdrop" class="global-menu-backdrop"></div>
+
   <!-- Contextual Sidebar: always one block; use CSS class to hide when suppressed -->
   <aside class="sidebar {% if not user.is_authenticated %}sidebar--hidden{% else %}{% if request.resolver_match %}{% if request.resolver_match.url_name == 'profile' or request.resolver_match.url_name == 'profile_edit' or request.resolver_match.url_name == 'login' or request.resolver_match.url_name == 'logout' or request.resolver_match.url_name == 'signup' %}sidebar--hidden{% endif %}{% endif %}{% endif %}">
     {% block sidebar %}{% endblock %}
@@ -252,8 +310,45 @@
     </div>
     {% endif %}
 
-    {% block content %}{% endblock %}
+  {% block content %}{% endblock %}
   </main>
+
+  <div id="imageViewerOverlay" class="fixed inset-0 bg-black/80 hidden z-[3000]">
+    <div class="flex relative justify-center items-center w-full h-full">
+      <button id="imageViewerClose" class="absolute top-4 right-4 btn btn-circle">
+        <i class="fas fa-times"></i>
+      </button>
+      <button id="imageViewerPrev" class="absolute left-4 btn btn-circle">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <button id="imageViewerNext" class="absolute right-4 btn btn-circle">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+      <img id="imageViewerImg" class="max-w-[90vw] max-h-[85vh] object-contain rounded shadow-2xl" />
+      <div id="imageViewerCounter" class="absolute bottom-6 text-sm text-white/80"></div>
+    </div>
+  </div>
+
+  <div id="shareModalOverlay" class="fixed inset-0 bg-black/60 hidden z-[3000]">
+    <div class="flex relative justify-center items-center p-4 w-full h-full">
+      <div class="relative w-full max-w-md shadow-xl card bg-base-100">
+        <button id="shareModalX" class="absolute top-3 right-3 btn btn-circle" aria-label="Close">
+          <i class="fas fa-times"></i>
+        </button>
+        <div class="card-body">
+          <h3 class="card-title">Share Post</h3>
+          <div class="mt-2 form-control">
+            <label class="label"><span class="label-text">Caption</span></label>
+            <textarea id="shareCaptionInput" class="textarea textarea-bordered" rows="3" placeholder="Add a caption..."></textarea>
+          </div>
+          <div class="flex gap-2 justify-end mt-4">
+            <button id="shareModalClose" class="btn">Cancel</button>
+            <button id="shareNowBtn" class="btn btn-primary">Share Now</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Unified Navigation Scripts -->
   <script src="{% static 'js/navigation.js' %}"></script>
@@ -271,7 +366,7 @@
         if (!button.dataset.originalText) {
           button.dataset.originalText = button.innerHTML;
         }
-        button.innerHTML = '<i class="fas fa-spinner loading-spinner mr-2"></i>Loading...';
+        button.innerHTML = '<i class="mr-2 fas fa-spinner loading-spinner"></i>Loading...';
         button.classList.add('loading');
       } else {
         button.disabled = false;
@@ -342,6 +437,114 @@
         warning: (msg, opts) => show(msg, 'warning', opts),
         info: (msg, opts) => show(msg, 'info', opts)
       };
+    })();
+
+    (function(){
+      const overlay = document.getElementById('shareModalOverlay');
+      const btnClose = document.getElementById('shareModalClose');
+      const btnX = document.getElementById('shareModalX');
+      const btnShare = document.getElementById('shareNowBtn');
+      const captionInput = document.getElementById('shareCaptionInput');
+      const shareState = { postId: null };
+      function openShare(postId) {
+        shareState.postId = postId;
+        captionInput.value = '';
+        overlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      }
+      function closeShare() {
+        overlay.classList.add('hidden');
+        document.body.style.overflow = '';
+        shareState.postId = null;
+        captionInput.value = '';
+      }
+      btnClose.addEventListener('click', closeShare);
+      btnX.addEventListener('click', closeShare);
+      overlay.addEventListener('click', function(e){ if (e.target === overlay) closeShare(); });
+      function csrf() {
+        const m = document.querySelector('meta[name="csrf-token"]');
+        return m ? m.content : '';
+      }
+      async function repost() {
+        if (!shareState.postId) return;
+        const url = '/social/post/' + shareState.postId + '/repost/';
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrf(), 'X-Requested-With': 'XMLHttpRequest' },
+            body: new URLSearchParams({ caption: captionInput.value || '' })
+          });
+          const data = await res.json();
+          if (data && data.success) {
+            closeShare();
+            if (window.toastManager) toastManager.success('Post shared');
+          } else {
+            if (window.toastManager) toastManager.error(data && data.error ? data.error : 'Share failed');
+          }
+        } catch (e) {
+          if (window.toastManager) toastManager.error('Share error');
+        }
+      }
+      btnShare.addEventListener('click', function(){ repost(); });
+      document.addEventListener('click', function(e){
+        const btn = e.target.closest('.share-btn');
+        if (!btn) return;
+        const postId = btn.getAttribute('data-share-post-id');
+        if (postId) {
+          e.preventDefault();
+          openShare(postId);
+        }
+      });
+    })();
+
+    (function(){
+      const overlay = document.getElementById('imageViewerOverlay');
+      const imgEl = document.getElementById('imageViewerImg');
+      const btnClose = document.getElementById('imageViewerClose');
+      const btnPrev = document.getElementById('imageViewerPrev');
+      const btnNext = document.getElementById('imageViewerNext');
+      const counter = document.getElementById('imageViewerCounter');
+      const state = { images: [], index: 0 };
+      function update() {
+        if (!state.images.length) return;
+        imgEl.src = state.images[state.index];
+        btnPrev.disabled = state.index <= 0;
+        btnNext.disabled = state.index >= state.images.length - 1;
+        counter.textContent = (state.index + 1) + ' / ' + state.images.length;
+      }
+      function openViewer(images, index) {
+        state.images = images;
+        state.index = index || 0;
+        update();
+        overlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      }
+      function closeViewer() {
+        overlay.classList.add('hidden');
+        document.body.style.overflow = '';
+      }
+      btnClose.addEventListener('click', closeViewer);
+      btnPrev.addEventListener('click', function(){ if (state.index > 0) { state.index--; update(); } });
+      btnNext.addEventListener('click', function(){ if (state.index < state.images.length - 1) { state.index++; update(); } });
+      overlay.addEventListener('click', function(e){ if (e.target === overlay) closeViewer(); });
+      document.addEventListener('keydown', function(e){
+        if (overlay.classList.contains('hidden')) return;
+        if (e.key === 'Escape') closeViewer();
+        if (e.key === 'ArrowLeft') { if (state.index > 0) { state.index--; update(); } }
+        if (e.key === 'ArrowRight') { if (state.index < state.images.length - 1) { state.index++; update(); } }
+      });
+      document.addEventListener('click', function(e){
+        const img = e.target.closest('img[data-viewer]');
+        if (!img) return;
+        const group = img.getAttribute('data-group') || '';
+        const groupImgs = Array.from(document.querySelectorAll('img[data-viewer][data-group="' + group + '"]'));
+        const images = groupImgs.map(n => n.src);
+        const index = groupImgs.indexOf(img);
+        const anchor = e.target.closest('a');
+        if (anchor) e.preventDefault();
+        e.stopPropagation();
+        openViewer(images.length ? images : [img.src], index >= 0 ? index : 0);
+      }, true);
     })();
   </script>
   {% block extra_js %}{% endblock %}

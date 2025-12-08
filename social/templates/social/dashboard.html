@@ -1,7 +1,16 @@
 {% extends 'base.html' %}
 {% load avatar %}
+{% load static %}
 
 {% block title %}My Dashboard - PETio Social{% endblock %}
+
+{% block body_class %} class="social-dashboard social-no-gradient" {% endblock %}
+
+{% block extra_head %}
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'social/css/dashboard.css' %}">
+  <link rel="stylesheet" href="{% static 'social/css/gradient-mesh.css' %}">
+{% endblock %}
 
 {% block sidebar %}
   {% include 'social/sidebar.html' with view_name='dashboard' %}
@@ -72,7 +81,10 @@
             <!-- Quick Actions -->
             <div class="card bg-base-100 shadow-lg">
                 <div class="card-body">
-                    <h2 class="card-title mb-4">Quick Actions</h2>
+                    <h2 class="card-title mb-4">
+                        <span class="icon-badge-soft icon-inline"><i class="fas fa-bolt"></i></span>
+                        Quick Actions
+                    </h2>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <a href="{% url 'social:create_post' %}" class="btn btn-primary">
                             <i class="fas fa-plus"></i> New Post
@@ -91,7 +103,10 @@
             <div class="card bg-base-100 shadow-lg">
                 <div class="card-body">
                     <div class="flex items-center justify-between mb-4">
-                        <h2 class="card-title">My Recent Posts</h2>
+                        <h2 class="card-title">
+                            <span class="icon-badge-soft icon-inline"><i class="fas fa-clock"></i></span>
+                            My Recent Posts
+                        </h2>
                         <a href="{% url 'social:my_profile' %}" class="btn btn-ghost btn-sm">View All</a>
                     </div>
                     
@@ -148,12 +163,12 @@
             <!-- Activity Chart -->
             <div class="card bg-base-100 shadow-lg">
                 <div class="card-body">
-                    <h2 class="card-title mb-4">Activity Overview</h2>
-                    <div class="h-64 flex items-center justify-center bg-base-200 rounded-lg">
-                        <div class="text-center">
-                            <i class="fas fa-chart-line text-4xl text-base-content/30 mb-4"></i>
-                            <p class="text-base-content/60">Activity chart coming soon</p>
-                        </div>
+                    <h2 class="card-title mb-4">
+                        <span class="icon-badge-soft icon-inline"><i class="fas fa-chart-line"></i></span>
+                        Activity Overview
+                    </h2>
+                    <div class="h-64 bg-base-200 rounded-lg overflow-hidden">
+                        <canvas id="activityChartCanvas" class="w-full h-full" aria-label="Weekly activity overview"></canvas>
                     </div>
                 </div>
             </div>
@@ -209,7 +224,10 @@
             <div class="card bg-base-100 shadow-lg">
                 <div class="card-body">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="card-title">Recent Notifications</h3>
+                        <h3 class="card-title">
+                            <span class="icon-badge-soft icon-inline"><i class="fas fa-bell"></i></span>
+                            Recent Notifications
+                        </h3>
                         <a href="{% url 'social:notifications' %}" class="btn btn-ghost btn-sm">View All</a>
                     </div>
                     
@@ -242,7 +260,10 @@
             <!-- Popular Posts -->
             <div class="card bg-base-100 shadow-lg">
                 <div class="card-body">
-                    <h3 class="card-title mb-4">Your Popular Posts</h3>
+                    <h3 class="card-title mb-4">
+                        <span class="icon-badge-soft icon-inline"><i class="fas fa-star"></i></span>
+                        Your Popular Posts
+                    </h3>
                     
                     <div class="space-y-3">
                         {% for post in popular_posts %}
@@ -271,7 +292,7 @@
             <div class="card bg-base-100 shadow-lg">
                 <div class="card-body">
                     <h3 class="card-title mb-4">
-                        <i class="fas fa-calendar-week text-primary"></i>
+                        <span class="icon-badge-soft icon-inline"><i class="fas fa-calendar-week text-primary"></i></span>
                         This Week
                     </h3>
                     
@@ -315,5 +336,88 @@ setInterval(function() {
         })
         .catch(error => console.error('Error fetching notifications:', error));
 }, 30000); // Check every 30 seconds
+
+function renderActivityChart(id, stats) {
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.max(600, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(240, Math.floor(rect.height * dpr));
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const w = rect.width, h = rect.height;
+    ctx.clearRect(0, 0, w, h);
+    const entries = [
+        { key: 'posts', label: 'Posts', color: '#3b82f6' },
+        { key: 'likes', label: 'Likes', color: '#22c55e' },
+        { key: 'comments', label: 'Comments', color: '#a855f7' },
+        { key: 'followers', label: 'Followers', color: '#f59e0b' },
+    ];
+    const values = entries.map(e => Number(stats[e.key] || 0));
+    const maxVal = Math.max(1, ...values);
+    const padding = { top: 24, right: 18, bottom: 32, left: 18 };
+    const innerW = w - padding.left - padding.right;
+    const innerH = h - padding.top - padding.bottom;
+    const barWidth = innerW / (entries.length * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.05)';
+    for (let i = 0; i <= 4; i++) {
+        const y = padding.top + (innerH * i / 4);
+        ctx.fillRect(padding.left, y, innerW, 1);
+    }
+    entries.forEach((e, i) => {
+        const x = padding.left + i * 2 * barWidth + barWidth * 0.5;
+        const val = Number(stats[e.key] || 0);
+        const barH = (val / maxVal) * innerH;
+        const y = padding.top + innerH - barH;
+        const grad = ctx.createLinearGradient(0, y, 0, y + barH);
+        grad.addColorStop(0, e.color);
+        grad.addColorStop(1, '#ffffff');
+        ctx.fillStyle = grad;
+        const radius = 8;
+        const bw = barWidth * 1.25;
+        const bx = x + (barWidth - bw) / 2;
+        roundRect(ctx, bx, y, bw, barH, radius, true, false);
+        ctx.fillStyle = 'rgba(17,24,39,0.65)';
+        ctx.font = '12px Rubik, sans-serif';
+        const labelY = padding.top + innerH + 18;
+        const label = e.label;
+        const tw = ctx.measureText(label).width;
+        ctx.fillText(label, bx + bw / 2 - tw / 2, labelY);
+        ctx.fillStyle = 'rgba(17,24,39,0.55)';
+        const valText = String(val);
+        const vtw = ctx.measureText(valText).width;
+        ctx.fillText(valText, bx + bw / 2 - vtw / 2, y - 6);
+    });
+}
+
+function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+    if (w < 2 * r) r = w / 2;
+    if (h < 2 * r) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    if (fill) ctx.fill();
+    if (stroke) ctx.stroke();
+}
+
+function initActivityChart() {
+    const dataEl = document.getElementById('weeklyStatsData');
+    if (!dataEl) return;
+    try {
+        const stats = JSON.parse(dataEl.textContent);
+        renderActivityChart('activityChartCanvas', stats);
+        let r;
+        const onResize = () => { cancelAnimationFrame(r); r = requestAnimationFrame(() => renderActivityChart('activityChartCanvas', stats)); };
+        window.addEventListener('resize', onResize);
+    } catch (e) {}
+}
+
+document.addEventListener('DOMContentLoaded', initActivityChart);
 </script>
+{{ weekly_stats|json_script:"weeklyStatsData" }}
 {% endblock extra_js %}

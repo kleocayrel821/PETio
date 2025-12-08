@@ -67,26 +67,7 @@
                     </label>
                 </div>
 
-                <!-- Category -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-semibold">Category</span>
-                    </label>
-                    <select name="category" class="select select-bordered {% if form.category.errors %}select-error{% endif %}">
-                        <option value="">Select a category (optional)</option>
-                        {% for category in categories %}
-                            <option value="{{ category.pk }}" 
-                                    {% if post.category.pk == category.pk %}selected{% endif %}>
-                                {{ category.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                    {% if form.category.errors %}
-                        <label class="label">
-                            <span class="label-text-alt text-error">{{ form.category.errors.0 }}</span>
-                        </label>
-                    {% endif %}
-                </div>
+                
 
                 <!-- Current Image Display -->
                 {% if post.image %}
@@ -108,47 +89,66 @@
                 </div>
                 {% endif %}
 
-                <!-- Image Upload -->
+                <!-- Media Upload -->
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text font-semibold">{% if post.image %}Replace Image{% else %}Add Image{% endif %} (Optional)</span>
+                        <span class="label-text font-semibold">Images/Videos (Optional)</span>
                     </label>
                     <div class="border-2 border-dashed border-base-300 rounded-lg p-6 text-center hover:border-primary transition-colors">
-                        <input type="file" name="image" accept="image/*" class="file-input file-input-bordered w-full max-w-xs" 
-                               onchange="previewImage(this)">
+                        <input type="file" name="images" accept="image/*,video/*" multiple class="file-input file-input-bordered w-full max-w-xs" 
+                               onchange="previewImages(this)">
                         <div class="mt-2">
                             <i class="fas fa-cloud-upload-alt text-3xl text-base-content/30"></i>
                             <p class="text-sm text-base-content/60 mt-2">Click to upload or drag and drop</p>
-                            <p class="text-xs text-base-content/40">PNG, JPG, GIF up to 10MB</p>
+                            <p class="text-xs text-base-content/40">PNG, JPG, GIF, MP4, WebM up to 50MB each</p>
                         </div>
                     </div>
-                    {% if form.image.errors %}
-                        <label class="label">
-                            <span class="label-text-alt text-error">{{ form.image.errors.0 }}</span>
-                        </label>
-                    {% endif %}
-                    
-                    <!-- Image Preview -->
-                    <div id="imagePreview" class="mt-4 hidden">
-                        <img id="previewImg" class="max-w-full h-48 object-cover rounded-lg" />
-                        <button type="button" onclick="removeImage()" class="btn btn-sm btn-error mt-2">
-                            <i class="fas fa-trash"></i> Remove Image
+                    <div id="imagesPreview" class="mt-4 hidden">
+                        <div id="previewImagesGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+                        <button type="button" onclick="removeImages()" class="btn btn-sm btn-error mt-3">
+                            <i class="fas fa-trash"></i> Remove Images
                         </button>
                     </div>
                 </div>
 
-                <!-- Action Buttons -->
-                <div class="flex flex-col sm:flex-row gap-4 pt-6">
-                    <button type="submit" class="btn btn-primary flex-1">
-                        <i class="fas fa-save"></i>
-                        Update Post
-                    </button>
-                    
-                    <a href="{% url 'social:post_detail' post.pk %}" class="btn btn-ghost">
-                        <i class="fas fa-times"></i>
-                        Cancel
-                    </a>
+                <!-- Existing Additional Images -->
+                {% if post.images.all %}
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Existing Images</span>
+                    </label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {% for img in post.images.all %}
+                        <label class="relative block">
+                            <img src="{{ img.image.url }}" alt="Image {{ forloop.counter }}" class="rounded-lg w-full h-32 object-cover">
+                            <input type="checkbox" name="remove_image_ids" value="{{ img.id }}" class="checkbox checkbox-error absolute top-2 right-2" title="Remove this image">
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <label class="label">
+                        <span class="label-text-alt">Check images to remove when you update</span>
+                    </label>
                 </div>
+                {% endif %}
+
+                {% if post.videos.all %}
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Existing Videos</span>
+                    </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {% for vid in post.videos.all %}
+                        <label class="relative block">
+                            <video src="{{ vid.file.url }}" preload="metadata" controls class="rounded-lg w-full h-32 object-cover"></video>
+                            <input type="checkbox" name="remove_video_ids" value="{{ vid.id }}" class="checkbox checkbox-error absolute top-2 right-2" title="Remove this video">
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <label class="label">
+                        <span class="label-text-alt">Check videos to remove when you update</span>
+                    </label>
+                </div>
+                {% endif %}
 
                 <!-- Preview Mode -->
                 <div class="divider">Preview</div>
@@ -166,18 +166,34 @@
                                     <div class="flex-1">
                                         <div class="flex items-center space-x-2 mb-2">
                                             <h4 class="font-semibold">{{ user.get_full_name|default:user.username }}</h4>
-                                            <span id="previewCategory" class="badge badge-primary badge-sm {% if not post.category %}hidden{% endif %}">
-                                                {% if post.category %}{{ post.category.name }}{% endif %}
-                                            </span>
-                                            <span class="text-sm text-base-content/60">{{ post.created_at|timesince }} ago</span>
+                                            <span class="text-sm text-base-content/60">Just now</span>
                                         </div>
                                         <h3 id="previewTitle" class="text-lg font-bold mb-2">{{ post.title }}</h3>
                                         <p id="previewContent">{{ post.content }}</p>
                                         {% if post.image %}
-                                        <div id="previewImageContainer" class="mt-4">
-                                            <img id="previewPostImage" src="{{ post.image.url }}" class="rounded-lg w-full max-h-96 object-cover" />
+                                        <div class="mt-4">
+                                            <img src="{{ post.image.url }}" class="rounded-lg w-full h-32 object-cover" />
                                         </div>
                                         {% endif %}
+                                        {% if post.images.all %}
+                                        <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                            {% for img in post.images.all %}
+                                            <div class="relative">
+                                                <img src="{{ img.image.url }}" class="rounded-lg w-full h-32 object-cover" />
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                        {% if post.videos.all %}
+                                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3" id="previewExistingVideosContainer">
+                                            {% for vid in post.videos.all %}
+                                            <div class="relative" data-video-id="{{ vid.id }}">
+                                                <video src="{{ vid.file.url }}" preload="metadata" controls class="rounded-lg w-full h-32 object-cover"></video>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                        <div id="previewAdditionalImagesContainer" class="mt-4 hidden"></div>
                                         <div class="flex items-center space-x-4 mt-4">
                                             <span class="btn btn-ghost btn-sm">
                                                 <i class="fas fa-heart"></i> {{ post.like_count }}
@@ -195,50 +211,135 @@
                         </div>
                     </div>
                 </div>
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-4 pt-6">
+                    <button type="submit" class="btn btn-primary flex-1">
+                        <i class="fas fa-save"></i>
+                        Update Post
+                    </button>
+                    
+                    <a href="{% url 'social:post_detail' post.pk %}" class="btn btn-ghost">
+                        <i class="fas fa-times"></i>
+                        Cancel
+                    </a>
+                </div>
             </form>
         </div>
     </div>
 </div>
 
+{% block extra_js %}
 <script>
-function previewImage(input) {
-    const preview = document.getElementById('imagePreview');
-    const previewImg = document.getElementById('previewImg');
-    const previewPostImage = document.getElementById('previewPostImage');
-    const previewImageContainer = document.getElementById('previewImageContainer');
-    
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            previewImg.src = e.target.result;
-            previewPostImage.src = e.target.result;
-            preview.classList.remove('hidden');
-            previewImageContainer.classList.remove('hidden');
+let selectedFiles = [];
+function fileKey(f) { return [f.name, f.size, f.lastModified].join(':'); }
+function previewImages(input) {
+    const incoming = Array.from(input.files || []);
+    const existing = selectedFiles.slice();
+    const seen = new Set(existing.map(fileKey));
+    incoming.forEach(f => { const k = fileKey(f); if (!seen.has(k)) { existing.push(f); seen.add(k); } });
+    const dt = new DataTransfer();
+    existing.forEach(f => dt.items.add(f));
+    input.files = dt.files;
+    selectedFiles = Array.from(dt.files);
+    renderSelectedFiles();
+}
+
+function removeImages() {
+    const input = document.querySelector('input[name="images"]');
+    selectedFiles = [];
+    input.value = '';
+    renderSelectedFiles();
+}
+
+function removeImageAtIndex(index) {
+    const input = document.querySelector('input[name="images"]');
+    const dt = new DataTransfer();
+    selectedFiles.forEach((f, i) => { if (i !== index) dt.items.add(f); });
+    input.files = dt.files;
+    selectedFiles = Array.from(dt.files);
+    renderSelectedFiles();
+}
+
+function renderSelectedFiles() {
+    const preview = document.getElementById('imagesPreview');
+    const grid = document.getElementById('previewImagesGrid');
+    const previewAdditionalContainer = document.getElementById('previewAdditionalImagesContainer');
+    grid.innerHTML = '';
+    if (previewAdditionalContainer) { previewAdditionalContainer.innerHTML = ''; previewAdditionalContainer.classList.add('hidden'); }
+    if (selectedFiles.length > 0) {
+        selectedFiles.forEach((file, i) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'relative group';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-circle btn-xs absolute top-1 right-1 bg-neutral text-neutral-content opacity-80 group-hover:opacity-100 remove-image-btn';
+            btn.innerHTML = '<i class="fas fa-times"></i>';
+            btn.dataset.index = String(i);
+            btn.addEventListener('click', function(){ removeImageAtIndex(parseInt(this.dataset.index, 10)); });
+            if ((file.type || '').startsWith('video/')) {
+                const url = URL.createObjectURL(file);
+                const vid = document.createElement('video');
+                vid.src = url;
+                vid.className = 'rounded-lg w-full h-32 object-cover';
+                vid.muted = true;
+                vid.controls = true;
+                wrap.appendChild(vid);
+                wrap.appendChild(btn);
+                grid.appendChild(wrap);
+            } else {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'rounded-lg w-full h-32 object-cover';
+                    wrap.appendChild(img);
+                    wrap.appendChild(btn);
+                    grid.appendChild(wrap);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        preview.classList.remove('hidden');
+        if (previewAdditionalContainer) {
+            const cardGrid = document.createElement('div');
+            cardGrid.className = 'grid grid-cols-2 sm:grid-cols-3 gap-3';
+            selectedFiles.forEach((file) => {
+                const wrap2 = document.createElement('div');
+                wrap2.className = 'relative';
+                if ((file.type || '').startsWith('video/')) {
+                    const url2 = URL.createObjectURL(file);
+                    const v2 = document.createElement('video');
+                    v2.src = url2;
+                    v2.className = 'rounded-lg w-full h-32 object-cover';
+                    v2.muted = true;
+                    v2.controls = true;
+                    wrap2.appendChild(v2);
+                } else {
+                    const reader2 = new FileReader();
+                    reader2.onload = function(ev) {
+                        const img2 = document.createElement('img');
+                        img2.src = ev.target.result;
+                        img2.className = 'rounded-lg w-full h-32 object-cover';
+                        wrap2.appendChild(img2);
+                    };
+                    reader2.readAsDataURL(file);
+                }
+                cardGrid.appendChild(wrap2);
+            });
+            previewAdditionalContainer.appendChild(cardGrid);
+            previewAdditionalContainer.classList.remove('hidden');
         }
-        
-        reader.readAsDataURL(input.files[0]);
+    } else {
+        preview.classList.add('hidden');
     }
 }
 
-function removeImage() {
-    const preview = document.getElementById('imagePreview');
-    const previewImageContainer = document.getElementById('previewImageContainer');
-    const fileInput = document.querySelector('input[name="image"]');
-    
-    preview.classList.add('hidden');
-    previewImageContainer.classList.add('hidden');
-    fileInput.value = '';
-}
-
-// Live preview updates
-document.addEventListener('DOMContentLoaded', function() {
-    const titleInput = document.querySelector('input[name="title"]');
-    const contentInput = document.querySelector('textarea[name="content"]');
-    const categorySelect = document.querySelector('select[name="category"]');
-    const previewTitle = document.getElementById('previewTitle');
-    const previewContent = document.getElementById('previewContent');
-    const previewCategory = document.getElementById('previewCategory');
+    // Live preview updates
+    document.addEventListener('DOMContentLoaded', function() {
+        const titleInput = document.querySelector('input[name="title"]');
+        const contentInput = document.querySelector('textarea[name="content"]');
+        const previewTitle = document.getElementById('previewTitle');
+        const previewContent = document.getElementById('previewContent');
 
     titleInput.addEventListener('input', function() {
         previewTitle.textContent = this.value || '{{ post.title }}';
@@ -248,15 +349,17 @@ document.addEventListener('DOMContentLoaded', function() {
         previewContent.textContent = this.value || '{{ post.content }}';
     });
 
-    categorySelect.addEventListener('change', function() {
-        const selectedOption = this.options[this.selectedIndex];
-        if (this.value) {
-            previewCategory.textContent = selectedOption.text;
-            previewCategory.classList.remove('hidden');
-        } else {
-            previewCategory.classList.add('hidden');
+        const videoCheckboxes = document.querySelectorAll('input[name="remove_video_ids"]');
+        function applyVideoCheckboxState(cb){
+            const el = document.querySelector(`[data-video-id="${cb.value}"]`);
+            if (el) el.style.display = cb.checked ? 'none' : '';
         }
+        videoCheckboxes.forEach(cb => {
+            applyVideoCheckboxState(cb);
+            cb.addEventListener('change', function(){ applyVideoCheckboxState(this); });
+        });
+
     });
-});
 </script>
+{% endblock %}
 {% endblock %}

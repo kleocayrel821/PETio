@@ -1,0 +1,159 @@
+/* Social Dashboard Visual Redesign (scoped) */
+/* Scope strictly to Social dashboard via body class to avoid affecting other modules */
+
+body.social-dashboard {
+  background: linear-gradient(180deg, #f6f7fb 0%, #eef1f7 100%);
+  font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Glassy sidebar/panels */
+body.social-dashboard .sidebar {
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(147,112,219,0.18);
+  border-radius: 24px;
+  backdrop-filter: saturate(160%) blur(8px);
+  box-shadow: 0 12px 28px rgba(17,24,39,0.08);
+}
+
+/* Soft rounded cards and subtle shadows */
+body.social-dashboard .card {
+  border-radius: 24px !important;
+  border: 1px solid rgba(147,112,219,0.12);
+  box-shadow: 0 10px 24px rgba(17,24,39,0.06);
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: saturate(140%) blur(12px);
+  -webkit-backdrop-filter: saturate(140%) blur(12px);
+}
+body.social-dashboard .card .card-body {
+  padding: 1rem 1.25rem;
+}
+
+/* Pastel gradients for key stat cards */
+body.social-dashboard .card.bg-gradient-to-r {
+  background: linear-gradient(135deg, #6d28d9 0%, #ec4899 100%) !important; /* deep violet to pink */
+  color: #fff;
+  box-shadow: 0 16px 32px rgba(109,40,217,0.25);
+  border: none;
+}
+body.social-dashboard .card.bg-gradient-to-r .opacity-90 { opacity: 0.9; }
+body.social-dashboard .card.bg-gradient-to-r i { opacity: 0.9; }
+
+/* Clean white/light pastel backgrounds for supporting cards */
+body.social-dashboard .card.bg-base-100 {
+  background: #ffffff;
+}
+
+/* Thin, elegant UI elements */
+body.social-dashboard .btn {
+  border-radius: 14px;
+  box-shadow: 0 6px 16px rgba(17,24,39,0.06);
+}
+body.social-dashboard .btn.btn-outline {
+  border-color: rgba(147,112,219,0.35);
+}
+body.social-dashboard .btn.btn-primary,
+body.social-dashboard .grid .btn.btn-primary {
+  background: #9370DB !important; /* Medium Purple */
+  border-color: #9370DB !important;
+  color: #fff !important;
+}
+
+/* Balanced spacing for grids */
+body.social-dashboard .grid { gap: 1rem; }
+
+/* Modern minimalist icons adjustments */
+body.social-dashboard i { filter: none; opacity: 0.9; }
+body.social-dashboard .text-base-content\/60 { opacity: 0.72; }
+
+body.social-dashboard .icon-badge-soft {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  padding: 0.4rem;
+  background: rgba(147, 112, 219, 0.12);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.06);
+}
+body.social-dashboard .icon-badge-soft i { color: #9370DB; }
+body.social-dashboard .icon-inline { margin-right: 0.5rem; }
+
+/* Elevated cards hover, subtle */
+body.social-dashboard .card:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(17,24,39,0.08); transition: all .25s ease; }
+
+/* Header area cleanup */
+body.social-dashboard h1.text-3xl { letter-spacing: 0.2px; }
+body.social-dashboard .mb-8 { margin-bottom: 1.25rem; }
+
+/* Pagination and dropdown polish (if present) */
+body.social-dashboard .dropdown .menu { border-radius: 16px; box-shadow: 0 14px 28px rgba(17,24,39,0.1); }
+
+/* Inputs if any inside dashboard cards */
+body.social-dashboard .input,
+body.social-dashboard .textarea {
+  border-radius: 12px;
+  border-color: rgba(147,112,219,0.26);
+}
+
+/* Pastel gradient mesh background overlay (no markup change) */
+body.social-dashboard::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  filter: blur(60px);
+  opacity: 0.35;
+  background:
+    radial-gradient(900px 600px at 15% 0%, var(--mesh-1) 0%, rgba(246,214,231,0.6) 35%, transparent 60%),
+    radial-gradient(800px 520px at 85% 8%, var(--mesh-2) 0%, rgba(221,207,255,0.45) 30%, transparent 60%),
+    radial-gradient(900px 640px at 30% 95%, var(--mesh-3) 0%, rgba(203,246,255,0.4) 30%, transparent 65%),
+    radial-gradient(520px 520px at 75% 75%, var(--mesh-4) 0%, rgba(255,243,230,0.5) 30%, transparent 65%);
+}
+
+/* Ensure dashboard content sits above overlay */
+body.social-dashboard .main-content { position: relative; z-index: 1; }
+
+/* Mobile: simplify/hide blobs */
+@media (max-width: 768px) {
+  body.social-dashboard::before { display: none; }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  body.social-dashboard::before { transition: none !important; animation: none !important; }
+}
+
+/* Container-scoped mesh to ensure visibility inside content area */
+body.social-dashboard .max-w-7xl { position: relative; }
+body.social-dashboard .max-w-7xl::before {
+  content: "";
+  position: absolute;
+  left: -80px; right: -80px; top: -60px; bottom: -60px;
+  pointer-events: none;
+  z-index: 0;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  filter: blur(70px);
+  opacity: 0.6;
+  background:
+    radial-gradient(900px 600px at 8% 4%, var(--mesh-1) 0%, rgba(246,214,231,0.6) 35%, transparent 60%),
+    radial-gradient(820px 520px at 92% 8%, var(--mesh-2) 0%, rgba(221,207,255,0.45) 30%, transparent 60%),
+    radial-gradient(900px 640px at 22% 88%, var(--mesh-3) 0%, rgba(203,246,255,0.4) 30%, transparent 65%),
+    radial-gradient(520px 520px at 68% 74%, var(--mesh-4) 0%, rgba(255,243,230,0.5) 30%, transparent 65%);
+}
+
+/* Soft top-to-bottom glaze, enhances visibility behind header/cards */
+body.social-dashboard .max-w-7xl::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(246,214,231,0.10) 0%, rgba(221,207,255,0.08) 35%, rgba(203,246,255,0.06) 65%, rgba(255,243,230,0.04) 100%);
+}
+
+@media (max-width: 768px) {
+  body.social-dashboard .max-w-7xl::before { display: none; }
+}

@@ -3,6 +3,14 @@ Controller app contextual sidebar
 Expects: view_name set to a url_name for active highlighting
 {% endcomment %}
 <div class="section-title">Controller</div>
+<style>
+  /* Controller sidebar accent overrides */
+  .sidebar .sidebar-item:hover { background: rgba(31,69,110,0.08); box-shadow: 0 6px 16px rgba(31,69,110,0.06); }
+  .sidebar .sidebar-item.active { background: rgba(31,69,110,0.12); box-shadow: 0 8px 20px rgba(31,69,110,0.12); }
+  .sidebar .sidebar-item.active::before { background: #1f456e; }
+  .sidebar .sidebar-item:hover i { background: rgba(31,69,110,0.12); color: #1f456e; }
+  .sidebar .sidebar-item.active i { background: rgba(31,69,110,0.12); color: #1f456e; }
+</style>
 <nav>
   <a href="{% url 'home' %}" class="sidebar-item {% if view_name == 'home' %}active{% endif %}">
     <i class="fas fa-home"></i>

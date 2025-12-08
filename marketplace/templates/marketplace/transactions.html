@@ -22,10 +22,9 @@
       <label class="label"><span class="label-text">Status</span></label>
       <select name="status" class="select select-bordered select-sm">
         <option value="" {% if not active_status %}selected{% endif %}>All</option>
-        <option value="proposed" {% if active_status == 'proposed' %}selected{% endif %}>Proposed</option>
         <option value="confirmed" {% if active_status == 'confirmed' %}selected{% endif %}>Confirmed</option>
         <option value="completed" {% if active_status == 'completed' %}selected{% endif %}>Completed</option>
-        <option value="canceled" {% if active_status == 'canceled' %}selected{% endif %}>Canceled</option>
+        <option value="canceled" {% if active_status == 'canceled' %}selected{% endif %}>Cancelled</option>
       </select>
     </div>
     <div>
@@ -43,68 +42,9 @@
       <button type="submit" class="btn btn-sm btn-primary">Apply</button>
       <a href="{% url 'marketplace:transactions' %}" class="btn btn-sm btn-ghost">Clear</a>
     </div>
-    <div class="text-xs opacity-70">Results: Proposed {{ counts.proposed }} · Confirmed {{ counts.confirmed }} · Completed {{ counts.completed }} · Canceled {{ counts.canceled }}</div>
+    <div class="text-xs opacity-70">Results: Confirmed {{ counts.confirmed }} · Completed {{ counts.completed }} · Cancelled {{ counts.canceled }}</div>
   </form>
 
-  {# Proposed group #}
-  {% if not active_status or active_status == 'proposed' %}
-  <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
-    <div class="section-title"><i class="fas fa-lightbulb text-yellow-400"></i> Proposed</div>
-    {% if grouped.proposed %}
-    <ul class="space-y-2">
-      {% for txn in grouped.proposed %}
-        <li class="card p-3">
-          <div class="flex justify-between items-center">
-            <div class="font-medium">
-              {{ txn.listing.title }}
-              <span class="opacity-70">with</span>
-              {% if txn.buyer_id == user.id %}
-                {{ txn.seller.username }}
-              {% else %}
-                {{ txn.buyer.username }}
-              {% endif %}
-            </div>
-            <span class="badge badge-warning">Proposed</span>
-          </div>
-          <div class="text-xs opacity-70 mt-1">You are {% if txn.buyer_id == user.id %}the buyer{% else %}the seller{% endif %} · Created {{ txn.created_at|date:"M j, Y g:i a" }}</div>
-          {% if txn.meetup_place or txn.meetup_time %}
-            <div class="text-xs mt-1">Meetup: {{ txn.meetup_place }} {% if txn.meetup_time %}· {{ txn.meetup_time|date:"M j, Y g:i a" }}{% endif %}</div>
-          {% endif %}
-          {% if txn.purchase_request %}
-            <div class="mt-2"><a href="{% url 'marketplace:request_detail' txn.purchase_request.id %}" class="btn btn-xs btn-outline">View Request</a></div>
-            {% if txn.purchase_request.status == 'pending' or txn.purchase_request.status == 'negotiating' %}
-              <div class="mt-2 flex gap-2">
-                {% if user.is_staff or user.is_superuser %}
-                  <form method="post" action="{% url 'marketplace:buyer_cancel_request' request_id=txn.purchase_request.id %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline btn-error">Cancel as Buyer</button>
-                  </form>
-                  <form method="post" action="{% url 'marketplace:seller_cancel_request' request_id=txn.purchase_request.id %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline btn-error">Cancel as Seller</button>
-                  </form>
-                {% elif user.id == txn.buyer_id %}
-                  <form method="post" action="{% url 'marketplace:buyer_cancel_request' request_id=txn.purchase_request.id %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline btn-error">Cancel</button>
-                  </form>
-                {% else %}
-                  <form method="post" action="{% url 'marketplace:seller_cancel_request' request_id=txn.purchase_request.id %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline btn-error">Cancel</button>
-                  </form>
-                {% endif %}
-              </div>
-            {% endif %}
-          {% endif %}
-        </li>
-      {% endfor %}
-    </ul>
-    {% else %}
-      <div class="opacity-60">No proposed transactions.</div>
-    {% endif %}
-  </div>
-  {% endif %}
 
   {# Confirmed group (includes awaiting_payment and paid) #}
   {% if not active_status or active_status == 'confirmed' %}
@@ -221,7 +161,7 @@
   {# Canceled group #}
   {% if not active_status or active_status == 'canceled' %}
   <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
-    <div class="section-title"><i class="fas fa-ban text-red-400"></i> Canceled</div>
+    <div class="section-title"><i class="fas fa-ban text-red-400"></i> Cancelled</div>
     {% if grouped.canceled %}
     <ul class="space-y-2">
       {% for txn in grouped.canceled %}
@@ -236,13 +176,13 @@
                 {{ txn.buyer.username }}
               {% endif %}
             </div>
-            <span class="badge badge-error">Canceled</span>
+            <span class="badge badge-error">Cancelled</span>
           </div>
         </li>
       {% endfor %}
     </ul>
     {% else %}
-      <div class="opacity-60">No canceled transactions.</div>
+      <div class="opacity-60">No cancelled transactions.</div>
     {% endif %}
   </div>
   {% endif %}

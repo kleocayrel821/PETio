@@ -1,0 +1,94 @@
+/* ---------- gradient-mesh.css (paste as-is) ---------- */
+:root{ 
+  --mesh-1: rgba(246, 214, 231, 0.75); /* soft pink */ 
+  --mesh-2: rgba(221, 207, 255, 0.72); /* soft lavender */ 
+  --mesh-3: rgba(203, 246, 255, 0.58); /* soft aqua */ 
+  --mesh-4: rgba(255, 243, 230, 0.65); /* warm peach */ 
+} 
+
+.social-dashboard-bg { 
+  position: absolute; 
+  inset: 0; /* full area of the dashboard container */ 
+  z-index: 0; /* sits behind page content */ 
+  pointer-events: none; 
+  overflow: hidden; 
+} 
+
+/* blob layers */ 
+.social-dashboard-bg .mesh-blob { 
+  position: absolute; 
+  width: 520px; 
+  height: 420px; 
+  border-radius: 50%; 
+  filter: blur(96px); 
+  transform: translate3d(0,0,0); 
+  will-change: transform, opacity; 
+  opacity: 0.85; 
+  mix-blend-mode: screen; 
+} 
+
+/* customize placements (desktop-first) */ 
+.social-dashboard-bg .blob-1 { 
+  left: -12%; 
+  top: 6%; 
+  background: radial-gradient(circle at 30% 30%, var(--mesh-1) 0%, rgba(246,214,231,0.5) 35%, transparent 60%); 
+  width: 640px; 
+  height: 480px; 
+  filter: blur(110px); 
+  opacity: 0.95; 
+} 
+.social-dashboard-bg .blob-2 { 
+  right: -6%; 
+  top: 6%; 
+  background: radial-gradient(circle at 70% 30%, var(--mesh-2) 0%, rgba(221,207,255,0.45) 30%, transparent 60%); 
+  width: 520px; 
+  height: 420px; 
+  filter: blur(90px); 
+  opacity: 0.82; 
+} 
+.social-dashboard-bg .blob-3 { 
+  left: 18%; 
+  bottom: -18%; 
+  background: radial-gradient(circle at 40% 60%, var(--mesh-3) 0%, rgba(203,246,255,0.4) 30%, transparent 65%); 
+  width: 720px; 
+  height: 560px; 
+  filter: blur(140px); 
+  opacity: 0.7; 
+} 
+.social-dashboard-bg .blob-4 { 
+  right: 28%; 
+  bottom: -8%; 
+  background: radial-gradient(circle at 60% 40%, var(--mesh-4) 0%, rgba(255,243,230,0.5) 30%, transparent 65%); 
+  width: 420px; 
+  height: 420px; 
+  filter: blur(100px); 
+  opacity: 0.6; 
+} 
+
+/* subtle vignette/overlay to glaze */ 
+.social-dashboard-bg::after { 
+  content: ""; 
+  position: absolute; 
+  inset: 0; 
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02)); 
+  pointer-events: none; 
+  z-index: 2; 
+} 
+
+/* ensure content sits above the mesh */ 
+.social-dashboard-container { position: relative; z-index: 5; } 
+
+/* Responsive adjustments */ 
+@media (max-width: 1024px) { 
+  .social-dashboard-bg .mesh-blob { display: none; } /* mobile: keep simple - optional */ 
+} 
+
+/* Reduced motion preference */ 
+@media (prefers-reduced-motion: reduce) { 
+  .social-dashboard-bg .mesh-blob { transition: none !important; animation: none !important; } 
+} 
+
+/* performance hint */ 
+.social-dashboard-bg .mesh-blob { will-change: opacity, transform; } 
+
+/* ---------- end of gradient-mesh.css ---------- */

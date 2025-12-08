@@ -3,6 +3,8 @@
 
 {% block title %}Notifications - PETio Social{% endblock %}
 
+{% block body_class %} class="social-no-gradient" {% endblock %}
+
 {% block sidebar %}
   {% include 'social/sidebar.html' with view_name='notifications' %}
 {% endblock %}
@@ -13,7 +15,7 @@
         <div class="card-body">
             <div class="flex items-center justify-between mb-6">
                 <h1 class="text-2xl font-bold flex items-center">
-                    <i class="fas fa-bell mr-3"></i>
+                    <span class="icon-badge-soft icon-inline"><i class="fas fa-bell"></i></span>
                     Notifications
                 </h1>
                 <div class="flex items-center gap-2">
@@ -58,7 +60,16 @@
             {% if page_obj.object_list %}
                 <div class="space-y-4">
                     {% for notification in page_obj.object_list %}
-                    <div class="card bg-base-200 hover:bg-base-300 transition-colors">
+                    <div class="card bg-base-200 hover:bg-base-300 transition-colors cursor-pointer"
+                         {% if notification.post %}
+                           data-href="{% url 'social:post_detail' notification.post.pk %}"
+                         {% elif notification.comment %}
+                           data-href="{% url 'social:post_detail' notification.comment.post.pk %}#comment-{{ notification.comment.pk }}"
+                         {% elif notification.notification_type == 'follow' and notification.sender %}
+                           data-href="{% url 'social:profile' notification.sender.username %}"
+                         {% elif notification.sender %}
+                           data-href="{% url 'social:profile' notification.sender.username %}"
+                         {% endif %}>
                         <div class="card-body p-4">
                             <div class="flex items-start space-x-4">
                                 <!-- Notification Icon -->
@@ -79,15 +90,17 @@
                                     <div class="flex items-center space-x-2 mb-2">
                                         <!-- Notification Type Icon -->
                                         {% if notification.notification_type == 'like' %}
-                                            <i class="fas fa-heart text-red-500"></i>
+                                            <span class="icon-badge-soft"><i class="fas fa-heart text-red-500"></i></span>
                                         {% elif notification.notification_type == 'comment' %}
-                                            <i class="fas fa-comment text-blue-500"></i>
+                                            <span class="icon-badge-soft"><i class="fas fa-comment text-blue-500"></i></span>
                                         {% elif notification.notification_type == 'follow' %}
-                                            <i class="fas fa-user-plus text-green-500"></i>
+                                            <span class="icon-badge-soft"><i class="fas fa-user-plus text-green-500"></i></span>
                                         {% elif notification.notification_type == 'mention' %}
-                                            <i class="fas fa-at text-purple-500"></i>
+                                            <span class="icon-badge-soft"><i class="fas fa-at text-purple-500"></i></span>
+                                        {% elif notification.notification_type == 'share' %}
+                                            <span class="icon-badge-soft"><i class="fas fa-retweet text-purple-500"></i></span>
                                         {% else %}
-                                            <i class="fas fa-bell text-gray-500"></i>
+                                            <span class="icon-badge-soft"><i class="fas fa-bell text-gray-500"></i></span>
                                         {% endif %}
 
                                         <!-- Sender Name -->
@@ -127,10 +140,10 @@
 
                                 <!-- Action Menu -->
                                 <div class="dropdown dropdown-end">
-                                    <div tabindex="0" role="button" class="btn btn-ghost btn-sm">
+                                    <div tabindex="0" role="button" class="btn btn-ghost btn-sm" onclick="event.stopPropagation()">
                                         <i class="fas fa-ellipsis-v"></i>
                                     </div>
-                                    <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                                    <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52" onclick="event.stopPropagation()">
                                         {% if not notification.is_read %}
                                         <li>
                                             <form method="POST" action="{% url 'social:mark_notification_read' notification.pk %}">
@@ -199,11 +212,24 @@
                         <i class="fas fa-home"></i>
                         Go to Feed
                     </a>
-                </div>
             {% endif %}
         </div>
     </div>
-
-    
 </div>
-{% endblock content %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.card[data-href]').forEach(function(card){
+    card.addEventListener('click', function(e){
+      // Ignore clicks originating from interactive elements inside
+      const t = e.target;
+      if (t.closest('a') || t.closest('button') || t.closest('.dropdown')) return;
+      const href = card.getAttribute('data-href');
+      if (href) { window.location.href = href; }
+    });
+  });
+});
+</script>
+{% endblock %}

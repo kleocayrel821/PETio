@@ -34,6 +34,8 @@
                     </div>
                 </div>
 
+                
+
                 <!-- Title -->
                 <div class="form-control">
                     <label class="label">
@@ -67,85 +69,71 @@
                     </label>
                 </div>
 
-                <!-- Category -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-semibold">Category</span>
-                    </label>
-                    <select name="category" class="select select-bordered {% if form.category.errors %}select-error{% endif %}">
-                        <option value="">Select a category (optional)</option>
-                        {% for category in categories %}
-                            <option value="{{ category.pk }}" 
-                                    {% if form.category.value == category.pk|stringformat:"s" %}selected{% endif %}>
-                                {{ category.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                    {% if form.category.errors %}
-                        <label class="label">
-                            <span class="label-text-alt text-error">{{ form.category.errors.0 }}</span>
-                        </label>
-                    {% endif %}
-                </div>
+                
 
-                <!-- Image Upload -->
+                <!-- Media Upload -->
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text font-semibold">Image (Optional)</span>
+                        <span class="label-text font-semibold">Images/Videos (Optional)</span>
                     </label>
                     <div class="border-2 border-dashed border-base-300 rounded-lg p-6 text-center hover:border-primary transition-colors">
-                        <input type="file" name="image" accept="image/*" class="file-input file-input-bordered w-full max-w-xs" 
-                               onchange="previewImage(this)">
+                        <input type="file" name="images" accept="image/*,video/*" multiple class="file-input file-input-bordered w-full max-w-xs" 
+                               onchange="previewImages(this)">
                         <div class="mt-2">
                             <i class="fas fa-cloud-upload-alt text-3xl text-base-content/30"></i>
                             <p class="text-sm text-base-content/60 mt-2">Click to upload or drag and drop</p>
-                            <p class="text-xs text-base-content/40">PNG, JPG, GIF up to 10MB</p>
+                            <p class="text-xs text-base-content/40">PNG, JPG, GIF, MP4, WebM up to 50MB each</p>
                         </div>
                     </div>
-                    {% if form.image.errors %}
-                        <label class="label">
-                            <span class="label-text-alt text-error">{{ form.image.errors.0 }}</span>
-                        </label>
-                    {% endif %}
                     
-                    <!-- Image Preview -->
-                    <div id="imagePreview" class="mt-4 hidden">
-                        <img id="previewImg" class="max-w-full h-48 object-cover rounded-lg" />
-                        <button type="button" onclick="removeImage()" class="btn btn-sm btn-error mt-2">
-                            <i class="fas fa-trash"></i> Remove Image
+                    <!-- Media Preview -->
+                    <div id="imagesPreview" class="mt-4 hidden">
+                        <div id="previewImagesGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+                        <button type="button" onclick="removeImages()" class="btn btn-sm btn-error mt-3">
+                            <i class="fas fa-trash"></i> Remove Images
                         </button>
                     </div>
                 </div>
 
-                <!-- Post Options -->
+                <div class="divider">Preview</div>
                 <div class="card bg-base-200">
                     <div class="card-body">
-                        <h3 class="card-title text-lg">Post Options</h3>
-                        <div class="space-y-3">
-                            <div class="form-control">
-                                <label class="label cursor-pointer">
-                                    <span class="label-text">
-                                        <i class="fas fa-thumbtack mr-2"></i>
-                                        Pin this post (Admin only)
-                                    </span>
-                                    <input type="checkbox" name="is_pinned" class="checkbox checkbox-primary" 
-                                           {% if not user.is_staff %}disabled{% endif %}
-                                           {% if form.is_pinned.value %}checked{% endif %}>
-                                </label>
-                            </div>
-                            
-                            <div class="form-control">
-                                <label class="label cursor-pointer">
-                                    <span class="label-text">
-                                        <i class="fas fa-bell mr-2"></i>
-                                        Notify followers about this post
-                                    </span>
-                                    <input type="checkbox" name="notify_followers" class="checkbox checkbox-primary" checked>
-                                </label>
+                        <h3 class="card-title text-lg mb-4">Post Preview</h3>
+                        <div id="postPreview" class="card bg-base-100 shadow">
+                            <div class="card-body">
+                                <div class="flex items-start space-x-3">
+                                    <div class="avatar">
+                                        <div class="w-12 rounded-full">
+                                            <img src="{% avatar_url user 96 %}" alt="{{ user.username }}" />
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center space-x-2 mb-2">
+                                            <h4 class="font-semibold">{{ user.get_full_name|default:user.username }}</h4>
+                                            <span class="text-sm text-base-content/60">Just now</span>
+                                        </div>
+                                        <h3 id="previewTitle" class="text-lg font-bold mb-2 text-base-content/60">Your post title will appear here...</h3>
+                                        <p id="previewContent" class="text-base-content/60">Your post content will appear here...</p>
+                                        <div id="previewImageContainer" class="mt-4 hidden"></div>
+                                        <div class="flex items-center space-x-4 mt-4">
+                                            <span class="btn btn-ghost btn-sm">
+                                                <i class="fas fa-heart"></i> 0
+                                            </span>
+                                            <span class="btn btn-ghost btn-sm">
+                                                <i class="fas fa-comment"></i> 0
+                                            </span>
+                                            <span class="btn btn-ghost btn-sm">
+                                                <i class="fas fa-share"></i> Share
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                
 
                 <!-- Action Buttons -->
                 <div class="flex flex-col sm:flex-row gap-4 pt-6">
@@ -165,47 +153,6 @@
                     </a>
                 </div>
 
-                <!-- Preview Mode Toggle -->
-                <div class="divider">Preview</div>
-                <div class="card bg-base-200">
-                    <div class="card-body">
-                        <h3 class="card-title text-lg mb-4">Post Preview</h3>
-                        <div id="postPreview" class="card bg-base-100 shadow">
-                            <div class="card-body">
-                                <div class="flex items-start space-x-3">
-                                    <div class="avatar">
-                                        <div class="w-12 rounded-full">
-                                            <img src="{% avatar_url user 96 %}" alt="{{ user.username }}" />
-                                        </div>
-                                    </div>
-                                    <div class="flex-1">
-                                        <div class="flex items-center space-x-2 mb-2">
-                                            <h4 class="font-semibold">{{ user.get_full_name|default:user.username }}</h4>
-                                            <span id="previewCategory" class="badge badge-primary badge-sm hidden"></span>
-                                            <span class="text-sm text-base-content/60">Just now</span>
-                                        </div>
-                                        <h3 id="previewTitle" class="text-lg font-bold mb-2 text-base-content/60">Your post title will appear here...</h3>
-                                        <p id="previewContent" class="text-base-content/60">Your post content will appear here...</p>
-                                        <div id="previewImageContainer" class="mt-4 hidden">
-                                            <img id="previewPostImage" class="rounded-lg w-full max-h-96 object-cover" />
-                                        </div>
-                                        <div class="flex items-center space-x-4 mt-4">
-                                            <span class="btn btn-ghost btn-sm">
-                                                <i class="fas fa-heart"></i> 0
-                                            </span>
-                                            <span class="btn btn-ghost btn-sm">
-                                                <i class="fas fa-comment"></i> 0
-                                            </span>
-                                            <span class="btn btn-ghost btn-sm">
-                                                <i class="fas fa-share"></i> Share
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </form>
         </div>
     </div>
@@ -214,46 +161,121 @@
 
 {% block extra_js %}
 <script>
-// Image preview functionality
-function previewImage(input) {
-    const preview = document.getElementById('imagePreview');
-    const previewImg = document.getElementById('previewImg');
-    const previewPostImage = document.getElementById('previewPostImage');
-    const previewImageContainer = document.getElementById('previewImageContainer');
-    
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            previewImg.src = e.target.result;
-            previewPostImage.src = e.target.result;
-            preview.classList.remove('hidden');
-            previewImageContainer.classList.remove('hidden');
-        }
-        
-        reader.readAsDataURL(input.files[0]);
-    }
+let selectedFiles = [];
+function fileKey(f) { return [f.name, f.size, f.lastModified].join(':'); }
+// Multiple media preview functionality (images and videos)
+function previewImages(input) {
+    const incoming = Array.from(input.files || []);
+    const existing = selectedFiles.slice();
+    const seen = new Set(existing.map(fileKey));
+    incoming.forEach(f => { const k = fileKey(f); if (!seen.has(k)) { existing.push(f); seen.add(k); } });
+    const dt = new DataTransfer();
+    existing.forEach(f => dt.items.add(f));
+    input.files = dt.files;
+    selectedFiles = Array.from(dt.files);
+    renderSelectedFiles();
 }
 
-function removeImage() {
-    const input = document.querySelector('input[name="image"]');
-    const preview = document.getElementById('imagePreview');
-    const previewImageContainer = document.getElementById('previewImageContainer');
-    
+function removeImages() {
+    const input = document.querySelector('input[name="images"]');
+    selectedFiles = [];
     input.value = '';
-    preview.classList.add('hidden');
-    previewImageContainer.classList.add('hidden');
+    renderSelectedFiles();
+}
+
+function removeImageAtIndex(index) {
+    const input = document.querySelector('input[name="images"]');
+    const dt = new DataTransfer();
+    selectedFiles.forEach((f, i) => { if (i !== index) dt.items.add(f); });
+    input.files = dt.files;
+    selectedFiles = Array.from(dt.files);
+    renderSelectedFiles();
+}
+
+function renderSelectedFiles() {
+    const preview = document.getElementById('imagesPreview');
+    const grid = document.getElementById('previewImagesGrid');
+    const previewCardContainer = document.getElementById('previewImageContainer');
+    grid.innerHTML = '';
+    if (previewCardContainer) { previewCardContainer.innerHTML = ''; previewCardContainer.classList.add('hidden'); }
+    if (selectedFiles.length > 0) {
+        selectedFiles.forEach((file, i) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'relative group';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-circle btn-xs absolute top-1 right-1 bg-neutral text-neutral-content opacity-80 group-hover:opacity-100 remove-image-btn';
+            btn.innerHTML = '<i class="fas fa-times"></i>';
+            btn.dataset.index = String(i);
+            btn.addEventListener('click', function(){ removeImageAtIndex(parseInt(this.dataset.index, 10)); });
+            let node;
+            if ((file.type || '').startsWith('video/')) {
+                const url = URL.createObjectURL(file);
+                const vid = document.createElement('video');
+                vid.src = url;
+                vid.className = 'rounded-lg w-full h-32 object-cover';
+                vid.muted = true;
+                vid.controls = true;
+                node = vid;
+            } else {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'rounded-lg w-full h-32 object-cover';
+                    wrap.appendChild(img);
+                    wrap.appendChild(btn);
+                    grid.appendChild(wrap);
+                };
+                reader.readAsDataURL(file);
+                return; // early return; append handled in onload
+            }
+            wrap.appendChild(node);
+            wrap.appendChild(btn);
+            grid.appendChild(wrap);
+        });
+        preview.classList.remove('hidden');
+        if (previewCardContainer) {
+            const cardGrid = document.createElement('div');
+            cardGrid.className = 'grid grid-cols-2 sm:grid-cols-3 gap-3';
+            selectedFiles.forEach((file) => {
+                const wrap2 = document.createElement('div');
+                wrap2.className = 'relative';
+                if ((file.type || '').startsWith('video/')) {
+                    const url2 = URL.createObjectURL(file);
+                    const v2 = document.createElement('video');
+                    v2.src = url2;
+                    v2.className = 'rounded-lg w-full h-32 object-cover';
+                    v2.muted = true;
+                    v2.controls = true;
+                    wrap2.appendChild(v2);
+                } else {
+                    const reader2 = new FileReader();
+                    reader2.onload = function(ev) {
+                        const img2 = document.createElement('img');
+                        img2.src = ev.target.result;
+                        img2.className = 'rounded-lg w-full h-32 object-cover';
+                        wrap2.appendChild(img2);
+                    };
+                    reader2.readAsDataURL(file);
+                }
+                cardGrid.appendChild(wrap2);
+            });
+            previewCardContainer.appendChild(cardGrid);
+            previewCardContainer.classList.remove('hidden');
+        }
+    } else {
+        preview.classList.add('hidden');
+    }
 }
 
 // Live preview functionality
 document.addEventListener('DOMContentLoaded', function() {
     const titleInput = document.querySelector('input[name="title"]');
     const contentInput = document.querySelector('textarea[name="content"]');
-    const categorySelect = document.querySelector('select[name="category"]');
     
     const previewTitle = document.getElementById('previewTitle');
     const previewContent = document.getElementById('previewContent');
-    const previewCategory = document.getElementById('previewCategory');
     
     function updatePreview() {
         // Update title
@@ -266,19 +288,12 @@ document.addEventListener('DOMContentLoaded', function() {
         previewContent.textContent = content || 'Your post content will appear here...';
         previewContent.classList.toggle('text-base-content/60', !content);
         
-        // Update category
-        const categoryOption = categorySelect.options[categorySelect.selectedIndex];
-        if (categorySelect.value && categoryOption.text !== 'Select a category (optional)') {
-            previewCategory.textContent = categoryOption.text;
-            previewCategory.classList.remove('hidden');
-        } else {
-            previewCategory.classList.add('hidden');
-        }
+        
     }
     
     titleInput.addEventListener('input', updatePreview);
     contentInput.addEventListener('input', updatePreview);
-    categorySelect.addEventListener('change', updatePreview);
+    
     
     // Initial preview update
     updatePreview();

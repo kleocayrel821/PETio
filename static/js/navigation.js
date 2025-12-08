@@ -105,12 +105,33 @@
   }
 
   function initNavigation() {
-    // App switcher
     const appToggle = $('#appSwitcherToggle');
     const appDropdown = $('#appSwitcherDropdown');
     on(appToggle, 'click', function(e) {
       e.stopPropagation();
       toggleMenu(appToggle, appDropdown);
+    });
+
+    const globalToggle = $('#globalMenuToggle');
+    const globalMenu = $('#globalAppMenu');
+    const globalBackdrop = $('#globalMenuBackdrop');
+    on(globalToggle, 'click', function(e) {
+      e.stopPropagation();
+      const expanded = globalToggle.getAttribute('aria-expanded') === 'true';
+      globalToggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      globalToggle.setAttribute('aria-label', expanded ? 'Open menu' : 'Close menu');
+      if (globalMenu) globalMenu.classList.toggle('show', !expanded);
+      if (globalBackdrop) globalBackdrop.classList.toggle('show', !expanded);
+      if (!expanded && globalMenu) {
+        const firstLink = globalMenu.querySelector('a[href]');
+        if (firstLink) firstLink.focus();
+      }
+    });
+    on(globalBackdrop, 'click', function() {
+      if (globalToggle) globalToggle.setAttribute('aria-expanded', 'false');
+      if (globalToggle) globalToggle.setAttribute('aria-label', 'Open menu');
+      if (globalMenu) globalMenu.classList.remove('show');
+      if (globalBackdrop) globalBackdrop.classList.remove('show');
     });
 
     // Profile dropdown
@@ -142,6 +163,15 @@
         const withinApp = appDropdown.contains(e.target) || (appToggle && appToggle.contains(e.target));
         if (!withinApp) closeMenu(appToggle, appDropdown);
       }
+      if (globalMenu && globalMenu.classList.contains('show')) {
+        const withinGlobal = globalMenu.contains(e.target) || (globalToggle && globalToggle.contains(e.target));
+        if (!withinGlobal) {
+          if (globalToggle) globalToggle.setAttribute('aria-expanded', 'false');
+          if (globalToggle) globalToggle.setAttribute('aria-label', 'Open menu');
+          globalMenu.classList.remove('show');
+          if (globalBackdrop) globalBackdrop.classList.remove('show');
+        }
+      }
       if (profileDropdown && profileDropdown.classList.contains('show')) {
         const withinProf = profileDropdown.contains(e.target) || (profileToggle && profileToggle.contains(e.target));
         if (!withinProf) closeMenu(profileToggle, profileDropdown);
@@ -153,7 +183,34 @@
       if (e.key === 'Escape') {
         if (appDropdown && appDropdown.classList.contains('show')) closeMenu(appToggle, appDropdown);
         if (profileDropdown && profileDropdown.classList.contains('show')) closeMenu(profileToggle, profileDropdown);
+        if (globalMenu && globalMenu.classList.contains('show')) {
+          if (globalToggle) globalToggle.setAttribute('aria-expanded', 'false');
+          if (globalToggle) globalToggle.setAttribute('aria-label', 'Open menu');
+          globalMenu.classList.remove('show');
+          if (globalBackdrop) globalBackdrop.classList.remove('show');
+        }
       }
+
+    on(document, 'keydown', function(e){
+      if (e.key !== 'Tab') return;
+      if (!globalMenu || !globalMenu.classList.contains('show')) return;
+      const nodes = globalMenu.querySelectorAll('a[href], button, [tabindex]:not([tabindex="-1"])');
+      const focusables = Array.prototype.slice.call(nodes).filter(function(el){ return !el.hasAttribute('disabled'); });
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          last.focus();
+          e.preventDefault();
+        }
+      } else {
+        if (document.activeElement === last) {
+          first.focus();
+          e.preventDefault();
+        }
+      }
+    });
     });
 
     // Keyboard shortcuts: Alt+1/2/3 to switch apps
