@@ -77,7 +77,7 @@
             <div class="text-xs mt-1">Meetup: {{ txn.meetup_place }} {% if txn.meetup_time %}· {{ txn.meetup_time|date:"M j, Y g:i a" }}{% endif %}</div>
           {% endif %}
           {% if txn.amount_paid %}
-            <div class="text-xs mt-1">Paid: {{ txn.amount_paid }} {% if txn.payment_method %}via {{ txn.payment_method }}{% endif %}</div>
+            <div class="text-xs mt-1">Paid: {{ txn.amount_paid }} {% if txn.payment_method %}via {% if txn.payment_method == 'cod' %}COD (Cash on Delivery){% elif txn.payment_method == 'gcash' %}GCash{% else %}{{ txn.payment_method }}{% endif %}{% endif %}</div>
           {% endif %}
           {% if txn.purchase_request %}
             <div class="mt-2"><a href="{% url 'marketplace:request_detail' txn.purchase_request.id %}" class="btn btn-xs btn-outline">View Request</a></div>

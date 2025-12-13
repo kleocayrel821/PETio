@@ -48,8 +48,8 @@
 }
 .top-navbar .icon-btn { border: none; background: transparent; cursor: pointer; color: var(--text); font-size: 16px; padding: 6px 10px; border-radius: 6px; transition: 0.2s ease; }
 .top-navbar .icon-btn:hover { background: var(--hover-bg); color: var(--primary); }
-.top-navbar .btn-create { background: var(--primary); color: #fff; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-weight: 600; transition: 0.2s ease; }
-.top-navbar .btn-create:hover { filter: brightness(0.95); }
+.top-navbar .btn-create { background: #9BB4C0; border: 1px solid #9BB4C0; color: #fff; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-weight: 600; transition: 0.2s ease; }
+.top-navbar .btn-create:hover { filter: brightness(0.95); background: #9BB4C0; border-color: #9BB4C0; }
 
 .hamburger-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: #fff; }
 .hamburger-btn:hover { border-color: var(--primary); }
@@ -192,7 +192,7 @@
 .logout-btn:hover, .logout-btn:focus { background: var(--hover-bg, #f5f5f5); }
 
 /* Create button tweaks */
-.btn-create { margin-left: 8px; padding: 6px 12px; border-radius: 20px; background: var(--accent, #2b8a3e); color: #fff; text-decoration: none; font-weight: 600; }
+.btn-create { margin-left: 8px; padding: 6px 12px; border-radius: 20px; background: #9BB4C0; color: #fff; text-decoration: none; font-weight: 600; }
 .btn-create:hover { filter: brightness(0.95); }
 
 /* Notifications badge */
@@ -224,7 +224,7 @@
 .sidebar--hidden { display: none; }
 .sidebar--placeholder { visibility: hidden; }
 .card, .modal-box, .alert, .badge, .tabs .tab { border-radius: 18px; }
-.card { background: #ffffff; box-shadow: 0 8px 24px rgba(17,24,39,0.08); border: 1px solid rgba(17,24,39,0.06); }
+.card { background: var(--glass-bg); box-shadow: 0 8px 24px rgba(17,24,39,0.08); border: var(--glass-border); backdrop-filter: saturate(140%) blur(8px); -webkit-backdrop-filter: saturate(140%) blur(8px); }
 .card:hover { box-shadow: 0 18px 40px rgba(17,24,39,0.12); transform: translateY(-2px); }
 .modal .modal-box { background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.35); }
 .alert { border: 1px solid rgba(17,24,39,0.06); box-shadow: 0 6px 16px rgba(17,24,39,0.06); }

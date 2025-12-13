@@ -11,7 +11,8 @@
 
 {% block extra_css %}
 <style>
-  /* Minimal page-specific styles, aligned with base.html tokens */
+  .landing-theme { font-family: 'XXII Geom DEMO', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; position: relative; z-index: 1; }
+  .landing-theme .text-sm, .landing-theme .text-xs, .landing-theme small { font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
   .hero-section {
     background: linear-gradient(90deg, var(--bg-secondary) 60%, var(--bg-primary) 100%);
     padding: 64px 0 48px;
@@ -47,11 +48,80 @@
     line-height: 1;
   }
   .hero-cta-group .btn { min-width: 180px; }
+
+  .landing-theme {
+    --palette-1: #473472;
+    --palette-2: #53629E;
+    --palette-3: #87BAC3;
+    --palette-4: #D6F4ED;
+    --bg-primary: #D6F4ED;
+    --bg-secondary: #87BAC3;
+  }
+  .landing-theme .hero-section {
+    background: radial-gradient(900px 400px at 10% 10%, rgba(135,186,195,0.25), transparent 60%), linear-gradient(90deg, #D6F4ED 0%, #87BAC3 100%);
+    border-radius: 24px;
+    box-shadow: 0 8px 30px rgba(23,20,48,0.08);
+  }
+  .landing-theme .hero-headline { color: #473472; }
+  .landing-theme .hero-subtitle { color: #53629E; }
+  .landing-theme .status-badge { background: rgba(83,98,158,0.12); color: #53629E; border: 1px solid rgba(83,98,158,0.22); }
+  .landing-theme .bg-primary { background-color: #53629E !important; }
+  .landing-theme .text-primary { color: #53629E !important; }
+  .landing-theme .enhanced-card { border-color: rgba(83,98,158,0.18); background: rgba(255,255,255,0.92); }
+  .landing-theme .enhanced-card:hover { background: #D6F4ED; }
+  .landing-theme .btn-primary { background: linear-gradient(135deg, #53629E, #473472); color: #fff; border: none; }
+  .landing-theme .btn-primary:hover { filter: brightness(1.05); box-shadow: 0 10px 24px rgba(71,52,114,0.2); }
+  .landing-theme .btn-accent { background: linear-gradient(135deg, #87BAC3, #53629E); color: #fff; border: none; }
+  .landing-theme .btn-ghost { color: #473472; border-color: rgba(83,98,158,0.25); }
+  .landing-theme .cta-section { background: linear-gradient(90deg, #D6F4ED, #87BAC3); border: 1px solid rgba(83,98,158,0.18); }
+
+  .landing-theme .feature-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.96);
+    border: 1px solid rgba(83,98,158,0.22);
+    box-shadow: 0 10px 24px rgba(83,98,158,0.10);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+  .landing-theme .feature-card::before {
+    content: '';
+    position: absolute;
+    top: -40px; left: -40px;
+    width: 160px; height: 160px;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(135,186,195,0.25), transparent 70%);
+  }
+  .landing-theme .feature-card::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; right: -60px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(83,98,158,0.18), transparent 70%);
+  }
+  .landing-theme .feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 36px rgba(71,52,114,0.18);
+    border-color: #53629E66;
+    background: rgba(255,255,255,0.98);
+  }
+  .landing-theme .icon-badge {
+    width: 40px; height: 40px;
+    border-radius: 9999px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(83,98,158,0.12);
+    border: 1px solid rgba(83,98,158,0.22);
+  }
+  .landing-theme .feature-icon { width: 22px; height: 22px; color: #53629E; }
+  .icon-scatter-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .icon-scatter-item { position: absolute; opacity: 0.14; stroke: #53629E; filter: drop-shadow(0 1px 2px rgba(83,98,158,0.10)); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-6">
+<div class="landing-theme max-w-7xl mx-auto px-6">
+  <div id="iconScatterLayer" class="icon-scatter-layer" aria-hidden="true"></div>
 
   <!-- Hero -->
   <section class="hero-section">
@@ -72,11 +142,9 @@
           <a href="#features" class="btn btn-ghost btn-enhanced">Explore Features</a>
         </div>
       </div>
-      <div class="enhanced-card p-6">
+      <div class="feature-card enhanced-card p-6">
         <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <i class="fas fa-paw text-primary text-xl" aria-hidden="true"></i>
-          </div>
+          <span class="icon-badge"><i data-feather="grid" class="feature-icon"></i></span>
           <div>
             <div class="font-semibold">Unified Dashboard</div>
             <div class="text-sm text-base-content/70">Status at a glance</div>
@@ -93,48 +161,48 @@
   <section id="features" class="mt-10">
     <h2 class="section-title">Features That Fit Your Day</h2>
     <div class="features-grid mt-6">
-      <div class="enhanced-card p-5">
+      <div class="feature-card enhanced-card p-5">
         <div class="flex items-center gap-3">
           <span class="status-badge">Scheduling</span>
           <span class="text-sm text-base-content/70">Automated routines</span>
         </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="feature-icon">⏰</span> Smart Feeding</div>
+        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="clock" class="feature-icon"></i></span>Smart Feeding</div>
         <p class="text-base-content/80">Plan and track meals with alerts and history.</p>
       </div>
 
-      <div class="enhanced-card p-5">
+      <div class="feature-card enhanced-card p-5">
         <div class="flex items-center gap-3">
           <span class="status-badge">Activity</span>
           <span class="text-sm text-base-content/70">Health insights</span>
         </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="feature-icon">📱</span> Daily Tracking</div>
+        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="activity" class="feature-icon"></i></span>Daily Tracking</div>
         <p class="text-base-content/80">Log walks, playtime, and mood in one timeline.</p>
       </div>
 
-      <div class="enhanced-card p-5">
+      <div class="feature-card enhanced-card p-5">
         <div class="flex items-center gap-3">
           <span class="status-badge">Profiles</span>
           <span class="text-sm text-base-content/70">Per-pet history</span>
         </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="feature-icon">📊</span> Pet Profiles</div>
+        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="bar-chart-2" class="feature-icon"></i></span>Pet Profiles</div>
         <p class="text-base-content/80">Track nutrition, habits, and feeding patterns.</p>
       </div>
 
-      <div class="enhanced-card p-5">
+      <div class="feature-card enhanced-card p-5">
         <div class="flex items-center gap-3">
           <span class="status-badge">Community</span>
           <span class="text-sm text-base-content/70">Share moments</span>
         </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="feature-icon">👥</span> Social Feed</div>
+        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="users" class="feature-icon"></i></span>Social Feed</div>
         <p class="text-base-content/80">Connect with other owners and share your pet’s day.</p>
       </div>
 
-      <div class="enhanced-card p-5">
+      <div class="feature-card enhanced-card p-5">
         <div class="flex items-center gap-3">
           <span class="status-badge">Marketplace</span>
           <span class="text-sm text-base-content/70">Trusted listings</span>
         </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="feature-icon">🛒</span> Buy & Sell</div>
+        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="shopping-cart" class="feature-icon"></i></span>Buy & Sell</div>
         <p class="text-base-content/80">Find essentials for your pet in one place.</p>
       </div>
     </div>
@@ -155,4 +223,41 @@
   </section>
 
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/feather-icons"></script>
+<script>
+  (function(){
+    function scatter() {
+      var layer = document.getElementById('iconScatterLayer');
+      if (!layer) return;
+      layer.innerHTML = '';
+      var w = window.innerWidth || 1200;
+      var h = window.innerHeight || 800;
+      var baseCount = Math.max(16, Math.min(56, Math.floor((w * h) / 28000)));
+      var iconSet = ['clock','activity','bar-chart-2','users','shopping-cart'];
+      for (var i = 0; i < baseCount; i++) {
+        var el = document.createElement('i');
+        var name = iconSet[Math.floor(Math.random() * iconSet.length)];
+        el.setAttribute('data-feather', name);
+        el.className = 'icon-scatter-item';
+        var x = Math.random() * 100;
+        var y = Math.random() * 100;
+        var s = 0.8 + Math.random() * 1.4;
+        var r = Math.floor(Math.random() * 360);
+        el.style.left = x + '%';
+        el.style.top = y + '%';
+        el.style.transform = 'translate(-50%, -50%) scale(' + s + ') rotate(' + r + 'deg)';
+        layer.appendChild(el);
+      }
+      if (window.feather && typeof window.feather.replace === 'function') {
+        window.feather.replace({ width: 28, height: 28, 'stroke-width': 1.8 });
+      }
+    }
+    function debounce(fn, delay){ var t; return function(){ clearTimeout(t); t = setTimeout(fn, delay); }; }
+    document.addEventListener('DOMContentLoaded', scatter);
+    window.addEventListener('resize', debounce(scatter, 200));
+  })();
+</script>
 {% endblock %}

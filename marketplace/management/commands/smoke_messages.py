@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 from django.contrib.auth import get_user_model
+from django.conf import settings
+import os
 from django.core.management.base import BaseCommand, CommandError
 from django.db import IntegrityError, transaction, connection
 from django.db.models.signals import post_save
@@ -41,6 +43,9 @@ class Command(BaseCommand):
     help = "Run messaging smoke tests for FBV and DRF endpoints"
 
     def handle(self, *args, **options):
+        if not (getattr(settings, "SMOKE_ENABLED", False) or str(os.getenv("SMOKE_ENABLED", "")).lower() in {"1", "true", "yes"}):
+            self.stdout.write("Smoke testing disabled.")
+            return
         results: list[SmokeResult] = []
         client = Client()
 
@@ -108,6 +113,12 @@ class Command(BaseCommand):
         results.append(self._smoke_drf_flow(client, drf_buyer, listing, intruder))
 
         ok = all(r.ok for r in results)
+        try:
+            Listing.objects.filter(pk=listing.id).delete()
+            Listing.objects.filter(title__startswith="Messaging Smoke Listing @").delete()
+            User.objects.filter(username__in=["smoke_seller", "smoke_buyer_fbv", "smoke_buyer_drf", "smoke_intruder"]).delete()
+        except Exception:
+            pass
         for r in results:
             self.stdout.write(f"{'PASS' if r.ok else 'FAIL'} - {r.label}: {r.detail}")
         if not ok:

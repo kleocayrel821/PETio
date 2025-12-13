@@ -76,7 +76,7 @@ class TestOfflinePaymentFlow(TestCase):
         url_sell = reverse("marketplace:api_listing_sell", args=[self.listing.id])
         proof = SimpleUploadedFile("receipt.txt", b"paid")
         resp_s = self.client.post(url_sell, {
-            "payment_method": "cash",
+            "payment_method": "cod",
             "amount_paid": "20.00",
             "payment_proof": proof,
         })
@@ -84,7 +84,7 @@ class TestOfflinePaymentFlow(TestCase):
         self.listing.refresh_from_db()
         txn.refresh_from_db()
         self.assertEqual(txn.status, TransactionStatus.PAID)
-        self.assertEqual(txn.payment_method, "cash")
+        self.assertEqual(txn.payment_method, "cod")
         self.assertEqual(txn.amount_paid, Decimal("20.00"))
         self.assertTrue(bool(txn.payment_proof))
 
@@ -105,7 +105,7 @@ class TestOfflinePaymentFlow(TestCase):
         # Attempt to record payment exceeding price
         url_sell = reverse("marketplace:api_listing_sell", args=[self.listing.id])
         resp = self.client.post(url_sell, {
-            "payment_method": "cash",
+            "payment_method": "cod",
             "amount_paid": "30.00",
         })
         self.assertEqual(resp.status_code, 400)
@@ -117,13 +117,13 @@ class TestOfflinePaymentFlow(TestCase):
         # Seller cannot sell without prior reserve
         self.assertTrue(self.client.login(username="seller_pay", password="pass"))
         url_sell = reverse("marketplace:api_listing_sell", args=[self.listing.id])
-        resp = self.client.post(url_sell, {"payment_method": "cash", "amount_paid": "10.00"})
+        resp = self.client.post(url_sell, {"payment_method": "cod", "amount_paid": "10.00"})
         self.assertEqual(resp.status_code, 400)
         # Buyer cannot call sell (only seller)
         self.client.logout(); self.assertTrue(self.client.login(username="buyer_pay", password="pass"))
         # First reserve to create txn
         self.client.post(reverse("marketplace:api_listing_reserve", args=[self.listing.id]), content_type="application/json")
-        resp_b = self.client.post(url_sell, {"payment_method": "cash", "amount_paid": "10.00"})
+        resp_b = self.client.post(url_sell, {"payment_method": "cod", "amount_paid": "10.00"})
         self.assertEqual(resp_b.status_code, 403)
 
 
@@ -153,12 +153,12 @@ class TestListingFormValidation(TestCase):
         self.assertIn("quantity", form.errors)
 
     def test_clean_main_image_rejects_large_file(self):
-        """Image larger than 5MB should raise ValidationError."""
+        """Image larger than 20MB should raise ValidationError."""
         class DummyFile:
             def __init__(self, size):
                 self.size = size
         form = ListingForm()
-        form.cleaned_data = {"main_image": DummyFile(size=5 * 1024 * 1024 + 1)}
+        form.cleaned_data = {"main_image": DummyFile(size=20 * 1024 * 1024 + 1)}
         with self.assertRaises(ValidationError):
             form.clean_main_image()
 

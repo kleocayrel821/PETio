@@ -5,47 +5,23 @@
   Notes: Maintains original links and functionality; mobile-friendly spacing.
 -->
 {% extends "base.html" %}
-{% block title %}Logged out - PETio{% endblock %}
+{% block title %}You’re logged out - PETio{% endblock %}
 {% block content %}
-<!--
-  Centering strategy:
-  - We use flexbox on the section and a computed min-height (100vh - 64px)
-    to account for the fixed top navbar height.
-  - Inline styles ensure vertical centering works even if utility classes
-    (e.g., Tailwind) are not present.
-  - Background gradient uses a CSS fallback (linear-gradient) to preserve visuals.
--->
-<section
-  class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex items-center justify-center py-12 px-6"
-  style="
-    min-height: calc(100vh - 64px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 48px 24px;
-    background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
-  "
->
-  <div
-    class="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 text-center"
-    style="max-width: 28rem; width: 100%;"
-  >
-    <!-- Icon badge -->
-    <div class="mx-auto h-16 w-16 rounded-full bg-blue-600 flex items-center justify-center shadow-md mb-6">
+<section class="min-h-[calc(100vh-64px)] grid place-items-center px-6 py-12"
+  style="background: linear-gradient(135deg, #D6F4ED 0%, #87BAC3 100%);">
+  <div class="enhanced-card w-full max-w-lg p-10 text-center">
+    <div class="mx-auto mb-6 h-16 w-16 rounded-full flex items-center justify-center"
+      style="background: linear-gradient(135deg, #9BB4C0, #53629E); box-shadow: 0 10px 24px rgba(83,98,158,0.35);">
       <i class="fas fa-check text-white text-2xl" aria-hidden="true"></i>
     </div>
-
-    <!-- Heading & subheading -->
-    <h1 class="text-3xl font-bold text-slate-800">You're logged out</h1>
+    <h1 class="text-3xl font-bold text-slate-800">You’re logged out</h1>
     <p class="text-slate-600 mt-2">Your session was safely closed. You can sign back in or return home.</p>
-
-    <!-- Actions -->
-    <div class="mt-8 grid gap-3" style="display: grid; gap: 12px;">
-      <a href="{% url 'login' %}" class="btn btn-primary w-full">Log in again</a>
-      <a href="{% url 'landing' %}" class="btn btn-outline w-full">Return to Home</a>
+    <div class="mt-8 grid gap-3">
+      <a href="{% url 'login' %}" class="btn btn-primary btn-enhanced w-full"
+         style="background: linear-gradient(135deg, #53629E, #473472); border-color:#473472; color:#ffffff;">Log in again</a>
+      <a href="{% url 'landing' %}" class="btn btn-ghost btn-enhanced w-full"
+         style="border:1.5px solid rgba(83,98,158,0.35);">Return to Home</a>
     </div>
-
-    <!-- Footer -->
     <div class="mt-6">
       <a href="/support" class="text-xs text-slate-500 hover:text-slate-700 underline decoration-slate-300 hover:decoration-slate-500">Need help? Contact support</a>
     </div>

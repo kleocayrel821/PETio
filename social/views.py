@@ -26,12 +26,16 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
+@login_required
 def home(request):
     """Home/Landing page for IOsocial"""
     # Calculate community stats for the home page
-    total_users = User.objects.count()
-    total_posts = Post.objects.count()
-    total_interactions = Like.objects.count() + Comment.objects.count()
+    total_users = User.objects.exclude(username__startswith='smoke_').count()
+    total_posts = Post.objects.exclude(author__username__startswith='smoke_').count()
+    total_interactions = (
+        Like.objects.exclude(post__author__username__startswith='smoke_').count()
+        + Comment.objects.exclude(post__author__username__startswith='smoke_').count()
+    )
     
     context = {
         'total_users': total_users,
@@ -42,12 +46,18 @@ def home(request):
     return render(request, 'social/home.html', context)
 
 
+@login_required
 def feed(request):
     """Community feed showing all posts"""
     search_query = request.GET.get('search')
     sort_by = request.GET.get('sort', 'recent')
     
-    posts = Post.objects.select_related('author').prefetch_related('likes', 'comments', 'images', 'videos')
+    posts = (
+        Post.objects
+        .select_related('author')
+        .prefetch_related('likes', 'comments', 'images', 'videos')
+        .exclude(author__username__startswith='smoke_')
+    )
     
     if search_query:
         posts = posts.filter(
@@ -68,6 +78,7 @@ def feed(request):
                 Q(social_profile__bio__icontains=search_query) |
                 Q(social_profile__location__icontains=search_query)
             )
+            .exclude(username__startswith='smoke_')
             .annotate(
                 followers_count=Count('social_followers_set'),
                 post_count=Count('social_posts')
@@ -86,9 +97,9 @@ def feed(request):
     
     week_ago = timezone.now() - timedelta(days=7)
     community_stats = {
-        'total_posts': Post.objects.count(),
-        'active_members': User.objects.annotate(post_count=Count('social_posts')).filter(post_count__gt=0).count(),
-        'this_week_posts': Post.objects.filter(created_at__gte=week_ago).count(),
+        'total_posts': Post.objects.exclude(author__username__startswith='smoke_').count(),
+        'active_members': User.objects.annotate(post_count=Count('social_posts')).filter(post_count__gt=0).exclude(username__startswith='smoke_').count(),
+        'this_week_posts': Post.objects.filter(created_at__gte=week_ago).exclude(author__username__startswith='smoke_').count(),
     }
     friend_suggestions = []
     if request.user.is_authenticated:
@@ -97,6 +108,7 @@ def feed(request):
             User.objects
             .exclude(id__in=list(following_ids))
             .exclude(id=request.user.id)
+            .exclude(username__startswith='smoke_')
             .filter(is_staff=False, is_superuser=False)
             .annotate(
                 followers_count=Count('social_followers_set'),
@@ -148,6 +160,7 @@ def create_post(request):
     return render(request, 'social/create_post.html')
 
 
+@login_required
 def post_detail(request, pk):
     """Detailed view of a single post"""
     post = get_object_or_404(Post.objects.prefetch_related('images', 'videos', 'likes', 'comments'), pk=pk)

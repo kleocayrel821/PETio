@@ -1,5 +1,6 @@
 {% extends "social/base_social.html" %}
 {% block social_title %}Moderation Logs{% endblock %}
+{% block body_class %} class="moderation-font"{% endblock %}
 {% block sidebar %}{% include 'social/moderation/sidebar.html' %}{% endblock %}
 {% block social_content %}
 <div class="max-w-6xl mx-auto">
@@ -9,7 +10,7 @@
   </h1>
 
   <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
-    <div class="stats bg-base-100 shadow col-span-1 lg:col-span-4">
+    <div class="stats bg-white/90 backdrop-blur rounded-2xl border border-[#DDBA7D33] shadow-md col-span-1 lg:col-span-4">
       <div class="stat">
         <div class="stat-title">Total Actions</div>
         <div class="stat-value text-primary">{{ log_stats.total_actions }}</div>
@@ -25,7 +26,7 @@
     </div>
   </div>
 
-  <div class="card bg-base-100 mb-6">
+  <div class="card bg-white/90 backdrop-blur rounded-2xl border border-[#DDBA7D33] shadow-md mb-6">
     <div class="card-body">
       <form method="get" action="" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <div>
@@ -59,7 +60,7 @@
           <input type="text" name="search" placeholder="Reason, moderator, target user" value="{{ search_query }}" class="input input-bordered w-full" />
         </div>
         <div class="md:col-span-3 lg:col-span-1 flex items-end gap-2">
-          <button type="submit" class="btn btn-primary w-full">Apply</button>
+          <button type="submit" class="btn w-full" style="background:#DDBA7D;color:#000;border-color:#DDBA7D">Apply</button>
           <a href="{% url 'social:moderation_logs' %}" class="btn btn-ghost">Reset</a>
         </div>
       </form>
@@ -68,7 +69,7 @@
 
   <div class="space-y-2">
     {% for action in page_obj %}
-      <div class="card bg-base-100">
+      <div class="card bg-white/90 backdrop-blur rounded-2xl border border-[#DDBA7D33] shadow-md">
         <div class="card-body">
           <div class="flex items-center gap-2 mb-2">
             <span class="font-semibold text-sm">@{{ action.moderator.username }}</span>

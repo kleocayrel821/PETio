@@ -29,6 +29,35 @@
   .btn-loading { position:relative; }
   .btn-loading[aria-busy="true"]::after { content:""; position:absolute; right:.75rem; width:1rem; height:1rem; border:2px solid currentColor; border-right-color: transparent; border-radius:50%; animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .marketplace-progress { color: #32612d; }
+  .marketplace-progress::-webkit-progress-value { background: #32612d; }
+  .marketplace-progress::-moz-progress-bar { background: #32612d; }
+  .checkbox, .checkbox-primary { transition: box-shadow .18s ease, background-color .18s ease, border-color .18s ease; }
+  .form-section .checkbox { --chkbg: #32612d; --chkfg: #ffffff; border-color: #32612d; }
+  .form-section .checkbox:focus-visible { outline-color: #32612d; box-shadow: 0 0 0 4px rgba(50,97,45,0.25); }
+  .form-section .checkbox:hover { box-shadow: 0 0 0 4px rgba(50,97,45,0.15); }
+  .form-section .checkbox-primary { --chkbg: #32612d; --chkfg: #ffffff; border-color: #32612d; }
+  .form-section .checkbox-primary:focus-visible { outline-color: #32612d; box-shadow: 0 0 0 4px rgba(50,97,45,0.25); }
+  .form-section .checkbox-primary:hover { box-shadow: 0 0 0 4px rgba(50,97,45,0.15); }
+  
+  #field-title input,
+  #field-price input,
+  #field-quantity input,
+  #field-category select { transition: border-color .18s ease, box-shadow .18s ease; }
+  #field-title input:focus,
+  #field-price input:focus,
+  #field-quantity input:focus,
+  #field-category select:focus { border-color: #32612d; box-shadow: 0 0 0 4px rgba(50,97,45,0.25); }
+  #field-title input:hover,
+  #field-price input:hover,
+  #field-quantity input:hover,
+  #field-category select:hover { box-shadow: 0 0 0 3px rgba(50,97,45,0.15); }
+  #field-title.field.valid input,
+  #field-price.field.valid input,
+  #field-quantity.field.valid input,
+  #field-category.field.valid select { outline: 2px solid #32612d; box-shadow: 0 0 0 3px rgba(50,97,45,0.20); }
+  .form-section .section-header i.fa-list { color: #32612d; }
+  .form-section .section-header i.fa-eye { color: #32612d; }
 </style>
 
 <!-- Progress indicator -->
@@ -38,7 +67,7 @@
     <span><i class="fas fa-image"></i> Media</span>
     <span><i class="fas fa-eye"></i> Preview</span>
   </div>
-  <progress id="formProgress" class="progress progress-primary w-full" value="0" max="100" aria-label="Form completion"></progress>
+  <progress id="formProgress" class="progress progress-primary marketplace-progress w-full" value="0" max="100" aria-label="Form completion"></progress>
 </div>
 
 <!-- Autosave indicator -->
@@ -137,7 +166,7 @@
             <button type="button" id="imageSelectBtn" class="btn btn-ghost btn-sm"><i class="fas fa-upload"></i> Choose Image</button>
             <div class="visually-hidden">{{ form.main_image }}</div>
           </div>
-          <label id="imageHelp" class="label"><span class="label-text-alt">Max 5 MB. JPG/PNG/WebP recommended.</span></label>
+          <label id="imageHelp" class="label"><span class="label-text-alt">Max 20 MB. JPG/PNG/WebP recommended.</span></label>
           {% if form.main_image.errors %}
             <label class="label" role="alert" aria-live="polite"><span class="label-text-alt text-error">{{ form.main_image.errors.0 }}</span></label>
           {% endif %}

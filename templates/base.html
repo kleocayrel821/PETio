@@ -15,13 +15,17 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js"></script>
+  <!-- Global font -->
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.cdnfonts.com/css/xxii-geom-demo" rel="stylesheet">
   
   <!-- Global CSS Variables and Enhanced UI Classes -->
   <style>
     :root {
-      --primary-blue: #8b5cf6;
-      --accent-emerald: #f472b6;
-      --accent-amber: #fb7185;
+      --primary-blue: #9BB4C0;
+      --accent-emerald: #53629E;
+      --accent-amber: #A18D6D;
       --success-green: #22c55e;
       --warning-orange: #f97316;
       --error-red: #ef4444;
@@ -45,9 +49,10 @@
     body {
       background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
       min-height: 100vh;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       transition: var(--transition-smooth);
     }
+    
 
     /* Typography Hierarchy */
     .section-title {
@@ -69,16 +74,18 @@
 
     /* Enhanced Card Styling */
     .enhanced-card {
-      background: var(--bg-card);
+      background: var(--glass-bg);
       border-radius: 20px;
       box-shadow: var(--shadow-card);
       padding: 1.5rem;
       transition: var(--transition-smooth);
-      border: 1px solid rgba(17, 24, 39, 0.06);
+      border: var(--glass-border);
+      backdrop-filter: saturate(140%) blur(8px);
+      -webkit-backdrop-filter: saturate(140%) blur(8px);
     }
     .enhanced-card:hover {
       box-shadow: var(--shadow-card-hover);
-      background: var(--bg-card-hover);
+      background: rgba(255,255,255,0.85);
       transform: translateY(-3px);
     }
 
@@ -119,8 +126,8 @@
     .enhanced-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
 
     /* Status Badges */
-    .status-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.9rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 600; transition: var(--transition-fast); }
-    .status-badge:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .status-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.9rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 600; transition: var(--transition-fast); background: rgba(155,180,192,0.18); color: #53629E; border: 1px solid rgba(155,180,192,0.28); }
+    .status-badge:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(83,98,158,0.18); }
     .status-enabled { background: rgba(16,185,129,0.2); color: var(--success-green); border: 1px solid rgba(16,185,129,0.3); }
     .status-disabled { background: rgba(156,163,175,0.2); color: var(--text-muted); border: 1px solid rgba(156,163,175,0.3); }
 
@@ -154,16 +161,8 @@
     .btn-circle.btn-sm { width: 2rem; height: 2rem; }
   </style>
   {% if current_app == 'social' %}
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-      body { font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-    </style>
     <link rel="stylesheet" href="{% static 'social/css/style.css' %}">
   {% elif current_app == 'controller' or current_app == 'marketplace' %}
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-      body { font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-    </style>
   {% endif %}
   <!-- Unified navigation stylesheet -->
   <link rel="stylesheet" href="{% static 'css/navigation.css' %}">
@@ -266,7 +265,7 @@
     </div>
     <div class="global-app-menu__list">
       <a href="{% url 'home' %}" class="app-dropdown__item {% if current_app == 'controller' or current_app is None %}active{% endif %}" role="menuitem">
-        <span class="app-dropdown__icon">🎮</span>
+        <span class="app-dropdown__icon"><i data-feather="sliders"></i></span>
         <div class="app-dropdown__meta">
           <div class="app-dropdown__title">Controller</div>
           <div class="app-dropdown__desc">Feed & Schedule Management</div>
@@ -274,7 +273,7 @@
         <i class="fas fa-chevron-right item-chevron"></i>
       </a>
       <a href="{% url 'social:feed' %}" class="app-dropdown__item {% if current_app == 'social' %}active{% endif %}" role="menuitem">
-        <span class="app-dropdown__icon">👥</span>
+        <span class="app-dropdown__icon"><i data-feather="users"></i></span>
         <div class="app-dropdown__meta">
           <div class="app-dropdown__title">Social</div>
           <div class="app-dropdown__desc">Community & Sharing</div>
@@ -282,7 +281,7 @@
         <i class="fas fa-chevron-right item-chevron"></i>
       </a>
       <a href="{% url 'marketplace:home' %}" class="app-dropdown__item {% if current_app == 'marketplace' %}active{% endif %}" role="menuitem">
-        <span class="app-dropdown__icon">🛒</span>
+        <span class="app-dropdown__icon"><i data-feather="shopping-cart"></i></span>
         <div class="app-dropdown__meta">
           <div class="app-dropdown__title">Marketplace</div>
           <div class="app-dropdown__desc">Products & Services</div>
@@ -352,6 +351,7 @@
 
   <!-- Unified Navigation Scripts -->
   <script src="{% static 'js/navigation.js' %}"></script>
+  <script>try{ feather.replace({width:18,height:18}); }catch(e){}</script>
   <script>
     /**
      * Enhanced Button States utility.

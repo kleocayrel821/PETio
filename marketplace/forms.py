@@ -2,7 +2,7 @@
 Forms for marketplace app: ListingForm with server-side validations.
 - Validates price > 0
 - Validates quantity > 0
-- Validates main_image size <= 5MB (if provided)
+- Validates main_image size <= 20MB (if provided)
 """
 from django import forms
 from django.core.exceptions import ValidationError
@@ -18,10 +18,10 @@ class ListingForm(forms.ModelForm):
     Enforces:
     - Positive price
     - Positive quantity
-    - Image size must be <= 5 MB when provided
+    - Image size must be <= 20 MB when provided
     """
 
-    MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
+    MAX_IMAGE_SIZE_BYTES = 20 * 1024 * 1024  # 20 MB
 
     class Meta:
         model = Listing
@@ -90,13 +90,13 @@ class ListingForm(forms.ModelForm):
         return qty
 
     def clean_main_image(self):
-        """Validate uploaded image size if present (<= 5 MB)."""
+        """Validate uploaded image size if present (<= 20 MB)."""
         image = self.cleaned_data.get("main_image")
         if not image:
             return image
         # UploadedFile provides size in bytes
         if getattr(image, "size", 0) > self.MAX_IMAGE_SIZE_BYTES:
-            raise ValidationError("Image file too large (max 5 MB).")
+            raise ValidationError("Image file too large (max 20 MB).")
         return image
 
 

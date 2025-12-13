@@ -168,21 +168,21 @@
     {% for item in listings %}
     <div class="card bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl">
         <!-- Product Image -->
-        <figure class="relative">
+        <figure class="relative overflow-hidden rounded-t-xl h-40 sm:h-48 xl:h-56">
             {% if item.main_image %}
-            <img src="{{ item.main_image.url }}" alt="{{ item.title }}" class="w-full h-40 sm:h-48 xl:h-56 object-cover rounded-t-xl cursor-zoom-in" loading="lazy" data-viewer data-group="catalog">
+            <img src="{{ item.main_image.url }}" alt="{{ item.title }}" class="absolute left-0 right-0 bottom-0 top-8 w-full h-full object-cover cursor-zoom-in z-0" loading="lazy" data-viewer data-group="catalog">
             {% else %}
-            <img src="{% static 'img/placeholder.svg' %}" alt="{{ item.title }}" class="w-full h-40 sm:h-48 xl:h-56 object-cover rounded-t-xl cursor-zoom-in" loading="lazy" data-viewer data-group="catalog">
+            <img src="{% static 'img/placeholder.svg' %}" alt="{{ item.title }}" class="absolute left-0 right-0 bottom-0 top-8 w-full h-full object-cover cursor-zoom-in z-0" loading="lazy" data-viewer data-group="catalog">
             {% endif %}
             {% if item.is_fixed_price %}
-            <div class="badge badge-info absolute top-2 left-2">Buy Now</div>
+            <div class="badge badge-info absolute top-2 left-2 z-10">Buy Now</div>
             {% endif %}
             {% if item.quantity == 0 %}
-            <div class="badge badge-error absolute top-2 right-2">Out of Stock</div>
+            <div class="badge badge-error absolute top-2 right-2 z-10">Out of Stock</div>
             {% elif item.quantity <= 2 %}
-            <div class="badge badge-warning absolute top-2 right-2">Only {{ item.quantity }} left</div>
+            <div class="badge badge-warning absolute top-2 right-2 z-10">Only {{ item.quantity }} left</div>
             {% else %}
-            <div class="badge badge-success absolute top-2 right-2">In Stock</div>
+            <div class="badge badge-success absolute top-2 right-2 z-10">In Stock</div>
             {% endif %}
         </figure>
         <div class="card-body p-3 sm:p-4">
@@ -192,21 +192,21 @@
                 <div class="text-base sm:text-lg font-bold text-primary">₱{{ item.price }}</div>
                 <div class="text-xs sm:text-sm text-base-content/70">{{ item.quantity }} available</div>
             </div>
-            <div class="flex items-center gap-2 mt-2 text-xs sm:text-sm text-base-content/70">
+            <div class="seller-row flex items-center gap-2 mt-2 text-xs sm:text-sm text-base-content/70 whitespace-nowrap">
                 <div class="avatar placeholder">
                     <div class="bg-neutral text-neutral-content rounded-full w-6">
                         <span class="text-xs">{{ item.seller.username|first|upper }}</span>
                     </div>
                 </div>
-                <span>@{{ item.seller.username }}</span>
+                <span class="seller-name">@{{ item.seller.username }}</span>
                 {% if item.seller_rating_count %}
-                <span class="ml-2 flex items-center gap-1">
+                <span class="ml-auto flex items-center gap-1 seller-rating-text">
                     <i class="fas fa-star text-yellow-400"></i>
                     <span>{{ item.seller_avg_rating|floatformat:1 }}</span>
                     <span class="opacity-60">({{ item.seller_rating_count }})</span>
                 </span>
                 {% else %}
-                <span class="ml-2 opacity-60">No ratings yet</span>
+                <span class="ml-auto opacity-60 seller-rating-text">No ratings yet</span>
                 {% endif %}
             </div>
             {% url 'marketplace:listing_detail' item.pk as view_url_local %}
@@ -270,7 +270,7 @@
 </div>
 
 <!-- Quick Stats -->
-<div class="stats shadow mt-8 w-full">
+<div class="stats marketplace-quick-stats shadow mt-8 w-full">
     <div class="stat">
         <div class="stat-figure text-primary">
             <i class="fas fa-box text-2xl"></i>
@@ -301,6 +301,33 @@
 {% endblock %}
 
 {% block marketplace_scripts %}
+<!-- Buy Now: Payment Method Modal (catalog) -->
+<dialog id="catalogPaymentModal" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg mb-4">Select Payment Method</h3>
+    <p class="text-sm text-base-content/70 mb-4">Choose your payment method to proceed with Buy Now.</p>
+    <div class="form-control mb-2">
+      <label class="label cursor-pointer">
+        <span class="label-text">COD (Cash on Delivery)</span>
+        <input type="radio" name="catalogPaymentMethod" value="cod" class="radio" checked>
+      </label>
+    </div>
+    <div class="form-control mb-4">
+      <label class="label cursor-pointer">
+        <span class="label-text">GCash</span>
+        <input type="radio" name="catalogPaymentMethod" value="gcash" class="radio">
+      </label>
+    </div>
+    <div class="modal-action">
+      <button type="button" class="btn btn-ghost" id="catalogPaymentCancel">Cancel</button>
+      <button type="button" class="btn btn-success" id="catalogPaymentConfirm">
+        <i class="fas fa-check mr-2"></i>
+        Confirm and Buy Now
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
 <script>
 /**
  * Marketplace Catalog JavaScript (server-driven)
@@ -431,5 +458,82 @@ style.textContent = `
     @media (max-width: 640px) { .touch-target { min-height: 44px; padding-left: 1rem; padding-right: 1rem; } }
 `;
 document.head.appendChild(style);
+
+// Delegated handler: open payment modal for Buy Now
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.buy-now-trigger');
+  if (!btn) return;
+  e.preventDefault();
+  const buyUrl = btn.getAttribute('data-buy-url');
+  if (!buyUrl) return;
+  const modal = document.getElementById('catalogPaymentModal');
+  if (modal && typeof modal.showModal === 'function') {
+    modal.dataset.buyUrl = buyUrl;
+    modal.showModal();
+  }
+});
+
+// Confirm payment selection
+(() => {
+  const modal = document.getElementById('catalogPaymentModal');
+  const confirmBtn = document.getElementById('catalogPaymentConfirm');
+  const cancelBtn = document.getElementById('catalogPaymentCancel');
+  function csrf(){ const m = document.querySelector('meta[name="csrf-token"]'); return m ? m.content : ''; }
+  if (cancelBtn) cancelBtn.addEventListener('click', () => { if (modal) modal.close(); });
+  if (confirmBtn) confirmBtn.addEventListener('click', async () => {
+    if (!modal) return;
+    const buyUrl = modal.dataset.buyUrl || '';
+    if (!buyUrl) return;
+    const selected = document.querySelector('input[name="catalogPaymentMethod"]:checked');
+    const paymentMethod = selected ? selected.value : null;
+    try {
+      const resp = await fetch(buyUrl, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf(), 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_method: paymentMethod })
+      });
+      if (!resp.ok) {
+        let data = {};
+        try { data = await resp.json(); } catch(_) {}
+        const msg = data.error || 'Buy Now failed';
+        if (window.toastManager) toastManager.error(msg); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast(msg, 'error');
+        return;
+      }
+      if (window.toastManager) toastManager.success('Order created. Awaiting payment.'); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast('Order created. Awaiting payment.', 'success');
+      if (modal && typeof modal.close === 'function') modal.close();
+      window.location.href = '{% url "marketplace:transactions" %}?status=confirmed';
+    } catch(err) {
+      if (window.toastManager) toastManager.error('Network error'); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast('Network error', 'error');
+    }
+  });
+})();
+
+(function(){
+  function fitSellerRows(){
+    const rows = document.querySelectorAll('.seller-row');
+    rows.forEach(row => {
+      const nameEl = row.querySelector('.seller-name');
+      const ratingEl = row.querySelector('.seller-rating-text');
+      if (!nameEl) return;
+      nameEl.style.fontSize = '';
+      if (ratingEl) ratingEl.style.fontSize = '';
+      const rowWidth = row.clientWidth;
+      const avatarEl = row.querySelector('.avatar');
+      const avatarWidth = avatarEl ? avatarEl.clientWidth : 0;
+      const gap = 8;
+      const total = avatarWidth + gap + nameEl.scrollWidth + (ratingEl ? gap + ratingEl.scrollWidth : 0);
+      if (total <= rowWidth) return;
+      const baseName = parseFloat(getComputedStyle(nameEl).fontSize) || 12;
+      const baseRating = ratingEl ? parseFloat(getComputedStyle(ratingEl).fontSize) || baseName : baseName;
+      const scale = rowWidth / total;
+      const targetName = Math.max(10, Math.floor(baseName * scale));
+      const targetRating = Math.max(10, Math.floor(baseRating * scale));
+      nameEl.style.fontSize = targetName + 'px';
+      if (ratingEl) ratingEl.style.fontSize = targetRating + 'px';
+    });
+  }
+  window.addEventListener('resize', fitSellerRows);
+  window.addEventListener('DOMContentLoaded', fitSellerRows);
+})();
 </script>
 {% endblock %}

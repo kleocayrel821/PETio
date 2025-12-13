@@ -62,6 +62,9 @@ else:
         # Badge count endpoints
         path("notifications/count/", views.notifications_count, name="notifications_count"),
         path("messages/count/", views.messages_count, name="messages_count"),
+        # Message read/unread toggles
+        path("messages/<int:message_id>/toggle_read/", views.toggle_thread_message_read, name="message_toggle_read"),
+        path("request-message/<int:req_message_id>/toggle_read/", views.toggle_request_message_read, name="request_message_toggle_read"),
 
         # Trust & Safety
         path("user/<int:user_id>/profile/", views.user_profile, name="user_profile"),

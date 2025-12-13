@@ -211,9 +211,8 @@ class Transaction(TimeStampedModel):
 
     # Offline payment tracking
     class PaymentMethod(models.TextChoices):
-        CASH = "cash", "Cash"
-        BANK_TRANSFER = "bank_transfer", "Bank Transfer"
-        OTHER = "other", "Other"
+        COD = "cod", "Cash on Delivery"
+        GCASH = "gcash", "GCash"
 
     payment_method = models.CharField(
         max_length=20, choices=PaymentMethod.choices, null=True, blank=True

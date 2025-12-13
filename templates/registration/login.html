@@ -11,26 +11,51 @@
 
 {% block extra_css %}
 <style>
+ .login-card { font-family: 'XXII Geom DEMO', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+ .login-title, .form-label { font-family: 'XXII Geom DEMO', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+ .login-subtitle, .login-footer-text, .forgot-password-link, .error-message, .alert-error, .text-sm, .text-xs, small { font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
  /* Login Page Specific Styles */
- .login-container {
-     min-height: 100vh;
-     display: flex;
-     align-items: center;
-     justify-content: center;
-     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-     padding: 20px;
- }
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #9BB4C0 0%, #53629E 100%);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+}
 
- .login-card {
-     background: white;
-     border-radius: 16px;
-     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-     padding: 48px;
-     width: 100%;
-     max-width: 440px;
-     animation: fadeInUp 0.5s ease;
- }
+.login-card {
+    background: rgba(255,255,255,0.88);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 48px;
+    width: 100%;
+    max-width: 440px;
+    animation: fadeInUp 0.5s ease;
+    backdrop-filter: saturate(140%) blur(8px);
+    -webkit-backdrop-filter: saturate(140%) blur(8px);
+    position: relative;
+    z-index: 1;
+}
 
+ .login-container::before {
+     content: "\f1b0";
+     font-family: "Font Awesome 6 Free";
+     font-weight: 900;
+     position: absolute;
+     left: 50%;
+     top: 50%;
+     transform: translate(-50%, -50%);
+     font-size: 140vmin;
+     color: #9BB4C0;
+     opacity: 0.32;
+     -webkit-text-stroke: 2vmin #000000;
+     filter: drop-shadow(0 20px 50px rgba(83, 98, 158, 0.28));
+     pointer-events: none;
+     z-index: 0;
+ }
  @keyframes fadeInUp {
      from {
          opacity: 0;
@@ -51,14 +76,14 @@
      width: 64px;
      height: 64px;
      margin: 0 auto 16px;
-     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+     background: linear-gradient(135deg, #9BB4C0 0%, #53629E 100%);
      border-radius: 16px;
      display: flex;
      align-items: center;
      justify-content: center;
      color: white;
      font-size: 32px;
-     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+     box-shadow: 0 4px 12px rgba(83, 98, 158, 0.35);
  }
 
  .login-title {
@@ -85,21 +110,22 @@
      margin-bottom: 8px;
  }
 
- .form-input {
-     width: 100%;
-     padding: 12px 16px;
-     border: 2px solid #e5e7eb;
-     border-radius: 8px;
-     font-size: 15px;
-     transition: all 0.2s;
-     background: #f9fafb;
- }
+.form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 15px;
+    transition: all 0.2s;
+    background: #f9fafb;
+    font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
 
  .form-input:focus {
      outline: none;
-     border-color: #7c3aed;
+     border-color: #53629E;
      background: white;
-     box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+     box-shadow: 0 0 0 3px rgba(83, 98, 158, 0.15);
  }
 
  .form-input::placeholder {
@@ -125,7 +151,7 @@
  }
 
  .password-toggle:hover {
-     color: #7c3aed;
+     color: #53629E;
  }
 
  .error-message {
@@ -153,7 +179,7 @@
  .btn-login {
      width: 100%;
      padding: 14px 24px;
-     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+     background: linear-gradient(135deg, #9BB4C0 0%, #53629E 100%);
      color: white;
      border: none;
      border-radius: 8px;
@@ -161,7 +187,7 @@
      font-weight: 600;
      cursor: pointer;
      transition: all 0.3s;
-     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+     box-shadow: 0 4px 12px rgba(83, 98, 158, 0.35);
      margin-top: 8px;
  }
 
@@ -213,14 +239,14 @@
  }
 
  .login-footer-text a {
-     color: #7c3aed;
+     color: #53629E;
      font-weight: 600;
      text-decoration: none;
      transition: color 0.2s;
  }
 
  .login-footer-text a:hover {
-     color: #6d28d9;
+     color: #473472;
      text-decoration: underline;
  }
 
@@ -311,7 +337,7 @@
                         class="password-toggle"
                         aria-label="Toggle password visibility"
                     >
-                        👁️
+                        <i class="fas fa-eye"></i>
                     </button>
                 </div>
                 {% if form.password.errors %}
@@ -359,10 +385,14 @@
     const toggleBtn = document.getElementById('toggle-password');
     
     if (toggleBtn && passwordInput) {
+        const icon = toggleBtn.querySelector('i');
         toggleBtn.addEventListener('click', function() {
             const isPassword = passwordInput.type === 'password';
             passwordInput.type = isPassword ? 'text' : 'password';
-            toggleBtn.textContent = isPassword ? '🙈' : '👁️';
+            if (icon) {
+                icon.classList.toggle('fa-eye');
+                icon.classList.toggle('fa-eye-slash');
+            }
         });
     }
 
