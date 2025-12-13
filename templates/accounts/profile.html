@@ -8,7 +8,7 @@
   :root { --primary-color:#9370DB; --secondary-color:#F472B6; --accent-color:#A78BFA; --text-primary:#1e293b; --text-secondary:#475569; --border-color: rgba(147,112,219,0.25); }
   .icon-inline { margin-right: 0.5rem; }
   .icon-badge-soft { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:8px; background: rgba(147,112,219,0.14); color:#6d28d9; }
-  .profile-cover { height:200px; background: linear-gradient(135deg, #6d28d9 0%, #ec4899 100%); position:relative; overflow:hidden; border-radius:16px; box-shadow: 0 16px 32px rgba(109,40,217,0.15); }
+  .profile-cover { height:200px; background: #92487A; position:relative; overflow:hidden; border-radius:16px; box-shadow: 0 16px 32px rgba(109,40,217,0.15); }
   .profile-info-container { max-width:900px; margin:0 auto; position:relative; }
   .profile-avatar-container { position:absolute; top:-60px; left:20px; z-index:10; }
   .profile-avatar { width:120px; height:120px; border-radius:50%; border:5px solid white; box-shadow:0 4px 18px rgba(0,0,0,0.14); object-fit:cover; }
@@ -17,6 +17,12 @@
   .profile-username { color:var(--text-secondary); font-size:0.95rem; margin:2px 0 8px; }
   .profile-stats { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
   .stat-item { display:inline-flex; align-items:center; gap:6px; color:var(--text-primary); border:1px solid var(--border-color); border-radius:9999px; padding:6px 10px; }
+  .image-viewer { position: fixed; inset: 0; z-index: 1000; display: none; }
+  .image-viewer.show { display: block; }
+  .image-viewer .iv-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+  .image-viewer .iv-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); max-width: 90vw; max-height: 85vh; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 14px 34px rgba(17,24,39,.22); }
+  .image-viewer .iv-content img { display:block; max-width: 90vw; max-height: 85vh; object-fit: contain; }
+  .image-viewer .iv-close { position:absolute; top:.5rem; right:.5rem; width:36px; height:36px; border:none; border-radius:9999px; background:#92487A; color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; }
 </style>
 {% endblock %}
 {% block content %}
@@ -127,6 +133,17 @@
       <div class="md:col-span-2"><div class="text-sm text-gray-500">Bio</div><div class="font-medium">{{ user_obj.profile.bio|default:"(not set)" }}</div></div>
     </div>
   </div>
+  <div id="imageViewer" class="image-viewer" aria-hidden="true">
+    <div class="iv-backdrop"></div>
+    <div class="iv-content">
+      <button type="button" class="iv-close" aria-label="Close"><i class="fas fa-times"></i></button>
+      {% if user_obj.profile.avatar %}
+      <img id="iv-img" src="{{ user_obj.profile.avatar.url }}" alt="{{ user_obj.username }} avatar large">
+      {% else %}
+      <img id="iv-img" src="{% static 'img/placeholder.svg' %}" alt="avatar placeholder">
+      {% endif %}
+    </div>
+  </div>
 </div>
 {% endblock %}
 {% block extra_js %}
@@ -142,6 +159,32 @@ document.addEventListener('DOMContentLoaded', function(){
       var icon = this.querySelector('i');
       if (icon) icon.className = isHidden ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
     });
+  });
+  var avatar = document.querySelector('.profile-avatar');
+  var viewer = document.getElementById('imageViewer');
+  var img = document.getElementById('iv-img');
+  if (avatar && viewer && img) {
+    var src = avatar.getAttribute('src');
+    if (src && src.indexOf('placeholder.svg') === -1) {
+      avatar.style.cursor = 'zoom-in';
+      avatar.addEventListener('click', function(){
+        img.src = src;
+        viewer.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      });
+    }
+  }
+  document.querySelectorAll('#imageViewer .iv-backdrop, #imageViewer .iv-close').forEach(function(el){
+    el.addEventListener('click', function(){
+      viewer.classList.remove('show');
+      document.body.style.overflow = '';
+    });
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && viewer && viewer.classList.contains('show')) {
+      viewer.classList.remove('show');
+      document.body.style.overflow = '';
+    }
   });
 });
 </script>
