@@ -38,14 +38,14 @@
        class="sidebar-item {% if active_tab == 'listings' %}active{% endif %}">
       <i data-lucide="file-text" class="w-5 h-5"></i>
       <span>Listings</span>
-      {% if pending_listings %}<span class="sidebar-badge">{{ pending_listings|length }}</span>{% endif %}
+      {% if pending_listings_count|default:0 > 0 %}<span class="sidebar-badge">{{ pending_listings_count }}</span>{% endif %}
     </a>
     
     <a href="{% url 'marketplace_admin:reports' %}" 
        class="sidebar-item {% if active_tab == 'reports' %}active{% endif %}">
       <i data-lucide="flag" class="w-5 h-5"></i>
       <span>Reports</span>
-      {% if reports %}<span class="sidebar-badge">{{ reports|length }}</span>{% endif %}
+      {% if open_reports_count|default:0 > 0 %}<span class="sidebar-badge">{{ open_reports_count }}</span>{% endif %}
     </a>
     
     <a href="{% url 'marketplace_admin:analytics' %}" 

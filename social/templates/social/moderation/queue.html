@@ -1,5 +1,6 @@
 {% extends "social/base_social.html" %}
 {% block social_title %}Moderation Queue{% endblock %}
+{% block body_class %} class="moderation-font"{% endblock %}
 {% block sidebar %}{% include 'social/moderation/sidebar.html' %}{% endblock %}
 {% block social_content %}
 <div class="max-w-6xl mx-auto">
@@ -9,7 +10,7 @@
       <h2 class="text-lg font-semibold mb-2">Flagged Posts</h2>
       <div class="space-y-3">
         {% for post in flagged_posts %}
-          <div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow"><div class="card-body">
+          <div class="card bg-white/90 backdrop-blur rounded-2xl border border-[#DDBA7D33] shadow-md hover:shadow-lg transition-all"><div class="card-body">
             <p class="font-medium">{{ post.title }}</p>
             <p class="text-xs text-base-content/60">by {{ post.author.username }} • {{ post.created_at|timesince }} ago</p>
             <div class="flex items-center gap-2 mt-3">
@@ -52,7 +53,7 @@
       <h2 class="text-lg font-semibold mb-2">Flagged Comments</h2>
       <div class="space-y-3">
         {% for comment in flagged_comments %}
-          <div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow"><div class="card-body">
+          <div class="card bg-white/90 backdrop-blur rounded-2xl border border-[#DDBA7D33] shadow-md hover:shadow-lg transition-all"><div class="card-body">
             <p class="text-sm">{{ comment.content|truncatewords:20 }}</p>
             <p class="text-xs text-base-content/60">by {{ comment.author.username }} • {{ comment.created_at|timesince }} ago</p>
             <div class="flex items-center gap-2 mt-3">

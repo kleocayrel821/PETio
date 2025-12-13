@@ -3,13 +3,13 @@
 <!-- Header Section with Search & Filters -->
 <div class="space-y-6">
   <!-- Page Header -->
-  <div class="flex items-center justify-between">
+  <div class="flex justify-between items-center">
     <div>
       <h3 class="text-2xl font-semibold text-base-content">Pending Listings</h3>
-      <p class="text-sm text-base-content/60 mt-1">Review and moderate marketplace listings</p>
+      <p class="mt-1 text-sm text-base-content/60">Review and moderate marketplace listings</p>
     </div>
     <div class="badge badge-lg badge-primary" id="pending-count">
-      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="mr-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
       </svg>
       <span id="count-text">0 Pending</span>
@@ -17,19 +17,19 @@
   </div>
 
   <!-- Search & Filter Bar -->
-  <div class="card bg-base-100 shadow-sm border border-base-200">
-    <div class="card-body p-4">
-      <div class="flex flex-col lg:flex-row gap-3">
+  <div class="border shadow-sm card bg-base-100 border-base-200">
+    <div class="p-4 card-body">
+      <div class="flex flex-col gap-3 lg:flex-row">
         <!-- Search Input -->
-        <div class="flex-1 relative">
-          <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="relative flex-1">
+          <svg class="absolute left-3 top-1/2 w-5 h-5 -translate-y-1/2 text-base-content/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
           <input 
             type="text" 
             id="search-listings" 
             placeholder="Search by title, seller, or ID..." 
-            class="input input-bordered w-full pl-10 focus:input-primary transition-all"
+            class="pl-10 w-full transition-all input input-bordered focus:input-primary"
           />
         </div>
         
@@ -52,13 +52,13 @@
 
         <!-- Bulk Actions -->
         <div class="dropdown dropdown-end" id="bulk-actions-dropdown" style="display: none;">
-          <label tabindex="0" class="btn btn-outline gap-2">
+          <label tabindex="0" class="gap-2 btn btn-outline">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
             </svg>
             <span id="bulk-count">0 Selected</span>
           </label>
-          <ul tabindex="0" class="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200 mt-1">
+          <ul tabindex="0" class="p-2 mt-1 w-52 border shadow-lg dropdown-content menu bg-base-100 rounded-box border-base-200">
             <li><a id="bulk-approve" class="text-success"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Approve Selected</a></li>
             <li><a id="bulk-reject" class="text-error"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Reject Selected</a></li>
           </ul>
@@ -69,16 +69,16 @@
 
   <!-- Loading Skeleton -->
   <div id="listings-skeleton" class="space-y-2" style="display: none;">
-    <div class="skeleton h-16 w-full"></div>
-    <div class="skeleton h-16 w-full"></div>
-    <div class="skeleton h-16 w-full"></div>
+    <div class="w-full h-16 skeleton"></div>
+    <div class="w-full h-16 skeleton"></div>
+    <div class="w-full h-16 skeleton"></div>
   </div>
 
   <!-- Listings Table -->
-  <div class="card bg-base-100 shadow-md border border-base-200 overflow-hidden">
+  <div class="overflow-hidden border shadow-md card bg-base-100 border-base-200">
     <div class="overflow-x-auto">
-      <table id="listings-table" class="table table-zebra w-full">
-        <thead class="bg-base-200 sticky top-0 z-10">
+      <table id="listings-table" class="table w-full table-zebra">
+        <thead class="sticky top-0 z-10 bg-base-200">
           <tr>
             <th class="w-12">
               <input type="checkbox" id="select-all" class="checkbox checkbox-sm" />
@@ -94,17 +94,17 @@
         </thead>
         <tbody>
           {% for l in pending_listings %}
-          <tr class="hover:bg-base-200/50 transition-colors" data-listing-id="{{ l.id }}">
+          <tr class="transition-colors hover:bg-base-200/50" data-listing-id="{{ l.id }}">
             <td>
               <input type="checkbox" class="checkbox checkbox-sm listing-checkbox" value="{{ l.id }}" />
             </td>
             <td>
               <div class="avatar">
-                <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-200 overflow-hidden">
+                <div class="overflow-hidden w-12 h-12 rounded-lg border border-base-300 bg-base-200">
                   {% if l.main_image %}
-                  <img src="{{ l.main_image.url }}" alt="{{ l.title }}" class="object-cover w-full h-full hover:scale-110 transition-transform cursor-pointer" onclick="showImagePreview('{{ l.main_image.url }}', '{{ l.title|escapejs }}')" />
+                  <img src="{{ l.main_image.url }}" alt="{{ l.title }}" class="object-cover w-full h-full transition-transform cursor-pointer hover:scale-110" onclick="showImagePreview('{{ l.main_image.url }}', '{{ l.title|escapejs }}')" />
                   {% else %}
-                  <div class="w-full h-full flex items-center justify-center text-base-content/30">
+                  <div class="flex justify-center items-center w-full h-full text-base-content/30">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                     </svg>
@@ -121,9 +121,9 @@
               </div>
             </td>
             <td>
-              <div class="flex items-center gap-2">
+              <div class="flex gap-2 items-center">
                 <div class="avatar placeholder">
-                  <div class="bg-primary text-primary-content rounded-full w-8 h-8 text-xs">
+                  <div class="w-8 h-8 text-xs rounded-full bg-primary text-primary-content">
                     <span>{{ l.seller.username|slice:":1"|upper }}</span>
                   </div>
                 </div>
@@ -140,7 +140,7 @@
             <td>
               <div class="flex gap-2 justify-end">
                 <button 
-                  class="btn btn-sm btn-success gap-1 hover:scale-105 transition-transform" 
+                  class="gap-1 transition-transform btn btn-sm btn-success hover:scale-105" 
                   data-action="approve" 
                   data-id="{{ l.id }}"
                   title="Approve listing"
@@ -151,7 +151,7 @@
                   Approve
                 </button>
                 <button 
-                  class="btn btn-sm btn-error btn-outline gap-1 hover:scale-105 transition-transform" 
+                  class="gap-1 transition-transform btn btn-sm btn-error btn-outline hover:scale-105" 
                   data-action="reject" 
                   data-id="{{ l.id }}"
                   title="Reject listing"
@@ -178,11 +178,11 @@
           {% empty %}
           <tr>
             <td colspan="8">
-              <div class="flex flex-col items-center justify-center py-12 text-center">
-                <svg class="w-16 h-16 text-base-content/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="flex flex-col justify-center items-center py-12 text-center">
+                <svg class="mb-4 w-16 h-16 text-base-content/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
-                <h4 class="text-lg font-semibold text-base-content/60 mb-1">No Pending Listings</h4>
+                <h4 class="mb-1 text-lg font-semibold text-base-content/60">No Pending Listings</h4>
                 <p class="text-sm text-base-content/40">All listings have been reviewed</p>
               </div>
             </td>
@@ -196,25 +196,25 @@
 
 <!-- Enhanced Rejection Modal -->
 <div id="reject-modal" class="modal">
-  <div class="modal-box max-w-lg relative">
+  <div class="relative max-w-lg modal-box">
     <!-- Close Button -->
-    <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4" onclick="closeRejectModal()">✕</button>
+    <button class="absolute top-4 right-4 btn btn-sm btn-circle btn-ghost" onclick="closeRejectModal()">✕</button>
     
     <!-- Modal Header -->
-    <div class="flex items-center gap-3 mb-6">
-      <div class="flex-shrink-0 w-12 h-12 bg-error/10 rounded-full flex items-center justify-center">
+    <div class="flex gap-3 items-center mb-6">
+      <div class="flex flex-shrink-0 justify-center items-center w-12 h-12 rounded-full bg-error/10">
         <svg class="w-6 h-6 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.964-1.333-2.732 0L3.732 16c-.77 1.333.192 3 1.732 3z"/>
         </svg>
       </div>
       <div>
-        <h3 class="font-bold text-xl text-base-content">Reject Listing</h3>
+        <h3 class="text-xl font-bold text-base-content">Reject Listing</h3>
         <p class="text-sm text-base-content/60">Provide a reason for rejection</p>
       </div>
     </div>
 
     <!-- Listing Info (populated dynamically) -->
-    <div class="alert alert-warning mb-4" id="reject-listing-info" style="display: none;">
+    <div class="mb-4 alert alert-warning" id="reject-listing-info" style="display: none;">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
       </svg>
@@ -225,39 +225,39 @@
     </div>
 
     <!-- Reason Code (Required) -->
-    <div class="form-control mb-4">
+    <div class="mb-4 form-control">
       <label class="label">
-        <span class="label-text font-medium">Rejection Reason <span class="text-error">*</span></span>
+        <span class="font-medium label-text">Rejection Reason <span class="text-error">*</span></span>
       </label>
-      <select id="reject-reason-code" class="select select-bordered focus:select-error w-full">
+      <select id="reject-reason-code" class="w-full select select-bordered focus:select-error">
         <option value="" disabled selected>Select a reason...</option>
         {% for code,label in rejection_reason_choices %}
           <option value="{{ code }}">{{ label }}</option>
         {% endfor %}
       </select>
       <label class="label">
-        <span class="label-text-alt text-error hidden" id="reason-code-error">Please select a rejection reason</span>
+        <span class="hidden label-text-alt text-error" id="reason-code-error">Please select a rejection reason</span>
       </label>
     </div>
 
     <!-- Additional Notes (Optional) -->
-    <div class="form-control mb-6">
+    <div class="mb-6 form-control">
       <label class="label">
-        <span class="label-text font-medium">Additional Notes (Optional)</span>
+        <span class="font-medium label-text">Additional Notes (Optional)</span>
         <span class="label-text-alt text-base-content/50" id="reason-char-count">0/500</span>
       </label>
       <textarea 
         id="reject-reason" 
-        class="textarea textarea-bordered focus:textarea-error h-24 resize-none" 
+        class="h-24 resize-none textarea textarea-bordered focus:textarea-error" 
         placeholder="Provide additional context or suggestions for the seller..."
         maxlength="500"
       ></textarea>
     </div>
 
     <!-- Modal Actions -->
-    <div class="modal-action justify-between">
+    <div class="justify-between modal-action">
       <button class="btn btn-ghost" onclick="closeRejectModal()">Cancel</button>
-      <button id="reject-confirm" class="btn btn-error gap-2">
+      <button id="reject-confirm" class="gap-2 btn btn-error">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
         </svg>
@@ -270,9 +270,9 @@
 
 <!-- Image Preview Modal -->
 <div id="image-preview-modal" class="modal">
-  <div class="modal-box max-w-3xl">
-    <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4" onclick="closeImagePreview()">✕</button>
-    <h3 class="font-bold text-lg mb-4" id="preview-title"></h3>
+  <div class="max-w-3xl modal-box">
+    <button class="absolute top-4 right-4 btn btn-sm btn-circle btn-ghost" onclick="closeImagePreview()">✕</button>
+    <h3 class="mb-4 text-lg font-bold" id="preview-title"></h3>
     <img id="preview-image" src="" alt="" class="w-full rounded-lg" />
   </div>
   <div class="modal-backdrop" onclick="closeImagePreview()"></div>
@@ -280,8 +280,8 @@
 
 <!-- Quick View Modal -->
 <div id="quick-view-modal" class="modal">
-  <div class="modal-box max-w-2xl">
-    <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4" onclick="closeQuickView()">✕</button>
+  <div class="max-w-2xl modal-box">
+    <button class="absolute top-4 right-4 btn btn-sm btn-circle btn-ghost" onclick="closeQuickView()">✕</button>
     <div id="quick-view-content" class="space-y-4">
       <!-- Content loaded dynamically -->
       <div class="flex justify-center py-8">
@@ -381,11 +381,11 @@
       tbody.innerHTML = `
         <tr>
           <td colspan="8">
-            <div class="flex flex-col items-center justify-center py-12 text-center">
-              <svg class="w-16 h-16 text-base-content/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="flex flex-col justify-center items-center py-12 text-center">
+              <svg class="mb-4 w-16 h-16 text-base-content/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
-              <h4 class="text-lg font-semibold text-base-content/60 mb-1">No Pending Listings</h4>
+              <h4 class="mb-1 text-lg font-semibold text-base-content/60">No Pending Listings</h4>
               <p class="text-sm text-base-content/40">All listings have been reviewed</p>
             </div>
           </td>
@@ -405,10 +405,10 @@
         </td>
         <td>
           <div class="avatar">
-            <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-200 overflow-hidden">
+            <div class="overflow-hidden w-12 h-12 rounded-lg border border-base-300 bg-base-200">
               ${l.image ? 
-                `<img src="${l.image}" alt="${l.title}" class="object-cover w-full h-full hover:scale-110 transition-transform cursor-pointer" onclick="showImagePreview('${l.image}', '${l.title}')" />` :
-                `<div class="w-full h-full flex items-center justify-center text-base-content/30">
+                `<img src="${l.image}" alt="${l.title}" class="object-cover w-full h-full transition-transform cursor-pointer hover:scale-110" onclick="showImagePreview('${l.image}', '${l.title}')" />` :
+                `<div class="flex justify-center items-center w-full h-full text-base-content/30">
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                   </svg>
@@ -425,9 +425,9 @@
           </div>
         </td>
         <td>
-          <div class="flex items-center gap-2">
+          <div class="flex gap-2 items-center">
             <div class="avatar placeholder">
-              <div class="bg-primary text-primary-content rounded-full w-8 h-8 text-xs">
+              <div class="w-8 h-8 text-xs rounded-full bg-primary text-primary-content">
                 <span>${l.seller.charAt(0).toUpperCase()}</span>
               </div>
             </div>
@@ -443,13 +443,13 @@
         </td>
         <td>
           <div class="flex gap-2 justify-end">
-            <button class="btn btn-sm btn-success gap-1 hover:scale-105 transition-transform" data-action="approve" data-id="${l.id}" title="Approve listing">
+            <button class="gap-1 transition-transform btn btn-sm btn-success hover:scale-105" data-action="approve" data-id="${l.id}" title="Approve listing">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
               </svg>
               Approve
             </button>
-            <button class="btn btn-sm btn-error btn-outline gap-1 hover:scale-105 transition-transform" data-action="reject" data-id="${l.id}" title="Reject listing">
+            <button class="gap-1 transition-transform btn btn-sm btn-error btn-outline hover:scale-105" data-action="reject" data-id="${l.id}" title="Reject listing">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
               </svg>
@@ -663,10 +663,8 @@
 
   document.getElementById('bulk-reject')?.addEventListener('click', async (e) => {
     e.preventDefault();
-    
     if (selectedListings.size === 0) return;
     
-    // For bulk reject, we'll open modal with first ID and note it's bulk
     alert('Bulk rejection requires selecting a reason. Please reject listings individually for now.');
   });
 
@@ -703,7 +701,7 @@
 
       const imgHTML = data.main_image
         ? `<img src="${data.main_image}" alt="${escapeHTML(data.title)}" class="object-cover w-full h-full" />`
-        : `<div class="w-full h-full flex items-center justify-center text-base-content/30">
+        : `<div class="flex justify-center items-center w-full h-full text-base-content/30">
              <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
              </svg>
@@ -719,34 +717,34 @@
 
       const categoryName = (data.category && data.category.name) ? data.category.name : 'Uncategorized';
       const sellerName = (data.seller && data.seller.username) ? data.seller.username : 'Unknown';
-      const fullPageUrl = `/marketplace/listings/${listingId}/`;
+      const fullPageUrl = `/marketplace/listing/${listingId}/`;
 
       content.innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
           <div class="md:col-span-1">
-            <div class="w-full h-48 md:h-full rounded-lg border border-base-300 bg-base-200 overflow-hidden">
+            <div class="overflow-hidden w-full h-48 rounded-lg border md:h-full border-base-300 bg-base-200">
               ${imgHTML}
             </div>
           </div>
           <div class="md:col-span-2">
-            <h3 class="text-xl font-bold mb-1">${escapeHTML(data.title)}</h3>
-            <div class="text-sm text-base-content/60 mb-3">${escapeHTML(categoryName)} • Qty: ${Number(data.quantity || 0)}</div>
-            <div class="font-semibold text-primary mb-3">${priceText}</div>
+            <h3 class="mb-1 text-xl font-bold">${escapeHTML(data.title)}</h3>
+            <div class="mb-3 text-sm text-base-content/60">${escapeHTML(categoryName)} • Qty: ${Number(data.quantity || 0)}</div>
+            <div class="mb-3 font-semibold text-primary">${priceText}</div>
 
-            <div class="space-y-1 text-sm text-base-content/70 mb-4">
+            <div class="mb-4 space-y-1 text-sm text-base-content/70">
               <div><span class="font-medium">Seller:</span> ${escapeHTML(sellerName)}</div>
               <div><span class="font-medium">Created:</span> ${escapeHTML(createdText)}</div>
               <div><span class="font-medium">Status:</span> ${escapeHTML(data.status || 'pending')}</div>
             </div>
 
-            <div class="prose max-w-none">
+            <div class="max-w-none prose">
               <p>${escapeHTML(data.description || '')}</p>
             </div>
 
-            <div class="mt-6 flex gap-2">
+            <div class="flex gap-2 mt-6">
               <a href="${fullPageUrl}" target="_blank" class="btn btn-primary btn-sm">
                 Open Full Listing
-                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                 </svg>
               </a>

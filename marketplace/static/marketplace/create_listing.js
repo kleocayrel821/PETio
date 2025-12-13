@@ -94,8 +94,15 @@
       dropzoneEl.classList.remove('dragover');
       const dt = e.dataTransfer;
       if (dt && dt.files && dt.files.length) {
-        fileInput.files = dt.files;
-        handleFiles(dt.files);
+        try {
+          const transfer = new DataTransfer();
+          Array.from(dt.files).forEach(f => transfer.items.add(f));
+          fileInput.files = transfer.files;
+        } catch (_) {
+          try { fileInput.files = dt.files; } catch (_) { /* ignore */ }
+        }
+        handleFiles(fileInput.files || dt.files);
+        fileInput.dispatchEvent(new Event('change'));
       }
     });
   }

@@ -6,6 +6,12 @@
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'social/css/style.css' %}">
 <link rel="stylesheet" href="{% static 'social/css/gradient-mesh.css' %}">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  body.moderation-font { font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  body.moderation-font .text-sm, body.moderation-font .text-xs, body.moderation-font small { font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  body.moderation-font input, body.moderation-font select, body.moderation-font textarea { font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+</style>
 {% block social_extra_head %}{% endblock %}
 {% endblock %}
 

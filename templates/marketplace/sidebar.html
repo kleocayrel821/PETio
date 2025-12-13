@@ -3,7 +3,7 @@ Marketplace app contextual sidebar
 Expects: view_name set to one of: browse, my_listings, messages, transactions, notifications
 {% endcomment %}
 <div class="section-title">Marketplace</div>
-<nav>
+<nav class="marketplace-sidebar">
   <a href="{% url 'marketplace:catalog' %}" class="sidebar-item {% if view_name == 'browse' %}active{% endif %}">
     <i class="fas fa-store"></i>
     <span>Browse</span>
@@ -15,6 +15,7 @@ Expects: view_name set to one of: browse, my_listings, messages, transactions, n
   <a href="{% url 'marketplace:messages' %}" class="sidebar-item {% if view_name == 'messages' %}active{% endif %}">
     <i class="fas fa-envelope"></i>
     <span>Messages</span>
+    <span id="marketplaceMsgBadgeSidebar" class="badge badge-primary marketplace-requests-count badge-sm" data-badge-count-url="{% url 'marketplace:messages_count' %}" style="display:none;"></span>
   </a>
   <a href="{% url 'marketplace:transactions' %}" class="sidebar-item {% if view_name == 'transactions' %}active{% endif %}">
     <i class="fas fa-exchange-alt"></i>
@@ -27,5 +28,6 @@ Expects: view_name set to one of: browse, my_listings, messages, transactions, n
   <a href="{% url 'marketplace:notifications' %}" class="sidebar-item {% if view_name == 'notifications' %}active{% endif %}">
     <i class="fas fa-bell"></i>
     <span>Notifications</span>
+    <span id="marketplaceNotifBadgeSidebar" class="badge badge-primary marketplace-requests-count badge-sm" data-badge-count-url="{% url 'marketplace:notifications_count' %}" style="display:none;"></span>
   </a>
 </nav>

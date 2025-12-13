@@ -1,12 +1,13 @@
 {% extends "social/base_social.html" %}
 {% block social_title %}Moderation Users{% endblock %}
+{% block body_class %} class="moderation-font"{% endblock %}
 {% block sidebar %}{% include 'social/moderation/sidebar.html' %}{% endblock %}
 {% block social_content %}
 <div class="max-w-5xl mx-auto">
   <h1 class="text-2xl font-bold mb-4"><i class="fas fa-users-cog"></i> Suspended Users</h1>
   <div class="space-y-2">
     {% for profile in suspended_profiles %}
-      <div class="card bg-base-100">
+      <div class="card bg-white/90 backdrop-blur rounded-2xl border border-[#DDBA7D33] shadow-md">
         <div class="card-body">
           <p class="font-medium">{{ profile.user.username }}</p>
           {% if profile.suspended_until %}

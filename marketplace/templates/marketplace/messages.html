@@ -599,6 +599,7 @@ function openThreadFromList(threadId) {
   updateIntegrationBanner();
   updateHeaderBadges();
   setSendEnabled(true);
+  connectThreadSocket(threadId);
 }
 
 /** Debounce utility to limit rapid calls (e.g., search input). */
@@ -625,6 +626,71 @@ function filterConversations() {
     const text = item.textContent.toLowerCase();
     item.style.display = text.includes(q) ? '' : 'none';
   });
+}
+
+let wsThread = null;
+let wsUser = null;
+function connectThreadSocket(threadId) {
+  try { if (wsThread) { wsThread.close(); wsThread = null; } } catch (_) {}
+  if (!threadId) return;
+  const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+  const url = `${scheme}://${location.host}/ws/marketplace/thread/${threadId}/`;
+  wsThread = new WebSocket(url);
+  wsThread.onmessage = (ev) => {
+    let data; try { data = JSON.parse(ev.data); } catch (_) { return; }
+    const t = data && data.type;
+    if (t === 'message' && data.message) {
+      const m = data.message;
+      appendIncomingMessageBubble(m, currentUserId);
+    } else if (t === 'request_status' && data.request_id) {
+      updateIntegrationBanner();
+    }
+  };
+}
+function connectUserEventsSocket() {
+  try { if (wsUser) { wsUser.close(); wsUser = null; } } catch (_) {}
+  const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+  const url = `${scheme}://${location.host}/ws/marketplace/events/`;
+  wsUser = new WebSocket(url);
+  wsUser.onmessage = (ev) => {
+    let data; try { data = JSON.parse(ev.data); } catch (_) { return; }
+    if (data && data.type === 'counts') {
+      try {
+        updateGlobalCounts(data.messages, data.notifications);
+      } catch (_) {}
+    }
+  };
+}
+function updateGlobalCounts(msgCount, notifCount) {
+  try {
+    const mEl = document.getElementById('headerMessagesCount');
+    const nEl = document.getElementById('headerNotificationsCount');
+    if (mEl) mEl.textContent = String(msgCount || 0);
+    if (nEl) nEl.textContent = String(notifCount || 0);
+  } catch (_) {}
+}
+function appendIncomingMessageBubble(m, meId) {
+  const area = document.getElementById('messagesArea');
+  if (!area || !m) return;
+  if (area.querySelector(`[data-message-id="${m.id}"]`)) return;
+  const wrap = document.createElement('div');
+  const isMe = Number(m.sender_id || m.author_id) === Number(meId);
+  wrap.className = isMe ? 'chat chat-end' : 'chat chat-start';
+  wrap.setAttribute('data-message-id', m.id);
+  const header = document.createElement('div');
+  header.className = 'chat-header mb-1';
+  const username = m.sender_username || m.author || '';
+  const createdFmt = m.created_at_fmt || '';
+  header.textContent = username + (createdFmt ? ' • ' + createdFmt : '');
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble mt-1';
+  bubble.textContent = m.content;
+  wrap.appendChild(header);
+  wrap.appendChild(bubble);
+  area.appendChild(wrap);
+  lastMessageId = Math.max(Number(lastMessageId || 0), Number(m.id || 0));
+  try { area.scrollTop = area.scrollHeight; } catch (_) {}
+  showEmptyStateIfNoMessages();
 }
 
 /** Show skeleton loaders in the conversation list while fetching. */
@@ -724,6 +790,8 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('conversationSearch').addEventListener('input', conversationFilterDebounced);
   // Init thread context
   initThreadFromQuery();
+  connectUserEventsSocket();
+  connectThreadSocket(currentThreadId || Number(new URLSearchParams(location.search).get('thread_id')) || 0);
   // Start poller and idle detection
   startPoller(3000);
   setupIdleDetection();

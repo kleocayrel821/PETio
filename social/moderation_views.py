@@ -34,14 +34,21 @@ class ModerationDashboardView(ModeratorRequiredMixin, TemplateView):
         context['flagged_comments_count'] = Comment.objects.filter(is_flagged=True).count()
         context['suspended_users_count'] = UserProfile.objects.filter(is_suspended=True).count()
 
-        # Weekly stats
-        week_ago = timezone.now() - timedelta(days=7)
+        days = 7
+        try:
+            d = int(self.request.GET.get('range', 7))
+            if d in (7, 30, 90):
+                days = d
+        except Exception:
+            pass
+        week_ago = timezone.now() - timedelta(days=days)
         context['weekly_stats'] = {
             'reports_created': SocialReport.objects.filter(created_at__gte=week_ago).count(),
             'reports_resolved': SocialReport.objects.filter(status='resolved', updated_at__gte=week_ago).count(),
             'actions_taken': ModerationAction.objects.filter(created_at__gte=week_ago).count(),
             'users_suspended': UserProfile.objects.filter(is_suspended=True, updated_at__gte=week_ago).count(),
         }
+        context['range_days'] = days
 
         # Recent items
         context['recent_reports'] = SocialReport.objects.select_related('reporter', 'reported_user').order_by('-created_at')[:8]

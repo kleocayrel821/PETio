@@ -24,7 +24,7 @@
       <div class="flex items-center gap-2">
         <h2 class="card-title"><span class="mr-2">🛒</span>Your Purchase Requests</h2>
         {% if buyer_requests and buyer_requests|length %}
-        <span class="badge badge-primary">{{ buyer_requests|length }}</span>
+        <span class="badge badge-error">{{ buyer_requests|length }}</span>
         {% endif %}
       </div>
       <div class="grid gap-4 mt-2">
@@ -62,7 +62,7 @@
       <div class="flex items-center gap-2">
         <h2 class="card-title"><span class="mr-2">📥</span>Incoming Purchase Requests</h2>
         {% if seller_requests and seller_requests|length %}
-        <span class="badge badge-primary">{{ seller_requests|length }}</span>
+        <span class="badge badge-error">{{ seller_requests|length }}</span>
         {% endif %}
       </div>
       <div class="grid gap-4 mt-2">

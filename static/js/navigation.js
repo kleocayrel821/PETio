@@ -232,6 +232,22 @@
 
     initNotificationBadgePolling();
     initGenericBadgePolling();
+    try {
+      const badge = document.querySelector('#notificationBadge');
+      const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+      const url = `${scheme}://${location.host}/ws/marketplace/events/`;
+      const ws = new WebSocket(url);
+      ws.onmessage = function(ev) {
+        let data; try { data = JSON.parse(ev.data); } catch (_) { return; }
+        if (data && data.type === 'counts') {
+          const count = (data.notifications || 0);
+          const max = parseInt(badge ? (badge.getAttribute('data-badge-max') || '99') : '99', 10);
+          updateBadge(badge, count, max);
+          const local = document.getElementById('notifBadge');
+          if (local) updateBadge(local, count, max);
+        }
+      };
+    } catch (_) {}
   }
 
   // Initialize when DOM is ready

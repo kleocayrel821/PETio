@@ -9,7 +9,7 @@
 {% block marketplace_content %}
 <div class="space-y-6">
   <!-- Metrics Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 marketplace-dashboard-metrics">
     <div class="card bg-base-100 shadow p-6 flex items-center justify-between">
       <div>
         <div class="text-xs opacity-60">Total Products</div>
@@ -220,9 +220,8 @@ function openPaymentForm(anchorBtn, submitUrl) {
       <div class="flex gap-2 items-center">
         <label class="text-sm w-28">Method</label>
         <select name="payment_method" class="select select-bordered select-sm w-40">
-          <option value="cash">Cash</option>
-          <option value="bank_transfer">Bank Transfer</option>
-          <option value="other">Other</option>
+          <option value="cod">COD (Cash on Delivery)</option>
+          <option value="gcash">GCash</option>
         </select>
       </div>
       <div class="flex gap-2 items-center">

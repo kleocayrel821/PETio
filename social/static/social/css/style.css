@@ -334,7 +334,7 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 /* Nudge search area to the right and push submit button to far right within form */
 .feed-header-search { margin-left: 0.75rem; }
 @media (min-width: 1024px) { .feed-header-search { margin-left: 1rem; } }
-.feed-header-search .btn-submit { margin-left: auto; }
+.feed-header-search .btn-submit { margin-left: auto; width: 34px; height: 34px; min-width: 34px; padding: 0; font-size: 1rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; }
 
 /* Responsive Design */
 @media (max-width: 768px) {

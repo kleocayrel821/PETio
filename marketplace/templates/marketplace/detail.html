@@ -50,7 +50,7 @@
             <i class="fas fa-info-circle"></i>
             <div>
                 <div class="font-semibold">Image Policy</div>
-                <div class="text-sm">Maximum 1 image per listing, 5MB limit. High-quality photos help sell faster!</div>
+                <div class="text-sm">Maximum 1 image per listing, 20MB limit. High-quality photos help sell faster!</div>
             </div>
         </div>
     </div>
@@ -82,7 +82,8 @@
                 </div>
             </div>
             
-            <!-- Quantity Selector -->
+            <!-- Quantity Selector (buyer-only) -->
+            {% if request.user.id != listing.seller_id %}
             <div class="flex items-center gap-4 mb-4">
                 <label class="label">
                     <span class="label-text font-semibold">Quantity:</span>
@@ -95,16 +96,19 @@
                     <button class="join-item btn btn-sm" onclick="increaseQuantity()">+</button>
                 </div>
             </div>
+            {% endif %}
             
             <!-- Action Buttons -->
             <div class="space-y-3">
+                {% if can_request_purchase %}
                 <form method="post" action="{% url 'marketplace:request_purchase' listing.pk %}">
                     {% csrf_token %}
-                    <button class="btn btn-primary btn-block">
+                    <button class="btn btn-primary request-purchase-btn btn-block">
                         <i class="fas fa-shopping-cart mr-2"></i>
                         Request to Purchase
                     </button>
                 </form>
+                {% endif %}
                 {% if listing.is_fixed_price and listing.quantity > 0 and request.user.id != listing.seller_id %}
                 <button id="buyNowBtn" type="button" class="btn btn-success btn-block">
                     <i class="fas fa-bolt mr-2"></i>
@@ -112,6 +116,7 @@
                 </button>
                 <div id="buyNowHelp" class="text-xs text-base-content/70 mt-1">Instant purchase for fixed-price listings.</div>
                 {% endif %}
+                {% if request.user.id != listing.seller_id %}
                 <button class="btn btn-ghost btn-block" onclick="openMessageModal()">
                     <i class="fas fa-envelope mr-2"></i>
                     Message Seller
@@ -126,6 +131,7 @@
                         Share
                     </button>
                 </div>
+                {% endif %}
             </div>
         </div>
         
@@ -152,11 +158,19 @@
                         {% endif %}
                     </div>
                 </div>
-                {% url 'accounts:profile' as seller_profile_url %}
-                <a class="btn btn-ghost btn-sm" href="{{ seller_profile_url }}">
+                {% if request.user.id == listing.seller_id %}
+                {% url 'accounts:profile' as profile_url %}
+                <a class="btn btn-ghost btn-sm" href="{{ profile_url }}">
+                    <i class="fas fa-user"></i>
+                    Your Profile
+                </a>
+                {% else %}
+                {% url 'marketplace:user_profile' listing.seller_id as seller_public_profile_url %}
+                <a class="btn btn-ghost btn-sm" href="{{ seller_public_profile_url }}">
                     <i class="fas fa-user"></i>
                     Seller Profile
                 </a>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -300,20 +314,14 @@
         <p class="text-sm text-base-content/70 mb-4">Choose how you intend to pay for this item. Your selection will be attached to the order and you can finalize payment with the seller.</p>
         <div class="form-control mb-2">
             <label class="label cursor-pointer">
-                <span class="label-text">Cash</span>
-                <input type="radio" name="paymentMethod" value="cash" class="radio" checked>
-            </label>
-        </div>
-        <div class="form-control mb-2">
-            <label class="label cursor-pointer">
-                <span class="label-text">Bank Transfer</span>
-                <input type="radio" name="paymentMethod" value="bank_transfer" class="radio">
+                <span class="label-text">COD (Cash on Delivery)</span>
+                <input type="radio" name="paymentMethod" value="cod" class="radio" checked>
             </label>
         </div>
         <div class="form-control mb-4">
             <label class="label cursor-pointer">
-                <span class="label-text">Other</span>
-                <input type="radio" name="paymentMethod" value="other" class="radio">
+                <span class="label-text">GCash</span>
+                <input type="radio" name="paymentMethod" value="gcash" class="radio">
             </label>
         </div>
         <div class="modal-action">

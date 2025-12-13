@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from typing import Tuple
 
 from django.contrib.auth import get_user_model
+from django.conf import settings
+import os
 from django.core.management.base import BaseCommand, CommandError
 from django.test import Client
 from django.urls import reverse
@@ -44,6 +46,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):  # noqa: D401
         """Execute the smoke tests and report results."""
+        if not (getattr(settings, "SMOKE_ENABLED", False) or str(os.getenv("SMOKE_ENABLED", "")).lower() in {"1", "true", "yes"}):
+            self.stdout.write("Smoke testing disabled.")
+            return
         results: list[SmokeResult] = []
         client = Client()
 

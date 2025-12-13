@@ -35,7 +35,7 @@ REPORT_THRESHOLD = 3
 
 # New imports for JSON API endpoints
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseForbidden, HttpResponse
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.core.mail import send_mail
@@ -45,6 +45,8 @@ from django.utils.decorators import method_decorator
 from django.core.cache import cache
 import re
 from datetime import timedelta
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 # -----------------------------
 # JSON Response Helpers (standardized for toast system)
@@ -170,6 +172,12 @@ def _notify(user, notif_type, request_obj=None, listing=None, message_text=None,
                 related_thread=thread,
                 unread=True,
             )
+        try:
+            if notif is not None:
+                _broadcast_notification_for_user(user, notif)
+            _broadcast_counts_for_user(user)
+        except Exception:
+            pass
         # Optional email delivery is delegated to async task for retries
         if send_email:
             try:
@@ -223,31 +231,7 @@ def _unread_count(user):
     except Exception:
         return 0
 
-
-# -----------------------------
-# Lightweight count endpoints for badges
-# -----------------------------
-@login_required
-@require_http_methods(["GET"])
-def notifications_count(request):
-    """Return unread marketplace notification count as { count: <number> }."""
-    try:
-        count = _unread_count(request.user)
-    except Exception:
-        count = 0
-    return JsonResponse({"count": int(count)})
-
-
-@login_required
-@require_http_methods(["GET"])
-def messages_count(request):
-    """Return unread message count (thread messages + request messages) for current user.
-
-    Unread criteria:
-    - Message.read_at IS NULL and message is from the other party in a thread the user participates in
-    - RequestMessage.read_at IS NULL and authored by the other party on a request where the user is buyer or seller
-    """
-    user = request.user
+def _messages_unread_count(user):
     try:
         unread_thread_msgs = (
             Message.objects
@@ -270,8 +254,165 @@ def messages_count(request):
     except Exception:
         unread_req_msgs = 0
 
-    total = int(unread_thread_msgs) + int(unread_req_msgs)
-    return JsonResponse({"count": total})
+    return int(unread_thread_msgs) + int(unread_req_msgs)
+
+def _broadcast_counts_for_user(user):
+    try:
+        layer = get_channel_layer()
+        if not layer:
+            return
+        payload = {
+            "type": "counts",
+            "messages": _messages_unread_count(user),
+            "notifications": _unread_count(user),
+        }
+        async_to_sync(layer.group_send)(
+            f"user_{user.id}",
+            {"type": "counts_event", "data": payload},
+        )
+    except Exception:
+        pass
+
+def _broadcast_thread_message(thread_id, message_json):
+    try:
+        layer = get_channel_layer()
+        if not layer:
+            return
+        payload = {"type": "message", "message": message_json}
+        async_to_sync(layer.group_send)(
+            f"thread_{int(thread_id)}",
+            {"type": "thread_message_event", "data": payload},
+        )
+    except Exception:
+        pass
+
+def _broadcast_request_message(request_id, message_json):
+    try:
+        layer = get_channel_layer()
+        if not layer:
+            return
+        payload = {"type": "message", "message": message_json}
+        async_to_sync(layer.group_send)(
+            f"request_{int(request_id)}",
+            {"type": "request_message_event", "data": payload},
+        )
+    except Exception:
+        pass
+
+def _broadcast_request_status(pr):
+    try:
+        layer = get_channel_layer()
+        if not layer:
+            return
+        payload = {"type": "request_status", "request_id": pr.id, "status": pr.status}
+        async_to_sync(layer.group_send)(
+            f"request_{int(pr.id)}",
+            {"type": "request_status_event", "data": payload},
+        )
+        try:
+            thread_id = getattr(getattr(pr, "transaction", None), "thread_id", None)
+            if thread_id:
+                async_to_sync(layer.group_send)(
+                    f"thread_{int(thread_id)}",
+                    {"type": "request_status_event", "data": payload},
+                )
+        except Exception:
+            pass
+        async_to_sync(layer.group_send)(
+            f"user_{int(pr.buyer_id)}",
+            {"type": "request_status_event", "data": payload},
+        )
+        async_to_sync(layer.group_send)(
+            f"user_{int(pr.seller_id)}",
+            {"type": "request_status_event", "data": payload},
+        )
+    except Exception:
+        pass
+
+def _broadcast_notification_for_user(user, notif):
+    try:
+        layer = get_channel_layer()
+        if not layer:
+            return
+        payload = {
+            "type": "notification",
+            "id": notif.id,
+            "title": notif.title,
+            "created_at": notif.created_at.isoformat(),
+            "unread": notif.unread,
+        }
+        async_to_sync(layer.group_send)(
+            f"user_{user.id}",
+            {"type": "notification_event", "data": payload},
+        )
+    except Exception:
+        pass
+
+# -----------------------------
+# Lightweight count endpoints for badges
+# -----------------------------
+@login_required
+@require_http_methods(["GET"])
+def notifications_count(request):
+    """Return unread marketplace notification count as { count: <number> }."""
+    try:
+        count = _unread_count(request.user)
+    except Exception:
+        count = 0
+    return JsonResponse({"count": int(count)})
+
+
+@login_required
+@require_http_methods(["GET"])
+def messages_count(request):
+    user = request.user
+    return JsonResponse({"count": _messages_unread_count(user)})
+
+@login_required
+@require_POST
+@csrf_protect
+def toggle_thread_message_read(request, message_id):
+    msg = get_object_or_404(Message, pk=message_id)
+    allowed = request.user.id in (msg.thread.buyer_id, msg.thread.seller_id)
+    if not allowed:
+        return json_error("Not authorized to toggle message read state", status=403)
+    act = (request.POST.get("action") or "").lower()
+    if act == "read":
+        msg.read_at = timezone.now()
+    elif act == "unread":
+        msg.read_at = None
+    else:
+        msg.read_at = None if msg.read_at else timezone.now()
+    msg.save(update_fields=["read_at", "updated_at"])
+    return JsonResponse({
+        "id": msg.id,
+        "read_at": msg.read_at.isoformat() if msg.read_at else None,
+        "unread": msg.read_at is None,
+        "count": _messages_unread_count(request.user),
+    })
+
+@login_required
+@require_POST
+@csrf_protect
+def toggle_request_message_read(request, req_message_id):
+    msg = get_object_or_404(RequestMessage, pk=req_message_id)
+    allowed = request.user.id in (msg.request.buyer_id, msg.request.seller_id)
+    if not allowed:
+        return json_error("Not authorized to toggle message read state", status=403)
+    act = (request.POST.get("action") or "").lower()
+    if act == "read":
+        msg.read_at = timezone.now()
+    elif act == "unread":
+        msg.read_at = None
+    else:
+        msg.read_at = None if msg.read_at else timezone.now()
+    msg.save(update_fields=["read_at", "updated_at"])
+    return JsonResponse({
+        "id": msg.id,
+        "read_at": msg.read_at.isoformat() if msg.read_at else None,
+        "unread": msg.read_at is None,
+        "count": _messages_unread_count(request.user),
+    })
 
 # DRF imports for RESTful Marketplace endpoints
 from rest_framework import viewsets
@@ -288,7 +429,7 @@ from .serializers import (
 
 # Marketplace wireframe views (frontend-only): each view renders a template skeleton for planning.
 
-class CatalogView(ListView):
+class CatalogView(LoginRequiredMixin, ListView):
     """Browse active listings with optional search and category filtering.
 
     Query params:
@@ -313,7 +454,11 @@ class CatalogView(ListView):
         """
         # Base queryset: active listings with related category and seller for efficiency
         qs = (
-            Listing.objects.filter(status="active")
+            Listing.objects.filter(status=ListingStatus.ACTIVE)
+            .exclude(seller__username__startswith="smoke_")
+            .exclude(title__startswith="Messaging Smoke Listing @")
+            .exclude(title__startswith="FBV Smoke Listing @")
+            .exclude(title__startswith="DRF Smoke Listing @")
             .select_related("category", "seller", "seller__profile")
             .prefetch_related("photos")
         )
@@ -461,7 +606,7 @@ class CatalogView(ListView):
     # Removed duplicate get_context_data (consolidated above)
 
 
-class ListingDetailView(DetailView):
+class ListingDetailView(LoginRequiredMixin, DetailView):
     """Show a single listing detail page."""
     model = Listing
     template_name = "marketplace/detail.html"
@@ -545,11 +690,21 @@ class ListingCreateView(LoginRequiredMixin, CreateView):
         """
         listing = form.save(commit=False)
         listing.seller = self.request.user
+        try:
+            img = form.cleaned_data.get("main_image")
+            if img is not None:
+                listing.main_image = img
+        except Exception:
+            pass
         listing.save()
+        try:
+            form.save_m2m()
+        except Exception:
+            pass
         self.object = listing
         if wants_json(self.request):
             return json_ok("Listing created.", data={"listing_id": listing.pk})
-        return super().form_valid(form)
+        return redirect(self.get_success_url())
 
     def form_invalid(self, form):
         """Return JSON errors when requested to support unified toast feedback."""
@@ -705,7 +860,9 @@ class BuyerDashboardView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         return (
-            PurchaseRequest.objects.filter(buyer=self.request.user)
+            PurchaseRequest.objects
+            .filter(buyer=self.request.user)
+            .exclude(seller__username__startswith="smoke_")
             .select_related("listing", "seller")
             .order_by("-created_at")
         )
@@ -733,7 +890,9 @@ class SellerDashboardView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         return (
-            PurchaseRequest.objects.filter(seller=self.request.user)
+            PurchaseRequest.objects
+            .filter(seller=self.request.user)
+            .exclude(buyer__username__startswith="smoke_")
             .select_related("listing", "buyer")
             .order_by("-created_at")
         )
@@ -776,12 +935,16 @@ class RequestsOverviewView(LoginRequiredMixin, TemplateView):
         ctx["unread_notifications"] = _unread_count(user)
 
         buyer_qs = (
-            PurchaseRequest.objects.filter(buyer=user)
+            PurchaseRequest.objects
+            .filter(buyer=user)
+            .exclude(seller__username__startswith="smoke_")
             .select_related("listing", "seller")
             .order_by("-created_at")
         )
         seller_qs = (
-            PurchaseRequest.objects.filter(seller=user)
+            PurchaseRequest.objects
+            .filter(seller=user)
+            .exclude(buyer__username__startswith="smoke_")
             .select_related("listing", "buyer")
             .order_by("-created_at")
         )
@@ -938,7 +1101,7 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
                 try:
                     methods = [m.value for m in Transaction.PaymentMethod]
                 except Exception:
-                    methods = ["cash", "bank_transfer", "other"]
+                    methods = ["cod", "gcash"]
                 can_record_payment = bool(
                     is_seller_or_mod and is_active and has_txn and pr.status == PurchaseRequestStatus.ACCEPTED and getattr(txn, "status", None) in (TransactionStatus.CONFIRMED, TransactionStatus.AWAITING_PAYMENT)
                 )
@@ -947,7 +1110,7 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
                 ctx["payment_prefill_amount"] = agreed_total
             except Exception:
                 ctx["can_record_payment"] = False
-                ctx["payment_methods"] = ["cash", "bank_transfer", "other"]
+                ctx["payment_methods"] = ["cod", "gcash"]
                 ctx["payment_prefill_amount"] = None
         except Exception:
             ctx["meetup_details"] = None
@@ -959,7 +1122,7 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
             ctx["meetup_confirmed"] = False
             ctx["can_mark_completed"] = False
             ctx["can_record_payment"] = False
-            ctx["payment_methods"] = ["cash", "bank_transfer", "other"]
+            ctx["payment_methods"] = ["cod", "gcash"]
             ctx["payment_prefill_amount"] = None
         # Negotiation context: offer fields, permissions, and history
         try:
@@ -1034,6 +1197,12 @@ def submit_offer(request, request_id):
     if pr.status == PurchaseRequestStatus.PENDING:
         pr.status = PurchaseRequestStatus.NEGOTIATING
     pr.save(update_fields=["offer_price", "quantity", "status", "updated_at"])
+    try:
+        _broadcast_request_status(pr)
+        _broadcast_counts_for_user(pr.seller)
+        _broadcast_counts_for_user(pr.buyer)
+    except Exception:
+        pass
     TransactionLog.objects.create(
         request=pr,
         actor=request.user,
@@ -1112,6 +1281,12 @@ def respond_offer(request, request_id):
         )
         _notify(pr.buyer, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="offer accepted", send_email=True, thread=thread)
         _notify(pr.seller, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="offer accepted", send_email=True, thread=thread)
+        try:
+            _broadcast_request_status(pr)
+            _broadcast_counts_for_user(pr.seller)
+            _broadcast_counts_for_user(pr.buyer)
+        except Exception:
+            pass
         django_messages.success(request, "Offer accepted. Listing reserved.")
         # Redirect seller into the Messages page focused on the conversation thread
         try:
@@ -1135,6 +1310,12 @@ def respond_offer(request, request_id):
         )
         _notify(pr.buyer, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="offer rejected", send_email=True)
         _notify(pr.seller, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="offer rejected", send_email=True)
+        try:
+            _broadcast_request_status(pr)
+            _broadcast_counts_for_user(pr.seller)
+            _broadcast_counts_for_user(pr.buyer)
+        except Exception:
+            pass
         django_messages.info(request, "Offer rejected.")
         return redirect("marketplace:seller_dashboard")
     else:  # counter
@@ -1148,6 +1329,12 @@ def respond_offer(request, request_id):
             note=f"Counter: {pr.counter_offer}",
         )
         _notify(pr.buyer, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="counter offer sent", send_email=True)
+        try:
+            _broadcast_request_status(pr)
+            _broadcast_counts_for_user(pr.seller)
+            _broadcast_counts_for_user(pr.buyer)
+        except Exception:
+            pass
         django_messages.success(request, "Counter offer sent.")
         return redirect("marketplace:request_detail", pk=pr.pk)
 
@@ -1175,9 +1362,7 @@ def post_request_message(request, pk):
     other = pr.seller if request.user.id == pr.buyer_id else pr.buyer
     # Disabled: do not send notifications for individual chat messages to reduce clutter
     # _notify(other, NotificationType.MESSAGE_POSTED, request_obj=pr, listing=pr.listing, message_text=content, send_email=True)
-    django_messages.success(request, "Message posted.")
-    # JSON response for progressive enhancement
-    if wants_json(request):
+    try:
         from django.utils.timesince import timesince
         created_local = timezone.localtime(msg.created_at)
         message_json = {
@@ -1189,6 +1374,14 @@ def post_request_message(request, pk):
             "created_at_fmt": created_local.strftime("%Y-%m-%d %H:%M"),
             "created_ago": timesince(msg.created_at) + " ago",
         }
+        _broadcast_request_message(pr.id, message_json)
+        _broadcast_counts_for_user(other)
+        _broadcast_counts_for_user(request.user)
+    except Exception:
+        pass
+    django_messages.success(request, "Message posted.")
+    # JSON response for progressive enhancement
+    if wants_json(request):
         return json_ok("Message posted.", data={"message": message_json})
     return redirect("marketplace:request_detail", pk=pr.pk)
 
@@ -1284,6 +1477,12 @@ def propose_meetup(request, request_id):
     )
     other = pr.seller if request.user.id == pr.buyer_id else pr.buyer
     _notify(other, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="meetup proposed", send_email=True)
+    try:
+        _broadcast_request_status(pr)
+        _broadcast_counts_for_user(other)
+        _broadcast_counts_for_user(request.user)
+    except Exception:
+        pass
     return json_ok(
         "Meetup details proposed.",
         data={
@@ -1334,6 +1533,12 @@ def update_meetup(request, request_id):
     )
     other = pr.seller if request.user.id == pr.buyer_id else pr.buyer
     _notify(other, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="meetup updated", send_email=True)
+    try:
+        _broadcast_request_status(pr)
+        _broadcast_counts_for_user(other)
+        _broadcast_counts_for_user(request.user)
+    except Exception:
+        pass
     return json_ok(
         "Meetup details updated.",
         data={
@@ -1382,6 +1587,12 @@ def confirm_meetup(request, request_id):
     )
     other = pr.seller if request.user.id == pr.buyer_id else pr.buyer
     _notify(other, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="meetup confirmed")
+    try:
+        _broadcast_request_status(pr)
+        _broadcast_counts_for_user(other)
+        _broadcast_counts_for_user(request.user)
+    except Exception:
+        pass
     if wants_json(request):
         return json_ok("Meetup confirmed.", data={"request_id": pr.pk})
     django_messages.success(request, "Meetup confirmed.")
@@ -1558,6 +1769,12 @@ def seller_accept_request(request, request_id):
     # Notifications for status change
     _notify(pr.buyer, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="accepted", send_email=True, thread=thread)
     _notify(pr.seller, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="accepted", send_email=True, thread=thread)
+    try:
+        _broadcast_request_status(pr)
+        _broadcast_counts_for_user(pr.seller)
+        _broadcast_counts_for_user(pr.buyer)
+    except Exception:
+        pass
     django_messages.success(request, "Request accepted. Listing reserved.")
     # Redirect into Messages for the newly accepted request's conversation
     try:
@@ -1597,6 +1814,12 @@ def seller_reject_request(request, request_id):
     )
     _notify(pr.buyer, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="rejected", send_email=True)
     _notify(pr.seller, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="rejected", send_email=True)
+    try:
+        _broadcast_request_status(pr)
+        _broadcast_counts_for_user(pr.seller)
+        _broadcast_counts_for_user(pr.buyer)
+    except Exception:
+        pass
     django_messages.info(request, "Request rejected.")
     return redirect("marketplace:seller_dashboard")
 
@@ -1619,6 +1842,12 @@ def seller_negotiate_request(request, request_id):
         note=(request.POST.get("note") or "").strip(),
     )
     _notify(pr.buyer, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="negotiating")
+    try:
+        _broadcast_request_status(pr)
+        _broadcast_counts_for_user(pr.seller)
+        _broadcast_counts_for_user(pr.buyer)
+    except Exception:
+        pass
     django_messages.success(request, "Negotiation started.")
     return redirect("marketplace:seller_dashboard")
 
@@ -1657,6 +1886,12 @@ def buyer_cancel_request(request, request_id):
     )
     _notify(pr.buyer, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="canceled", send_email=True)
     _notify(pr.seller, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="canceled", send_email=True)
+    try:
+        _broadcast_request_status(pr)
+        _broadcast_counts_for_user(pr.seller)
+        _broadcast_counts_for_user(pr.buyer)
+    except Exception:
+        pass
     django_messages.info(request, "Request canceled.")
     return redirect("marketplace:buyer_dashboard")
 
@@ -1695,6 +1930,12 @@ def seller_cancel_request(request, request_id):
     )
     _notify(pr.buyer, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="canceled", send_email=True)
     _notify(pr.seller, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="canceled", send_email=True)
+    try:
+        _broadcast_request_status(pr)
+        _broadcast_counts_for_user(pr.seller)
+        _broadcast_counts_for_user(pr.buyer)
+    except Exception:
+        pass
     django_messages.info(request, "Request canceled.")
     return redirect("marketplace:seller_dashboard")
 
@@ -1726,6 +1967,12 @@ def mark_request_completed(request, request_id):
     )
     _notify(pr.buyer, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="completed", send_email=True)
     _notify(pr.seller, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="completed", send_email=True)
+    try:
+        _broadcast_request_status(pr)
+        _broadcast_counts_for_user(pr.seller)
+        _broadcast_counts_for_user(pr.buyer)
+    except Exception:
+        pass
     django_messages.success(request, "Transaction completed.")
     return redirect("marketplace:buyer_dashboard")
 
@@ -1785,22 +2032,71 @@ def moderator_dashboard(request):
 
     # Simple analytics (global counts)
     analytics = {
-        "total_listings": Listing.objects.count(),
-        "active_listings": Listing.objects.filter(status=ListingStatus.ACTIVE).count(),
-        "pending_listings": pending_listings.count(),
-        "total_requests": PurchaseRequest.objects.count(),
-        "accepted_requests": PurchaseRequest.objects.filter(status=PurchaseRequestStatus.ACCEPTED).count(),
-        "completed_requests": PurchaseRequest.objects.filter(status=PurchaseRequestStatus.COMPLETED).count(),
+        "total_listings": (
+            Listing.objects
+            .exclude(seller__username__startswith="smoke_")
+            .exclude(title__startswith="Messaging Smoke Listing @")
+            .exclude(title__startswith="FBV Smoke Listing @")
+            .exclude(title__startswith="DRF Smoke Listing @")
+            .count()
+        ),
+        "active_listings": (
+            Listing.objects.filter(status=ListingStatus.ACTIVE)
+            .exclude(seller__username__startswith="smoke_")
+            .exclude(title__startswith="Messaging Smoke Listing @")
+            .exclude(title__startswith="FBV Smoke Listing @")
+            .exclude(title__startswith="DRF Smoke Listing @")
+            .count()
+        ),
+        "pending_listings": (
+            pending_listings
+            .exclude(seller__username__startswith="smoke_")
+            .exclude(title__startswith="Messaging Smoke Listing @")
+            .exclude(title__startswith="FBV Smoke Listing @")
+            .exclude(title__startswith="DRF Smoke Listing @")
+            .count()
+        ),
+        "total_requests": (
+            PurchaseRequest.objects
+            .exclude(buyer__username__startswith="smoke_")
+            .exclude(seller__username__startswith="smoke_")
+            .count()
+        ),
+        "accepted_requests": (
+            PurchaseRequest.objects.filter(status=PurchaseRequestStatus.ACCEPTED)
+            .exclude(buyer__username__startswith="smoke_")
+            .exclude(seller__username__startswith="smoke_")
+            .count()
+        ),
+        "completed_requests": (
+            PurchaseRequest.objects.filter(status=PurchaseRequestStatus.COMPLETED)
+            .exclude(buyer__username__startswith="smoke_")
+            .exclude(seller__username__startswith="smoke_")
+            .count()
+        ),
     }
 
     # Listings over time (created per day)
     listings_labels = [d.strftime("%Y-%m-%d") for d in date_list]
     listings_counts = [
-        Listing.objects.filter(created_at__date=d).count() for d in date_list
+        (
+            Listing.objects.filter(created_at__date=d)
+            .exclude(seller__username__startswith="smoke_")
+            .exclude(title__startswith="Messaging Smoke Listing @")
+            .exclude(title__startswith="FBV Smoke Listing @")
+            .exclude(title__startswith="DRF Smoke Listing @")
+            .count()
+        )
+        for d in date_list
     ]
 
     # Requests breakdown by status within range
-    requests_in_range = PurchaseRequest.objects.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
+    requests_in_range = (
+        PurchaseRequest.objects
+        .filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
+        .exclude(buyer__username__startswith="smoke_")
+        .exclude(seller__username__startswith="smoke_")
+    )
     status_counts = {
         PurchaseRequestStatus.PENDING: requests_in_range.filter(status=PurchaseRequestStatus.PENDING).count(),
         PurchaseRequestStatus.ACCEPTED: requests_in_range.filter(status=PurchaseRequestStatus.ACCEPTED).count(),
@@ -1826,7 +2122,8 @@ def moderator_dashboard(request):
             status=PurchaseRequestStatus.COMPLETED,
             completed_at__date__gte=start_date,
             completed_at__date__lte=end_date,
-        )
+        ).exclude(buyer__username__startswith="smoke_")
+         .exclude(seller__username__startswith="smoke_")
         .values("seller_id", "seller__username")
         .annotate(count=Count("id"))
         .order_by("-count")[:5]
@@ -1889,6 +2186,10 @@ def mark_all_notifications_read(request):
     now = timezone.now()
     Notification.objects.filter(user=request.user, read_at__isnull=True).update(read_at=now, unread=False)
     django_messages.success(request, "All notifications marked as read.")
+    try:
+        _broadcast_counts_for_user(request.user)
+    except Exception:
+        pass
     return redirect("marketplace:notifications")
 
 
@@ -1898,6 +2199,10 @@ def open_notification(request, notif_id):
     notif = get_object_or_404(Notification, pk=notif_id, user=request.user)
     notif.mark_as_read()
     notif.save(update_fields=["read_at", "unread", "updated_at"])
+    try:
+        _broadcast_counts_for_user(request.user)
+    except Exception:
+        pass
     # Prefer deep-link to conversation if available
     if getattr(notif, "related_thread_id", None):
         try:
@@ -1976,6 +2281,11 @@ def transactions(request):
             Transaction.objects
             .select_related("listing", "buyer", "seller")
             .filter(Q(buyer_id=user_id) | Q(seller_id=user_id))
+            .exclude(buyer__username__startswith="smoke_")
+            .exclude(seller__username__startswith="smoke_")
+            .exclude(listing__title__startswith="Messaging Smoke Listing @")
+            .exclude(listing__title__startswith="FBV Smoke Listing @")
+            .exclude(listing__title__startswith="DRF Smoke Listing @")
         )
 
     # Apply role filter
@@ -2090,14 +2400,23 @@ class DashboardView(LoginRequiredMixin, ListView):
         from datetime import timedelta
         start_week = timezone.now() - timedelta(days=7)
         # Total products: active listings across marketplace
-        active_listings_qs = Listing.objects.filter(status=ListingStatus.ACTIVE.value)
+        active_listings_qs = (
+            Listing.objects
+            .filter(status=ListingStatus.ACTIVE.value)
+            .exclude(seller__username__startswith="smoke_")
+            .exclude(title__startswith="Messaging Smoke Listing @")
+            .exclude(title__startswith="FBV Smoke Listing @")
+            .exclude(title__startswith="DRF Smoke Listing @")
+        )
         total_products = active_listings_qs.count()
         new_products_week = active_listings_qs.filter(created_at__gte=start_week).count()
         # Active sellers: distinct sellers with at least one active listing
         active_sellers = active_listings_qs.values("seller_id").distinct().count()
         # New sellers this week: distinct sellers who created a listing in the past week
         new_sellers_week = (
-            Listing.objects.filter(created_at__gte=start_week)
+            Listing.objects
+            .filter(created_at__gte=start_week)
+            .exclude(seller__username__startswith="smoke_")
             .values("seller_id")
             .distinct()
             .count()
@@ -2201,7 +2520,17 @@ def api_start_or_get_thread(request):
         for m in reversed(list(recent_messages))
     ]
 
-    return JsonResponse({"thread": thread_data, "messages": messages_list})
+    # Mark unread messages from other party as read when opening the thread
+    try:
+        Message.objects.filter(thread=thread, read_at__isnull=True).exclude(sender_id=request.user.id).update(read_at=timezone.now())
+    except Exception:
+        pass
+
+    return JsonResponse({
+        "thread": thread_data,
+        "messages": messages_list,
+        "unread_count": _messages_unread_count(request.user),
+    })
 
 # Remove mock identity fallback by enforcing auth for messaging APIs
 @require_http_methods(["GET"])  # Poll for new messages
@@ -2264,12 +2593,19 @@ def api_fetch_messages(request, thread_id):
     except Exception:
         existing_request = None
 
+    # Auto-mark messages from other party as read when fetching within an open conversation
+    try:
+        Message.objects.filter(thread=thread, read_at__isnull=True).exclude(sender_id=user.id).update(read_at=timezone.now())
+    except Exception:
+        pass
+
     return JsonResponse({
         "thread_id": thread.id,
         "count": len(messages_list),
         "messages": messages_list,
         "server_time": timezone.now().isoformat(),
         "request_id": existing_request.id if existing_request else None,
+        "unread_count": _messages_unread_count(user),
     })
 
 
@@ -2313,7 +2649,17 @@ def api_post_message(request, thread_id):
         "created_at": message.created_at.isoformat(),
     }
 
-    return JsonResponse({"message": msg_json})
+    try:
+        _broadcast_thread_message(thread.id, msg_json)
+        _broadcast_counts_for_user(thread.buyer)
+        _broadcast_counts_for_user(thread.seller)
+    except Exception:
+        pass
+
+    return JsonResponse({
+        "message": msg_json,
+        "unread_count": _messages_unread_count(user),
+    })
 
 # -----------------------------
 # Listing Transaction Endpoints
@@ -2648,23 +2994,16 @@ def api_listing_buy_now(request, listing_id):
         updates.append("payment_method")
     txn.save(update_fields=updates)
 
-    # Decrement stock to reserve and move listing to pending state
+    # Decrement stock to reserve one unit
     listing.quantity = max(0, listing.quantity - 1)
-    listing.status = ListingStatus.PENDING
+    # Keep listing visible when stock remains; mark sold when stock hits zero
+    if listing.quantity > 0:
+        listing.status = ListingStatus.ACTIVE
+    else:
+        listing.status = ListingStatus.SOLD
     listing.save(update_fields=["quantity", "status"])
-    # If reservation exhausted stock, consider auto-archiving and close open requests
+    # If stock exhausted, close open requests (listing now 'sold')
     if listing.quantity <= 0:
-        try:
-            has_open_reqs = PurchaseRequest.objects.filter(
-                listing=listing,
-                status__in=[PurchaseRequestStatus.PENDING, PurchaseRequestStatus.NEGOTIATING],
-            ).exists()
-        except Exception:
-            has_open_reqs = False
-        if has_open_reqs:
-            # Hide from catalog to reflect no available stock for other buyers
-            listing.status = ListingStatus.ARCHIVED
-            listing.save(update_fields=["status"])
         _cascade_close_open_requests_for_listing(listing, reason="last unit reserved")
 
     # Create or attach to a conversation thread and post an initial system message
@@ -2978,8 +3317,16 @@ def user_profile(request, user_id):
 
     # Completed transactions count via PurchaseRequest status
     from .models import PurchaseRequestStatus
-    completed_as_buyer = PurchaseRequest.objects.filter(buyer=profile_user, status=PurchaseRequestStatus.COMPLETED).count()
-    completed_as_seller = PurchaseRequest.objects.filter(seller=profile_user, status=PurchaseRequestStatus.COMPLETED).count()
+    completed_as_buyer = (
+        PurchaseRequest.objects.filter(buyer=profile_user, status=PurchaseRequestStatus.COMPLETED)
+        .exclude(seller__username__startswith="smoke_")
+        .count()
+    )
+    completed_as_seller = (
+        PurchaseRequest.objects.filter(seller=profile_user, status=PurchaseRequestStatus.COMPLETED)
+        .exclude(buyer__username__startswith="smoke_")
+        .count()
+    )
 
     # Rating distribution (1..5 using `score` field)
     rating_distribution = {i: reviews.filter(score=i).count() for i in range(1, 6)}
@@ -3159,6 +3506,16 @@ class MessageThreadViewSet(viewsets.ModelViewSet):
     queryset = MessageThread.objects.select_related("listing", "buyer", "seller").all()
     serializer_class = MessageThreadSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        user = getattr(self, "request", None).user if hasattr(self, "request") else None
+        qs = MessageThread.objects.select_related("listing", "buyer", "seller")
+        if user and getattr(user, "is_authenticated", False):
+            qs = qs.filter(Q(buyer=user) | Q(seller=user))
+        else:
+            qs = MessageThread.objects.none()
+        qs = qs.exclude(buyer__username__startswith="smoke_").exclude(seller__username__startswith="smoke_")
+        return qs.order_by("-last_message_at")
 
     @action(detail=False, methods=["post"], url_path="start")
     def start(self, request):
@@ -3671,7 +4028,7 @@ def api_request_record_payment(request, request_id):
     try:
         valid_methods = {m.value for m in Transaction.PaymentMethod}
     except Exception:
-        valid_methods = {"cash", "bank_transfer", "other"}
+        valid_methods = {"cod", "gcash"}
     if payment_method and payment_method not in valid_methods:
         field_errors["payment_method"] = "Invalid payment method"
 
@@ -3815,7 +4172,14 @@ class AdminDashboardView(LoginRequiredMixin, MarketplaceAdminRequiredMixin, Temp
         ctx = super().get_context_data(**kwargs)
         # Default to analytics tab when hitting /admin-dashboard/
         ctx["active_tab"] = "analytics"
-        # Minimal context; subviews provide detailed data.
+        # Sidebar badges need counts even outside specific tabs.
+        try:
+            from .models import Listing, ListingStatus, Report, ReportStatus
+            ctx["pending_listings_count"] = Listing.objects.filter(status=ListingStatus.PENDING).count()
+            ctx["open_reports_count"] = Report.objects.filter(status=ReportStatus.OPEN).count()
+        except Exception:
+            ctx["pending_listings_count"] = 0
+            ctx["open_reports_count"] = 0
         return ctx
 
 
@@ -3838,12 +4202,20 @@ class AdminListingsView(LoginRequiredMixin, MarketplaceAdminPermRequiredMixin, L
         if wants_json(self.request):
             listings = []
             for l in context.get("pending_listings", []):
+                try:
+                    img_url = l.main_image.url if getattr(l, "main_image", None) else ""
+                except Exception:
+                    img_url = ""
                 listings.append({
                     "id": l.id,
                     "title": l.title,
                     "seller": getattr(l.seller, "username", str(l.seller)),
                     "price": float(l.price or 0),
                     "submitted": l.created_at.strftime("%Y-%m-%d %H:%M"),
+                    "submitted_date": l.created_at.strftime("%b %d, %Y"),
+                    "submitted_time": l.created_at.strftime("%H:%M"),
+                    "category": getattr(getattr(l, "category", None), "name", ""),
+                    "image": img_url,
                 })
             return JsonResponse({
                 "status": "ok",
@@ -4103,6 +4475,8 @@ def admin_analytics_data(request):
     # Revenue trends (daily)
     revenue_qs = (
         Transaction.objects.filter(tx_base_filter)
+        .exclude(buyer__username__startswith="smoke_")
+        .exclude(seller__username__startswith="smoke_")
         .annotate(day=TruncDate("created_at"))
         .values("day")
         .annotate(total=Sum("amount_paid"))
@@ -4114,6 +4488,8 @@ def admin_analytics_data(request):
     # Top categories by total sales amount within range
     cat_qs = (
         Transaction.objects.filter(tx_base_filter)
+        .exclude(buyer__username__startswith="smoke_")
+        .exclude(seller__username__startswith="smoke_")
         .values("listing__category__name")
         .annotate(total_sales=Sum("amount_paid"))
         .order_by("-total_sales")[:10]
@@ -4124,6 +4500,10 @@ def admin_analytics_data(request):
     # Active listings by category (global, not date-bound)
     active_cat_qs = (
         Listing.objects.filter(status=ListingStatus.ACTIVE)
+        .exclude(seller__username__startswith="smoke_")
+        .exclude(title__startswith="Messaging Smoke Listing @")
+        .exclude(title__startswith="FBV Smoke Listing @")
+        .exclude(title__startswith="DRF Smoke Listing @")
         .values("category__name")
         .annotate(count=Count("id"))
         .order_by("-count")[:10]
@@ -4135,6 +4515,7 @@ def admin_analytics_data(request):
     User = get_user_model()
     user_qs = (
         User.objects.filter(date_joined__date__gte=start, date_joined__date__lte=end)
+        .exclude(username__startswith="smoke_")
         .annotate(day=TruncDate("date_joined"))
         .values("day")
         .annotate(count=Count("id"))
@@ -4146,6 +4527,8 @@ def admin_analytics_data(request):
     # Recent transactions list
     recent_qs = (
         Transaction.objects.filter(tx_base_filter)
+        .exclude(buyer__username__startswith="smoke_")
+        .exclude(seller__username__startswith="smoke_")
         .select_related("listing", "buyer", "seller")
         .order_by("-created_at")[:10]
     )
@@ -4163,12 +4546,38 @@ def admin_analytics_data(request):
     ]
 
     # KPI metrics (global)
-    total_listings = Listing.objects.count()
-    approved_listings = Listing.objects.filter(status__in=[ListingStatus.ACTIVE, ListingStatus.SOLD, ListingStatus.RESERVED]).count()
-    rejected_listings = Listing.objects.filter(status=ListingStatus.REJECTED).count()
+    total_listings = (
+        Listing.objects
+        .exclude(seller__username__startswith="smoke_")
+        .exclude(title__startswith="Messaging Smoke Listing @")
+        .exclude(title__startswith="FBV Smoke Listing @")
+        .exclude(title__startswith="DRF Smoke Listing @")
+        .count()
+    )
+    approved_listings = (
+        Listing.objects.filter(status__in=[ListingStatus.ACTIVE, ListingStatus.SOLD, ListingStatus.RESERVED])
+        .exclude(seller__username__startswith="smoke_")
+        .exclude(title__startswith="Messaging Smoke Listing @")
+        .exclude(title__startswith="FBV Smoke Listing @")
+        .exclude(title__startswith="DRF Smoke Listing @")
+        .count()
+    )
+    rejected_listings = (
+        Listing.objects.filter(status=ListingStatus.REJECTED)
+        .exclude(seller__username__startswith="smoke_")
+        .exclude(title__startswith="Messaging Smoke Listing @")
+        .exclude(title__startswith="FBV Smoke Listing @")
+        .exclude(title__startswith="DRF Smoke Listing @")
+        .count()
+    )
     User = get_user_model()
-    active_users = User.objects.filter(is_active=True).count()
-    transactions_completed = Transaction.objects.filter(status=TransactionStatus.COMPLETED).count()
+    active_users = User.objects.filter(is_active=True).exclude(username__startswith="smoke_").count()
+    transactions_completed = (
+        Transaction.objects.filter(status=TransactionStatus.COMPLETED)
+        .exclude(buyer__username__startswith="smoke_")
+        .exclude(seller__username__startswith="smoke_")
+        .count()
+    )
 
     return JsonResponse(
         {
@@ -4434,6 +4843,11 @@ def admin_broadcast_notification(request):
             body=body,
             unread=True,
         )
+        try:
+            _broadcast_notification_for_user(u, notif)
+            _broadcast_counts_for_user(u)
+        except Exception:
+            pass
         # Attempt to send email asynchronously
         try:
             from .tasks import send_notification_email

@@ -1,5 +1,6 @@
 {% extends "social/base_social.html" %}
-{% block social_title %}Reports{% endblock %}
+{% block social_title %}Moderation Reports{% endblock %}
+{% block body_class %} class="moderation-font"{% endblock %}
 {% block sidebar %}{% include 'social/moderation/sidebar.html' %}{% endblock %}
 {% block social_content %}
 <div class="max-w-6xl mx-auto">
@@ -20,15 +21,15 @@
 
   <!-- Status filter toolbar -->
   <div class="join mb-6">
-    <a href="?status=" class="join-item btn btn-sm {% if not request.GET.status %}btn-primary{% else %}btn-ghost{% endif %}">All</a>
-    <a href="?status=pending" class="join-item btn btn-sm {% if request.GET.status == 'pending' %}btn-primary{% else %}btn-ghost{% endif %}">Pending</a>
-    <a href="?status=reviewing" class="join-item btn btn-sm {% if request.GET.status == 'reviewing' %}btn-primary{% else %}btn-ghost{% endif %}">Reviewing</a>
-    <a href="?status=resolved" class="join-item btn btn-sm {% if request.GET.status == 'resolved' %}btn-primary{% else %}btn-ghost{% endif %}">Resolved</a>
+    <a href="?status=" class="join-item btn btn-sm {% if not request.GET.status %}btn-primary{% else %}btn-ghost{% endif %} hover:border-[#DDBA7D] hover:text-[#DDBA7D]" {% if not request.GET.status %}style="background:#DDBA7D;color:#000;border-color:#DDBA7D"{% endif %}>All</a>
+    <a href="?status=pending" class="join-item btn btn-sm {% if request.GET.status == 'pending' %}btn-primary{% else %}btn-ghost{% endif %} hover:border-[#DDBA7D] hover:text-[#DDBA7D]" {% if request.GET.status == 'pending' %}style="background:#DDBA7D;color:#000;border-color:#DDBA7D"{% endif %}>Pending</a>
+    <a href="?status=reviewing" class="join-item btn btn-sm {% if request.GET.status == 'reviewing' %}btn-primary{% else %}btn-ghost{% endif %} hover:border-[#DDBA7D] hover:text-[#DDBA7D]" {% if request.GET.status == 'reviewing' %}style="background:#DDBA7D;color:#000;border-color:#DDBA7D"{% endif %}>Reviewing</a>
+    <a href="?status=resolved" class="join-item btn btn-sm {% if request.GET.status == 'resolved' %}btn-primary{% else %}btn-ghost{% endif %} hover:border-[#DDBA7D] hover:text-[#DDBA7D]" {% if request.GET.status == 'resolved' %}style="background:#DDBA7D;color:#000;border-color:#DDBA7D"{% endif %}>Resolved</a>
   </div>
 
   <div class="space-y-3">
     {% for report in reports %}
-      <div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow">
+      <div class="card bg-white/90 backdrop-blur rounded-2xl border border-[#DDBA7D33] shadow-md hover:shadow-lg transition-all">
         <div class="card-body">
           <!-- Top meta row -->
           <div class="flex items-start justify-between">
