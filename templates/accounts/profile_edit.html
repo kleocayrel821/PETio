@@ -3,11 +3,56 @@
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   body { font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  .btn-edit { background: #92487A; border-color: #92487A; color: #fff; }
+  .btn-edit:hover { background: #A56597; color: #fff; border-color: #A56597; }
+  .btn-cancel-edit { background: transparent; color: #92487A; border-color: #92487A; }
+  .btn-cancel-edit:hover { background: rgba(146,72,122,.10); }
+  .profile-edit-scope { --fallback-p: #92487A; --fallback-pc: #ffffff; }
+  .profile-edit-scope .radio { border-color: #92487A80; }
+  .profile-edit-scope .radio:hover { border-color: #92487A99; }
+  .profile-edit-scope .toggle { color: #92487A66; }
+  .profile-edit-scope .toggle:hover { color: #92487A80; }
+  .profile-edit-scope input[type="text"],
+  .profile-edit-scope input[type="email"],
+  .profile-edit-scope input[type="tel"],
+  .profile-edit-scope input[type="password"],
+  .profile-edit-scope input[type="url"],
+  .profile-edit-scope input[type="number"],
+  .profile-edit-scope textarea,
+  .profile-edit-scope select,
+  .profile-edit-scope input[type="file"] { border:1px solid #92487A80; background: rgba(146,72,122,.06); color:#92487A; border-radius:14px; padding:.6rem .85rem; box-shadow:0 4px 12px rgba(146,72,122,.06); transition: box-shadow .2s ease, border-color .2s ease, background-color .2s ease, transform .08s ease; }
+  .profile-edit-scope textarea { min-height: 120px; }
+  .profile-edit-scope input[type="text"]:hover,
+  .profile-edit-scope input[type="email"]:hover,
+  .profile-edit-scope input[type="tel"]:hover,
+  .profile-edit-scope input[type="password"]:hover,
+  .profile-edit-scope input[type="url"]:hover,
+  .profile-edit-scope input[type="number"]:hover,
+  .profile-edit-scope textarea:hover,
+  .profile-edit-scope select:hover,
+  .profile-edit-scope input[type="file"]:hover { background: rgba(146,72,122,.085); box-shadow:0 6px 14px rgba(146,72,122,.08); }
+  .profile-edit-scope input[type="text"]:focus,
+  .profile-edit-scope input[type="email"]:focus,
+  .profile-edit-scope input[type="tel"]:focus,
+  .profile-edit-scope input[type="password"]:focus,
+  .profile-edit-scope input[type="url"]:focus,
+  .profile-edit-scope input[type="number"]:focus,
+  .profile-edit-scope textarea:focus,
+  .profile-edit-scope select:focus,
+  .profile-edit-scope input[type="file"]:focus { border-color:#92487A; box-shadow:0 0 0 3px rgba(146,72,122,.20), 0 10px 22px rgba(146,72,122,.12); outline:none; transform: translateY(-1px); }
+  .profile-edit-scope input::placeholder,
+  .profile-edit-scope textarea::placeholder { color:#92487A99; }
+  .profile-edit-scope input:disabled,
+  .profile-edit-scope textarea:disabled,
+  .profile-edit-scope select:disabled { opacity:.7; cursor:not-allowed; }
+  .profile-edit-scope .form-control:focus-within .label .label-text { color:#92487A; }
+  .profile-edit-scope input[type="file"]::file-selector-button { background:#92487A; color:#fff; border:none; border-radius:10px; padding:.5rem .8rem; margin-right:.6rem; cursor:pointer; transition: filter .2s ease; }
+  .profile-edit-scope input[type="file"]::file-selector-button:hover { filter: brightness(.95); }
 </style>
 {% endblock %}
 {% block title %}Edit Profile - PETio{% endblock %}
 {% block content %}
-<div class="container mx-auto max-w-2xl py-10">
+<div class="profile-edit-scope container mx-auto max-w-2xl py-10">
   <h1 class="text-2xl font-bold mb-6">Edit Your Profile</h1>
 
   <!-- Removed local messages block to avoid duplicate alerts; rely on global messages in base.html -->
@@ -79,10 +124,9 @@
         </label>
       </div>
 
-      <div class="mt-6 flex gap-2">
-        <button type="submit" class="btn btn-primary">Save Changes</button>
-        <br>
-        <a href="{% url 'accounts:profile' %}" class="btn">Cancel</a>
+      <div class="mt-6 flex gap-2 justify-end">
+        <a href="{% url 'accounts:profile' %}" class="btn btn-cancel-edit">Cancel</a>
+        <button type="submit" class="btn btn-edit">Save Changes</button>
       </div>
     </form>
   </div>

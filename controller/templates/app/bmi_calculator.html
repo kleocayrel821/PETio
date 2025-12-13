@@ -166,13 +166,14 @@
 <style>
 .pet-type-toggle input[type="radio"] { display:none; }
 .pet-type-toggle .toggle-option { display:inline-flex; align-items:center; gap:.6rem; cursor:pointer; }
-.pet-type-toggle .toggle-option .toggle-label { border:1px solid rgba(59,130,246,.3); background:#f8fafc; color:#1e293b; border-radius:9999px; padding:.7rem 1.2rem; font-size:1rem; line-height:1.25rem; transition: all .22s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(31,69,110,.08); }
-.pet-type-toggle .toggle-option:hover .toggle-label { background: rgba(59,130,246,.16); box-shadow: 0 12px 28px rgba(31,69,110,.18); transform: translateY(-2px) scale(1.03); }
+.pet-type-toggle .toggle-option .toggle-label { border:1px solid rgba(31,69,110,.3); background:#f1f5f9; color:#1e293b; border-radius:9999px; padding:.7rem 1.2rem; font-size:1rem; line-height:1.25rem; transition: all .22s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(31,69,110,.08); }
+.pet-type-toggle .toggle-option:hover .toggle-label { background: rgba(31,69,110,.12); box-shadow: 0 12px 28px rgba(31,69,110,.18); transform: translateY(-2px) scale(1.03); }
 .pet-type-toggle .toggle-option:active .toggle-label { transform: scale(0.98); box-shadow: 0 6px 16px rgba(31,69,110,.14); }
 .pet-type-toggle input[type="radio"]:focus + .toggle-label { outline:2px solid #1f456e; outline-offset:2px; }
-.pet-type-toggle input[type="radio"]:checked + .toggle-label { background:#3b82f6; color:#fff; border-color:#3b82f6; box-shadow: 0 8px 20px rgba(59,130,246,.35); }
+.pet-type-toggle input[type="radio"]:checked + .toggle-label { background:#1f456e; color:#fff; border-color:#1f456e; box-shadow: 0 8px 20px rgba(31,69,110,.35); }
 .input-with-unit { display:flex; align-items:center; gap:.5rem; }
 .input-with-unit .unit { min-width:2.5rem; text-align:center; color:#64748b; background: var(--bg-secondary); border:1px solid var(--border-color); border-radius:.5rem; padding:.4rem .5rem; }
+.form-control-enhanced:focus { border-color:#1f456e; box-shadow: 0 0 0 4px rgba(31,69,110,.15); outline: none; }
 .stepper-btn { border:1px solid var(--border-color); background: var(--bg-secondary); color:#64748b; border-radius:.5rem; padding:.4rem .5rem; transition: var(--transition-fast); }
 .stepper-btn:hover { background: var(--bg-card-hover); color:#1f456e; }
 .status-underweight { background: rgba(239,68,68,.15); color:#ef4444; border:1px solid rgba(239,68,68,.3); }
@@ -184,17 +185,17 @@
 .bmi-gauge #needle { transition: transform .4s cubic-bezier(0.22, 1, 0.36, 1); }
 .help-details summary::-webkit-details-marker { display:none; }
 .help-details summary::after { content:'?'; display:inline-flex; align-items:center; justify-content:center; width:1rem; height:1rem; margin-left:.25rem; border-radius:9999px; background:#e2e8f0; color:#334155; font-size:.75rem; }
-.bmi-gauge { --gauge-glow: rgba(59,130,246,.18); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 1rem; padding: .75rem; }
+.bmi-gauge { --gauge-glow: rgba(31,69,110,.18); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 1rem; padding: .75rem; }
 .bmi-gauge svg { display:block; margin:0 auto; filter: drop-shadow(0 8px 22px var(--gauge-glow)); }
 .bmi-gauge.ideal { --gauge-glow: rgba(34,197,94,.22); }
 .bmi-gauge.overweight { --gauge-glow: rgba(245,158,11,.22); }
 .bmi-gauge.obese { --gauge-glow: rgba(239,68,68,.22); }
-.profile-item { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.5rem .75rem; border:1px solid var(--border-color); border-radius:.5rem; background: var(--bg-secondary); }
-.profile-title { font-weight:600; color:#0f172a; }
-.profile-meta { font-size:.75rem; color:#64748b; }
-.profile-actions { display:flex; gap:.5rem; }
-.profile-actions .btn-mini { border:1px solid var(--border-color); border-radius:.4rem; padding:.35rem .6rem; font-size:.75rem; background:#fff; color:#1f456e; transition: var(--transition-fast); }
-.profile-actions .btn-mini:hover { background: var(--bg-card-hover); }
+.btn-primary.btn-enhanced { background: linear-gradient(135deg, #1f456e, #245c8d); border: none; color: #fff; }
+.btn-primary.btn-enhanced:hover { filter: brightness(1.05); }
+.enhanced-card .section-title i { background: rgba(31,69,110,.12); color: #1f456e; }
+.saved-profile-item { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.5rem .75rem; border:1px solid var(--border-color); border-radius:.5rem; background: var(--bg-secondary); }
+.saved-profile-title { font-weight:600; color:#0f172a; }
+.saved-profile-meta { font-size:.75rem; color:#64748b; }
 </style>
 
 <script>
@@ -423,23 +424,35 @@ function listProfiles() {
       let obj = null;
       try { obj = JSON.parse(raw); } catch {}
       const li = document.createElement('li');
-      li.className = 'profile-item';
+      li.className = 'saved-profile-item';
       const title = document.createElement('div');
-      title.innerHTML = `<div class="profile-title">${obj?.name || 'Unnamed'}</div><div class="profile-meta">${obj?.type || '-'} • BMI ${obj?.bmi ?? '--'}</div>`;
+      title.innerHTML = `<div class="saved-profile-title">${obj?.name || 'Unnamed'}</div><div class="saved-profile-meta">${obj?.type || '-'} • BMI ${obj?.bmi ?? '--'}</div>`;
       const actions = document.createElement('div');
-      actions.className = 'profile-actions';
-      const loadBtn = document.createElement('button');
-      loadBtn.className = 'btn-mini';
-      loadBtn.textContent = 'Load';
-      loadBtn.dataset.key = k;
-      loadBtn.setAttribute('aria-label','Load profile');
-      const delBtn = document.createElement('button');
-      delBtn.className = 'btn-mini';
-      delBtn.textContent = 'Delete';
-      delBtn.dataset.key = k;
-      delBtn.setAttribute('aria-label','Delete profile');
-      actions.appendChild(loadBtn);
-      actions.appendChild(delBtn);
+      actions.className = 'profile-menu';
+      const toggle = document.createElement('button');
+      toggle.className = 'icon-btn profile-btn';
+      toggle.setAttribute('aria-haspopup','true');
+      toggle.setAttribute('aria-expanded','false');
+      toggle.setAttribute('data-key', k);
+      toggle.innerHTML = '<i class="fas fa-ellipsis-h"></i>';
+      const dropdown = document.createElement('div');
+      dropdown.className = 'profile-dropdown';
+      const loadItem = document.createElement('a');
+      loadItem.href = '#';
+      loadItem.className = 'profile-item action-load';
+      loadItem.setAttribute('role','menuitem');
+      loadItem.setAttribute('data-key', k);
+      loadItem.innerHTML = '<i class="fas fa-download"></i><span>Load Profile</span>';
+      const deleteItem = document.createElement('a');
+      deleteItem.href = '#';
+      deleteItem.className = 'profile-item action-delete';
+      deleteItem.setAttribute('role','menuitem');
+      deleteItem.setAttribute('data-key', k);
+      deleteItem.innerHTML = '<i class="fas fa-trash"></i><span>Delete</span>';
+      dropdown.appendChild(loadItem);
+      dropdown.appendChild(deleteItem);
+      actions.appendChild(toggle);
+      actions.appendChild(dropdown);
       li.appendChild(title);
       li.appendChild(actions);
       ul.appendChild(li);
@@ -576,11 +589,41 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('savedProfiles').addEventListener('click', (e) => {
     const t = e.target;
-    if (t.matches('.btn-mini')) {
-      const key = t.dataset.key;
-      if (t.textContent === 'Load') loadProfile(key);
-      else if (t.textContent === 'Delete') deleteProfile(key);
+    const toggleBtn = t.closest('.profile-btn');
+    if (toggleBtn) {
+      const menu = toggleBtn.nextElementSibling;
+      const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+      toggleBtn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      if (menu) menu.classList.toggle('show', !expanded);
+      e.preventDefault();
+      e.stopPropagation();
+      return;
     }
+    const loadEl = t.closest('.action-load');
+    const delEl = t.closest('.action-delete');
+    if (loadEl) {
+      const key = loadEl.dataset.key;
+      loadProfile(key);
+      e.preventDefault();
+      return;
+    }
+    if (delEl) {
+      const key = delEl.dataset.key;
+      deleteProfile(key);
+      e.preventDefault();
+      return;
+    }
+  });
+  document.addEventListener('click', function(ev){
+    const openMenus = document.querySelectorAll('#savedProfiles .profile-dropdown.show');
+    openMenus.forEach(function(menu){
+      const btn = menu.previousElementSibling;
+      const within = menu.contains(ev.target) || (btn && btn.contains(ev.target));
+      if (!within) {
+        menu.classList.remove('show');
+        if (btn) btn.setAttribute('aria-expanded','false');
+      }
+    });
   });
   listProfiles();
 });
