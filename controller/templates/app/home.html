@@ -38,7 +38,7 @@
             Welcome to PETio
         </h1>
         <p class="text-gray-400 text-lg">Your smart pet feeding companion</p>
-    </div> -->
+    </div>
 
     <!-- Main Control Grid -->
     <div class="responsive-grid">
@@ -55,17 +55,18 @@
                         <i class="fas fa-balance-scale text-teal-400"></i>
                         Portion Size: <span id="portionDisplay" class="text-[#1f456e] font-bold">25 grams</span>
                     </label>
-                    <div class="relative">
+                    <div class="range-wrap">
                         <input 
                             type="range" 
                             id="portionSlider" 
-                            class="range-enhanced w-full" 
+                            class="range-modern w-full" 
                             min="25" 
                             max="500" 
                             value="25"
                             oninput="updatePortionDisplay(this.value)"
                         >
-                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span id="portionBubble" class="range-bubble">25g</span>
+                        <div class="range-ticks">
                             <span>25g</span>
                             <span>250g</span>
                             <span>500g</span>
@@ -273,6 +274,67 @@
 .range-enhanced::-webkit-slider-thumb { background: #1f456e; }
 .range-enhanced::-moz-range-thumb { background: #1f456e; }
 
+.range-wrap { position: relative; }
+.range-modern {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 10px;
+    border-radius: 9999px;
+    background: linear-gradient(to right, #1f456e 0%, #1f456e 5%, var(--bg-secondary) 5%, var(--bg-secondary) 100%);
+    outline: none;
+}
+.range-modern::-webkit-slider-runnable-track {
+    height: 10px;
+    border-radius: 9999px;
+    background: transparent;
+}
+.range-modern::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #1f456e;
+    box-shadow: 0 4px 10px rgba(31,69,110,.25);
+    cursor: pointer;
+    margin-top: -5px;
+}
+.range-modern::-moz-range-track {
+    height: 10px;
+    border-radius: 9999px;
+    background: transparent;
+}
+.range-modern::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #1f456e;
+    box-shadow: 0 4px 10px rgba(31,69,110,.25);
+    cursor: pointer;
+}
+.range-bubble {
+    position: absolute;
+    top: -2rem;
+    left: 0;
+    transform: translateX(-50%);
+    background: #fff;
+    color: #1f456e;
+    border: 1px solid var(--border-color);
+    border-radius: .5rem;
+    padding: .25rem .5rem;
+    font-weight: 600;
+    font-size: .875rem;
+    box-shadow: 0 8px 24px rgba(31,69,110,.12);
+    pointer-events: none;
+}
+.range-ticks {
+    display: flex;
+    justify-content: space-between;
+    font-size: .75rem;
+    color: #64748b;
+    margin-top: .35rem;
+}
+
 .form-control-enhanced:focus { border-color: #1f456e; box-shadow: 0 0 0 4px rgba(31, 69, 110, 0.15); outline: none; }
 .form-control-enhanced:focus-visible { outline-color: #1f456e; }
 
@@ -387,11 +449,17 @@ async function parseJsonSafe(response) {
 // Portion size display update
 function updatePortionDisplay(value) {
     document.getElementById('portionDisplay').textContent = `${value} grams`;
-    
-    // Update slider background gradient
     const slider = document.getElementById('portionSlider');
-    const percentage = ((value - slider.min) / (slider.max - slider.min)) * 100;
-    slider.style.background = `linear-gradient(to right, #1f456e 0%, #1f456e ${percentage}%, var(--bg-secondary) ${percentage}%, var(--bg-secondary) 100%)`;
+    const bubble = document.getElementById('portionBubble');
+    const min = parseFloat(slider.min);
+    const max = parseFloat(slider.max);
+    const val = parseFloat(value);
+    const pct = ((val - min) / (max - min)) * 100;
+    slider.style.background = `linear-gradient(to right, #1f456e 0%, #1f456e ${pct}%, var(--bg-secondary) ${pct}%, var(--bg-secondary) 100%)`;
+    if (bubble) {
+        bubble.textContent = `${value}g`;
+        bubble.style.left = `calc(${pct}% - 12px)`;
+    }
 }
 
 // Feed Now function

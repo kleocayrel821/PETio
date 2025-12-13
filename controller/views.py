@@ -83,8 +83,11 @@ class SchedulesView(TemplateView):
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class HistoryView(TemplateView):
-    """Feeding logs page with filters and pagination."""
     template_name = 'app/history.html'
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class BMICalculatorView(TemplateView):
+    template_name = 'app/bmi_calculator.html'
 
 
 # Test page to validate unified base and sidebar rendering in Controller
@@ -896,7 +899,7 @@ def client_error_log(request):
             "payload": payload,
             "headers": {k: v for k, v in request.headers.items() if k.lower() in ("user-agent", "referer")},
         })
-        return Response({}, status=204)
+        return Response({"ok": True}, status=200)
     except Exception:
         logger.exception("client_error_log failed")
         return Response({"status": "error"}, status=500)
