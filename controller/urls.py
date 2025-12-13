@@ -17,6 +17,7 @@ urlpatterns = [
     path('landing/', views.HomeView.as_view(), name='landing'),
     path('schedules-ui/', views.SchedulesView.as_view(), name='schedules_ui'),
     path('history/', views.HistoryView.as_view(), name='history'),
+    path('bmi/', views.BMICalculatorView.as_view(), name='bmi_calculator'),
     # Test route to validate unified base + sidebar in Controller
     path('test-base/', views.test_base, name='test_base'),
     # Temporary legacy route to the old control panel (optional; can remove later)
