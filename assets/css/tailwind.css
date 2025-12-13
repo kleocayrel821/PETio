@@ -1,0 +1,23 @@
+/*
+  PETio Tailwind source stylesheet
+  - Compiles Tailwind base, components, utilities
+  - Includes DaisyUI components with the configured theme
+  - Keep custom project styles in static/css/*.css (e.g., navigation.css)
+*/
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Minimal utility/component tweaks can be added here using Tailwind layers.
+  Example: unify card shadow with project look.
+*/
+@layer components {
+  .card {
+    @apply bg-white shadow-sm rounded-xl;
+  }
+  .btn-primary {
+    @apply bg-brand text-white hover:bg-brand-dark;
+  }
+}
