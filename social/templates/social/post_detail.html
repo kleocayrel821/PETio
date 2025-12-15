@@ -40,7 +40,7 @@
                                 <i class="fas fa-thumbtack mr-1"></i> Pinned
                             </span>
                         {% endif %}
-                        <span class="text-sm text-base-content/60">{{ post.created_at|date:"M d, Y \a\t g:i A" }}</span>
+                        <span class="text-sm text-base-content/60"><time id="postCreatedLocal" datetime="{{ post.created_at|date:'c' }}">{{ post.created_at|date:"M d, Y \\a\\t g:i A" }}</time></span>
                     </div>
                     
                     {% if 'Shared from' in post.title %}
@@ -285,6 +285,17 @@
 // Like functionality
 document.addEventListener('DOMContentLoaded', function() {
     const likeButton = document.querySelector('.like-btn');
+    const tEl = document.getElementById('postCreatedLocal');
+    try {
+        if (tEl) {
+            const dt = tEl.getAttribute('datetime');
+            if (dt) {
+                const d = new Date(dt);
+                const s = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).format(d);
+                tEl.textContent = s.replace(',', ' at');
+            }
+        }
+    } catch (e) {}
     
     if (likeButton) {
         likeButton.addEventListener('click', function() {

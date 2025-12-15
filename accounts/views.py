@@ -172,6 +172,164 @@ class ProfileDetailView(LoginRequiredMixin, DetailView):
             ctx["seller_rating_avg"] = 0.0
             ctx["seller_rating_count"] = 0
             ctx["recent_ratings"] = []
+        # Build recent activity timeline combining requests, logs, listings, notifications
+        try:
+            from django.db.models import Q
+            from marketplace.models import (
+                PurchaseRequest,
+                TransactionLog,
+                Listing,
+                LogAction,
+                Notification,
+            )
+            events = []
+            # Incoming purchase requests (as seller)
+            try:
+                prs_seller = (
+                    PurchaseRequest.objects.filter(seller_id=user.id)
+                    .exclude(buyer__username__startswith="smoke_")
+                    .exclude(seller__username__startswith="smoke_")
+                    .exclude(listing__title__startswith="Messaging Smoke Listing @")
+                    .exclude(listing__title__startswith="FBV Smoke Listing @")
+                    .select_related("listing", "buyer")
+                    .order_by("-created_at")[:5]
+                )
+                for pr in prs_seller:
+                    buyer_name = getattr(pr.buyer, "username", "")
+                    listing_title = getattr(pr.listing, "title", "Listing")
+                    events.append({
+                        "type": "incoming_request",
+                        "created_at": pr.created_at,
+                        "title": f"Incoming request from @{buyer_name}",
+                        "meta": f"{listing_title} • Status: {pr.get_status_display()}",
+                    })
+            except Exception:
+                pass
+            # Outgoing purchase requests (as buyer)
+            try:
+                prs_buyer = (
+                    PurchaseRequest.objects.filter(buyer_id=user.id)
+                    .exclude(seller__username__startswith="smoke_")
+                    .exclude(buyer__username__startswith="smoke_")
+                    .exclude(listing__title__startswith="Messaging Smoke Listing @")
+                    .exclude(listing__title__startswith="FBV Smoke Listing @")
+                    .select_related("listing", "seller")
+                    .order_by("-created_at")[:5]
+                )
+                for pr in prs_buyer:
+                    seller_name = getattr(pr.seller, "username", "")
+                    listing_title = getattr(pr.listing, "title", "Listing")
+                    events.append({
+                        "type": "buyer_request",
+                        "created_at": pr.created_at,
+                        "title": f"Requested to buy from @{seller_name}",
+                        "meta": f"{listing_title} • Status: {pr.get_status_display()}",
+                    })
+            except Exception:
+                pass
+            # Transaction/action logs involving the user
+            try:
+                logs = (
+                    TransactionLog.objects
+                    .filter(Q(actor_id=user.id) | Q(request__buyer_id=user.id) | Q(request__seller_id=user.id))
+                    .exclude(actor__username__startswith="smoke_")
+                    .exclude(request__buyer__username__startswith="smoke_")
+                    .exclude(request__seller__username__startswith="smoke_")
+                    .exclude(request__listing__title__startswith="Messaging Smoke Listing @")
+                    .exclude(request__listing__title__startswith="FBV Smoke Listing @")
+                    .select_related("request", "request__listing", "actor")
+                    .order_by("-created_at")[:10]
+                )
+                action_label = {
+                    LogAction.BUYER_REQUEST: "Buyer request created",
+                    LogAction.SELLER_ACCEPT: "Seller accepted request",
+                    LogAction.SELLER_REJECT: "Seller rejected request",
+                    LogAction.SELLER_NEGOTIATE: "Seller negotiated",
+                    LogAction.OFFER_SUBMITTED: "Offer submitted",
+                    LogAction.OFFER_COUNTERED: "Offer countered",
+                    LogAction.OFFER_ACCEPTED: "Offer accepted",
+                    LogAction.OFFER_REJECTED: "Offer rejected",
+                    LogAction.MEETUP_PROPOSED: "Meetup proposed",
+                    LogAction.MEETUP_UPDATED: "Meetup updated",
+                    LogAction.MEETUP_CONFIRMED: "Meetup confirmed",
+                    LogAction.REQUEST_COMPLETED: "Transaction completed",
+                    LogAction.REQUEST_CANCELED: "Request canceled",
+                    LogAction.MOD_APPROVE_LISTING: "Listing approved",
+                    LogAction.MOD_REJECT_LISTING: "Listing rejected",
+                }
+                for lg in logs:
+                    actor_name = getattr(lg.actor, "username", "")
+                    listing_title = getattr(getattr(lg.request, "listing", None), "title", "")
+                    title = action_label.get(lg.action, lg.action.replace("_", " ").title())
+                    if actor_name:
+                        title += f" by @{actor_name}"
+                    meta = listing_title or "Request update"
+                    events.append({
+                        "type": "log",
+                        "created_at": lg.created_at,
+                        "title": title,
+                        "meta": meta,
+                    })
+            except Exception:
+                pass
+            # Newly created listings by the user
+            try:
+                my_listings = (
+                    Listing.objects.filter(seller_id=user.id)
+                    .only("title", "created_at")
+                    .order_by("-created_at")[:5]
+                )
+                for l in my_listings:
+                    events.append({
+                        "type": "listing",
+                        "created_at": l.created_at,
+                        "title": "Listed a new item",
+                        "meta": l.title,
+                    })
+            except Exception:
+                pass
+            # Notifications addressed to the user
+            try:
+                notifs = (
+                    Notification.objects.filter(user_id=user.id)
+                    .exclude(related_request__buyer__username__startswith="smoke_")
+                    .exclude(related_request__seller__username__startswith="smoke_")
+                    .exclude(related_listing__seller__username__startswith="smoke_")
+                    .exclude(related_listing__title__startswith="Messaging Smoke Listing @")
+                    .exclude(related_listing__title__startswith="FBV Smoke Listing @")
+                    .order_by("-created_at")[:5]
+                )
+                for n in notifs:
+                    title = n.title or "Notification"
+                    meta_parts = []
+                    try:
+                        if getattr(n, "related_listing_id", None):
+                            meta_parts.append(getattr(getattr(n, "related_listing", None), "title", "Listing"))
+                    except Exception:
+                        pass
+                    try:
+                        if getattr(n, "related_request_id", None):
+                            meta_parts.append("Request update")
+                    except Exception:
+                        pass
+                    meta = " • ".join([p for p in meta_parts if p]) or (n.body[:60] if getattr(n, "body", "") else "")
+                    events.append({
+                        "type": "notification",
+                        "created_at": n.created_at,
+                        "title": title,
+                        "meta": meta,
+                    })
+            except Exception:
+                pass
+            # Sort and cap the timeline
+            try:
+                events = sorted(events, key=lambda e: e.get("created_at"), reverse=True)[:10]
+            except Exception:
+                # If any event lacks datetime, keep insertion order
+                events = events[:10]
+            ctx["recent_activity"] = events
+        except Exception:
+            ctx["recent_activity"] = []
         return ctx
 
 class ProfileUpdateView(LoginRequiredMixin, UpdateView):

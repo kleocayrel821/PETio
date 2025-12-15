@@ -94,6 +94,35 @@ def feed(request):
     paginator = Paginator(posts, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    post_ids = [p.id for p in page_obj.object_list]
+    root_qs = (
+        Comment.objects.filter(
+            post_id__in=post_ids,
+            parent__isnull=True,
+            hidden_at__isnull=True,
+        )
+        .exclude(author__username__startswith='smoke_')
+        .select_related('author')
+        .order_by('created_at')
+    )
+    root_map = {}
+    for c in root_qs:
+        root_map.setdefault(c.post_id, []).append(c)
+    root_counts = (
+        Comment.objects.filter(
+            post_id__in=post_ids,
+            parent__isnull=True,
+            hidden_at__isnull=True,
+        )
+        .exclude(author__username__startswith='smoke_')
+        .values('post_id')
+        .annotate(cnt=Count('id'))
+    )
+    count_map = {rc['post_id']: rc['cnt'] for rc in root_counts}
+    for p in page_obj.object_list:
+        lst = root_map.get(p.id, [])
+        p.root_comments = lst[:2]
+        p.root_comment_total = count_map.get(p.id, 0)
     
     week_ago = timezone.now() - timedelta(days=7)
     community_stats = {
@@ -406,8 +435,7 @@ def toggle_follow(request, user_id):
 def notifications(request):
     """User notifications"""
     user_notifications = Notification.objects.filter(recipient=request.user).order_by('-created_at')
-    
-    # Mark notifications as read
+    unread_count = user_notifications.filter(is_read=False).count()
     user_notifications.filter(is_read=False).update(is_read=True)
     
     # Pagination
@@ -415,7 +443,7 @@ def notifications(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    return render(request, 'social/notifications.html', {'page_obj': page_obj})
+    return render(request, 'social/notifications.html', {'page_obj': page_obj, 'unread_count': unread_count})
 
 
 @login_required

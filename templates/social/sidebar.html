@@ -15,6 +15,13 @@ Expects: view_name set to one of: feed, dashboard, notifications, create_post
   <a href="{% url 'social:notifications' %}" class="sidebar-item {% if view_name == 'notifications' %}active{% endif %}">
     <i class="fas fa-bell"></i>
     <span>Notifications</span>
+    <span
+      id="notifBadge"
+      class="badge badge-error badge-sm ml-2"
+      data-badge-count-url="{% url 'social:notification_count' %}"
+      data-badge-interval="10000"
+      {% if not unread_notifications_count %}style="display:none;"{% endif %}
+    >{{ unread_notifications_count|default:0 }}</span>
   </a>
   <a href="{% url 'social:my_profile' %}" class="sidebar-item {% if view_name == 'my_profile' %}active{% endif %}">
     <i class="fas fa-user"></i>

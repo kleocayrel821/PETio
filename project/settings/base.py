@@ -57,6 +57,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'project.context_processors.device_id_context',
                 'project.context_processors.app_context',
+                'project.context_processors.unread_notifications_count',
             ],
         },
     }

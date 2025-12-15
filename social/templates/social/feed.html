@@ -286,6 +286,40 @@
                                     </div>
                                     {% endif %}
                                 </div>
+                                
+                                {% if post.root_comments %}
+                                <div class="mt-3 border-t border-base-300 pt-2">
+                                    <div class="{% if post.root_comment_total >= 3 %}space-y-2{% else %}space-y-3{% endif %}">
+                                        {% for comment in post.root_comments %}
+                                        <div class="flex items-start space-x-3">
+                                            <div class="avatar">
+                                                <div class="{% if post.root_comment_total >= 3 %}w-6{% else %}w-8{% endif %} rounded-full">
+                                                    <a href="{% url 'social:profile' comment.author.username %}">
+                                                        <img src="{% avatar_url comment.author 64 %}" alt="{{ comment.author.username }}">
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="flex items-center space-x-2">
+                                                    <a href="{% url 'social:profile' comment.author.username %}" class="font-semibold hover:text-primary">
+                                                        {{ comment.author.get_full_name|default:comment.author.username }}
+                                                    </a>
+                                                    <span class="text-xs text-base-content/60">{{ comment.created_at|timesince }} ago</span>
+                                                </div>
+                                                <p class="{% if post.root_comment_total >= 3 %}text-xs{% else %}text-sm{% endif %} text-base-content/80 break-words">{{ comment.content|truncatewords:24 }}</p>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% if post.root_comment_total > post.root_comments|length %}
+                                    <div class="mt-1">
+                                        <a href="{% url 'social:post_detail' post.pk %}" class="btn btn-ghost btn-xs">
+                                            View all {{ post.root_comment_total }} comments
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>

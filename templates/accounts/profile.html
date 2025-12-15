@@ -23,6 +23,24 @@
   .image-viewer .iv-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); max-width: 90vw; max-height: 85vh; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 14px 34px rgba(17,24,39,.22); }
   .image-viewer .iv-content img { display:block; max-width: 90vw; max-height: 85vh; object-fit: contain; }
   .image-viewer .iv-close { position:absolute; top:.5rem; right:.5rem; width:36px; height:36px; border:none; border-radius:9999px; background:#92487A; color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .profile-content .timeline { display:block; border-left:2px solid rgba(0,0,0,0.08); padding-left:16px; }
+  .profile-content .timeline::before { display:none; }
+  .profile-content .timeline-item { display:block; margin-bottom:12px; background: var(--b2); border:1px solid rgba(0,0,0,0.06); border-radius:12px; padding:10px 12px; box-shadow: var(--shadow-sm); }
+  .profile-content .timeline-item::before { display:none; }
+  .profile-content .timeline-title { display:flex; align-items:center; gap:8px; font-weight:600; color:var(--text-primary); }
+  .profile-content .timeline-meta { margin-top:2px; font-size:12px; opacity:.75; }
+  .profile-content .type-icon { width:20px; height:20px; border-radius:9999px; background:#92487A; color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; }
+  .profile-content .timeline-wrap { position: relative; border-radius: 12px; overflow: hidden; }
+  .profile-content .timeline.scrollable { max-height: 300px; overflow-y: auto; padding-right: 8px; scrollbar-width: thin; scrollbar-color: rgba(146,72,122,.5) transparent; }
+  .profile-content .timeline.scrollable::-webkit-scrollbar { width: 8px; }
+  .profile-content .timeline.scrollable::-webkit-scrollbar-thumb { background: rgba(146,72,122,.35); border-radius: 8px; }
+  .profile-content .timeline.scrollable:hover::-webkit-scrollbar-thumb { background: rgba(146,72,122,.65); }
+  .profile-content .timeline-wrap::before,
+  .profile-content .timeline-wrap::after { content:""; position:absolute; left:0; right:0; height:16px; pointer-events:none; opacity:0; transition: opacity .2s ease; }
+  .profile-content .timeline-wrap::before { top:0; background: linear-gradient(to bottom, rgba(0,0,0,0.10), rgba(0,0,0,0)); }
+  .profile-content .timeline-wrap::after { bottom:0; background: linear-gradient(to top, rgba(0,0,0,0.10), rgba(0,0,0,0)); }
+  .profile-content .timeline-wrap.show-top::before { opacity:1; }
+  .profile-content .timeline-wrap.show-bottom::after { opacity:1; }
 </style>
 {% endblock %}
 {% block content %}
@@ -106,17 +124,31 @@
       <span><span class="icon-badge-soft icon-inline"><i class="fas fa-stream"></i></span> Activity</span>
       <button type="button" class="btn btn-ghost btn-sm btn-enhanced collapse-toggle" data-target="#activityBody"><i class="fas fa-chevron-up"></i></button>
     </div>
-    <div id="activityBody" class="timeline">
-      {% if recent_ratings %}
-        {% for r in recent_ratings %}
+    <div class="timeline-wrap">
+      <div id="activityBody" class="timeline">
+      {% if recent_activity %}
+        {% for ev in recent_activity %}
           <div class="timeline-item">
-            <div class="timeline-title"><i class="fas fa-star text-yellow-400"></i> Received a {{ r.score }}/5 rating from @{{ r.buyer.username }}</div>
-            <div class="timeline-meta">{{ r.created_at|date:"M d, Y" }}{% if r.listing %} • on {{ r.listing.title }}{% endif %}</div>
+            <div class="timeline-title">
+              <span class="type-icon">
+                {% if ev.type == 'incoming_request' %}<i class="fas fa-inbox"></i>
+                {% elif ev.type == 'buyer_request' %}<i class="fas fa-shopping-cart"></i>
+                {% elif ev.type == 'log' %}<i class="fas fa-stream"></i>
+                {% elif ev.type == 'listing' %}<i class="fas fa-plus-square"></i>
+                {% elif ev.type == 'notification' %}<i class="fas fa-bell"></i>
+                {% else %}<i class="fas fa-info-circle"></i>{% endif %}
+              </span>
+              {{ ev.title }}
+            </div>
+            <div class="timeline-meta">
+              {{ ev.created_at|date:"M d, Y H:i" }}{% if ev.meta %} • {{ ev.meta }}{% endif %}
+            </div>
           </div>
         {% endfor %}
       {% else %}
         <div class="text-sm opacity-70">No recent activity</div>
       {% endif %}
+      </div>
     </div>
   </div>
 
@@ -186,6 +218,29 @@ document.addEventListener('DOMContentLoaded', function(){
       document.body.style.overflow = '';
     }
   });
+  var activity = document.getElementById('activityBody');
+  var wrap = activity ? activity.parentElement : null;
+  if (activity) {
+    var items = activity.querySelectorAll('.timeline-item');
+    if (items.length > 6) {
+      activity.classList.add('scrollable');
+      function updateFades() {
+        if (!wrap) return;
+        var canScroll = activity.scrollHeight > activity.clientHeight + 1;
+        if (!canScroll) {
+          wrap.classList.remove('show-top', 'show-bottom');
+          return;
+        }
+        var atTop = activity.scrollTop <= 0;
+        var atBottom = activity.scrollTop + activity.clientHeight >= activity.scrollHeight - 1;
+        wrap.classList.toggle('show-top', !atTop);
+        wrap.classList.toggle('show-bottom', !atBottom);
+      }
+      updateFades();
+      activity.addEventListener('scroll', updateFades);
+      window.addEventListener('resize', updateFades);
+    }
+  }
 });
 </script>
 {% endblock %}
