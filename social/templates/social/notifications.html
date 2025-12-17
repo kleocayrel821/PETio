@@ -19,7 +19,10 @@
                     Notifications
                 </h1>
                 <div class="flex items-center gap-2">
-                    <div class="badge badge-primary">
+                    <div class="badge badge-error" id="unreadCountBadge" {% if not unread_count %}style="display:none;"{% endif %}>
+                        {{ unread_count|default:0 }} unread
+                    </div>
+                    <div class="badge badge-primary" id="totalCountBadge">
                         {{ page_obj.paginator.count }} total
                     </div>
                     <div class="dropdown dropdown-end">
@@ -230,6 +233,49 @@ document.addEventListener('DOMContentLoaded', function() {
       if (href) { window.location.href = href; }
     });
   });
+
+  function updateUnreadBadge(count) {
+    const badge = document.getElementById('unreadCountBadge');
+    if (!badge) return;
+    const val = Number(count || 0);
+    if (val > 0) {
+      badge.textContent = `${val} unread`;
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
+    // Also mirror to global navbar badge if present
+    const globalBadge = document.getElementById('notificationBadge');
+    if (globalBadge) {
+      const capped = val > 99 ? '99+' : String(val);
+      globalBadge.textContent = capped;
+      globalBadge.style.display = val > 0 ? '' : 'none';
+      // Force red color for emphasis via CSS classes
+      globalBadge.classList.add('badge-error');
+    }
+    // Mirror local social tab badge if present
+    const local = document.getElementById('notifBadge');
+    if (local) {
+      local.textContent = val > 99 ? '99+' : String(val);
+      local.style.display = val > 0 ? '' : 'none';
+      local.classList.remove('badge-primary');
+      local.classList.add('badge-error');
+    }
+  }
+
+  function refreshUnreadCount() {
+    fetch("{% url 'social:notification_count' %}", { headers: { 'X-Requested-With': 'XMLHttpRequest' }})
+      .then(r => r.json())
+      .then(data => {
+        const cnt = (data && typeof data.count === 'number') ? data.count : 0;
+        updateUnreadBadge(cnt);
+      })
+      .catch(() => {});
+  }
+
+  // Initial and periodic refresh (every 10s)
+  refreshUnreadCount();
+  setInterval(refreshUnreadCount, 10000);
 });
 </script>
 {% endblock %}
