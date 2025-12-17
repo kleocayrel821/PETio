@@ -23,15 +23,20 @@
 #include <WiFiClient.h>
 #include <Servo.h>
 
-// Inlined config.h (undo modularization)
-// Hardware Pin Definitions - RGB LEDs
-#define RED_LED_PIN 5
-#define GREEN_LED_PIN 4
-#define BLUE_LED_PIN 0
+String nowUtcIso();
 
-// Hardware Pin Definitions - Servo and Button
+// Inlined config.h (undo modularization)
+// Hardware Pin Definitions - RGB LEDs (D6/D7/D8)
+#define RED_LED_PIN 12
+#define GREEN_LED_PIN 2
+#define BLUE_LED_PIN 16
+
+// Hardware Pin Definitions - Servo and Buttons
 #define SERVO_PIN 14
-#define BUTTON_PIN 12
+#define FEED_NOW_PIN 5
+#define ADD_PORTION_PIN 4
+#define REDUCE_PORTION_PIN 15
+#define BUTTON_PIN FEED_NOW_PIN
 
 // Legacy LED pin for compatibility
 #define LED_PIN 2
@@ -83,6 +88,13 @@
 // EEPROM Addresses for Schedule Tracking
 #define LAST_SCHEDULE_ID_ADDR 65
 #define SCHEDULE_ID_SIZE 4
+
+// Manual portion configuration
+float manualPortionGrams = (float)DEFAULT_FEED_DURATION / (float)MS_PER_GRAM;
+unsigned long manualFeedDurationMs = DEFAULT_FEED_DURATION;
+const float PORTION_STEP_GRAMS = 5.0f;
+const float MANUAL_PORTION_MIN_GRAMS = 5.0f;
+const float MANUAL_PORTION_MAX_GRAMS = 100.0f;
 
 // Inlined ledcontrol.h/.cpp
 enum LedState {
@@ -145,15 +157,14 @@ public:
 // Inlined motorcontrol.h/.cpp
 class MotorController {
 private:
-  Servo feedingServo; bool servoAttached; bool lastButtonState; bool currentButtonState; unsigned long lastDebounceTime; unsigned long buttonPressTime; bool feedingInProgress; unsigned long feedingStartTime; unsigned long feedingDuration; LedController* ledController;
+  Servo feedingServo; bool servoAttached; bool feedingInProgress; unsigned long feedingStartTime; unsigned long feedingDuration; LedController* ledController;
   void attachServo() { if (!servoAttached) { feedingServo.attach(SERVO_PIN); servoAttached = true; feedingServo.writeMicroseconds(SERVO_NEUTRAL); delay(100); Serial.println("Servo attached and set to neutral"); } }
   void detachServo() { if (servoAttached) { feedingServo.detach(); servoAttached = false; Serial.println("Servo detached"); } }
   void startServo() { if (servoAttached) { feedingServo.writeMicroseconds(SERVO_FORWARD); Serial.print("Servo started - Forward rotation ("); Serial.print(SERVO_FORWARD); Serial.println(" µs)"); } }
   void stopServo() { if (servoAttached) { feedingServo.writeMicroseconds(SERVO_NEUTRAL); Serial.print("Servo stopped - Neutral position ("); Serial.print(SERVO_NEUTRAL); Serial.println(" µs)"); } }
-  bool readButtonState() { return digitalRead(BUTTON_PIN); }
 public:
-  MotorController() : servoAttached(false), lastButtonState(HIGH), currentButtonState(HIGH), lastDebounceTime(0), buttonPressTime(0), feedingInProgress(false), feedingStartTime(0), feedingDuration(0), ledController(nullptr) {}
-  void init(LedController* ledCtrl) { ledController = ledCtrl; pinMode(BUTTON_PIN, INPUT_PULLUP); attachServo(); Serial.println("Motor Controller initialized"); Serial.print("Servo pin: "); Serial.println(SERVO_PIN); Serial.print("Button pin: "); Serial.println(BUTTON_PIN); }
+  MotorController() : servoAttached(false), feedingInProgress(false), feedingStartTime(0), feedingDuration(0), ledController(nullptr) {}
+  void init(LedController* ledCtrl) { ledController = ledCtrl; attachServo(); Serial.println("Motor Controller initialized"); Serial.print("Servo pin: "); Serial.println(SERVO_PIN); }
   void startFeeding(unsigned long duration_ms) {
     if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring request"); return; }
     Serial.print("Starting feeding for "); Serial.print(duration_ms); Serial.println(" ms");
@@ -161,15 +172,7 @@ public:
   }
   void stopFeeding() { if (!feedingInProgress) return; Serial.println("Stopping feeding operation"); stopServo(); feedingInProgress = false; feedingStartTime = 0; feedingDuration = 0; if (ledController) ledController->showReady(); }
   bool isFeedingInProgress() { return feedingInProgress; }
-  void updateButton() {
-    bool reading = readButtonState(); if (reading != lastButtonState) lastDebounceTime = millis();
-    if ((millis() - lastDebounceTime) > BUTTON_DEBOUNCE_MS) {
-      if (reading != currentButtonState) { currentButtonState = reading; if (currentButtonState == LOW) { buttonPressTime = millis(); Serial.println("Manual feed button pressed"); if (!feedingInProgress) startFeeding(DEFAULT_FEED_DURATION); } }
-    }
-    lastButtonState = reading;
-  }
-  bool isButtonPressed() { return (currentButtonState == LOW); }
-  void update() { updateButton(); if (feedingInProgress) { unsigned long elapsed = millis() - feedingStartTime; if (elapsed >= feedingDuration) { Serial.println("Feeding duration completed"); stopFeeding(); } } }
+  void update() { if (feedingInProgress) { unsigned long elapsed = millis() - feedingStartTime; if (elapsed >= feedingDuration) { Serial.println("Feeding duration completed"); stopFeeding(); } } }
   void emergencyStop() { Serial.println("EMERGENCY STOP activated"); stopFeeding(); detachServo(); }
   unsigned long getRemainingFeedTime() { if (!feedingInProgress) return 0; unsigned long elapsed = millis() - feedingStartTime; if (elapsed >= feedingDuration) return 0; return feedingDuration - elapsed; }
 };
@@ -178,7 +181,6 @@ public:
 class NetworkingManager {
 private:
   ESP8266WebServer webServer; DNSServer dnsServer; String wifiSSID; String wifiPassword; String deviceID; bool configurationMode; bool wifiConnected; unsigned long lastConnectionAttempt; unsigned long configModeStartTime; LedController* ledController;
-  void generateDeviceID(); void setupConfigServer(); void handleConfigRoot(); void handleConfigSave(); String getConfigPage();
 public:
   NetworkingManager() : webServer(80), dnsServer(), wifiSSID(""), wifiPassword(""), deviceID(""), configurationMode(false), wifiConnected(false), lastConnectionAttempt(0), configModeStartTime(0), ledController(nullptr) {}
   void init(LedController* ledCtrl) { Serial.println("Initializing Wi-Fi Configuration Manager..."); ledController = ledCtrl; EEPROM.begin(EEPROM_SIZE); generateDeviceID(); WiFi.mode(WIFI_STA); Serial.print("Device ID: "); Serial.println(deviceID); Serial.println("Wi-Fi Configuration Manager initialized"); }
@@ -308,6 +310,11 @@ void setup() {
   // Initialize motor controller with LED reference
   motorController.init(&ledController);
 
+  // Initialize additional buttons
+  pinMode(ADD_PORTION_PIN, INPUT_PULLUP);
+  pinMode(REDUCE_PORTION_PIN, INPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+
   // Initialize networking with LED reference
   network.init(&ledController);
   network.loadConfiguration();
@@ -353,6 +360,7 @@ void loop() {
 
   // Handle manual button feeding (existing functionality)
   handleManualFeeding();
+  handlePortionAdjustButtons();
 
   // Step D: NTP time synchronization
   updateNTPTime();
@@ -639,7 +647,7 @@ void handleManualFeeding() {
   static bool buttonPressed = false;
   static unsigned long lastButtonPress = 0;
   
-  bool currentButtonState = !digitalRead(BUTTON_PIN);
+  bool currentButtonState = (digitalRead(BUTTON_PIN) == LOW);
   
   if (currentButtonState && !buttonPressed && (millis() - lastButtonPress > BUTTON_DEBOUNCE_MS)) {
     buttonPressed = true;
@@ -647,10 +655,10 @@ void handleManualFeeding() {
     
     Serial.println("Manual feeding button pressed");
     
-    motorController.startFeeding(DEFAULT_FEED_DURATION);
+    motorController.startFeeding(manualFeedDurationMs);
     
     if (network.isConnected()) {
-      float portionGrams = (float)DEFAULT_FEED_DURATION / (float)MS_PER_GRAM;
+      float portionGrams = manualPortionGrams;
       bool success = httpClient.sendFeedingLog((int)portionGrams, "manual", "Button press feeding");
       if (!success) {
         Serial.println("Failed to log feeding to server: " + httpClient.getLastError());
@@ -665,6 +673,38 @@ void handleManualFeeding() {
     
   } else if (!currentButtonState && buttonPressed) {
     buttonPressed = false;
+  }
+}
+
+void handlePortionAdjustButtons() {
+  static bool addPressed = false;
+  static bool reducePressed = false;
+  static unsigned long lastAddPress = 0;
+  static unsigned long lastReducePress = 0;
+
+  bool addStatePressed = (digitalRead(ADD_PORTION_PIN) == LOW);
+  bool reduceStatePressed = (digitalRead(REDUCE_PORTION_PIN) == HIGH);
+
+  if (addStatePressed && !addPressed && (millis() - lastAddPress > BUTTON_DEBOUNCE_MS)) {
+    addPressed = true;
+    lastAddPress = millis();
+    manualPortionGrams += PORTION_STEP_GRAMS;
+    if (manualPortionGrams > MANUAL_PORTION_MAX_GRAMS) manualPortionGrams = MANUAL_PORTION_MAX_GRAMS;
+    manualFeedDurationMs = (unsigned long)(manualPortionGrams * MS_PER_GRAM);
+    Serial.println("Manual portion increased to " + String(manualPortionGrams) + "g (" + String(manualFeedDurationMs) + "ms)");
+  } else if (!addStatePressed && addPressed) {
+    addPressed = false;
+  }
+
+  if (reduceStatePressed && !reducePressed && (millis() - lastReducePress > BUTTON_DEBOUNCE_MS)) {
+    reducePressed = true;
+    lastReducePress = millis();
+    manualPortionGrams -= PORTION_STEP_GRAMS;
+    if (manualPortionGrams < MANUAL_PORTION_MIN_GRAMS) manualPortionGrams = MANUAL_PORTION_MIN_GRAMS;
+    manualFeedDurationMs = (unsigned long)(manualPortionGrams * MS_PER_GRAM);
+    Serial.println("Manual portion decreased to " + String(manualPortionGrams) + "g (" + String(manualFeedDurationMs) + "ms)");
+  } else if (!reduceStatePressed && reducePressed) {
+    reducePressed = false;
   }
 }
 
