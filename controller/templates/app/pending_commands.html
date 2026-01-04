@@ -1,0 +1,159 @@
+{% extends "app/base.html" %}
+{% load static %}
+{% block title %}Pending Commands{% endblock %}
+{% block content %}
+<div class="enhanced-card">
+  <h2 class="section-title">
+    <i class="fas fa-clipboard-list"></i>
+    Pending Commands
+  </h2>
+  <div class="mb-3 flex gap-2">
+    <button id="refreshPending" class="btn btn-sm btn-ghost">Refresh</button>
+    <button id="cancelAllPending" class="btn btn-sm btn-warning">Cancel All</button>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="table table-zebra w-full">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Command</th>
+          <th>Portion (g)</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="pendingCommandsBody"></tbody>
+    </table>
+  </div>
+</div>
+<div class="enhanced-card mt-6">
+  <h2 class="section-title">
+    <i class="fas fa-cogs"></i>
+    Processing Commands
+  </h2>
+  <div class="mb-3 flex gap-2">
+    <button id="refreshProcessing" class="btn btn-sm btn-ghost">Refresh</button>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="table table-zebra w-full">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Command</th>
+          <th>Portion (g)</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="processingCommandsBody"></tbody>
+    </table>
+  </div>
+</div>
+<script>
+  const deviceId = (window.DEVICE_ID || '{{ DEVICE_ID }}');
+  const bodyEl = document.getElementById('pendingCommandsBody');
+  const procEl = document.getElementById('processingCommandsBody');
+  function getCSRFToken() {
+    const name = 'csrftoken';
+    const cookies = document.cookie ? document.cookie.split(';') : [];
+    for (let i = 0; i < cookies.length; i++) {
+      const c = cookies[i].trim();
+      if (c.substring(0, name.length + 1) === (name + '=')) {
+        return decodeURIComponent(c.substring(name.length + 1));
+      }
+    }
+    return '';
+  }
+  function loadPending() {
+    fetch(`/api/commands/?status=pending&device_id=${encodeURIComponent(deviceId)}`)
+      .then(r => r.json())
+      .then(data => {
+        const results = Array.isArray(data) ? data : (data.results || []);
+        bodyEl.innerHTML = '';
+        results.forEach(cmd => {
+          const tr = document.createElement('tr');
+          const created = cmd.created_at ? new Date(cmd.created_at).toLocaleString() : '';
+          tr.innerHTML = `
+            <td>${cmd.id}</td>
+            <td>${cmd.command}</td>
+            <td>${cmd.portion_size != null ? cmd.portion_size : '-'}</td>
+            <td>${cmd.status}</td>
+            <td>${created}</td>
+            <td>
+              <button class="btn btn-sm btn-error" data-cancel-id="${cmd.id}">Cancel</button>
+            </td>
+          `;
+          bodyEl.appendChild(tr);
+        });
+      })
+      .catch(() => {});
+  }
+  function loadProcessing() {
+    fetch(`/api/commands/?status=processing&device_id=${encodeURIComponent(deviceId)}`)
+      .then(r => r.json())
+      .then(data => {
+        const results = Array.isArray(data) ? data : (data.results || []);
+        procEl.innerHTML = '';
+        results.forEach(cmd => {
+          const tr = document.createElement('tr');
+          const created = cmd.created_at ? new Date(cmd.created_at).toLocaleString() : '';
+          tr.innerHTML = `
+            <td>${cmd.id}</td>
+            <td>${cmd.command}</td>
+            <td>${cmd.portion_size != null ? cmd.portion_size : '-'}</td>
+            <td>${cmd.status}</td>
+            <td>${created}</td>
+            <td>
+              <button class="btn btn-sm btn-error" data-stop-id="${cmd.id}">Stop Feeding</button>
+            </td>
+          `;
+          procEl.appendChild(tr);
+        });
+      })
+      .catch(() => {});
+  }
+  document.getElementById('refreshPending').addEventListener('click', loadPending);
+  document.getElementById('refreshProcessing').addEventListener('click', loadProcessing);
+  document.getElementById('cancelAllPending').addEventListener('click', () => {
+    fetch('/api/feed-command/cancel/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+      credentials: 'same-origin',
+      body: JSON.stringify({ device_id: deviceId, all: true })
+    })
+    .then(r => r.json())
+    .then(() => { loadPending(); loadProcessing(); })
+    .catch(() => {});
+  });
+  bodyEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-cancel-id]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-cancel-id');
+    fetch('/api/feed-command/cancel-one/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+      credentials: 'same-origin',
+      body: JSON.stringify({ command_id: id })
+    })
+    .then(r => r.json())
+    .then(() => { loadPending(); loadProcessing(); })
+    .catch(() => {});
+  });
+  procEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-stop-id]');
+    if (!btn) return;
+    fetch('/api/stop-feeding/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+      credentials: 'same-origin',
+      body: JSON.stringify({})
+    })
+    .then(r => r.json())
+    .then(() => { loadPending(); loadProcessing(); })
+    .catch(() => {});
+  });
+  document.addEventListener('DOMContentLoaded', () => { loadPending(); loadProcessing(); });
+</script>
+{% endblock %}

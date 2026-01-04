@@ -166,6 +166,22 @@ class BackendAPITests(TestCase):
         # Representation is 24-hour HH:MM:SS
         self.assertEqual(resp.data.get("time"), "08:00:00")
 
+    def test_feed_now_replaces_stale_pending_for_device(self):
+        from datetime import timedelta
+        old = PendingCommand.objects.create(command='feed_now', portion_size=10.0, device_id='feeder-1')
+        PendingCommand.objects.filter(id=old.id).update(created_at=timezone.now() - timedelta(seconds=120))
+        resp = self.client.post(reverse('feed_now'), {"portion_size": 15, "device_id": "feeder-1"}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        old.refresh_from_db()
+        self.assertEqual(old.status, 'failed')
+        self.assertEqual(PendingCommand.objects.filter(command='feed_now', device_id='feeder-1', status='pending').count(), 1)
+
+    def test_feed_now_conflict_when_recent_pending_for_device(self):
+        from datetime import timedelta
+        recent = PendingCommand.objects.create(command='feed_now', portion_size=10.0, device_id='feeder-1')
+        PendingCommand.objects.filter(id=recent.id).update(created_at=timezone.now() - timedelta(seconds=10))
+        resp = self.client.post(reverse('feed_now'), {"portion_size": 15, "device_id": "feeder-1"}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT)
 
 class DeviceStatusEndpointTests(TestCase):
     def setUp(self):
