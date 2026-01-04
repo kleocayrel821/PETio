@@ -101,7 +101,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'feed_now': '5/minute',
+        'feed_now': '2/minute',
         'device_status': '120/minute',
     },
 }

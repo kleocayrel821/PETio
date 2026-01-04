@@ -37,6 +37,10 @@ urlpatterns = [
     path("api/remote-command/", views.remote_command, name="remote_command"),
     path("api/stop-feeding/", views.stop_feeding, name="stop_feeding"),
     path("api/calibrate/", views.calibrate, name="calibrate"),
+    path("api/feed-command/status/", views.feed_command_status, name="feed_command_status"),
+    path("api/feed-command/cancel/", views.feed_command_cancel, name="feed_command_cancel"),
+    path("api/feed-command/cancel-one/", views.feed_command_cancel_one, name="feed_command_cancel_one"),
+    path("pending-commands/", views.PendingCommandsView.as_view(), name="pending_commands"),
 
     # New REST-style device endpoints for firmware
     path("api/device/config/", device_api.device_config, name="device_config"),

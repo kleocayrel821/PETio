@@ -133,7 +133,12 @@ def device_command_fetch(request):
 @csrf_exempt
 def device_feed_command(request):
     """Legacy GET /api/device/feed-command/ -> unified command fetch."""
-    return device_command_fetch(request)
+    try:
+        raw = getattr(request, "_request", request)
+        return device_command_fetch(raw)
+    except Exception as e:
+        logger.exception("device_feed_command wrapper failed")
+        return _resp_error(str(e), http_status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ----------------------

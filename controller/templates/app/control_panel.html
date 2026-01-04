@@ -194,7 +194,10 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="text-center mb-4">Pet Feeder Control Panel</h1>
+        <h1 class="text-center mb-2">Pet Feeder Control Panel</h1>
+        <div class="text-center mb-4">
+            <span id="deviceStatusHeader" class="badge bg-secondary">Device: Unknown</span>
+        </div>
         
         <div class="card">
             <div class="card-header">Feed Now &amp; Portion Control</div>
@@ -215,10 +218,10 @@
                             <div class="portion-value" id="portionValue">100g</div>
                             <div class="portion-control">
                                 <div class="portion-label">
-                                    <span>25g</span>
+                                    <span>0g</span>
                                     <span>500g</span>
                                 </div>
-                                <input type="range" class="form-range" id="portionSize" min="25" max="500" step="5" value="100">
+                                <input type="range" class="form-range" id="portionSize" min="0" max="500" step="1" value="100">
                             </div>
                         </div>
                     </div>
@@ -238,7 +241,7 @@
                     </div>
                     <div class="col-md-3">
                         <label for="schedulePortion" class="form-label">Portion (g)</label>
-                        <input type="number" class="form-control" id="schedulePortion" min="25" max="500" required aria-required="true" aria-invalid="false" aria-describedby="schedulePortionError">
+                        <input type="number" class="form-control" id="schedulePortion" min="0" max="500" required aria-required="true" aria-invalid="false" aria-describedby="schedulePortionError">
                         <div id="schedulePortionError" class="text-danger small" role="alert" aria-live="polite" style="display:none"></div>
                     </div>
                     <div class="col-md-3">
@@ -852,6 +855,15 @@
         // Dispatch a "Feed Now" command to the backend API
         feedNowBtn.addEventListener('click', () => {
             const portionSize = portionSlider.value;
+            const deviceId = (window.DEVICE_ID || '{{ DEVICE_ID }}');
+            fetch(`/api/feed-command/status/?device_id=${encodeURIComponent(deviceId)}`)
+              .then(r => r.json())
+              .then(status => {
+                if (status && status.pending) {
+                  showToast('Feed command already pending', 'warning');
+                  updateCommandStatus();
+                  return;
+                }
             feedNowBtn.disabled = true;
             feedNowBtn.innerHTML = '<div><i class="fas fa-spinner fa-spin"></i><div>Feeding...</div></div>';
             fetch('/feed_now/', {
@@ -861,7 +873,7 @@
                     'X-CSRFToken': getCSRFToken()
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({ portion_size: portionSize, device_id: (window.DEVICE_ID || '{{ DEVICE_ID }}') })
+                body: JSON.stringify({ portion_size: portionSize, device_id: deviceId })
             })
             .then(async (response) => {
                 let data = null;
@@ -899,6 +911,7 @@
                         feedNowBtn.innerHTML = '<div><i class="fas fa-utensils"></i><div>Feed Now</div></div>';
                     }, 2000);
                     setTimeout(() => debouncedLoadLogs(logsCurrentPage), 2000);
+                    updateCommandStatus();
                 } else {
                     const msg = (data && (data.message || data.detail)) || 'Feed command not accepted.';
                     showToast(msg, 'danger');
@@ -912,7 +925,147 @@
                 feedNowBtn.innerHTML = '<div><i class="fas fa-utensils"></i><div>Feed Now</div></div>';
                 showToast('Server unreachable.', 'error', { sticky: true });
             });
+              })
+              .catch(() => {});
         });
+
+        const commandStatusEl = document.getElementById('commandStatus');
+        const cancelPendingBtn = document.getElementById('cancelPendingBtn');
+        const cancelAllBtn = document.getElementById('cancelAllBtn');
+        const stopFeedingBtn = document.getElementById('stopFeedingBtn');
+        const deviceStatusEl = document.getElementById('deviceStatus');
+        const deviceStatusHeaderEl = document.getElementById('deviceStatusHeader');
+        let lastOnline = null;
+        function updateDeviceStatus() {
+            const deviceId = (window.DEVICE_ID || '{{ DEVICE_ID }}');
+            fetch(`/api/device-status/?device_id=${encodeURIComponent(deviceId)}`)
+              .then(r => r.json())
+              .then(data => {
+                  const online = !!data.online || data.computed_status === 'online' || data.status === 'online';
+                  const text = online ? 'Device: Online' : 'Device: Offline';
+                  const cls = online ? 'badge bg-success' : 'badge bg-danger';
+                  if (deviceStatusEl) {
+                      deviceStatusEl.textContent = text;
+                      deviceStatusEl.className = cls;
+                  }
+                  if (deviceStatusHeaderEl) {
+                      deviceStatusHeaderEl.textContent = text;
+                      deviceStatusHeaderEl.className = cls;
+                  }
+                  lastOnline = online;
+              })
+              .catch(() => {
+                  if (deviceStatusEl) {
+                      deviceStatusEl.textContent = 'Device: Offline';
+                      deviceStatusEl.className = 'badge bg-danger';
+                  }
+                  if (deviceStatusHeaderEl) {
+                      deviceStatusHeaderEl.textContent = 'Device: Offline';
+                      deviceStatusHeaderEl.className = 'badge bg-danger';
+                  }
+                  lastOnline = false;
+              });
+        }
+        function updateCommandStatus() {
+            const deviceId = (window.DEVICE_ID || '{{ DEVICE_ID }}');
+            fetch(`/api/feed-command/status/?device_id=${encodeURIComponent(deviceId)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (!commandStatusEl) return;
+                    if (data.pending) {
+                        const countText = typeof data.pending_count === 'number' ? `, queue=${data.pending_count}` : '';
+                        commandStatusEl.textContent = `Command: ${data.status} (ID ${data.command_id}, ${data.portion_size}g${countText})`;
+                        if (cancelPendingBtn) {
+                            const hasAnyPending = (typeof data.pending_count === 'number' ? data.pending_count > 0 : (data.status === 'pending'));
+                            cancelPendingBtn.style.display = hasAnyPending ? '' : 'none';
+                            cancelPendingBtn.disabled = !hasAnyPending;
+                        }
+                        if (cancelAllBtn) {
+                            const showAll = (typeof data.pending_count === 'number' && data.pending_count > 1);
+                            cancelAllBtn.style.display = showAll ? '' : 'none';
+                            cancelAllBtn.disabled = !showAll;
+                        }
+                        if (stopFeedingBtn) {
+                            stopFeedingBtn.style.display = data.status === 'processing' ? '' : 'none';
+                            stopFeedingBtn.disabled = data.status !== 'processing';
+                        }
+                        if (feedNowBtn) { feedNowBtn.disabled = true; }
+                    } else {
+                        commandStatusEl.textContent = 'Command: none';
+                        if (cancelPendingBtn) {
+                            cancelPendingBtn.style.display = 'none';
+                        }
+                        if (cancelAllBtn) {
+                            cancelAllBtn.style.display = 'none';
+                        }
+                        if (stopFeedingBtn) {
+                            stopFeedingBtn.style.display = 'none';
+                        }
+                        if (feedNowBtn) { feedNowBtn.disabled = false; }
+                    }
+                })
+                .catch(() => {});
+        }
+        if (cancelPendingBtn) {
+            cancelPendingBtn.addEventListener('click', () => {
+                const deviceId = (window.DEVICE_ID || '{{ DEVICE_ID }}');
+                cancelPendingBtn.disabled = true;
+                fetch('/api/feed-command/cancel/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ device_id: deviceId })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    showToast(data.message || 'Cancelled.', 'warning');
+                    cancelPendingBtn.disabled = false;
+                    updateCommandStatus();
+                })
+                .catch(() => { cancelPendingBtn.disabled = false; });
+            });
+        }
+        if (cancelAllBtn) {
+            cancelAllBtn.addEventListener('click', () => {
+                const deviceId = (window.DEVICE_ID || '{{ DEVICE_ID }}');
+                cancelAllBtn.disabled = true;
+                fetch('/api/feed-command/cancel/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ device_id: deviceId, all: true })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    showToast(data.message || 'Cancelled all pending.', 'warning');
+                    cancelAllBtn.disabled = false;
+                    updateCommandStatus();
+                })
+                .catch(() => { cancelAllBtn.disabled = false; });
+            });
+        }
+        if (stopFeedingBtn) {
+            stopFeedingBtn.addEventListener('click', () => {
+                stopFeedingBtn.disabled = true;
+                fetch('/api/stop-feeding/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({})
+                })
+                .then(r => r.json())
+                .then(data => {
+                    showToast(data.message || 'Stop command queued.', 'warning');
+                    stopFeedingBtn.disabled = false;
+                    updateCommandStatus();
+                })
+                .catch(() => { stopFeedingBtn.disabled = false; });
+            });
+        }
+        setInterval(updateCommandStatus, 5000);
+        setInterval(updateDeviceStatus, 10000);
+        updateCommandStatus();
+        updateDeviceStatus();
 
         document.addEventListener('DOMContentLoaded', () => {
             debouncedLoadLogs(logsCurrentPage);
@@ -922,5 +1075,12 @@
             window.addEventListener('focus', () => debouncedLoadLogs(logsCurrentPage));
         });
     </script>
+<div class="position-fixed bottom-0 end-0 bg-light p-3 rounded shadow d-flex align-items-center gap-2 mb-3 me-3">
+  <span id="deviceStatus" class="badge bg-secondary">Device: Unknown</span>
+  <span id="commandStatus" class="badge bg-secondary">Command: none</span>
+  <button id="cancelPendingBtn" class="btn btn-sm btn-danger" style="display:none;">Cancel Pending</button>
+  <button id="cancelAllBtn" class="btn btn-sm btn-warning" style="display:none;">Cancel All</button>
+  <button id="stopFeedingBtn" class="btn btn-sm btn-danger" style="display:none;">Stop Feeding</button>
+</div>
 </body>
 </html>

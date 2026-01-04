@@ -88,6 +88,9 @@ class HistoryView(TemplateView):
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class BMICalculatorView(TemplateView):
     template_name = 'app/bmi_calculator.html'
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class PendingCommandsView(TemplateView):
+    template_name = 'app/pending_commands.html'
 
 
 # Test page to validate unified base and sidebar rendering in Controller
@@ -188,7 +191,7 @@ def feed_now(request):
         from datetime import timedelta
         with transaction.atomic():
             # Check for recent duplicates with a 10-second window and device scoping, locking matching rows
-            recent_window = timezone.now() - timedelta(seconds=10)
+            recent_window = timezone.now() - timedelta(seconds=20)
             recent_dup = (
                 PendingCommand.objects.select_for_update()
                 .filter(
@@ -215,11 +218,27 @@ def feed_now(request):
                 .first()
             )
             if existing:
-                logger.info(f"[{request_id}] feed_now: conflict existing pending command id={existing.id} portion={existing.portion_size} device_id={device_id}")
-                return Response(
-                    {"status": "conflict", "message": "Feed command already pending", "success": False, "command_id": existing.id, "portion_size": existing.portion_size},
-                    status=status.HTTP_409_CONFLICT
-                )
+                now = timezone.now()
+                pending_stale = now - timedelta(seconds=60)
+                processing_stale = now - timedelta(seconds=180)
+                if existing.status == 'pending' and existing.created_at <= pending_stale:
+                    try:
+                        existing.mark_failed("expired pending replaced")
+                    except Exception:
+                        pass
+                elif existing.status == 'processing':
+                    ts = existing.processed_at or existing.created_at
+                    if ts <= processing_stale:
+                        try:
+                            existing.mark_failed("expired processing replaced")
+                        except Exception:
+                            pass
+                    else:
+                        logger.info(f"[{request_id}] feed_now: conflict existing pending command id={existing.id} portion={existing.portion_size} device_id={device_id}")
+                        return Response(
+                            {"status": "conflict", "message": "Feed command already pending", "success": False, "command_id": existing.id, "portion_size": existing.portion_size},
+                            status=status.HTTP_409_CONFLICT
+                        )
 
             # Safe to create command here under transaction
             command = PendingCommand.objects.create(command='feed_now', portion_size=float(portion_size), device_id=device_id)
@@ -323,9 +342,7 @@ def check_schedule(request):
             # Create timezone-aware datetime for today's scheduled time using current TZ
             schedule_naive = datetime.combine(today_date, schedule_time)
             schedule_datetime_local = timezone.make_aware(schedule_naive, timezone.get_current_timezone())
-            # Compare in UTC to avoid DST/local mismatches
-            schedule_datetime_utc = schedule_datetime_local.astimezone(timezone.utc)
-            time_diff = (now_aware - schedule_datetime_utc).total_seconds()
+            time_diff = (local_now - schedule_datetime_local).total_seconds()
             within_window = 0 <= time_diff <= TRIGGER_WINDOW_SECONDS
             
             # Cache key: include timezone to prevent cross-TZ collisions
@@ -334,7 +351,7 @@ def check_schedule(request):
             
             logger.info(
                 f"check_schedule: tz={tzname} now_local={current_time_str} day={current_day_abbr} sched_id={schedule.id} sched_time_local={schedule_time.strftime('%H:%M')} "
-                f"utc_diff={time_diff:.2f}s within_window={within_window} cache_hit={cache_hit} label={getattr(schedule, 'label', '')}"
+                f"local_diff={time_diff:.2f}s within_window={within_window} cache_hit={cache_hit} label={getattr(schedule, 'label', '')}"
             )
             
             if within_window and not cache_hit:
@@ -642,6 +659,83 @@ def calibrate(request):
     except Exception as e:
         return Response({"error": f"Failed to queue calibrate: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def feed_command_status(request):
+    try:
+        device_id = request.query_params.get('device_id') or request.GET.get('device_id')
+        if not device_id:
+            return Response({"status": "unknown", "message": "device_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        pending_qs = PendingCommand.objects.filter(command='feed_now', device_id=device_id, status='pending')
+        processing_qs = PendingCommand.objects.filter(command='feed_now', device_id=device_id, status='processing')
+        pending_count = pending_qs.count()
+        processing_cmd = processing_qs.order_by('created_at').first()
+        if processing_cmd:
+            return Response({"pending": True, "status": "processing", "command_id": processing_cmd.id, "portion_size": processing_cmd.portion_size, "pending_count": pending_count, "processing": True})
+        oldest_pending = pending_qs.order_by('created_at').first()
+        if oldest_pending:
+            return Response({"pending": True, "status": "pending", "command_id": oldest_pending.id, "portion_size": oldest_pending.portion_size, "pending_count": pending_count, "processing": False})
+        return Response({"pending": False, "status": "none", "pending_count": 0, "processing": False})
+    except Exception as e:
+        return Response({"error": f"Failed to fetch command status: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def feed_command_cancel(request):
+    try:
+        device_id = request.data.get('device_id')
+        if not device_id:
+            return Response({"error": "device_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        with transaction.atomic():
+            cancel_all = bool(request.data.get('all'))
+            if cancel_all:
+                qs = PendingCommand.objects.select_for_update().filter(command='feed_now', device_id=device_id, status='pending')
+                count = 0
+                for cmd in qs:
+                    try:
+                        cmd.mark_failed("cancelled by user")
+                    except Exception:
+                        cmd.status = 'failed'
+                        cmd.save(update_fields=["status"])
+                    count += 1
+                return Response({"status": "ok", "message": "Cancelled all pending feed commands", "cancelled_count": count})
+            cmd = PendingCommand.objects.select_for_update().filter(command='feed_now', device_id=device_id, status='pending').order_by('created_at').first()
+            if not cmd:
+                return Response({"status": "ok", "message": "No pending feed command"}, status=status.HTTP_200_OK)
+            try:
+                cmd.mark_failed("cancelled by user")
+            except Exception:
+                cmd.status = 'failed'
+                cmd.save(update_fields=["status"])
+            return Response({"status": "ok", "message": "Pending feed command cancelled", "command_id": cmd.id})
+    except Exception as e:
+        return Response({"error": f"Failed to cancel command: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def feed_command_cancel_one(request):
+    try:
+        command_id = request.data.get('command_id')
+        if not command_id:
+            return Response({"error": "command_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        with transaction.atomic():
+            try:
+                cmd = PendingCommand.objects.select_for_update().get(id=command_id)
+            except PendingCommand.DoesNotExist:
+                return Response({"error": "Command not found"}, status=status.HTTP_404_NOT_FOUND)
+            if cmd.status != 'pending':
+                return Response({"status": "ok", "message": "Command not pending"}, status=status.HTTP_200_OK)
+            try:
+                cmd.mark_failed("cancelled by user")
+            except Exception:
+                cmd.status = 'failed'
+                cmd.save(update_fields=["status"])
+            return Response({"status": "ok", "message": "Command cancelled", "command_id": cmd.id})
+    except Exception as e:
+        return Response({"error": f"Failed to cancel command: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # REST API ViewSets
 class PetProfileViewSet(viewsets.ModelViewSet):
@@ -856,8 +950,11 @@ class PendingCommandViewSet(viewsets.ModelViewSet):
         """Allow filtering by status"""
         queryset = PendingCommand.objects.all()
         status_filter = self.request.query_params.get('status', None)
+        device_filter = self.request.query_params.get('device_id', None)
         if status_filter is not None:
             queryset = queryset.filter(status=status_filter)
+        if device_filter is not None:
+            queryset = queryset.filter(device_id=device_filter)
         return queryset
 
 @api_view(["GET"]) 

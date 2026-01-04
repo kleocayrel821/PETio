@@ -24,6 +24,10 @@ Expects: view_name set to a url_name for active highlighting
     <i class="fas fa-history"></i>
     <span>History</span>
   </a>
+  <a href="{% url 'pending_commands' %}" class="sidebar-item {% if view_name == 'pending_commands' %}active{% endif %}">
+    <i class="fas fa-clipboard-list"></i>
+    <span>Pending Commands</span>
+  </a>
   <a href="{% url 'bmi_calculator' %}" class="sidebar-item {% if view_name == 'bmi_calculator' %}active{% endif %}">
     <i class="fas fa-heartbeat"></i>
     <span>Pet BMI</span>
