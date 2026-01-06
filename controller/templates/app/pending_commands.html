@@ -1,6 +1,44 @@
-{% extends "app/base.html" %}
+{% extends "base.html" %}
 {% load static %}
 {% block title %}Pending Commands{% endblock %}
+{% block sidebar %}{% include 'controller/sidebar.html' with view_name='pending_commands' %}{% endblock %}
+{% block app_nav %}
+<ul class="menu menu-horizontal px-1 gap-1 overflow-x-auto">
+  <li>
+    <a href="{% url 'home' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'home' %}active{% endif %}">
+      <i class="fas fa-home mr-2"></i>
+      <span>Home</span>
+    </a>
+  </li>
+  <li>
+    <a href="{% url 'schedules_ui' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'schedules_ui' %}active{% endif %}">
+      <i class="fas fa-calendar-alt mr-2"></i>
+      <span>Schedules</span>
+    </a>
+  </li>
+  <li>
+    <a href="{% url 'history' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'history' %}active{% endif %}">
+      <i class="fas fa-history mr-2"></i>
+      <span>History</span>
+    </a>
+  </li>
+</ul>
+{% endblock %}
+{% block extra_css %}
+<style>
+  /* Controller accent color consistency */
+  .enhanced-card .section-title i { background: rgba(31,69,110,0.12) !important; color: #1f456e !important; }
+  /* Accent ghost buttons (exclude warning) */
+  .btn.btn-ghost {
+    border: 1.5px solid rgba(31,69,110,0.35);
+    color: #1f456e;
+  }
+  .btn.btn-ghost:hover {
+    background: rgba(31,69,110,0.08);
+    color: #1f456e;
+  }
+</style>
+{% endblock %}
 {% block content %}
 <div class="enhanced-card">
   <h2 class="section-title">
@@ -8,7 +46,7 @@
     Pending Commands
   </h2>
   <div class="mb-3 flex gap-2">
-    <button id="refreshPending" class="btn btn-sm btn-ghost">Refresh</button>
+    <button id="refreshPending" class="btn btn-sm btn-ghost btn-enhanced">Refresh</button>
     <button id="cancelAllPending" class="btn btn-sm btn-warning">Cancel All</button>
   </div>
   <div class="overflow-x-auto">
@@ -33,7 +71,7 @@
     Processing Commands
   </h2>
   <div class="mb-3 flex gap-2">
-    <button id="refreshProcessing" class="btn btn-sm btn-ghost">Refresh</button>
+    <button id="refreshProcessing" class="btn btn-sm btn-ghost btn-enhanced">Refresh</button>
   </div>
   <div class="overflow-x-auto">
     <table class="table table-zebra w-full">
