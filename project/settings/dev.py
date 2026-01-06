@@ -9,18 +9,19 @@ import os
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-^l*57=_zqohgr5s=z+o2$lwqvp-4-q!m%(m%a6$(*j2bg41onx'
 
-DEBUG = True
+DEBUG = False
 
 TIME_ZONE = 'Asia/Manila'
 
 ALLOWED_HOSTS = [
+    'petio.onrender.com',
     '127.0.0.1',
     'localhost',
-    '192.168.1.14',
-    '192.168.18.114',
-    '192.168.1.8',
-    '192.168.18.9',
-    '*',
+    #'192.168.1.14',
+    #'192.168.18.114',
+    #'192.168.1.8',
+    #'192.168.18.9',
+    #'*',
 ]
 
 # SQLite for dev
