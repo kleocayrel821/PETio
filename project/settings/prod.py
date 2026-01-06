@@ -9,20 +9,21 @@ Required environment variables (prod):
 - POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT
 - EMAIL_HOST, EMAIL_PORT, EMAIL_USE_TLS, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, DEFAULT_FROM_EMAIL
 """
+import dj_database_url
 from .base import *  # noqa
 import os
 from os import environ
 
-DEBUG = False
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 # SECRET KEY from environment
-SECRET_KEY = environ.get('DJANGO_SECRET_KEY', '')
+SECRET_KEY = os.environ.get("SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError('DJANGO_SECRET_KEY environment variable is required in production')
 
 # Allowed hosts and CSRF trusted origins
 # Default to '*' for local preview; set DJANGO_ALLOWED_HOSTS in real deployments.
-ALLOWED_HOSTS = environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS").split(" ")
 CSRF_TRUSTED_ORIGINS = environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if environ.get('DJANGO_CSRF_TRUSTED_ORIGINS') else []
 
 # Database: PostgreSQL via environment
@@ -36,6 +37,9 @@ DATABASES = {
         'PORT': environ.get('POSTGRES_PORT', '5432'),
     }
 }
+
+database_url = os.environ.get("DATABASE_URL")
+DATABASES["default"] = dj_database_url.parse(database_url)
 
 # Local fallback: if PostgreSQL env vars are missing, use SQLite to allow
 # production-style runs (Whitenoise, security headers) without a DB server.

@@ -3,6 +3,7 @@ Base settings for the Petio Django project.
 Shared configuration for dev and prod. Environment-specific overrides live in
 `project/settings/dev.py` and `project/settings/prod.py`.
 """
+import dj_database_url
 from pathlib import Path
 import os
 
@@ -70,6 +71,9 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+DATABASES["default"] = dj_database_url.parse("postgresql://petio_django_render_user:dtYMRTtVzZ49QBqZLkTlBCvkYdoK6RM3@dpg-d5eemo2li9vc73dfn0d0-a.oregon-postgres.render.com/petio_django_render")
+
 
 # Authentication
 AUTH_USER_MODEL = 'accounts.User'
