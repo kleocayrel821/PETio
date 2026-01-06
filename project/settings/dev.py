@@ -2,6 +2,7 @@
 Development settings.
 Extends base.py with development-friendly defaults.
 """
+import dj_database_url
 from .base import *  # noqa
 import os
 
@@ -29,6 +30,8 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+DATABASES["default"] = dj_database_url.parse("postgresql://petio_django_render_user:dtYMRTtVzZ49QBqZLkTlBCvkYdoK6RM3@dpg-d5eemo2li9vc73dfn0d0-a.oregon-postgres.render.com/petio_django_render")
 
 # Email backend for dev (prints emails to console)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
