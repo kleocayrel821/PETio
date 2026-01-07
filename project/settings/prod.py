@@ -23,7 +23,8 @@ if not SECRET_KEY:
 
 # Allowed hosts and CSRF trusted origins
 # Default to '*' for local preview; set DJANGO_ALLOWED_HOSTS in real deployments.
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS").split(" ")
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split(",")
+
 CSRF_TRUSTED_ORIGINS = environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if environ.get('DJANGO_CSRF_TRUSTED_ORIGINS') else []
 
 # Database: PostgreSQL via environment
