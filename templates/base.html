@@ -210,14 +210,6 @@
             ></span>
           </a>
 
-          {# Create action: only visible for Marketplace #}
-          {% if current_app == 'marketplace' %}
-          <a
-            class="btn-create"
-            aria-label="Create"
-            href="{% url 'marketplace:listing_create' %}"
-          >+ Create</a>
-          {% endif %}
         {% endif %}
 
         {# Profile dropdown #}
@@ -264,6 +256,14 @@
       <img src="{% static 'images/PETiologo.png' %}" alt="PETio" />
     </div>
     <div class="global-app-menu__list">
+      <a href="#" id="openSectionsFromGlobal" class="app-dropdown__item mobile-only" role="menuitem">
+        <span class="app-dropdown__icon"><i class="fas fa-list"></i></span>
+        <div class="app-dropdown__meta">
+          <div class="app-dropdown__title">Sections</div>
+          <div class="app-dropdown__desc">Open page navigation</div>
+        </div>
+        <i class="fas fa-chevron-right item-chevron"></i>
+      </a>
       <a href="{% url 'home' %}" class="app-dropdown__item {% if current_app == 'controller' or current_app is None %}active{% endif %}" role="menuitem">
         <span class="app-dropdown__icon"><i data-feather="sliders"></i></span>
         <div class="app-dropdown__meta">

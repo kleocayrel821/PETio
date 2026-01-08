@@ -45,7 +45,7 @@
                         id="scheduleAmount" 
                         class="form-control-enhanced w-full"
                         min="25" 
-                        max="500" 
+                        max="100" 
                         value="25"
                         required
                     >
@@ -259,8 +259,8 @@
                 </div>
                 <div>
                     <label class="subsection-title">Amount (grams)</label>
-                    <input type="number" id="editScheduleAmount" class="form-control-enhanced w-full" min="25" max="500" required aria-required="true" aria-describedby="editAmountHelp">
-                    <div id="editAmountHelp" class="text-xs text-gray-500 mt-1">Recommended: 25–500g. Adjust for your pet.</div>
+                    <input type="number" id="editScheduleAmount" class="form-control-enhanced w-full" min="25" max="100" required aria-required="true" aria-describedby="editAmountHelp">
+                    <div id="editAmountHelp" class="text-xs text-gray-500 mt-1">Recommended: 25–100g. Adjust for your pet.</div>
                 </div>
             </div>
 
@@ -773,8 +773,8 @@ document.getElementById('addScheduleForm').addEventListener('submit', async func
     }
 
     const portionVal = parseInt(formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value);
-    if (isNaN(portionVal) || portionVal < 25 || portionVal > 500) {
-        showToast('Portion must be between 25 and 500 grams', 'warning');
+    if (isNaN(portionVal) || portionVal < 25 || portionVal > 100) {
+        showToast('Portion must be between 25 and 100 grams', 'warning');
         return;
     }
     
@@ -912,8 +912,8 @@ document.getElementById('editScheduleForm').addEventListener('submit', async fun
     }
 
     const portionVal = parseInt(document.getElementById('editScheduleAmount').value);
-    if (isNaN(portionVal) || portionVal < 25 || portionVal > 500) {
-        showToast('Portion must be between 25 and 500 grams', 'warning');
+    if (isNaN(portionVal) || portionVal < 25 || portionVal > 100) {
+        showToast('Portion must be between 25 and 100 grams', 'warning');
         return;
     }
     
