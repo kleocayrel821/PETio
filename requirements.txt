@@ -9,9 +9,11 @@ click==8.3.1
 click-didyoumean==0.3.1
 click-plugins==1.1.1.2
 click-repl==0.3.0
+cloudinary==1.44.1
 colorama==0.4.6
 dj-database-url==3.1.0
 Django==5.2.8
+django-cloudinary-storage==0.3.0
 djangorestframework==3.16.1
 gunicorn==23.0.0
 idna==3.11
