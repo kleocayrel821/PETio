@@ -10,9 +10,8 @@
   .icon-badge-soft { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:8px; background: rgba(147,112,219,0.14); color:#6d28d9; }
   .profile-cover { height:200px; background: #92487A; position:relative; overflow:hidden; border-radius:16px; box-shadow: 0 16px 32px rgba(109,40,217,0.15); }
   .profile-info-container { max-width:900px; margin:0 auto; position:relative; }
-  .profile-avatar-container { position:absolute; top:-60px; left:20px; z-index:10; }
   .profile-avatar { width:120px; height:120px; border-radius:50%; border:5px solid white; box-shadow:0 4px 18px rgba(0,0,0,0.14); object-fit:cover; }
-  .profile-header-content { background: rgba(255,255,255,0.9); backdrop-filter: saturate(180%) blur(6px); border-radius:12px; padding: 60px 16px 16px 156px; margin-top:-40px; box-shadow:0 10px 24px rgba(124,58,237,0.08); }
+  .profile-header-content { background: rgba(255,255,255,0.9); backdrop-filter: saturate(180%) blur(6px); border-radius:12px; padding: 16px; margin-top:-40px; box-shadow:0 10px 24px rgba(124,58,237,0.08); }
   .profile-name { font-size:1.5rem; font-weight:700; color:var(--text-primary); margin:0; }
   .profile-username { color:var(--text-secondary); font-size:0.95rem; margin:2px 0 8px; }
   .profile-stats { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
@@ -41,22 +40,31 @@
   .profile-content .timeline-wrap::after { bottom:0; background: linear-gradient(to top, rgba(0,0,0,0.10), rgba(0,0,0,0)); }
   .profile-content .timeline-wrap.show-top::before { opacity:1; }
   .profile-content .timeline-wrap.show-bottom::after { opacity:1; }
+  @media (max-width: 768px) {
+    .profile-header-content { padding: 12px; text-align: center; margin-top: -60px; }
+    .profile-header-main { flex-direction: column; align-items: center; gap: 10px; }
+    .profile-avatar { width: 96px; height: 96px; border-width: 4px; }
+    .profile-stats { justify-content: center; }
+    .stat-item { padding: 6px 8px; }
+    .profile-content .timeline { padding-left: 12px; }
+    .profile-content .timeline::before { left: 6px; }
+  }
 </style>
 {% endblock %}
 {% block content %}
 <div class="profile-content container mx-auto max-w-4xl py-6">
   <div class="profile-cover"></div>
   <div class="profile-info-container">
-    <div class="profile-avatar-container">
-      {% if user_obj.profile.avatar %}
-        <img class="profile-avatar" src="{{ user_obj.profile.avatar.url }}" alt="{{ user_obj.username }} avatar">
-      {% else %}
-        <img class="profile-avatar" src="{% static 'img/placeholder.svg' %}" alt="avatar placeholder">
-      {% endif %}
-    </div>
     <div class="profile-header-content">
-      <div class="flex items-center justify-between mb-2">
-        <div>
+      <div class="profile-header-main">
+        <div class="profile-avatar-wrapper">
+          {% if user_obj.profile.avatar %}
+            <img class="profile-avatar" src="{{ user_obj.profile.avatar.url }}" alt="{{ user_obj.username }} avatar">
+          {% else %}
+            <img class="profile-avatar" src="{% static 'img/placeholder.svg' %}" alt="avatar placeholder">
+          {% endif %}
+        </div>
+        <div class="flex-1">
           <h1 class="profile-name">{{ user_obj.get_full_name|default:user_obj.username }}</h1>
           <div class="profile-username">@{{ user_obj.username }}</div>
           <div class="text-sm text-gray-500">{{ user_obj.email }}</div>
@@ -87,7 +95,7 @@
       <button type="button" class="btn btn-ghost btn-sm btn-enhanced collapse-toggle" data-target="#ratingsBody"><i class="fas fa-chevron-up"></i></button>
     </div>
     <div id="ratingsBody">
-      <div class="flex items-center gap-4 mb-3">
+      <div class="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-3">
         <div class="rating-ring" style="--value: {{ seller_rating_avg|default:0|floatformat:2 }}">
           <div class="ring-inner">{{ seller_rating_avg|floatformat:1 }}</div>
         </div>

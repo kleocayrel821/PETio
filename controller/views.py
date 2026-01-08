@@ -155,6 +155,12 @@ def feed_now(request):
                 portion_size = pet.portion_size if pet else 10.0
             except Exception:
                 portion_size = 10.0
+        try:
+            portion_size = float(portion_size)
+        except Exception:
+            return Response({"status": "error", "message": "Invalid portion size", "success": False, "error": "invalid_portion"}, status=status.HTTP_400_BAD_REQUEST)
+        if portion_size <= 0 or portion_size > 100:
+            return Response({"status": "error", "message": "Portion must be between 1 and 100 grams", "success": False, "error": "portion_out_of_range"}, status=status.HTTP_400_BAD_REQUEST)
 
         device_id = request.data.get("device_id") or getattr(settings, "DEVICE_ID", "feeder-1")
         device_ip = request.data.get("device_ip") or getattr(settings, "PETIO_DEVICE_IP", os.getenv("PETIO_DEVICE_IP"))

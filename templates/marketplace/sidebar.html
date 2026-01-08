@@ -8,6 +8,10 @@ Expects: view_name set to one of: browse, my_listings, messages, transactions, n
     <i class="fas fa-store"></i>
     <span>Browse</span>
   </a>
+  <a href="{% url 'marketplace:listing_create' %}" class="sidebar-item {% if view_name == 'listing_create' %}active{% endif %}">
+    <i class="fas fa-plus-circle"></i>
+    <span>Create Listing</span>
+  </a>
   <a href="{% url 'marketplace:dashboard' %}" class="sidebar-item {% if view_name == 'my_listings' %}active{% endif %}">
     <i class="fas fa-list"></i>
     <span>My Listings</span>

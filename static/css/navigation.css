@@ -151,6 +151,15 @@
   .main-content { margin-left: 0; }
   .global-app-menu { width: 88%; }
 }
+@media (min-width: 1024px) {
+  .global-app-menu .mobile-only { display: none; }
+}
+@media (max-width: 1024px) {
+  .global-app-menu .mobile-only { display: grid; }
+}
+@media (max-width: 768px) {
+  .sidebar.sidebar--mobile-open { display: block; height: auto; max-height: calc(100vh - 64px); overflow-y: auto; }
+}
 /* --- Profile dropdown & auth controls --- */
 .profile-menu { position: relative; }
 /* Compact profile controls */
