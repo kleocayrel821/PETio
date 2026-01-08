@@ -26,6 +26,8 @@ INSTALLED_APPS = [
     'controller',
     'marketplace',
     'social',
+    'cloudinary',
+    'cloudinary_storage',
 ]
 
 MIDDLEWARE = [
@@ -137,3 +139,8 @@ CELERY_TASK_ROUTES = {
 PETIO_DEVICE_API_KEY = os.getenv('PETIO_DEVICE_API_KEY')
 DEVICE_ID = os.getenv('DEVICE_ID', 'feeder-1')
 DEVICE_HEARTBEAT_TTL = int(os.getenv('DEVICE_HEARTBEAT_TTL', '90'))
+
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+MEDIA_URL = '/media/'  # safe to keep
