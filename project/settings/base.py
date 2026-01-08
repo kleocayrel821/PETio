@@ -12,9 +12,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Core Django settings
 INSTALLED_APPS = [
-    'cloudinary_storage',
-    'cloudinary',
-
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -30,14 +27,6 @@ INSTALLED_APPS = [
     'marketplace',
     'social',
 ]
-
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME'),
-    'API_KEY': os.environ.get('CLOUDINARY_API_KEY'),
-    'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET'),
-}
-
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 
 MIDDLEWARE = [
@@ -104,8 +93,8 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-# MEDIA_URL = 'media/'
-# MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -149,8 +138,3 @@ CELERY_TASK_ROUTES = {
 PETIO_DEVICE_API_KEY = os.getenv('PETIO_DEVICE_API_KEY')
 DEVICE_ID = os.getenv('DEVICE_ID', 'feeder-1')
 DEVICE_HEARTBEAT_TTL = int(os.getenv('DEVICE_HEARTBEAT_TTL', '90'))
-
-
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-
-# MEDIA_URL = '/media/'  # safe to keep
