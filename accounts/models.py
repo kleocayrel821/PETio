@@ -75,7 +75,7 @@ class Profile(models.Model):
     bio = models.TextField(blank=True)
     location = models.CharField(max_length=120, blank=True)
     phone = models.CharField(max_length=30, blank=True)
-    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+    avatar = models.ImageField(upload_to='avatars/%Y/%m/', blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
