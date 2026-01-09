@@ -28,7 +28,7 @@
     </a>
     <a href="{% url 'social:notifications' %}" class="tab nav-link {% if request.resolver_match.url_name == 'notifications' %}tab-active{% endif %}">
         <span class="icon-badge-soft icon-inline"><i class="fas fa-bell"></i></span>Notifications
-        <span id="notifBadge" class="ml-2 badge badge-primary" {% if unread_notifications_count|default:0 == 0 %}style="display:none;"{% endif %}>{{ unread_notifications_count|default:0 }}</span>
+        <span id="notifBadge" class="badge badge-primary ml-2" {% if unread_notifications_count|default:0 == 0 %}style="display:none;"{% endif %}>{{ unread_notifications_count|default:0 }}</span>
     </a>
 </div>
 {% endblock %}
