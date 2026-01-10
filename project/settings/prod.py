@@ -30,6 +30,11 @@ ALLOWED_HOSTS = [
 ]
 
 print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://petio.site",
+    "https://www.petio.site",
+]
 print("CSRF_TRUSTED_ORIGINS:", CSRF_TRUSTED_ORIGINS)
 
 
