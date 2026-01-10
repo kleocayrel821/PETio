@@ -75,5 +75,5 @@ PETIO_DEVICE_API_KEY = os.environ.get('PETIO_DEVICE_API_KEY', '51c1ebc55900af527
 # -----------------------------
 DEV_ALLOW_REQUEST_PREVIEW = True  # Only for dev/testing
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+#MEDIA_URL = '/media/'
+#MEDIA_ROOT = BASE_DIR / 'media'
