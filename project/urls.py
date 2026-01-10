@@ -24,5 +24,6 @@ urlpatterns = [
 ]
 
 # Serve media files from MEDIA_ROOT at MEDIA_URL in development
-if settings.DEBUG:
+if settings.DEBUG or os.environ.get("SERVE_MEDIA") == "1":
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+

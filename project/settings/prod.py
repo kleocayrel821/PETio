@@ -95,5 +95,5 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Media files (for posts/images)
-MEDIA_URL = '/static/media/'
-MEDIA_ROOT = BASE_DIR / 'static' / 'media'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
