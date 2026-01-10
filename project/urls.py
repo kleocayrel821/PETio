@@ -4,6 +4,7 @@ from accounts import views as accounts_views
 from marketplace import views as marketplace_views
 from django.conf import settings
 from django.conf.urls.static import static
+import os
 
 urlpatterns = [
     path('', include('controller.urls')),
