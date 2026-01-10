@@ -89,11 +89,3 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Logging: more strict for Django, include request ID if using middleware later
 LOGGING['loggers']['django']['level'] = 'ERROR'
-
-# Static files
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-# Media files (for posts/images)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
