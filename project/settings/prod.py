@@ -13,7 +13,6 @@ import dj_database_url
 from .base import *  # noqa
 import os
 from os import environ
-from .base import LOGGING
 
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
@@ -31,11 +30,6 @@ ALLOWED_HOSTS = [
 ]
 
 print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
-
-CSRF_TRUSTED_ORIGINS = [
-    "https://petio.site",
-    "https://www.petio.site",
-]
 print("CSRF_TRUSTED_ORIGINS:", CSRF_TRUSTED_ORIGINS)
 
 
