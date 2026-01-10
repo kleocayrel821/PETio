@@ -13,6 +13,7 @@ import dj_database_url
 from .base import *  # noqa
 import os
 from os import environ
+from .base import LOGGING
 
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
