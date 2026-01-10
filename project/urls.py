@@ -4,7 +4,6 @@ from accounts import views as accounts_views
 from marketplace import views as marketplace_views
 from django.conf import settings
 from django.conf.urls.static import static
-import os
 
 urlpatterns = [
     path('', include('controller.urls')),
@@ -25,6 +24,5 @@ urlpatterns = [
 ]
 
 # Serve media files from MEDIA_ROOT at MEDIA_URL in development
-if settings.DEBUG or os.environ.get("SERVE_MEDIA") == "1":
+if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
