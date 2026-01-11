@@ -6,6 +6,7 @@ Shared configuration for dev and prod. Environment-specific overrides live in
 import dj_database_url
 from pathlib import Path
 import os
+import cloudinary
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -95,6 +96,13 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
+
+# Cloudinary config (common for dev & prod if you want)
+cloudinary.config(
+    cloud_name="dtef9dmf1",
+    api_key="214242362647547",
+    api_secret="w8LgTg6xivxrrjfGw-3xDtg1SiY",
+)
 
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 MEDIA_URL = '/media/'
