@@ -29,16 +29,8 @@ ALLOWED_HOSTS = [
     if h.strip()
 ]
 
-# CSRF trusted origins
-CSRF_TRUSTED_ORIGINS = [
-    o.strip()
-    for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
-    if o.strip()
-]
-
-
-#print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
-#print("CSRF_TRUSTED_ORIGINS:", CSRF_TRUSTED_ORIGINS)
+print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
+print("CSRF_TRUSTED_ORIGINS:", CSRF_TRUSTED_ORIGINS)
 
 
 CSRF_TRUSTED_ORIGINS = environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if environ.get('DJANGO_CSRF_TRUSTED_ORIGINS') else []
@@ -96,7 +88,7 @@ MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Logging: more strict for Django, include request ID if using middleware later
-#LOGGING['loggers']['django']['level'] = 'ERROR'
+LOGGING['loggers']['django']['level'] = 'ERROR'
 
 #MEDIA_URL = '/static/media/'
 #MEDIA_ROOT = BASE_DIR / 'static' / 'media'
