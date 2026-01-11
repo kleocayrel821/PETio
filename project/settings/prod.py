@@ -88,7 +88,7 @@ MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Logging: more strict for Django, include request ID if using middleware later
-LOGGING['loggers']['django']['level'] = 'ERROR'
+#LOGGING['loggers']['django']['level'] = 'ERROR'
 
 #MEDIA_URL = '/static/media/'
 #MEDIA_ROOT = BASE_DIR / 'static' / 'media'
