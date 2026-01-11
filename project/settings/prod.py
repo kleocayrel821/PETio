@@ -29,8 +29,16 @@ ALLOWED_HOSTS = [
     if h.strip()
 ]
 
-print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
-print("CSRF_TRUSTED_ORIGINS:", CSRF_TRUSTED_ORIGINS)
+# CSRF trusted origins
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+    if o.strip()
+]
+
+
+#print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
+#print("CSRF_TRUSTED_ORIGINS:", CSRF_TRUSTED_ORIGINS)
 
 
 CSRF_TRUSTED_ORIGINS = environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if environ.get('DJANGO_CSRF_TRUSTED_ORIGINS') else []
