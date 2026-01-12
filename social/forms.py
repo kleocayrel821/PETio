@@ -5,7 +5,7 @@ from .models import Post, Comment, UserProfile, SocialReport
 class PostForm(forms.ModelForm):
     class Meta:
         model = Post
-        fields = ["title", "content"]
+        fields = ["title", "content", "image"]
         widgets = {
             "title": forms.TextInput(attrs={
                 "class": "input input-bordered w-full",
@@ -15,6 +15,10 @@ class PostForm(forms.ModelForm):
             "content": forms.Textarea(attrs={
                 "class": "textarea textarea-bordered w-full min-h-[160px]",
                 "placeholder": "Share detailed content...",
+            }),
+            "image": forms.ClearableFileInput(attrs={
+                "class": "file-input file-input-bordered w-full",
+                "accept": "image/*",
             }),
         }
 
