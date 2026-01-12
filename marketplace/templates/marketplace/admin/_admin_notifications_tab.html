@@ -63,24 +63,13 @@
 </div>
 
 <script>
-  /** Get CSRF token via AdminUtils fallback. */
   function getCsrf() {
-    return (window.AdminUtils && typeof window.AdminUtils.getCSRFToken === 'function')
-      ? window.AdminUtils.getCSRFToken()
-      : (function(name){
-          let cookieValue = null;
-          if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-              const cookie = cookies[i].trim();
-              if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-              }
-            }
-          }
-          return cookieValue;
-        })('csrftoken');
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.content && meta.content !== 'NOTPROVIDED') return meta.content;
+    const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (input && input.value) return input.value;
+    const m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
   }
 
   /** Post a broadcast announcement to the server. */
@@ -94,15 +83,25 @@
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'X-CSRFToken': getCsrf(),
+        'X-Requested-With': 'XMLHttpRequest',
         'Accept': 'application/json'
       },
-      body: formData.toString()
+      body: formData.toString(),
+      credentials: 'same-origin'
     });
-    const data = await resp.json().catch(() => ({ status: 'error', message: 'Invalid JSON' }));
-    if (!resp.ok || data.status !== 'ok') {
-      throw new Error(data.message || 'Broadcast failed');
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      const data = await resp.json().catch(() => ({ status: 'error', message: 'Invalid JSON' }));
+      if (!resp.ok || data.status !== 'ok') {
+        throw new Error(data.message || 'Broadcast failed');
+      }
+      return data;
     }
-    return data;
+    const text = await resp.text();
+    if (resp.status === 401 || resp.status === 403 || resp.redirected) {
+      throw new Error('Session expired or permission denied.');
+    }
+    throw new Error('Unexpected server response.');
   }
 
   /** Prepend a new broadcast row in the history table and update count. */
