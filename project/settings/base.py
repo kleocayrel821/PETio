@@ -77,8 +77,6 @@ DATABASES = {
     }
 }
 
-DATABASES["default"] = dj_database_url.parse("postgresql://petio_django_render_user:dtYMRTtVzZ49QBqZLkTlBCvkYdoK6RM3@dpg-d5eemo2li9vc73dfn0d0-a.oregon-postgres.render.com/petio_django_render")
-
 
 # Authentication
 AUTH_USER_MODEL = 'accounts.User'
@@ -99,9 +97,9 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
 # Cloudinary config (common for dev & prod if you want)
 cloudinary.config(
-    cloud_name="dtef9dmf1",
-    api_key="214242362647547",
-    api_secret="w8LgTg6xivxrrjfGw-3xDtg1SiY",
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.environ.get("CLOUDINARY_API_KEY"),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
 )
 
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
