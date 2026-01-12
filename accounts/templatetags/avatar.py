@@ -24,17 +24,14 @@ def avatar_url(user=None, size=64, bg="3B82F6", color="fff"):
     """
     try:
         if not user or isinstance(user, AnonymousUser) or not getattr(user, 'is_authenticated', False):
-            # Generic placeholder (uses UI Avatars 'Guest')
             return f"https://ui-avatars.com/api/?name=Guest&size={int(size)}&background={bg}&color={color}"
 
-        profile = getattr(user, 'profile', None)
-        # If profile exists and has an uploaded avatar, use it
-        if profile and getattr(profile, 'avatar', None) and getattr(profile.avatar, 'url', None):
-            return profile.avatar.url
+        for rel in ('profile', 'social_profile', 'marketplace_profile'):
+            p = getattr(user, rel, None)
+            if p and getattr(p, 'avatar', None) and getattr(p.avatar, 'url', None):
+                return p.avatar.url
 
-        # Fallback to UI Avatars using the user's name
         name = escape(_name_for(user))
         return f"https://ui-avatars.com/api/?name={name}&size={int(size)}&background={bg}&color={color}"
     except Exception:
-        # Final fallback to an app static placeholder if something goes wrong
         return f"https://ui-avatars.com/api/?name=User&size={int(size)}&background={bg}&color={color}"
