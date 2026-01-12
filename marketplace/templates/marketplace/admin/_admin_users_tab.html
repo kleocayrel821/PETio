@@ -80,24 +80,13 @@
 </div>
 
 <script>
-  /** Get CSRF token via AdminUtils fallback. */
   function getCsrf() {
-    return (window.AdminUtils && typeof window.AdminUtils.getCSRFToken === 'function')
-      ? window.AdminUtils.getCSRFToken()
-      : (function(name){
-          let cookieValue = null;
-          if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-              const cookie = cookies[i].trim();
-              if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-              }
-            }
-          }
-          return cookieValue;
-        })('csrftoken');
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.content && meta.content !== 'NOTPROVIDED') return meta.content;
+    const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (input && input.value) return input.value;
+    const m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
   }
   const csrftoken = getCsrf();
 
@@ -170,11 +159,26 @@
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'X-CSRFToken': csrftoken,
+        'X-Requested-With': 'XMLHttpRequest',
         'Accept': 'application/json',
       },
       body: new URLSearchParams(body).toString(),
+      credentials: 'same-origin',
     });
-    return res.json();
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = (data && (data.message || data.error || data.detail)) || `Request failed (${res.status})`;
+        throw new Error(msg);
+      }
+      return data;
+    }
+    const text = await res.text();
+    if (res.status === 401 || res.status === 403 || res.redirected) {
+      throw new Error('Session expired or permission denied.');
+    }
+    throw new Error('Unexpected server response.');
   }
 
   /** Toggle user active/inactive; refresh table and toast outcome. */
