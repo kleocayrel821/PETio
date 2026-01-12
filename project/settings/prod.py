@@ -53,7 +53,7 @@ if database_url:
 
 # Local fallback: if PostgreSQL env vars are missing, use SQLite to allow
 # production-style runs (Whitenoise, security headers) without a DB server.
-if not environ.get('POSTGRES_DB'):
+if not database_url and not environ.get('POSTGRES_DB'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
