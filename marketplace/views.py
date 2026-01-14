@@ -606,7 +606,6 @@ class CatalogView(LoginRequiredMixin, ListView):
     # Removed duplicate get_context_data (consolidated above)
 
 
-@method_decorator(ensure_csrf_cookie, name="dispatch")
 class ListingDetailView(LoginRequiredMixin, DetailView):
     """Show a single listing detail page."""
     model = Listing
