@@ -176,9 +176,11 @@ def create_post(request):
             files = request.FILES.getlist('images') or request.FILES.getlist('media')
             for f in files:
                 ct = getattr(f, 'content_type', '') or ''
-                if ct.startswith('image/'):
+                name = getattr(f, 'name', '') or ''
+                ext = name.lower().rsplit('.', 1)[-1] if '.' in name else ''
+                if ct.startswith('image/') or ext in ('jpg', 'jpeg', 'png', 'gif', 'webp'):
                     PostImage.objects.create(post=post, image=f)
-                elif ct.startswith('video/'):
+                elif ct.startswith('video/') or ext in ('mp4', 'webm', 'mov', 'm4v', 'avi', 'mkv'):
                     PostVideo.objects.create(post=post, file=f)
             messages.success(request, 'Post created successfully!')
             return redirect('social:post_detail', pk=post.pk)
@@ -476,9 +478,11 @@ def edit_post(request, pk):
             files = request.FILES.getlist('images')
             for f in files:
                 ct = getattr(f, 'content_type', '') or ''
-                if ct.startswith('image/'):
+                name = getattr(f, 'name', '') or ''
+                ext = name.lower().rsplit('.', 1)[-1] if '.' in name else ''
+                if ct.startswith('image/') or ext in ('jpg', 'jpeg', 'png', 'gif', 'webp'):
                     PostImage.objects.create(post=post, image=f)
-                elif ct.startswith('video/'):
+                elif ct.startswith('video/') or ext in ('mp4', 'webm', 'mov', 'm4v', 'avi', 'mkv'):
                     from .models import PostVideo
                     PostVideo.objects.create(post=post, file=f)
             # Remove selected existing videos
