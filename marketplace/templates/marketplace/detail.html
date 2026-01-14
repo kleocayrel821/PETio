@@ -17,8 +17,8 @@
         <div class="relative">
             <div class="carousel w-full rounded-xl bg-base-200 overflow-hidden">
                 <div id="slide1" class="carousel-item w-full">
-                    {% if listing.main_image %}
-                    <img src="{{ listing.main_image.url }}" alt="{{ listing.title }}" class="w-full h-96 object-cover">
+                    {% if main_image_url %}
+                    <img src="{{ main_image_url }}" alt="{{ listing.title }}" class="w-full h-96 object-cover">
                     {% else %}
                     <img src="{% static 'img/placeholder.svg' %}" alt="{{ listing.title }}" class="w-full h-96 object-cover">
                     {% endif %}
