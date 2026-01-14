@@ -606,7 +606,6 @@ class CatalogView(LoginRequiredMixin, ListView):
     # Removed duplicate get_context_data (consolidated above)
 
 
-@method_decorator(ensure_csrf_cookie, name="dispatch")
 class ListingDetailView(LoginRequiredMixin, DetailView):
     """Show a single listing detail page."""
     model = Listing
@@ -645,11 +644,6 @@ class ListingDetailView(LoginRequiredMixin, DetailView):
         except Exception:
             ctx["seller_rating_avg"] = 0.0
             ctx["seller_rating_count"] = 0
-        try:
-            miu = listing.main_image.url if getattr(listing, "main_image", None) else None
-        except Exception:
-            miu = None
-        ctx["main_image_url"] = miu
         # Similar products: active listings in the same category, excluding current
         try:
             if getattr(listing, "category_id", None):
