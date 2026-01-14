@@ -48,15 +48,13 @@
 
 {% block marketplace_scripts %}
 <script>
-// CSRF helper copied from messages page for safe POST requests
 function getCSRFToken() {
-  const name = 'csrftoken=';
-  const cookies = document.cookie.split(';');
-  for (let c of cookies) {
-    c = c.trim();
-    if (c.startsWith(name)) return c.substring(name.length);
-  }
-  return '';
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  if (meta && meta.content && meta.content !== 'NOTPROVIDED') return meta.content;
+  const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+  if (input && input.value) return input.value;
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : '';
 }
 
 function showAlert(message, type) {
@@ -87,15 +85,30 @@ function showAlert(message, type) {
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': getCSRFToken(),
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({ reason, details }),
+        credentials: 'same-origin',
       });
-      if (!resp.ok) {
+      const ct = resp.headers.get('content-type') || '';
+      let data = null;
+      if (ct.includes('application/json')) {
+        data = await resp.json();
+      } else {
         const text = await resp.text();
+        if (resp.status === 401 || resp.status === 403 || resp.redirected) {
+          showAlert('Session expired or permission denied.', 'error');
+          return;
+        }
         showAlert(text || 'Failed to submit report.', 'error');
         return;
       }
-      const data = await resp.json();
+      if (!resp.ok) {
+        const msg = (data && (data.message || data.error || data.detail)) || 'Failed to submit report.';
+        showAlert(msg, 'error');
+        return;
+      }
       const flaggedMsg = data.flagged ? ' The listing has been flagged for moderation.' : '';
       showAlert(`Report submitted successfully. Open reports: ${data.open_report_count}.${flaggedMsg}`, 'success');
     } catch (err) {
