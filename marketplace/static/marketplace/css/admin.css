@@ -159,13 +159,6 @@ body.layout-admin .transaction-table tbody tr:nth-child(odd) { background: #F9FA
 body.layout-admin .transaction-table tbody tr:hover { box-shadow: 0 1px 10px rgba(0,0,0,0.08); transform: translateY(-1px); }
 body.layout-admin .table-sticky thead th { position: sticky; top: 0; background: #F3F4F6; z-index: 1; }
 body.layout-admin .table-compact td, body.layout-admin .table-compact th { padding: 0.5rem; }
-/* Ensure cell contents align vertically for consistent look */
-body.layout-admin table.table td,
-body.layout-admin table.table th,
-body.layout-admin table.table-compact td,
-body.layout-admin table.table-compact th {
-  vertical-align: middle;
-}
 
 /* Status badges */
 body.layout-admin .status-badge-success { background: #DCFCE7; color: #15803D; border-radius: 9999px; padding: 0.125rem 0.5rem; font-weight: 600; font-size: 0.75rem; }
@@ -207,8 +200,6 @@ body.layout-admin .btn-unified:active { transform: scale(0.98); }
 
 /* Modal overlay refinement */
 body.layout-admin .modal-overlay-blur { backdrop-filter: blur(2px); }
-/* Modal width safety on small screens */
-body.layout-admin .modal .modal-box { width: min(100vw - 32px, 720px); }
 
 /* Glassy card baseline for all admin cards */
 body.layout-admin .card {
@@ -219,10 +210,6 @@ body.layout-admin .card {
   backdrop-filter: saturate(140%) blur(8px);
 }
 body.layout-admin .card:hover { box-shadow: var(--admin-shadow-md); }
-/* Badge alignment improvements */
-body.layout-admin .badge { display: inline-flex; align-items: center; }
-/* Dropdown items alignment in admin pages */
-body.layout-admin .dropdown .menu li a { display: flex; align-items: center; gap: 0.5rem; }
 
 body.layout-admin #broadcast-send.btn.btn-primary {
   background-color: var(--admin-secondary);
