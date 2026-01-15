@@ -7,9 +7,13 @@ Provides:
 from django.urls import reverse, NoReverseMatch
 from django.contrib.auth.models import AnonymousUser
 try:
-    from social.models import Notification
+    from social.models import Notification as SocialNotification
 except Exception:
-    Notification = None
+    SocialNotification = None
+try:
+    from marketplace.models import Notification as MarketplaceNotification
+except Exception:
+    MarketplaceNotification = None
 from django.conf import settings
 
 def device_id_context(request):
@@ -85,10 +89,20 @@ def unread_notifications_count(request):
     Returns 0 if user is anonymous or notifications app/model is unavailable.
     """
     user = getattr(request, 'user', None)
-    if Notification is None or not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
+    if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
         return {"unread_notifications_count": 0}
-    try:
-        count = Notification.objects.filter(recipient=user, is_read=False).count()
-    except Exception:
-        count = 0
+    path = request.path or ""
+    count = 0
+    if path.startswith("/social/"):
+        try:
+            if SocialNotification is not None:
+                count = SocialNotification.objects.filter(recipient=user, is_read=False).count()
+        except Exception:
+            count = 0
+    elif path.startswith("/marketplace/"):
+        try:
+            if MarketplaceNotification is not None:
+                count = MarketplaceNotification.objects.filter(user=user, read_at__isnull=True).count()
+        except Exception:
+            count = 0
     return {"unread_notifications_count": count}
