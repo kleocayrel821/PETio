@@ -163,10 +163,10 @@
 /* --- Profile dropdown & auth controls --- */
 .profile-menu { position: relative; }
 /* Compact profile controls */
-.nav-right .icon-btn { font-size: 15px; padding: 5px 8px; }
-.profile-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.nav-right .icon-btn:not(.profile-btn) { font-size: 15px; padding: 5px 8px; }
+.profile-btn { display: inline-flex; align-items: center; gap: 8px; font-size: 16px; }
 .profile-btn .fa-user-circle { font-size: 18px; }
-.profile-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 /* Hover-driven dropdown with smooth transition */
 .profile-dropdown {
   position: absolute;
