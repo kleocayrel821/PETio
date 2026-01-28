@@ -19,6 +19,7 @@ urlpatterns = [
     # Override the default auth login to apply role-aware redirect
     path('accounts/login/', accounts_views.AdminAwareLoginView.as_view(), name='login'),
     path('accounts/', include(('accounts.urls', 'accounts'), namespace='accounts')),
+    path('accounts/password_reset/', accounts_views.CustomPasswordResetView.as_view(), name='password_reset'),
     path('accounts/', include('django.contrib.auth.urls')),  # Login, logout, password reset
     path('admin/', admin.site.urls),
 ]
