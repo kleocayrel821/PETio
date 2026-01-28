@@ -5,7 +5,7 @@ Uses Django auth forms for security and simplicity.
 from django.contrib.auth import login
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.views import LoginView
+from django.contrib.auth.views import LoginView, PasswordResetView
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DetailView
 from django.db.models import Avg, Count
@@ -99,6 +99,21 @@ class SignupView(CreateView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         return kwargs
+
+class CustomPasswordResetView(PasswordResetView):
+    def form_valid(self, form):
+        try:
+            form.save(
+                request=self.request,
+                use_https=self.request.is_secure(),
+                from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
+                email_template_name="registration/password_reset_email.html",
+            )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("Password reset email send failed")
+        from django.shortcuts import redirect
+        return redirect(self.get_success_url())
 
     def get_queryset(self):
         return User.objects.all()
