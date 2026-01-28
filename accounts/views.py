@@ -5,7 +5,7 @@ Uses Django auth forms for security and simplicity.
 from django.contrib.auth import login
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.views import LoginView
+from django.contrib.auth.views import LoginView, PasswordResetView
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DetailView
 from django.db.models import Avg, Count
@@ -20,6 +20,7 @@ from django.views import View
 from django.views.generic import UpdateView
 from django.shortcuts import resolve_url
 from .models import Profile
+from .forms import UsernameOrEmailPasswordResetForm
 try:
     # Local import; this file edit assumes forms.py will be created in the same app
     from .forms import ProfileForm, CustomUserCreationForm
@@ -146,6 +147,22 @@ class AdminAwareLoginView(LoginView):
             return reverse("marketplace:moderator_dashboard")
         # Fallback to configured default
         return resolve_url(getattr(settings, "LOGIN_REDIRECT_URL", "/"))
+
+class CustomPasswordResetView(PasswordResetView):
+    form_class = UsernameOrEmailPasswordResetForm
+    email_template_name = "registration/password_reset_email.html"
+
+    def form_valid(self, form):
+        try:
+            value = form.cleaned_data.get("email", "")
+            matched = list(form.get_users(value))
+            self.request.session["password_reset_user_count"] = len(matched)
+        except Exception:
+            try:
+                self.request.session["password_reset_user_count"] = None
+            except Exception:
+                pass
+        return super().form_valid(form)
 
 class ProfileDetailView(LoginRequiredMixin, DetailView):
     """Simple profile page showing current user's info."""
