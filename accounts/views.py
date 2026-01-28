@@ -368,6 +368,15 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
         try:
             user = self.request.user
             post = self.request.POST
+            # Update account email if provided
+            new_email = (post.get("account_email") or "").strip()
+            if new_email and new_email != (user.email or ""):
+                try:
+                    user.email = new_email
+                    user.save(update_fields=["email"])
+                    messages.success(self.request, "Your account email has been updated.")
+                except Exception:
+                    messages.error(self.request, "Unable to update email. It may already be in use.")
             user.email_marketplace_notifications = bool(post.get("email_marketplace_notifications"))
             user.email_on_request_updates = bool(post.get("email_on_request_updates"))
             user.email_on_messages = bool(post.get("email_on_messages"))
