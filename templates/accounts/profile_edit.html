@@ -84,13 +84,6 @@
         {% endif %}
       </div>
 
-      <div class="divider my-6">Account email</div>
-      <div class="form-control mb-6">
-        <label class="label"><span class="label-text">Email used for password reset</span></label>
-        <input type="email" name="account_email" value="{{ request.user.email }}" placeholder="you@example.com" class="input input-bordered w-full" />
-        <small class="text-slate-500 mt-1">We will send the reset link to this address.</small>
-      </div>
-
       <div class="divider my-6">In-app notifications</div>
       <div class="form-control mb-2">
         <label class="cursor-pointer label">
