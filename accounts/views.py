@@ -5,14 +5,16 @@ Uses Django auth forms for security and simplicity.
 from django.contrib.auth import login
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.views import LoginView, PasswordResetView
+from django.contrib.auth.views import LoginView
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DetailView
 from django.db.models import Avg, Count
 from django.contrib.auth import get_user_model
 from django.contrib import messages
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives, send_mail
+from django.http import JsonResponse
+from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 from django.urls import reverse
@@ -20,7 +22,6 @@ from django.views import View
 from django.views.generic import UpdateView
 from django.shortcuts import resolve_url
 from .models import Profile
-from .forms import UsernameOrEmailPasswordResetForm
 try:
     # Local import; this file edit assumes forms.py will be created in the same app
     from .forms import ProfileForm, CustomUserCreationForm
@@ -147,22 +148,6 @@ class AdminAwareLoginView(LoginView):
             return reverse("marketplace:moderator_dashboard")
         # Fallback to configured default
         return resolve_url(getattr(settings, "LOGIN_REDIRECT_URL", "/"))
-
-class CustomPasswordResetView(PasswordResetView):
-    form_class = UsernameOrEmailPasswordResetForm
-    email_template_name = "registration/password_reset_email.html"
-
-    def form_valid(self, form):
-        try:
-            value = form.cleaned_data.get("email", "")
-            matched = list(form.get_users(value))
-            self.request.session["password_reset_user_count"] = len(matched)
-        except Exception:
-            try:
-                self.request.session["password_reset_user_count"] = None
-            except Exception:
-                pass
-        return super().form_valid(form)
 
 class ProfileDetailView(LoginRequiredMixin, DetailView):
     """Simple profile page showing current user's info."""
@@ -398,3 +383,22 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
         if self.request.method in ("POST", "PUT"):
             kwargs.update({"files": self.request.FILES})
         return kwargs
+
+@staff_member_required
+def test_email_delivery(request):
+    to = request.GET.get("to") or getattr(settings, "EMAIL_HOST_USER", "")
+    if not to:
+        to = getattr(settings, "DEFAULT_FROM_EMAIL", "")
+    subject = "Gmail SMTP Test Delivery"
+    message = "This test confirms Gmail SMTP is working in production."
+    try:
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
+            recipient_list=[to],
+            fail_silently=False,
+        )
+        return JsonResponse({"success": True, "message": "Test email sent", "to": to})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)

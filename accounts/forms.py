@@ -7,8 +7,6 @@ Provides:
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.forms import PasswordResetForm
-from django.contrib.auth import get_user_model as _get_user_model
 from .models import Profile
 
 MAX_AVATAR_SIZE_MB = 5
@@ -142,13 +140,3 @@ class ProfileForm(forms.ModelForm):
                 f"Avatar file too large. Max size is {MAX_AVATAR_SIZE_MB}MB."
             )
         return avatar
-
-class UsernameOrEmailPasswordResetForm(PasswordResetForm):
-    def get_users(self, email):
-        UserModel = _get_user_model()
-        value = (email or "").strip()
-        if "@" in value:
-            qs = UserModel._default_manager.filter(email__iexact=value, is_active=True)
-        else:
-            qs = UserModel._default_manager.filter(username__iexact=value, is_active=True)
-        return qs
