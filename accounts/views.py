@@ -12,9 +12,7 @@ from django.db.models import Avg, Count
 from django.contrib.auth import get_user_model
 from django.contrib import messages
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import EmailMultiAlternatives, send_mail
-from django.http import JsonResponse
-from django.contrib.admin.views.decorators import staff_member_required
+from django.core.mail import EmailMultiAlternatives
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 from django.urls import reverse
@@ -383,22 +381,3 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
         if self.request.method in ("POST", "PUT"):
             kwargs.update({"files": self.request.FILES})
         return kwargs
-
-@staff_member_required
-def test_email_delivery(request):
-    to = request.GET.get("to") or getattr(settings, "EMAIL_HOST_USER", "")
-    if not to:
-        to = getattr(settings, "DEFAULT_FROM_EMAIL", "")
-    subject = "Gmail SMTP Test Delivery"
-    message = "This test confirms Gmail SMTP is working in production."
-    try:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
-            recipient_list=[to],
-            fail_silently=False,
-        )
-        return JsonResponse({"success": True, "message": "Test email sent", "to": to})
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
