@@ -11,5 +11,4 @@ urlpatterns = [
     path("profile/", views.ProfileDetailView.as_view(), name="profile"),
     path("profile/edit/", views.ProfileUpdateView.as_view(), name="profile_edit"),
     path("activate/<uidb64>/<token>/", views.ActivationView.as_view(), name="activate"),
-    path("email/test/", views.test_email_delivery, name="email_test"),
 ]
