@@ -66,14 +66,11 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = environ.get('EMAIL_HOST', '')
 EMAIL_PORT = int(environ.get('EMAIL_PORT', '587'))
 EMAIL_USE_TLS = environ.get('EMAIL_USE_TLS', 'true').lower() == 'true'
+EMAIL_USE_SSL = False
+EMAIL_TIMEOUT = int(environ.get('EMAIL_TIMEOUT', '20'))
 EMAIL_HOST_USER = environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
-EMAIL_USE_SSL = environ.get('EMAIL_USE_SSL', 'false').lower() == 'true'
-if EMAIL_USE_SSL:
-    EMAIL_USE_TLS = False
-EMAIL_TIMEOUT = int(environ.get('EMAIL_TIMEOUT', '20'))
-SERVER_EMAIL = environ.get('SERVER_EMAIL', DEFAULT_FROM_EMAIL)
 
 # Security headers and cookies
 SECURE_SSL_REDIRECT = environ.get('SECURE_SSL_REDIRECT', 'true').lower() == 'true'
@@ -93,12 +90,7 @@ SECURE_HSTS_PRELOAD = environ.get('SECURE_HSTS_PRELOAD', 'true').lower() == 'tru
 # Ensure WhiteNoise is present exactly once
 if 'whitenoise.middleware.WhiteNoiseMiddleware' not in MIDDLEWARE:
     MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
-# Use non-manifest storage to avoid 500s when collectstatic isn't run
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
-try:
-    STORAGES["staticfiles"]["BACKEND"] = 'whitenoise.storage.CompressedStaticFilesStorage'
-except Exception:
-    pass
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Logging: more strict for Django, include request ID if using middleware later
 #LOGGING['loggers']['django']['level'] = 'ERROR'
