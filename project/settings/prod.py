@@ -61,14 +61,17 @@ if not database_url and not environ.get('POSTGRES_DB'):
         }
     }
 
-# Email: SMTP
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = environ.get('EMAIL_HOST', '')
-EMAIL_PORT = int(environ.get('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = environ.get('EMAIL_USE_TLS', 'true').lower() == 'true'
-EMAIL_HOST_USER = environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+# Email: SMTP (SendGrid)
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.sendgrid.net"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+EMAIL_HOST_USER = "apikey"
+EMAIL_HOST_PASSWORD = os.getenv("SENDGRID_API_KEY")
+DEFAULT_FROM_EMAIL = "PETio <petio.ph@gmail.com>"
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+EMAIL_TIMEOUT = 20
 
 # Security headers and cookies
 SECURE_SSL_REDIRECT = environ.get('SECURE_SSL_REDIRECT', 'true').lower() == 'true'
