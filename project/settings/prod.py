@@ -63,23 +63,12 @@ if not database_url and not environ.get('POSTGRES_DB'):
 
 # Email: SMTP
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST_USER = environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_HOST = environ.get('EMAIL_HOST', '')
 EMAIL_PORT = int(environ.get('EMAIL_PORT', '587'))
 EMAIL_USE_TLS = environ.get('EMAIL_USE_TLS', 'true').lower() == 'true'
-EMAIL_USE_SSL = environ.get('EMAIL_USE_SSL', 'false').lower() == 'true'
-EMAIL_TIMEOUT = int(environ.get('EMAIL_TIMEOUT', '20'))
-DEFAULT_FROM_EMAIL = environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'no-reply@petio.site')
-SERVER_EMAIL = environ.get('SERVER_EMAIL', DEFAULT_FROM_EMAIL)
-
-# Smart defaults for common providers
-if not EMAIL_HOST and EMAIL_HOST_USER.endswith('@gmail.com'):
-    EMAIL_HOST = 'smtp.gmail.com'
-    if not environ.get('EMAIL_PORT'):
-        EMAIL_PORT = 587
-    EMAIL_USE_TLS = True
-    EMAIL_USE_SSL = False
+EMAIL_HOST_USER = environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 
 # Security headers and cookies
 SECURE_SSL_REDIRECT = environ.get('SECURE_SSL_REDIRECT', 'true').lower() == 'true'
@@ -94,9 +83,6 @@ X_FRAME_OPTIONS = 'DENY'
 SECURE_HSTS_SECONDS = int(environ.get('SECURE_HSTS_SECONDS', '3600'))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'true').lower() == 'true'
 SECURE_HSTS_PRELOAD = environ.get('SECURE_HSTS_PRELOAD', 'true').lower() == 'true'
-
-# Honor reverse proxy SSL header to generate https links in emails
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Static files: optionally use WhiteNoise in prod
 # Ensure WhiteNoise is present exactly once
