@@ -31,25 +31,9 @@
     menu.classList.remove('show');
   }
 
-  function _detectCurrentApp(fallbackEl) {
-    // Prefer explicit switcher attribute if present
-    const appSwitcher = $('.app-switcher');
-    const fromSwitcher = appSwitcher && appSwitcher.getAttribute('data-current-app');
-    if (fromSwitcher) return fromSwitcher;
-    // Next, prefer element data-app (e.g., global badge carries its app)
-    if (fallbackEl) {
-      const fromEl = fallbackEl.getAttribute('data-app');
-      if (fromEl) return fromEl;
-    }
-    // Finally, infer from URL path
-    const p = location.pathname || '';
-    if (p.startsWith('/social/')) return 'social';
-    if (p.startsWith('/marketplace/')) return 'marketplace';
-    return 'controller';
-  }
-
   function initNotificationBadgePolling() {
     const badge = $('#notificationBadge');
+    const appSwitcher = $('.app-switcher');
     if (!badge) return;
 
     // Initialize display from data-count
@@ -58,7 +42,7 @@
       updateBadge(badge, isNaN(initial) ? 0 : initial);
     } catch (e) {}
 
-    const currentApp = _detectCurrentApp(badge);
+    const currentApp = (appSwitcher && appSwitcher.getAttribute('data-current-app')) || '';
     const urlAttr = badge.getAttribute('data-badge-count-url');
     const appAttr = badge.getAttribute('data-app') || '';
     // Gate by app: if a specific app is set on the badge, require match; else default to social-only for global badge
@@ -89,7 +73,8 @@
   function initGenericBadgePolling() {
     window.PETIO = window.PETIO || {};
     window.PETIO.badgeIntervals = window.PETIO.badgeIntervals || new Map();
-    const currentApp = _detectCurrentApp(null);
+    const appSwitcher = $('.app-switcher');
+    const currentApp = (appSwitcher && appSwitcher.getAttribute('data-current-app')) || '';
     const badges = document.querySelectorAll('[data-badge-count-url]');
     badges.forEach(function(el){
       // Skip the global notificationBadge; it is handled separately
