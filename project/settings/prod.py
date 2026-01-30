@@ -68,10 +68,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 EMAIL_HOST_USER = "apikey"
-_SG_API = os.getenv("SENDGRID_API_KEY") or os.getenv("EMAIL_HOST_PASSWORD")
-EMAIL_HOST_PASSWORD = _SG_API
-if not EMAIL_HOST_PASSWORD:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_HOST_PASSWORD = os.getenv("SENDGRID_API_KEY")
 DEFAULT_FROM_EMAIL = "PETio <petio.ph@gmail.com>"
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 EMAIL_TIMEOUT = 20
