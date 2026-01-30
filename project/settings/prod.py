@@ -17,7 +17,7 @@ from os import environ
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 # SECRET KEY from environment
-SECRET_KEY = os.environ.get("SECRET_KEY")
+SECRET_KEY = os.environ.get("DJANG0_SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError('DJANGO_SECRET_KEY environment variable is required in production')
 
