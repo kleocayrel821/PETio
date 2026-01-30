@@ -24,7 +24,7 @@ if not SECRET_KEY:
 # Allowed hosts and CSRF trusted origins
 # Default to '*' for local preview; set DJANGO_ALLOWED_HOSTS in real deployments.
 ALLOWED_HOSTS = [
-    h.strip()
+    h.strip().strip('`"\'')
     for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
     if h.strip()
 ]
@@ -33,7 +33,11 @@ ALLOWED_HOSTS = [
 #print("CSRF_TRUSTED_ORIGINS:", CSRF_TRUSTED_ORIGINS)
 
 
-CSRF_TRUSTED_ORIGINS = environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if environ.get('DJANGO_CSRF_TRUSTED_ORIGINS') else []
+CSRF_TRUSTED_ORIGINS = [
+    o.strip().strip('`"\'')
+    for o in environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',')
+    if o.strip()
+]
 
 # Database: PostgreSQL via environment
 DATABASES = {
@@ -63,13 +67,15 @@ if not database_url and not environ.get('POSTGRES_DB'):
 
 # Email: SMTP (SendGrid)
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.sendgrid.net"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
-EMAIL_HOST_USER = "apikey"
-EMAIL_HOST_PASSWORD = os.getenv("SENDGRID_API_KEY")
-DEFAULT_FROM_EMAIL = "PETio <petio.ph@gmail.com>"
+EMAIL_HOST = environ.get("EMAIL_HOST", "smtp.sendgrid.net")
+EMAIL_PORT = int(environ.get("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = environ.get("EMAIL_USE_TLS", "True").lower() == "true"
+EMAIL_USE_SSL = environ.get("EMAIL_USE_SSL", "False").lower() == "true"
+EMAIL_HOST_USER = environ.get("EMAIL_HOST_USER", "apikey")
+# Accept either SENDGRID_API_KEY or EMAIL_HOST_PASSWORD
+_sg_key = environ.get("SENDGRID_API_KEY") or environ.get("EMAIL_HOST_PASSWORD")
+EMAIL_HOST_PASSWORD = _sg_key
+DEFAULT_FROM_EMAIL = environ.get("DEFAULT_FROM_EMAIL", "PETio <petio.ph@gmail.com>")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 EMAIL_TIMEOUT = 20
 
@@ -86,6 +92,7 @@ X_FRAME_OPTIONS = 'DENY'
 SECURE_HSTS_SECONDS = int(environ.get('SECURE_HSTS_SECONDS', '3600'))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'true').lower() == 'true'
 SECURE_HSTS_PRELOAD = environ.get('SECURE_HSTS_PRELOAD', 'true').lower() == 'true'
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Static files: optionally use WhiteNoise in prod
 # Ensure WhiteNoise is present exactly once
