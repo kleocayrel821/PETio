@@ -4,6 +4,7 @@ from accounts import views as accounts_views
 from marketplace import views as marketplace_views
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib.auth.views import PasswordResetView
 
 urlpatterns = [
     path('', include('controller.urls')),
@@ -18,6 +19,17 @@ urlpatterns = [
    
     # Override the default auth login to apply role-aware redirect
     path('accounts/login/', accounts_views.AdminAwareLoginView.as_view(), name='login'),
+    # Harden password reset route: explicitly bind template names to avoid missing-template issues
+    path(
+        'accounts/password_reset/',
+        PasswordResetView.as_view(
+            template_name='registration/password_reset_form.html',
+            email_template_name='registration/password_reset_email.html',
+            subject_template_name='registration/password_reset_subject.txt',
+            html_email_template_name='registration/password_reset_email.html',
+        ),
+        name='password_reset',
+    ),
     path('accounts/', include(('accounts.urls', 'accounts'), namespace='accounts')),
     path('accounts/', include('django.contrib.auth.urls')),  # Login, logout, password reset
     path('admin/', admin.site.urls),
