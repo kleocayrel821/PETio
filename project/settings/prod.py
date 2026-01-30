@@ -63,12 +63,18 @@ if not database_url and not environ.get('POSTGRES_DB'):
 
 # Email: SMTP
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = environ.get('EMAIL_HOST', '')
-EMAIL_PORT = int(environ.get('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = environ.get('EMAIL_USE_TLS', 'true').lower() == 'true'
-EMAIL_HOST_USER = environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp-relay.brevo.com")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() == "true"
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL",
+    "PETio <petio.ph@gmail.com>"
+)
+
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+EMAIL_TIMEOUT = 20
 
 # Security headers and cookies
 SECURE_SSL_REDIRECT = environ.get('SECURE_SSL_REDIRECT', 'true').lower() == 'true'
