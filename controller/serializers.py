@@ -76,6 +76,14 @@ class PendingCommandSerializer(serializers.ModelSerializer):
 
 
 class FeedingScheduleSerializer(serializers.ModelSerializer):
+    def validate_portion_size(self, value):
+        try:
+            v = float(value)
+        except Exception:
+            raise serializers.ValidationError("Invalid portion size.")
+        if v < 1 or v > 100:
+            raise serializers.ValidationError("Portion must be between 1 and 100 grams.")
+        return v
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         # Keep output time in 24-hour format for stability (HH:MM:SS)

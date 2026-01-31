@@ -219,9 +219,9 @@
                             <div class="portion-control">
                                 <div class="portion-label">
                                     <span>0g</span>
-                                    <span>500g</span>
+                                    <span>100g</span>
                                 </div>
-                                <input type="range" class="form-range" id="portionSize" min="0" max="500" step="1" value="100">
+                                <input type="range" class="form-range" id="portionSize" min="0" max="100" step="1" value="100">
                             </div>
                         </div>
                     </div>
@@ -241,7 +241,7 @@
                     </div>
                     <div class="col-md-3">
                         <label for="schedulePortion" class="form-label">Portion (g)</label>
-                        <input type="number" class="form-control" id="schedulePortion" min="0" max="500" required aria-required="true" aria-invalid="false" aria-describedby="schedulePortionError">
+                        <input type="number" class="form-control" id="schedulePortion" min="0" max="100" required aria-required="true" aria-invalid="false" aria-describedby="schedulePortionError">
                         <div id="schedulePortionError" class="text-danger small" role="alert" aria-live="polite" style="display:none"></div>
                     </div>
                     <div class="col-md-3">
@@ -517,8 +517,8 @@
                 hasError = true;
             }
             const portionVal = parseFloat(portionRaw);
-            if (!timeRaw || !portionRaw || isNaN(portionVal) || portionVal < 25 || portionVal > 500 || days.length === 0) {
-                showToast('Please provide valid time, portion between 25-500g, and select at least one day.', 'warning');
+            if (!timeRaw || !portionRaw || isNaN(portionVal) || portionVal < 25 || portionVal > 100 || days.length === 0) {
+                showToast('Please provide valid time, portion between 25-100g, and select at least one day.', 'warning');
                 return;
             }
             if (!days || days.length === 0) {
@@ -589,8 +589,8 @@
         
             // Basic validation
             const portionVal = parseFloat(portionRaw);
-            if (!timeRaw || !portionRaw || isNaN(portionVal) || portionVal < 25 || portionVal > 500 || days.length === 0) {
-                showToast('Please provide valid time, portion between 25-500g, and select at least one day.', 'warning');
+            if (!timeRaw || !portionRaw || isNaN(portionVal) || portionVal < 25 || portionVal > 100 || days.length === 0) {
+                showToast('Please provide valid time, portion between 25-100g, and select at least one day.', 'warning');
                 return;
             }
         
@@ -671,7 +671,7 @@
                     const rowHtml = `
                         <tr data-id="${schedule.id}">
                             <td><input type="time" value="${displayTime}" class="form-control schedule-time" /></td>
-                            <td><input type="number" value="${schedule.portion_size}" min="25" max="500" class="form-control schedule-portion" /></td>
+                            <td><input type="number" value="${schedule.portion_size}" min="25" max="100" class="form-control schedule-portion" /></td>
                             <td><input type="text" value="${labelValue}" maxlength="20" class="form-control schedule-label" placeholder="Label (optional)" /></td>
                             <td>${renderDaysCheckboxes(days)}</td>
                             <td><input type="checkbox" ${schedule.enabled ? 'checked' : ''} class="form-check-input schedule-enabled" onchange="toggleSchedule(${schedule.id}, this.checked)" /></td>

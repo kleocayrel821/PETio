@@ -10,6 +10,13 @@ from django.db import models
 from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
+try:
+    from cloudinary_storage.storage import VideoMediaCloudinaryStorage
+    _video_storage = VideoMediaCloudinaryStorage()
+except Exception:
+    from django.core.files.storage import FileSystemStorage
+    _video_storage = FileSystemStorage()
+
 
 
 class Category(models.Model):
@@ -77,7 +84,7 @@ class PostImage(models.Model):
 
 class PostVideo(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='videos')
-    file = models.FileField(upload_to='social/posts/videos/')
+    file = models.FileField(upload_to='social/posts/videos/', storage=_video_storage)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

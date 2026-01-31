@@ -210,14 +210,6 @@
             ></span>
           </a>
 
-          {# Create action: only visible for Marketplace #}
-          {% if current_app == 'marketplace' %}
-          <a
-            class="btn-create"
-            aria-label="Create"
-            href="{% url 'marketplace:listing_create' %}"
-          >+ Create</a>
-          {% endif %}
         {% endif %}
 
         {# Profile dropdown #}
@@ -225,7 +217,11 @@
           <button id="profileToggle" class="icon-btn profile-btn" aria-haspopup="true" aria-expanded="false">
             <span class="avatar" style="margin-right:8px;">
               <span class="w-7 rounded-full" style="display:inline-block; width:28px; height:28px; overflow:hidden; border-radius:9999px;">
-                <img src="{% avatar_url user 56 %}" alt="{{ user.username }}" style="width:100%; height:100%; object-fit:cover;" />
+                {% if user.profile and user.profile.avatar %}
+                  <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" style="width:100%; height:100%; object-fit:cover;" />
+                {% else %}
+                  <img src="https://ui-avatars.com/api/?name={{ user.get_full_name|default:user.username|urlencode }}&size=56&background=3B82F6&color=fff" alt="{{ user.username }}" style="width:100%; height:100%; object-fit:cover;" />
+                {% endif %}
               </span>
             </span>
             <span class="profile-name">{{ user.get_short_name|default:user.username }}</span>
@@ -264,6 +260,14 @@
       <img src="{% static 'images/PETiologo.png' %}" alt="PETio" />
     </div>
     <div class="global-app-menu__list">
+      <a href="#" id="openSectionsFromGlobal" class="app-dropdown__item mobile-only" role="menuitem">
+        <span class="app-dropdown__icon"><i class="fas fa-list"></i></span>
+        <div class="app-dropdown__meta">
+          <div class="app-dropdown__title">Sections</div>
+          <div class="app-dropdown__desc">Open page navigation</div>
+        </div>
+        <i class="fas fa-chevron-right item-chevron"></i>
+      </a>
       <a href="{% url 'home' %}" class="app-dropdown__item {% if current_app == 'controller' or current_app is None %}active{% endif %}" role="menuitem">
         <span class="app-dropdown__icon"><i data-feather="sliders"></i></span>
         <div class="app-dropdown__meta">

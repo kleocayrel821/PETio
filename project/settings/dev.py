@@ -74,3 +74,5 @@ PETIO_DEVICE_API_KEY = os.environ.get('PETIO_DEVICE_API_KEY', 'petio_secure_key_
 # Development-only settings
 # -----------------------------
 DEV_ALLOW_REQUEST_PREVIEW = True  # Only for dev/testing
+#MEDIA_URL = '/media/'
+#MEDIA_ROOT = BASE_DIR / 'media'

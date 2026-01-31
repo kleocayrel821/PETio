@@ -61,15 +61,15 @@
                             id="portionSlider" 
                             class="range-modern w-full" 
                             min="5" 
-                            max="500" 
+                            max="100" 
                             value="25"
                             oninput="updatePortionDisplay(this.value)"
                         >
                         <span id="portionBubble" class="range-bubble">25g</span>
                         <div class="range-ticks">
                             <span>5g</span>
-                            <span>250g</span>
-                            <span>500g</span>
+                            <span>50g</span>
+                            <span>100g</span>
                         </div>
                     </div>
                 </div>
@@ -124,7 +124,7 @@
                             id="scheduleAmount" 
                             class="form-control-enhanced w-full"
                             min="5" 
-                            max="500" 
+                            max="100" 
                             value="25"
                             required
                         >
@@ -180,7 +180,7 @@
         </div>
     </div>
 
-    <!-- Recent Activity Card -->
+    {% if user.is_authenticated %}
     <div class="enhanced-card">
         <div class="section-title">
             <i class="fas fa-history text-[#1f456e]"></i>
@@ -213,6 +213,7 @@
             </a>
         </div>
     </div>
+    {% endif %}
 
     <!-- Quick Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -686,15 +687,19 @@ async function updateLastFedTime() {
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
     updatePortionDisplay(document.getElementById('portionSlider').value);
-    loadRecentActivity();
     loadStats();
+    {% if user.is_authenticated %}
+    loadRecentActivity();
     updateLastFedTime();
+    {% endif %}
     
     // Refresh data every 30 seconds
     setInterval(() => {
-        loadRecentActivity();
         loadStats();
+        {% if user.is_authenticated %}
+        loadRecentActivity();
         updateLastFedTime();
+        {% endif %}
     }, 30000);
 });
 // Feed type helpers for consistent labels/icons

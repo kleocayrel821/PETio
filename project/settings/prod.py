@@ -29,8 +29,8 @@ ALLOWED_HOSTS = [
     if h.strip()
 ]
 
-print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
-print("CSRF_TRUSTED_ORIGINS:", CSRF_TRUSTED_ORIGINS)
+#print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
+#print("CSRF_TRUSTED_ORIGINS:", CSRF_TRUSTED_ORIGINS)
 
 
 CSRF_TRUSTED_ORIGINS = environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if environ.get('DJANGO_CSRF_TRUSTED_ORIGINS') else []
@@ -48,11 +48,12 @@ DATABASES = {
 }
 
 database_url = os.environ.get("DATABASE_URL")
-DATABASES["default"] = dj_database_url.parse(database_url)
+if database_url:
+    DATABASES["default"] = dj_database_url.parse(database_url)
 
 # Local fallback: if PostgreSQL env vars are missing, use SQLite to allow
 # production-style runs (Whitenoise, security headers) without a DB server.
-if not environ.get('POSTGRES_DB'):
+if not database_url and not environ.get('POSTGRES_DB'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -61,13 +62,31 @@ if not environ.get('POSTGRES_DB'):
     }
 
 # Email: SMTP
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = environ.get('EMAIL_HOST', '')
-EMAIL_PORT = int(environ.get('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = environ.get('EMAIL_USE_TLS', 'true').lower() == 'true'
-EMAIL_HOST_USER = environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+_email_backend_env = environ.get("EMAIL_BACKEND")
+EMAIL_HOST = environ.get("EMAIL_HOST", "smtp-relay.brevo.com")
+EMAIL_PORT = int(environ.get("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = environ.get("EMAIL_USE_TLS", "true").lower() == "true"
+EMAIL_USE_SSL = environ.get("EMAIL_USE_SSL", "false").lower() == "true"
+EMAIL_HOST_USER = environ.get("EMAIL_HOST_USER", "apikey")
+EMAIL_HOST_PASSWORD = environ.get("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = environ.get("DEFAULT_FROM_EMAIL", "PETio <no-reply@petio.site>")
+SERVER_EMAIL = environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+EMAIL_TIMEOUT = int(environ.get("EMAIL_TIMEOUT", "10"))
+EMAIL_BACKEND = _email_backend_env or ('django.core.mail.backends.smtp.EmailBackend' if EMAIL_HOST_PASSWORD else 'django.core.mail.backends.console.EmailBackend')
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+}
+
 
 # Security headers and cookies
 SECURE_SSL_REDIRECT = environ.get('SECURE_SSL_REDIRECT', 'true').lower() == 'true'
@@ -84,8 +103,13 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', '
 SECURE_HSTS_PRELOAD = environ.get('SECURE_HSTS_PRELOAD', 'true').lower() == 'true'
 
 # Static files: optionally use WhiteNoise in prod
-MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+# Ensure WhiteNoise is present exactly once
+if 'whitenoise.middleware.WhiteNoiseMiddleware' not in MIDDLEWARE:
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Logging: more strict for Django, include request ID if using middleware later
-LOGGING['loggers']['django']['level'] = 'ERROR'
+#LOGGING['loggers']['django']['level'] = 'ERROR'
+
+#MEDIA_URL = '/static/media/'
+#MEDIA_ROOT = BASE_DIR / 'static' / 'media'

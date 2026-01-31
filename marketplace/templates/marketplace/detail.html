@@ -431,6 +431,14 @@ function shareProduct() {
 
 // Form submissions
 document.addEventListener('DOMContentLoaded', function() {
+    function getCSRFToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta && meta.content && meta.content !== 'NOTPROVIDED') return meta.content;
+        const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (input && input.value) return input.value;
+        const m = document.cookie.match(/csrftoken=([^;]+)/);
+        return m ? m[1] : '';
+    }
     // Message form submission
     const messageModal = document.getElementById('messageModal');
     const messageForm = messageModal.querySelector('form');
@@ -458,13 +466,42 @@ document.addEventListener('DOMContentLoaded', function() {
             showMarketplaceToast('Please select a reason for reporting', 'error');
             return;
         }
-        
-        // Simulate submitting report
-        showMarketplaceToast('Report submitted. Thank you for helping keep our marketplace safe.', 'success');
-        closeReportModal();
-        
-        // In a real implementation, you would send the data to the server here
-        console.log('Report form submitted');
+        (async () => {
+            try {
+                const url = "{% url 'marketplace:api_listing_report' listing_id=listing.pk %}";
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ reason, details: '' }),
+                    credentials: 'same-origin'
+                });
+                const ct = resp.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    const data = await resp.json();
+                    if (!resp.ok) {
+                        const msg = (data && (data.message || data.error || data.detail)) || 'Failed to submit report';
+                        showMarketplaceToast(msg, 'error');
+                        return;
+                    }
+                    showMarketplaceToast('Report submitted. Thank you for helping keep our marketplace safe.', 'success');
+                    closeReportModal();
+                } else {
+                    const text = await resp.text();
+                    if (resp.status === 401 || resp.status === 403 || resp.redirected) {
+                        showMarketplaceToast('Session expired or permission denied.', 'error');
+                        return;
+                    }
+                    showMarketplaceToast(text || 'Failed to submit report', 'error');
+                }
+            } catch (_) {
+                showMarketplaceToast('Network error submitting report', 'error');
+            }
+        })();
     });
     
     // Quantity input validation
