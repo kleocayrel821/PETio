@@ -21,6 +21,7 @@
 #include <DNSServer.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <Servo.h>
 
 String nowUtcIso();
@@ -88,11 +89,30 @@ extern unsigned long lastFeedCompletionTime;
 // Map anti-clog forward/reverse speeds to correct direction based on SERVO_FORWARD_CLOCKWISE
 #if SERVO_FORWARD_CLOCKWISE
   #define SERVO_ANTI_CLOG_SPEED 1300
-  #define SERVO_ANTI_CLOG_REVERSE 1440
+  #define SERVO_ANTI_CLOG_REVERSE 1400
 #else
   #define SERVO_ANTI_CLOG_SPEED 1440
-  #define SERVO_ANTI_CLOG_REVERSE 1560
+  #define SERVO_ANTI_CLOG_REVERSE 1400
 #endif
+
+// CRITICAL FIX: Portion wheel requires single continuous rotations
+// Disabled chunked feeding thresholds (previously used to split large portions)
+// #define LARGE_PORTION_THRESHOLD 40.0f
+// #define FEED_CHUNK_SIZE 20.0f
+// #define CHUNK_PAUSE_MS 500
+// #define MINI_AGITATION_PULSES 2
+// #define MINI_AGITATION_PULSE_MS 200
+
+// Periodic anti-jam during continuous feeding
+#define ANTI_JAM_INTERVAL_MS 2000
+#define ANTI_JAM_REVERSE_MS 200
+
+// CRITICAL FIX: Portion wheel does not use reverse-clear multi-cycle feeding
+// Disabled reverse-clear threshold; keep timing constants for diagnostics/tests
+// #define REVERSE_CLEAR_THRESHOLD 50.0f
+#define REVERSE_CLEAR_FORWARD_MS 800
+#define REVERSE_CLEAR_REVERSE_MS 300
+#define REVERSE_CLEAR_PAUSE_MS 200
 // Button and Feeding Constants
 #define BUTTON_DEBOUNCE_MS 20
 #define BUTTON_EVENT_SUPPRESS_MS 0
@@ -109,15 +129,15 @@ extern unsigned long lastFeedCompletionTime;
 unsigned int g_feedPulse = SERVO_FEED_SPEED;
 
 // HTTP Communication Constants
-#define DEFAULT_SERVER_URL "http://192.168.18.9:8000"
+#define DEFAULT_SERVER_URL "https://petio.site"
 #define DEFAULT_DEVICE_ID "feeder-1"
-#define DEFAULT_API_KEY "petio_secure_key_2025"
-#define HTTP_TIMEOUT_MS 15000
-#define HTTP_MAX_RETRIES 3
+#define DEFAULT_API_KEY "51c1ebc55900af5273e5a43c2ba0c140"
+#define HTTP_TIMEOUT_MS 3000
+#define HTTP_MAX_RETRIES 2
 
 // NTP and Time Synchronization Constants
 #define NTP_SERVER "pool.ntp.org"
-#define NTP_TIMEZONE_OFFSET 0
+#define NTP_TIMEZONE_OFFSET (8*3600)
 #define NTP_UPDATE_INTERVAL 3600000
 
 // Schedule Polling Constants
@@ -127,8 +147,8 @@ unsigned int g_feedPulse = SERVO_FEED_SPEED;
 
 // Calibrated dispensing constants
 #define STARTUP_DELAY_MS 100
-#define MS_PER_GRAM_CALIBRATED 60.0f
-#define MIN_DISPENSE_TIME_MS 500UL
+#define MS_PER_GRAM_CALIBRATED 24.5f
+#define MIN_DISPENSE_TIME_MS 50UL
 #define MAX_DISPENSE_TIME_MS 30000UL
 
 // EEPROM Addresses for Schedule Tracking
@@ -253,18 +273,26 @@ public:
 class MotorController {
 private:
   Servo feedingServo; bool servoAttached; bool feedingInProgress; unsigned long feedingStartTime; unsigned long feedingDuration; LedController* ledController; unsigned int lastPulse; unsigned int targetPulse; bool antiClogMode; bool clogDetected;
+  unsigned long lastAntiJamTs; bool antiJamActive; unsigned long antiJamStart; int retryAttempts;
   void attachServo() { if (!servoAttached) { feedingServo.attach(SERVO_PIN); servoAttached = true; feedingServo.writeMicroseconds(SERVO_NEUTRAL); delay(100); Serial.println("Servo attached and set to neutral"); } }
   void detachServo() { if (servoAttached) { feedingServo.detach(); servoAttached = false; Serial.println("Servo detached"); } }
   void startServo() { if (servoAttached) { lastPulse = SERVO_RAMP_START; feedingServo.writeMicroseconds(lastPulse); Serial.print("Servo started - Forward rotation ("); Serial.print(lastPulse); Serial.println(" µs)"); } }
   void stopServo() { if (servoAttached) { feedingServo.writeMicroseconds(SERVO_NEUTRAL); lastPulse = SERVO_NEUTRAL; Serial.print("Servo stopped - Neutral position ("); Serial.print(SERVO_NEUTRAL); Serial.println(" µs)"); } }
 public:
-  MotorController() : servoAttached(false), feedingInProgress(false), feedingStartTime(0), feedingDuration(0), ledController(nullptr), lastPulse(SERVO_NEUTRAL), targetPulse(SERVO_FORWARD), antiClogMode(false), clogDetected(false) {}
+  MotorController() : servoAttached(false), feedingInProgress(false), feedingStartTime(0), feedingDuration(0), ledController(nullptr), lastPulse(SERVO_NEUTRAL), targetPulse(SERVO_FORWARD), antiClogMode(false), clogDetected(false), lastAntiJamTs(0), antiJamActive(false), antiJamStart(0), retryAttempts(0) {}
   void init(LedController* ledCtrl) { ledController = ledCtrl; attachServo(); Serial.println("Motor Controller initialized"); Serial.print("Servo pin: "); Serial.println(SERVO_PIN); }
+  void waitWithLED(unsigned long duration_ms) {
+    unsigned long start = millis();
+    while (millis() - start < duration_ms) {
+      if (ledController) ledController->update();
+      delay(10);
+    }
+  }
   void startFeeding(unsigned long duration_ms) {
     if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring request"); return; }
     Serial.print("Starting feeding for "); Serial.print(duration_ms); Serial.println(" ms");
     antiClogMode = false;
-    feedingInProgress = true; feedingStartTime = millis(); feedingDuration = duration_ms; if (duration_ms < 2000UL) targetPulse = 1680; else targetPulse = SERVO_FORWARD; if (ledController) ledController->showFeeding(); startServo();
+    feedingInProgress = true; feedingStartTime = millis(); feedingDuration = duration_ms; if (duration_ms < 2000UL) targetPulse = 1680; else targetPulse = SERVO_FORWARD; if (ledController) ledController->showFeeding(); startServo(); lastAntiJamTs = millis(); antiJamActive = false; retryAttempts = 0;
   }
   void startCalibrationFeed(unsigned long duration_ms) {
     if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring request"); return; }
@@ -276,7 +304,7 @@ public:
     targetPulse = g_feedPulse;
     if (ledController) ledController->showFeeding(); 
     feedingServo.writeMicroseconds(targetPulse);
-    lastPulse = targetPulse;
+    lastPulse = targetPulse; lastAntiJamTs = millis(); antiJamActive = false; retryAttempts = 0;
     Serial.print("Calibration feed pulse: "); Serial.println(targetPulse);
   }
   void stopFeeding() { if (!feedingInProgress) return; Serial.println("Stopping feeding operation"); stopServo(); feedingInProgress = false; feedingStartTime = 0; feedingDuration = 0; lastFeedCompletionTime = millis(); if (ledController) ledController->showReady(); }
@@ -286,12 +314,20 @@ public:
       unsigned long now = millis(); 
       unsigned long elapsed = now - feedingStartTime; 
       unsigned long rampMs = antiClogMode ? SERVO_RAMP_FAST_MS : SERVO_RAMP_MS;
-      if (elapsed < rampMs) { 
+      if (antiJamActive) {
+        if ((now - antiJamStart) >= ANTI_JAM_REVERSE_MS) {
+          feedingServo.writeMicroseconds(targetPulse); lastPulse = targetPulse; antiJamActive = false;
+        }
+      } else if (elapsed < rampMs) { 
         unsigned int rampPulse = SERVO_RAMP_START + (unsigned int)((long)(targetPulse - SERVO_RAMP_START) * (long)elapsed / (long)rampMs); 
         if (rampPulse != lastPulse) { feedingServo.writeMicroseconds(rampPulse); lastPulse = rampPulse; } 
       } else if (lastPulse != targetPulse) { 
         feedingServo.writeMicroseconds(targetPulse); lastPulse = targetPulse; 
       } 
+      if (!antiJamActive && (now - lastAntiJamTs) >= ANTI_JAM_INTERVAL_MS) {
+        performAntiJamPulse();
+        feedingStartTime += ANTI_JAM_REVERSE_MS;
+      }
       if (!clogDetected && elapsed > (feedingDuration + 2000UL)) { 
         clogDetected = true; Serial.println("WARNING: Possible clog detected - feeding taking too long"); 
       }
@@ -313,8 +349,45 @@ public:
     targetPulse = g_feedPulse;
     if (ledController) ledController->showFeeding();
     feedingServo.writeMicroseconds(targetPulse);
-    lastPulse = targetPulse;
+    lastPulse = targetPulse; lastAntiJamTs = millis(); antiJamActive = false; retryAttempts = 0;
     Serial.print("Normal feed pulse: "); Serial.println(targetPulse);
+  }
+  void runMiniAgitation() {
+    Serial.println("Mini-agitation disabled");
+  }
+  bool checkForClog() { return clogDetected; }
+  void performAntiJamPulse() {
+    Serial.print("Anti-jam pulse at "); Serial.print((float)ANTI_JAM_INTERVAL_MS / 1000.0f, 1); Serial.println("s...");
+    feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
+    antiJamActive = true;
+    antiJamStart = millis();
+    lastAntiJamTs = antiJamStart;
+  }
+  void startReverseClearFeeding(float totalGrams) {
+    if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring reverse-clear request"); return; }
+    unsigned long totalDuration = calculateFeedingDuration(totalGrams);
+    Serial.println("Reverse-clear disabled; performing single continuous feed");
+    startFeedingWithAntiClog(totalDuration);
+  }
+  void testReverseMotion(unsigned long test_ms) {
+    Serial.print("Testing reverse motion for "); Serial.print(test_ms); Serial.println(" ms...");
+    feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
+    waitWithLED(test_ms);
+    feedingServo.writeMicroseconds(SERVO_NEUTRAL);
+    Serial.println("Reverse test complete");
+  }
+  void testForwardMotion(unsigned long test_ms) {
+    Serial.print("Testing forward motion for "); Serial.print(test_ms); Serial.println(" ms...");
+    feedingServo.writeMicroseconds(g_feedPulse);
+    waitWithLED(test_ms);
+    feedingServo.writeMicroseconds(SERVO_NEUTRAL);
+    Serial.println("Forward test complete");
+  }
+  void startChunkedFeeding(float totalGrams) {
+    if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring chunked request"); return; }
+    unsigned long totalDuration = calculateFeedingDuration(totalGrams);
+    Serial.println("Chunked feeding disabled; performing single continuous feed");
+    startFeedingWithAntiClog(totalDuration);
   }
   void completeFeedingWithClear() {
     if (!feedingInProgress) return;
@@ -390,14 +463,22 @@ extern String lastFeedIso;
 // Inlined httpclient.h/.cpp
 class HTTPClientManager {
 private:
-  HTTPClient http; WiFiClient wifiClient; String serverURL; String deviceID; unsigned long requestTimeout; int maxRetries; String lastError; String apiKey;
+  HTTPClient http; WiFiClient wifiClientPlain; WiFiClientSecure wifiClientTLS; String serverURL; String deviceID; unsigned long requestTimeout; int maxRetries; String lastError; String apiKey;
+  String canonicalize(const String& input) { String s = input; s.trim(); return s; }
   bool makeRequest(const String& endpoint, const String& method, const String& payload, String& response) {
     if (!WiFi.isConnected()) { lastError = "WiFi not connected"; return false; }
     String fullURL = serverURL + endpoint;
     Serial.println("HTTP request: " + fullURL);
     for (int attempt = 0; attempt < maxRetries; attempt++) {
       Serial.println("Attempt " + String(attempt + 1) + "/" + String(maxRetries));
-      http.begin(wifiClient, fullURL); http.setTimeout(requestTimeout); http.addHeader("Content-Type", "application/json"); http.addHeader("User-Agent", "ESP8266-PetFeeder/1.0");
+      http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+      bool useTLS = fullURL.startsWith("https://");
+      if (useTLS) {
+        http.begin(wifiClientTLS, fullURL);
+      } else {
+        http.begin(wifiClientPlain, fullURL);
+      }
+      http.setTimeout(requestTimeout); http.addHeader("Content-Type", "application/json"); http.addHeader("User-Agent", "ESP8266-PetFeeder/1.0");
       if (apiKey.length() > 0) { http.addHeader("X-API-Key", apiKey); }
       int httpCode = -1; if (method == "POST") httpCode = http.POST(payload); else if (method == "GET") httpCode = http.GET();
       if (httpCode > 0) { response = http.getString(); http.end(); if (httpCode >= 200 && httpCode < 300) { lastError = ""; return true; } else { lastError = "HTTP " + String(httpCode) + ": " + response; } }
@@ -425,8 +506,8 @@ private:
   }
 public:
   HTTPClientManager() : requestTimeout(HTTP_TIMEOUT_MS), maxRetries(HTTP_MAX_RETRIES), lastError("") {}
-  void init(const String& serverUrl, const String& devID) { serverURL = serverUrl; deviceID = devID; if (!serverURL.endsWith("/api")) { if (!serverURL.endsWith("/")) serverURL += "/"; serverURL += "api"; } Serial.println("HTTP Client initialized:"); Serial.println("Server URL: " + serverURL); Serial.println("Device ID: " + deviceID); }
-  void setApiKey(const String& key) { apiKey = key; }
+  void init(const String& serverUrl, const String& devID) { serverURL = canonicalize(serverUrl); deviceID = devID; if (!serverURL.endsWith("/api")) { if (!serverURL.endsWith("/")) serverURL += "/"; serverURL += "api"; } wifiClientTLS.setInsecure(); Serial.println("HTTP Client initialized:"); Serial.println("Server URL: " + serverURL); Serial.println("Device ID: " + deviceID); }
+  void setApiKey(const String& key) { apiKey = key; Serial.println("API key configured (length): " + String(apiKey.length())); }
   bool sendFeedingLog(int portionSize, const String& feedType, const String& notes = "") { String payload = createFeedingPayload(portionSize, feedType, notes); String response; Serial.println("Sending feeding log to server..."); printPretty(payload); return makeRequest("/device/logs/", "POST", payload, response); }
   bool sendDeviceStatus(const String& /*status*/, int /*batteryLevel*/ = 100, int wifiSignal = -50) { DynamicJsonDocument doc(512); doc["device_id"] = deviceID; doc["wifi_rssi"] = wifiSignal; doc["uptime"] = (int)(millis()/1000); doc["daily_feeds"] = dailyFeeds; if (lastFeedIso.length() > 0) doc["last_feed"] = lastFeedIso; doc["error_message"] = ""; String payload; serializeJson(doc, payload); String response; bool success = makeRequest("/device/status/", "POST", payload, response); if (success) { Serial.println("Device status sent successfully"); return true; } else { Serial.println("Failed to send device status: " + lastError); return false; } }
   bool getDeviceConfig(String& configResponse) { String endpoint = String("/device/config/?device_id=") + deviceID; Serial.println("Requesting device configuration..."); bool success = makeRequest(endpoint, "GET", "", configResponse); if (success) { Serial.println("Device configuration retrieved successfully"); return true; } else { Serial.println("Failed to get device configuration: " + lastError); return false; } }
@@ -475,6 +556,8 @@ String lastFeedIso = "";
 unsigned long lastFeedCompletionTime = 0;
 unsigned long firmwareBootMs = 0;
 unsigned long manualSuppressUntil = 0;
+unsigned long networkBackoffUntil = 0;
+const unsigned long NETWORK_BACKOFF_MS = 60000;
 
 // Error handling and retry logic
 int consecutiveNetworkErrors = 0;
@@ -673,6 +756,11 @@ void pollAndExecuteSchedules() {
   unsigned long currentTime = millis();
   
   if (currentTime - lastSchedulePoll > SCHEDULE_POLL_INTERVAL) {
+    if (millis() < networkBackoffUntil) {
+      Serial.println("Network backoff active; skipping schedule poll");
+      lastSchedulePoll = currentTime;
+      return;
+    }
     Serial.println("Polling for scheduled feedings...");
     
     String scheduleResponse;
@@ -682,6 +770,8 @@ void pollAndExecuteSchedules() {
       processScheduleResponse(scheduleResponse);
     } else {
       Serial.println("Failed to poll schedules: " + httpClient.getLastError());
+      networkBackoffUntil = millis() + NETWORK_BACKOFF_MS;
+      Serial.println("Entering network backoff for 60s");
     }
     
     lastSchedulePoll = currentTime;
@@ -721,12 +811,44 @@ void processScheduleResponse(const String& response) {
     return;
   }
 
+  if (doc["schedules"].is<JsonArray>()) {
+    JsonArray arr = doc["schedules"].as<JsonArray>();
+    time_t localEpoch = timeClient.getEpochTime();
+    struct tm* lt = gmtime(&localEpoch);
+    int curHour = lt->tm_hour;
+    int curMin = lt->tm_min;
+    static const char* NAMES[] = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
+    String dow = String(NAMES[lt->tm_wday]);
+    for (JsonObject s : arr) {
+      bool enabled = s["enabled"] | false;
+      if (!enabled) continue;
+      String schedTime = s["time"] | "";
+      float portionGrams = s["portion_size"] | 0.0;
+      uint32_t scheduleId = s["id"] | 0;
+      bool dayMatch = false;
+      if (s["days_of_week"].is<JsonArray>()) {
+        for (JsonVariant v : s["days_of_week"].as<JsonArray>()) {
+          if (String(v.as<const char*>()) == dow) { dayMatch = true; break; }
+        }
+      }
+      if (!dayMatch) continue;
+      int h = schedTime.length() >= 2 ? schedTime.substring(0,2).toInt() : -1;
+      int m = schedTime.length() >= 5 ? schedTime.substring(3,5).toInt() : -1;
+      if (h < 0 || m < 0) continue;
+      if (h == curHour && abs(m - curMin) <= 1) {
+        if (scheduleId == lastExecutedScheduleId) { return; }
+        executeScheduledFeeding(scheduleId, portionGrams);
+        return;
+      }
+    }
+  }
+ 
   bool shouldFeed = doc["should_feed"] | false;
   if (!shouldFeed) {
     Serial.println("No pending schedules");
     return;
   }
-
+ 
   float portionGrams = doc["portion_size"] | 0.0;
   uint32_t scheduleId = doc["triggered_schedule_id"] | 0;
   String trig = doc["triggered_schedule_time"] | "";
@@ -923,6 +1045,14 @@ void handleCalibrationCommands() {
         motorController.runAgitationCycle();
         return;
       }
+      if (line.startsWith("TEST REVERSE")) {
+        motorController.testReverseMotion(2000);
+        return;
+      }
+      if (line.startsWith("TEST FORWARD")) {
+        motorController.testForwardMotion(2000);
+        return;
+      }
   if (line.startsWith("CAL SET")) {
     String rest = line.substring(8);  // Skip past "CAL SET "
     rest.trim();
@@ -1010,6 +1140,7 @@ void executeScheduledFeeding(uint32_t scheduleId, float portionGrams) {
     Serial.println("Scheduled feed rejected: cooldown");
     return;
   }
+  // CRITICAL FIX: Portion wheel → single continuous feed only
   motorController.startFeedingWithAntiClog(feedingDuration);
   ledController.showFeeding();  // Blue LED during feeding
   
@@ -1117,6 +1248,8 @@ void handleManualFeeding() {
         return;
       }
     }
+    // CRITICAL FIX: Portion wheel → single continuous feed only
+    // Replaced reverse-clear/chunked logic with simple anti-clog feed
     motorController.startFeedingWithAntiClog(manualFeedDurationMs);
     if (network.isConnected()) {
       bool success = httpClient.sendFeedingLog((int)manualPortionGrams, "manual", "Button press feeding");
@@ -1182,6 +1315,7 @@ void handleManualFeeding() {
           return;
         }
       }
+    // CRITICAL FIX: Portion wheel → single continuous feed only
     motorController.startFeedingWithAntiClog(manualFeedDurationMs);
     manualSuppressUntil = millis() + 800;
     armed = false;
@@ -1288,6 +1422,11 @@ unsigned long lastCommandPoll = 0;
 void pollAndExecuteRemoteCommands() {
   unsigned long currentTime = millis();
   if (currentTime - lastCommandPoll > COMMAND_POLL_INTERVAL) {
+    if (millis() < networkBackoffUntil) {
+      Serial.println("Network backoff active; skipping command poll");
+      lastCommandPoll = currentTime;
+      return;
+    }
     String cmdResponse;
     bool ok = httpClient.getFeedCommand(cmdResponse);
     if (ok) {
@@ -1309,6 +1448,8 @@ void pollAndExecuteRemoteCommands() {
       }
     } else {
       Serial.println("Failed to poll commands: " + httpClient.getLastError());
+      networkBackoffUntil = millis() + NETWORK_BACKOFF_MS;
+      Serial.println("Entering network backoff for 60s");
     }
     lastCommandPoll = currentTime;
   }
@@ -1319,7 +1460,7 @@ void executeRemoteFeeding(uint32_t commandId, float portionGrams) {
   if (firmwareBootMs != 0 && (millis() - firmwareBootMs) < BUTTON_BOOT_IGNORE_MS) { httpClient.sendAcknowledge(commandId, "boot_mute"); return; }
   if (lastFeedCompletionTime > 0 && (millis() - lastFeedCompletionTime) < COOLDOWN_PERIOD_MS) { httpClient.sendAcknowledge(commandId, "cooldown"); return; }
   unsigned long feedingDuration = calculateFeedingDuration(portionGrams);
-  // Ensure minimum duration for anti-clog effectiveness
+  // CRITICAL FIX: Portion wheel → single continuous feed only
   motorController.startFeedingWithAntiClog(feedingDuration);
   ledController.showFeeding();
   

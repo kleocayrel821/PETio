@@ -179,7 +179,7 @@
         <span class="hamburger-label">Menu</span>
       </button>
       <a href="{% url 'home' %}" class="logo" aria-label="PETio Home">
-        <img src="{{ MEDIA_URL }}PETiologo.png" alt="PETio logo" />
+       <img src="{% static 'images/PETiologo.png' %}" alt="PETio logo" />
       </a>
     </div>
     <div class="nav-center">
@@ -261,7 +261,7 @@
 
   <div id="globalAppMenu" class="global-app-menu" role="menu" aria-labelledby="globalMenuToggle">
     <div class="global-app-menu__header">
-      <img src="{{ MEDIA_URL }}PETiologo.png" alt="PETio" />
+      <img src="{% static 'images/PETiologo.png' %}" alt="PETio" />
     </div>
     <div class="global-app-menu__list">
       <a href="{% url 'home' %}" class="app-dropdown__item {% if current_app == 'controller' or current_app is None %}active{% endif %}" role="menuitem">
