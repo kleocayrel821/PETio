@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.contrib.auth import views as auth_views
+from accounts.forms import BrevoPasswordResetForm
 from accounts import views as accounts_views
 from marketplace import views as marketplace_views
 from django.conf import settings
@@ -19,6 +21,11 @@ urlpatterns = [
     # Override the default auth login to apply role-aware redirect
     path('accounts/login/', accounts_views.AdminAwareLoginView.as_view(), name='login'),
     path('accounts/', include(('accounts.urls', 'accounts'), namespace='accounts')),
+    path(
+        'accounts/password_reset/',
+        auth_views.PasswordResetView.as_view(form_class=BrevoPasswordResetForm if getattr(settings, "BREVO_API_KEY", None) else None),
+        name='password_reset',
+    ),
     path('accounts/', include('django.contrib.auth.urls')),  # Login, logout, password reset
     path('admin/', admin.site.urls),
 ]

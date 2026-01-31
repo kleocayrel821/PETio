@@ -6,7 +6,9 @@ Provides:
 """
 from django import forms
 from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, PasswordResetForm
+from django.template.loader import render_to_string
+from .utils.email import send_brevo_email
 from .models import Profile
 
 MAX_AVATAR_SIZE_MB = 5
@@ -140,3 +142,21 @@ class ProfileForm(forms.ModelForm):
                 f"Avatar file too large. Max size is {MAX_AVATAR_SIZE_MB}MB."
             )
         return avatar
+
+class BrevoPasswordResetForm(PasswordResetForm):
+    def send_mail(
+        self,
+        subject_template_name,
+        email_template_name,
+        context,
+        from_email,
+        to_email,
+        html_email_template_name=None,
+    ):
+        subject = "Reset your PETio password"
+        html = render_to_string(html_email_template_name or email_template_name, context)
+        send_brevo_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html,
+        )
