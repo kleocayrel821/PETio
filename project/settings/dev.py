@@ -20,7 +20,7 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 # ALLOWED_HOSTS from environment variable; fallback to localhost
 ALLOWED_HOSTS = os.environ.get(
     'ALLOWED_HOSTS',
-    '127.0.0.1 localhost petio.onrender.com petio.site www.petio.site'
+    '127.0.0.1 localhost 192.168.18.9'
 ).split()
 
 
@@ -68,12 +68,11 @@ CELERY_TASK_EAGER_PROPAGATES = True
 # -----------------------------
 # Device API key
 # -----------------------------
-PETIO_DEVICE_API_KEY = os.environ.get('PETIO_DEVICE_API_KEY', '51c1ebc55900af5273e5a43c2ba0c140')
+PETIO_DEVICE_API_KEY = os.environ.get('PETIO_DEVICE_API_KEY', 'petio_secure_key_2025')
 
 # -----------------------------
 # Development-only settings
 # -----------------------------
 DEV_ALLOW_REQUEST_PREVIEW = True  # Only for dev/testing
-
 #MEDIA_URL = '/media/'
 #MEDIA_ROOT = BASE_DIR / 'media'

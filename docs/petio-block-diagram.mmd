@@ -1,0 +1,59 @@
+block
+  columns 3
+  block:Device:3
+    columns 3
+    ESP8266(("ESP8266 Feeder"))
+    Buttons["Manual Feed Button"] LEDs["Status LEDs"] Motor["Servo Motor"]
+    NetworkingManager HTTPClientManager LedController MotorController
+  end
+  block:Connectivity:2
+    columns 2
+    WiFi(("WiFi")) NTP(("NTP"))
+  end
+  block:Backend:3
+    columns 3
+    block:Controller:2
+      columns 2
+      ControllerUI["Controller UI"] DeviceAPIs["Device APIs"] Schedules["Schedules"]
+    end
+    block:Marketplace:2
+      columns 2
+      MarketplaceUI["Marketplace UI"] Listings Requests Messaging Transactions
+    end
+    block:Social:2
+      columns 2
+      SocialUI["Social UI"] Profiles Posts Reactions Notifications
+    end
+    Channels(("Channels")) Celery["Celery"] Redis[("Redis")] PostgreSQL[("PostgreSQL")] SMTP["SMTP"]
+  end
+  ESP8266 --> WiFi
+  ESP8266 --> NTP
+  HTTPClientManager -- "HTTP GET/POST" --> DeviceAPIs
+  ControllerUI --> Schedules
+  ControllerUI --> DeviceAPIs
+  MarketplaceUI --> Listings
+  MarketplaceUI --> Requests
+  MarketplaceUI --> Messaging
+  MarketplaceUI --> Transactions
+  SocialUI --> Profiles
+  SocialUI --> Posts
+  SocialUI --> Reactions
+  SocialUI --> Notifications
+  DeviceAPIs --> PostgreSQL
+  Schedules --> PostgreSQL
+  Listings --> PostgreSQL
+  Requests --> PostgreSQL
+  Messaging --> PostgreSQL
+  Transactions --> PostgreSQL
+  Profiles --> PostgreSQL
+  Posts --> PostgreSQL
+  Reactions --> PostgreSQL
+  Notifications --> PostgreSQL
+  ControllerUI --> Channels
+  MarketplaceUI --> Channels
+  SocialUI --> Channels
+  Celery --> Redis
+  Celery --> SMTP
+  Celery --> ControllerUI
+  Celery --> MarketplaceUI
+  Celery --> SocialUI

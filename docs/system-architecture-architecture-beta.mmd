@@ -1,0 +1,42 @@
+flowchart LR
+  subgraph Client Layer
+    web_controller[Controller UI]
+    web_marketplace[Marketplace UI]
+    web_social[Social UI]
+  end
+
+  subgraph Device Layer
+    esp8266_device[ESP8266 Feeder Device]
+  end
+
+  subgraph Django Backend
+    controller[Controller App]
+    marketplace[Marketplace App]
+    social[Social App]
+    channels[Channels Layer]
+    celery[Celery Workers]
+    postgres[PostgreSQL]
+  end
+
+  subgraph External Services
+    wifi[WiFi]
+    ntp[NTP Server]
+    redis[Redis Broker]
+    smtp[SMTP Server]
+  end
+
+  web_controller --> controller
+  web_marketplace --> marketplace
+  web_social --> social
+  esp8266_device --> controller
+  esp8266_device --> wifi
+  esp8266_device --> ntp
+  controller --> postgres
+  marketplace --> postgres
+  social --> postgres
+  controller --> channels
+  marketplace --> channels
+  social --> channels
+  celery --> redis
+  celery --> smtp
+  celery --> controller
