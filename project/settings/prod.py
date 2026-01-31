@@ -62,17 +62,17 @@ if not database_url and not environ.get('POSTGRES_DB'):
     }
 
 # Email: SMTP
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+_email_backend_env = environ.get("EMAIL_BACKEND")
 EMAIL_HOST = environ.get("EMAIL_HOST", "smtp-relay.brevo.com")
-EMAIL_PORT = int(environ.get("EMAIL_PORT", "465"))
-EMAIL_USE_SSL = environ.get("EMAIL_USE_SSL", "true").lower() == "true"
-EMAIL_USE_TLS = False
-EMAIL_HOST_USER = "apikey"
+EMAIL_PORT = int(environ.get("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = environ.get("EMAIL_USE_TLS", "true").lower() == "true"
+EMAIL_USE_SSL = environ.get("EMAIL_USE_SSL", "false").lower() == "true"
+EMAIL_HOST_USER = environ.get("EMAIL_HOST_USER", "apikey")
 EMAIL_HOST_PASSWORD = environ.get("EMAIL_HOST_PASSWORD")
-DEFAULT_FROM_EMAIL = environ.get("DEFAULT_FROM_EMAIL", "no-reply@petio.site")
-
-SERVER_EMAIL = DEFAULT_FROM_EMAIL
-EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
+DEFAULT_FROM_EMAIL = environ.get("DEFAULT_FROM_EMAIL", "PETio <no-reply@petio.site>")
+SERVER_EMAIL = environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+EMAIL_TIMEOUT = int(environ.get("EMAIL_TIMEOUT", "10"))
+EMAIL_BACKEND = _email_backend_env or ('django.core.mail.backends.smtp.EmailBackend' if EMAIL_HOST_PASSWORD else 'django.core.mail.backends.console.EmailBackend')
 
 
 LOGGING = {
