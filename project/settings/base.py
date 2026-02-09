@@ -78,6 +78,7 @@ DATABASES = {
     }
 }
 
+
 # Authentication
 AUTH_USER_MODEL = 'accounts.User'
 
