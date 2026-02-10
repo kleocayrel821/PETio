@@ -177,7 +177,7 @@ CELERY_TASK_ROUTES = {
     'marketplace.tasks.send_notification_email': {'queue': 'notifications'},
 }
 # Device/API settings
-PETIO_DEVICE_API_KEY = os.getenv('PETIO_DEVICE_API_KEY')
+PETIO_DEVICE_API_KEY = os.getenv('51c1ebc55900af5273e5a43c2ba0c140')
 DEVICE_ID = os.getenv('DEVICE_ID', 'feeder-1')
 DEVICE_HEARTBEAT_TTL = int(os.getenv('DEVICE_HEARTBEAT_TTL', '90'))
 BREVO_API_KEY = os.getenv('BREVO_API_KEY')
