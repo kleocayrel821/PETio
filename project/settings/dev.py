@@ -68,7 +68,7 @@ CELERY_TASK_EAGER_PROPAGATES = True
 # -----------------------------
 # Device API key
 # -----------------------------
-PETIO_DEVICE_API_KEY = os.environ.get('PETIO_DEVICE_API_KEY', 'petio_secure_key_2025')
+PETIO_DEVICE_API_KEY = os.environ.get('51c1ebc55900af5273e5a43c2ba0c140')
 
 # -----------------------------
 # Development-only settings
