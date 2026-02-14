@@ -251,25 +251,13 @@
                 <!-- Avatar Section -->
                 <div class="form-group">
                     <label class="form-label">Profile Picture</label>
-                    {% if profile.avatar %}
-                        <div class="current-avatar">
-                            <img src="{{ profile.avatar.url }}" alt="Current avatar">
-                            <div>
-                                <p style="margin: 0; font-weight: 600;">Current Profile Picture</p>
-                                <p style="margin: 0; font-size: 0.875rem; color: #6b7280;">Upload a new image to replace</p>
-                            </div>
+                    <div class="current-avatar">
+                        <img src="{% avatar_url user 96 %}" alt="Current avatar">
+                        <div>
+                            <p style="margin: 0; font-weight: 600;">Current Profile Picture</p>
+                            <p style="margin: 0; font-size: 0.875rem; color: #6b7280;">Upload a new image to replace</p>
                         </div>
-                    {% else %}
-                        <div class="current-avatar">
-                            <div class="avatar-placeholder">
-                                {{ user.username|first|upper }}
-                            </div>
-                            <div>
-                                <p style="margin: 0; font-weight: 600;">No Profile Picture</p>
-                                <p style="margin: 0; font-size: 0.875rem; color: #6b7280;">Upload an image to set your profile picture</p>
-                            </div>
-                        </div>
-                    {% endif %}
+                    </div>
                     {{ form.avatar }}
                     {% if form.avatar.errors %}
                         <div class="error-message">{{ form.avatar.errors.0 }}</div>

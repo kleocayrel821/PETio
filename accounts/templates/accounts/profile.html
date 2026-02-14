@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load avatar %}
 {% load static %}
 {% block extra_head %}
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -37,7 +36,11 @@
   <div class="profile-cover"></div>
   <div class="profile-info-container">
     <div class="profile-avatar-container">
-      <img class="profile-avatar" src="{% avatar_url user_obj 160 %}" alt="{{ user_obj.username }} avatar">
+      {% if user_obj.profile.avatar %}
+        <img class="profile-avatar" src="{{ user_obj.profile.avatar.url }}" alt="{{ user_obj.username }} avatar">
+      {% else %}
+        <img class="profile-avatar" src="{% static 'img/placeholder.svg' %}" alt="avatar placeholder">
+      {% endif %}
     </div>
     <div class="profile-header-content">
       <div class="flex items-center justify-between mb-2">
