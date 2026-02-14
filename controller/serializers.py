@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import PetProfile, FeedingLog, FeedingSchedule, PendingCommand
+from .models import PetProfile, FeedingLog, FeedingSchedule, PendingCommand, Hardware, ControllerSettings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -141,3 +141,34 @@ class FeedingScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = FeedingSchedule
         fields = '__all__'
+
+
+class HardwareSerializer(serializers.ModelSerializer):
+    paired_user = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = Hardware
+        fields = ["id", "unique_key", "is_paired", "paired_user", "created_at", "updated_at"]
+        read_only_fields = ["id", "is_paired", "paired_user", "created_at", "updated_at"]
+
+
+class ControllerSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ControllerSettings
+        fields = ["hardware", "feeding_schedule", "portion_size", "config", "created_at", "updated_at"]
+        read_only_fields = ["created_at", "updated_at"]
+
+
+class ValidateKeySerializer(serializers.Serializer):
+    unique_key = serializers.UUIDField()
+
+
+class PairSerializer(serializers.Serializer):
+    unique_key = serializers.UUIDField()
+
+
+class UpdateSettingsSerializer(serializers.Serializer):
+    unique_key = serializers.UUIDField()
+    feeding_schedule = serializers.DictField(required=False)
+    portion_size = serializers.FloatField(required=False)
+    config = serializers.DictField(required=False)
