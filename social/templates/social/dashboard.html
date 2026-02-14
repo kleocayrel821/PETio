@@ -179,7 +179,7 @@
                     <div class="avatar mb-4">
                         <div class="w-20 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
                             {% if profile.avatar %}
-                                <img src="{{ profile.avatar.url }}" alt="{{ user.get_full_name|default:user.username }}" />
+                                <img src="{% avatar_url user 80 %}" alt="{{ user.get_full_name|default:user.username }}" />
                             {% else %}
                                 <img src="{% avatar_url user 80 %}" alt="{{ user.get_full_name|default:user.username }}" />
                             {% endif %}
