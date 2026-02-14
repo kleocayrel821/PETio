@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load avatar %}
 {% block title %}Your Profile • PETio{% endblock %}
 {% block extra_head %}
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -70,11 +71,7 @@
     <div class="profile-header-content">
       <div class="profile-header-main">
         <div class="profile-avatar-wrapper">
-          {% if user_obj.profile.avatar %}
-            <img class="profile-avatar" src="{{ user_obj.profile.avatar.url }}" alt="{{ user_obj.username }} avatar">
-          {% else %}
-            <img class="profile-avatar" src="{% static 'img/placeholder.svg' %}" alt="avatar placeholder">
-          {% endif %}
+          <img class="profile-avatar" src="{% avatar_url user_obj 128 %}" alt="{{ user_obj.username }} avatar">
         </div>
         <div class="flex-1">
           <h1 class="profile-name">{{ user_obj.get_full_name|default:user_obj.username }}</h1>
@@ -216,11 +213,7 @@
     <div class="iv-backdrop"></div>
     <div class="iv-content">
       <button type="button" class="iv-close" aria-label="Close"><i class="fas fa-times"></i></button>
-      {% if user_obj.profile.avatar %}
-      <img id="iv-img" src="{{ user_obj.profile.avatar.url }}" alt="{{ user_obj.username }} avatar large">
-      {% else %}
-      <img id="iv-img" src="{% static 'img/placeholder.svg' %}" alt="avatar placeholder">
-      {% endif %}
+      <img id="iv-img" src="{% avatar_url user_obj 512 %}" alt="{{ user_obj.username }} avatar large">
     </div>
   </div>
 </div>
