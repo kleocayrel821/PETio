@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.conf import settings
+import uuid
 import logging
 
 logger = logging.getLogger(__name__)
@@ -165,3 +167,34 @@ class CommandEvent(models.Model):
 
     def __str__(self):
         return f"cmd={self.command_id} {self.from_status}->{self.to_status} @ {self.created_at}"
+
+
+class Hardware(models.Model):
+    unique_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
+    is_paired = models.BooleanField(default=False, db_index=True)
+    paired_user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='hardware_devices')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['unique_key'], name='idx_hardware_unique_key'),
+            models.Index(fields=['is_paired'], name='idx_hardware_is_paired'),
+        ]
+
+    def __str__(self):
+        return str(self.unique_key)
+
+
+class ControllerSettings(models.Model):
+    hardware = models.OneToOneField(Hardware, on_delete=models.CASCADE, related_name='controllersettings')
+    feeding_schedule = models.JSONField(blank=True, default=dict)
+    portion_size = models.FloatField(null=True, blank=True)
+    config = models.JSONField(blank=True, default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['hardware'], name='idx_settings_hardware'),
+        ]

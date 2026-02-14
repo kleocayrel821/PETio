@@ -3,9 +3,9 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 from rest_framework.response import Response
 from rest_framework import viewsets, status
 from django.db import transaction
-from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
-from .models import PetProfile, FeedingLog, FeedingSchedule, PendingCommand, DeviceStatus
-from .serializers import PetProfileSerializer, FeedingLogSerializer, FeedingScheduleSerializer, PendingCommandSerializer
+from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly, IsAuthenticated
+from .models import PetProfile, FeedingLog, FeedingSchedule, PendingCommand, DeviceStatus, Hardware, ControllerSettings
+from .serializers import PetProfileSerializer, FeedingLogSerializer, FeedingScheduleSerializer, PendingCommandSerializer, HardwareSerializer, ControllerSettingsSerializer, ValidateKeySerializer, PairSerializer, UpdateSettingsSerializer
 
 import logging
 logger = logging.getLogger(__name__)
@@ -1006,3 +1006,92 @@ def client_error_log(request):
     except Exception:
         logger.exception("client_error_log failed")
         return Response({"status": "error"}, status=500)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def hardware_validate_key(request):
+    serializer = ValidateKeySerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({"valid": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    unique_key = serializer.validated_data["unique_key"]
+    try:
+        hw = Hardware.objects.get(unique_key=unique_key)
+        return Response({"valid": True, "is_paired": bool(hw.is_paired)}, status=status.HTTP_200_OK)
+    except Hardware.DoesNotExist:
+        return Response({"valid": False, "error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def hardware_pair(request):
+    serializer = PairSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    unique_key = serializer.validated_data["unique_key"]
+    try:
+        with transaction.atomic():
+            hw = Hardware.objects.select_for_update().get(unique_key=unique_key)
+            if hw.is_paired and hw.paired_user_id and hw.paired_user_id != request.user.id:
+                return Response({"success": False, "error": "already_paired"}, status=status.HTTP_409_CONFLICT)
+            hw.paired_user = request.user
+            hw.is_paired = True
+            hw.save(update_fields=["paired_user", "is_paired", "updated_at"])
+            data = HardwareSerializer(hw).data
+            try:
+                settings_obj, _ = ControllerSettings.objects.get_or_create(hardware=hw)
+                data["settings"] = ControllerSettingsSerializer(settings_obj).data
+            except Exception:
+                data["settings"] = None
+            return Response({"success": True, "hardware": data}, status=status.HTTP_200_OK)
+    except Hardware.DoesNotExist:
+        return Response({"success": False, "error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def hardware_my_devices(request):
+    qs = Hardware.objects.filter(paired_user=request.user).order_by("-created_at")
+    items = []
+    for hw in qs:
+        item = HardwareSerializer(hw).data
+        try:
+            settings_obj = ControllerSettings.objects.get(hardware=hw)
+            item["settings"] = ControllerSettingsSerializer(settings_obj).data
+        except ControllerSettings.DoesNotExist:
+            item["settings"] = None
+        items.append(item)
+    return Response({"count": len(items), "results": items}, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def controller_update_settings(request):
+    serializer = UpdateSettingsSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    unique_key = serializer.validated_data["unique_key"]
+    try:
+        hw = Hardware.objects.get(unique_key=unique_key)
+    except Hardware.DoesNotExist:
+        return Response({"success": False, "error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if hw.is_paired:
+        if not request.user.is_authenticated or hw.paired_user_id != request.user.id:
+            return Response({"success": False, "error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        with transaction.atomic():
+            settings_obj, _ = ControllerSettings.objects.get_or_create(hardware=hw)
+            if "feeding_schedule" in serializer.validated_data:
+                settings_obj.feeding_schedule = serializer.validated_data["feeding_schedule"]
+            if "portion_size" in serializer.validated_data:
+                settings_obj.portion_size = serializer.validated_data["portion_size"]
+            if "config" in serializer.validated_data:
+                settings_obj.config = serializer.validated_data["config"]
+            settings_obj.save()
+            return Response({"success": True, "settings": ControllerSettingsSerializer(settings_obj).data}, status=status.HTTP_200_OK)
+    except Exception:
+        return Response({"success": False, "error": "server_error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
