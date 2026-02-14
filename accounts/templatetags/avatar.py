@@ -26,7 +26,7 @@ def avatar_url(user=None, size=64, bg="3B82F6", color="fff"):
         if not user or isinstance(user, AnonymousUser) or not getattr(user, 'is_authenticated', False):
             return f"https://ui-avatars.com/api/?name=Guest&size={int(size)}&background={bg}&color={color}"
 
-        for rel in ('social_profile', 'marketplace_profile', 'profile'):
+        for rel in ('profile', 'social_profile', 'marketplace_profile'):
             p = getattr(user, rel, None)
             if p and getattr(p, 'avatar', None) and getattr(p.avatar, 'url', None):
                 url = p.avatar.url
