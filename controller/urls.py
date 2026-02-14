@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from . import device_api
+from . import hardware_api
 
 # Set up DRF routers
 router = DefaultRouter()
@@ -52,6 +53,12 @@ urlpatterns = [
     path("api/device/acknowledge/", device_api.device_acknowledge, name="device_acknowledge"),
     path("api/health/", views.health, name="health"),
     path("api/client-errors/", views.client_error_log, name="client_error_log"),
+
+    # Hardware pairing APIs
+    path("api/hardware/validate-key/", hardware_api.validate_key, name="hardware_validate_key"),
+    path("api/hardware/pair/", hardware_api.pair_hardware, name="hardware_pair"),
+    path("api/hardware/my-devices/", hardware_api.my_devices, name="hardware_my_devices"),
+    path("api/controller/update-settings/", hardware_api.update_settings, name="controller_update_settings"),
 
     # DRF API endpoints
     path('', include(router.urls)),          # legacy: /logs/, /schedules/, ...
