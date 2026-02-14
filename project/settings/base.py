@@ -7,7 +7,6 @@ import dj_database_url
 from pathlib import Path
 import os
 import cloudinary
-from django.core.files.storage import FileSystemStorage
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -78,6 +77,8 @@ DATABASES = {
     }
 }
 
+DATABASES["default"] = dj_database_url.parse("postgresql://petio_django_render_user:dtYMRTtVzZ49QBqZLkTlBCvkYdoK6RM3@dpg-d5eemo2li9vc73dfn0d0-a.oregon-postgres.render.com/petio_django_render")
+
 
 # Authentication
 AUTH_USER_MODEL = 'accounts.User'
@@ -95,48 +96,16 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
-_cl_url = os.environ.get("CLOUDINARY_URL")
-_cl_name = os.environ.get("CLOUDINARY_CLOUD_NAME")
-_cl_key = os.environ.get("CLOUDINARY_API_KEY")
-_cl_secret = os.environ.get("CLOUDINARY_API_SECRET")
-_has_cloudinary = bool(_cl_url or (_cl_name and _cl_key and _cl_secret))
 
-if _has_cloudinary:
-    if not _cl_url and _cl_name and _cl_key and _cl_secret:
-        os.environ["CLOUDINARY_URL"] = f"cloudinary://{_cl_key}:{_cl_secret}@{_cl_name}"
-    cloudinary.config(
-        cloud_name=_cl_name,
-        api_key=_cl_key,
-        api_secret=_cl_secret,
-        secure=True,
-    )
-    STORAGES = {
-        "default": {
-            "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
-        },
-        "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-        },
-    }
-    CLOUDINARY_STORAGE = {
-        "CLOUD_NAME": _cl_name or "",
-        "API_KEY": _cl_key or "",
-        "API_SECRET": _cl_secret or "",
-        "SECURE": True,
-    }
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-    MEDIA_URL = '/media/'
-else:
-    STORAGES = {
-        "default": {
-            "BACKEND": "django.core.files.storage.FileSystemStorage",
-        },
-        "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-        },
-    }
-    MEDIA_URL = '/media/'
-    MEDIA_ROOT = BASE_DIR / 'media'
+# Cloudinary config (common for dev & prod if you want)
+cloudinary.config(
+    cloud_name="dtef9dmf1",
+    api_key="214242362647547",
+    api_secret="w8LgTg6xivxrrjfGw-3xDtg1SiY",
+)
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+MEDIA_URL = '/media/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -177,9 +146,8 @@ CELERY_TASK_ROUTES = {
     'marketplace.tasks.send_notification_email': {'queue': 'notifications'},
 }
 # Device/API settings
-PETIO_DEVICE_API_KEY = os.getenv('51c1ebc55900af5273e5a43c2ba0c140')
+PETIO_DEVICE_API_KEY = os.getenv('PETIO_DEVICE_API_KEY')
 DEVICE_ID = os.getenv('DEVICE_ID', 'feeder-1')
 DEVICE_HEARTBEAT_TTL = int(os.getenv('DEVICE_HEARTBEAT_TTL', '90'))
-BREVO_API_KEY = os.getenv('BREVO_API_KEY')
 
 #MEDIA_URL = '/media/'

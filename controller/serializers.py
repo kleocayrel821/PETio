@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import PetProfile, FeedingLog, FeedingSchedule, PendingCommand
+from .models import PetProfile, FeedingLog, FeedingSchedule, PendingCommand, Hardware, ControllerSettings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -141,3 +141,31 @@ class FeedingScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = FeedingSchedule
         fields = '__all__'
+
+
+class HardwareSerializer(serializers.ModelSerializer):
+    paired_user = serializers.SerializerMethodField()
+    class Meta:
+        model = Hardware
+        fields = ["id", "unique_key", "is_paired", "paired_user", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
+    def get_paired_user(self, obj):
+        u = getattr(obj, "paired_user", None)
+        if not u:
+            return None
+        return {"id": u.id, "username": getattr(u, "username", ""), "email": getattr(u, "email", "")}
+
+
+class ControllerSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ControllerSettings
+        fields = ["id", "hardware", "feeding_schedule", "portion_size", "config", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
+    def validate_portion_size(self, value):
+        try:
+            v = float(value)
+        except Exception:
+            raise serializers.ValidationError("Invalid portion size.")
+        if v < 1 or v > 100:
+            raise serializers.ValidationError("Portion must be between 1 and 100 grams.")
+        return v

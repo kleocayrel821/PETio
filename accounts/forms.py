@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm, PasswordResetForm
 from django.template.loader import render_to_string
 from .utils.email import send_brevo_email
+from django.core.exceptions import ValidationError
 from .models import Profile
 
 MAX_AVATAR_SIZE_MB = 5
@@ -28,6 +29,7 @@ class CustomUserCreationForm(UserCreationForm):
     email_marketplace_notifications = forms.BooleanField(required=False, initial=True, label="Marketplace emails")
     email_on_request_updates = forms.BooleanField(required=False, initial=True, label="Emails on request updates")
     email_on_messages = forms.BooleanField(required=False, initial=True, label="Emails on new messages")
+    hardware_key = forms.CharField(required=False, max_length=64, help_text="Optional: Enter your hardware unique key to pair now.")
 
     class Meta(UserCreationForm.Meta):
         model = User
@@ -107,6 +109,38 @@ class CustomUserCreationForm(UserCreationForm):
                 "min": "13",
                 "max": "120",
             })
+        if "hardware_key" in self.fields:
+            self.fields["hardware_key"].widget.attrs.update({
+                "id": "hardware_key",
+                "placeholder": "Enter hardware unique key (optional)",
+                "class": base_input_class,
+            })
+
+    def clean_hardware_key(self):
+        key = (self.cleaned_data.get("hardware_key") or "").strip()
+        if not key:
+            return ""
+        try:
+            from controller.models import Hardware
+            hw = Hardware.objects.get(unique_key=str(key))
+        except Exception:
+            raise ValidationError("Hardware key not found.")
+        if hw.is_paired:
+            raise ValidationError("Hardware is already paired.")
+        return str(key)
+
+    def save(self, commit=True):
+        user = super().save(commit=commit)
+        key = (self.cleaned_data.get("hardware_key") or "").strip()
+        if key:
+            try:
+                from controller.models import Hardware, ControllerSettings
+                hw = Hardware.objects.get(unique_key=str(key))
+                hw.pair_to_user(user)
+                ControllerSettings.objects.get_or_create(hardware=hw)
+            except Exception:
+                pass
+        return user
 
 class ProfileForm(forms.ModelForm):
     """ModelForm for editing Profile fields.
