@@ -33,7 +33,8 @@ ALLOWED_HOSTS = [
 #print("CSRF_TRUSTED_ORIGINS:", CSRF_TRUSTED_ORIGINS)
 
 
-CSRF_TRUSTED_ORIGINS = environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if environ.get('DJANGO_CSRF_TRUSTED_ORIGINS') else []
+_csrf_origins_raw = environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS = [o.strip().strip('`') for o in _csrf_origins_raw.split(',') if o.strip()]
 
 # Database: PostgreSQL via environment
 DATABASES = {
@@ -101,6 +102,7 @@ X_FRAME_OPTIONS = 'DENY'
 SECURE_HSTS_SECONDS = int(environ.get('SECURE_HSTS_SECONDS', '3600'))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'true').lower() == 'true'
 SECURE_HSTS_PRELOAD = environ.get('SECURE_HSTS_PRELOAD', 'true').lower() == 'true'
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Static files: optionally use WhiteNoise in prod
 # Ensure WhiteNoise is present exactly once
