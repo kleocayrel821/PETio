@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 # Use the project's configured User model (supports custom accounts.User)
 User = get_user_model()
 
-from accounts.templatetags.avatar import avatar_url as avatar_url_for
 
 @login_required
 def home(request):
@@ -579,10 +578,12 @@ def user_followers(request, user_id):
     results = []
     for rel in qs[:100]:
         u = rel.follower
+        avatar_url = getattr(getattr(u, 'social_profile', None), 'avatar', None)
+        avatar_url = avatar_url.url if avatar_url else None
         results.append({
             'id': u.id,
             'username': u.username,
-            'avatar_url': avatar_url_for(u, 64),
+            'avatar_url': avatar_url,
             'profile_url': reverse('social:profile', kwargs={'username': u.username}),
             'extra': f"Following since {rel.created_at.strftime('%b %d, %Y')}"
         })
@@ -597,10 +598,12 @@ def user_following(request, user_id):
     results = []
     for rel in qs[:100]:
         u = rel.following
+        avatar_url = getattr(getattr(u, 'social_profile', None), 'avatar', None)
+        avatar_url = avatar_url.url if avatar_url else None
         results.append({
             'id': u.id,
             'username': u.username,
-            'avatar_url': avatar_url_for(u, 64),
+            'avatar_url': avatar_url,
             'profile_url': reverse('social:profile', kwargs={'username': u.username}),
             'extra': f"Followed since {rel.created_at.strftime('%b %d, %Y')}"
         })

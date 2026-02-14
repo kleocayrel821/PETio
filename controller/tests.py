@@ -6,10 +6,8 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
-from .models import FeedingLog, FeedingSchedule, PendingCommand, PetProfile, DeviceStatus, Hardware, ControllerSettings
+from .models import FeedingLog, FeedingSchedule, PendingCommand, PetProfile, DeviceStatus
 from django.utils import timezone
-from django.contrib.auth import get_user_model
-import uuid
 
 
 class APITests(TestCase):
@@ -229,86 +227,3 @@ class DeviceStatusEndpointTests(TestCase):
         resp = self.client.get(reverse('device_status'), {'device_id': self.device_id})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data.get('status'), 'offline')
-
-
-class HardwarePairingTests(TestCase):
-    def setUp(self):
-        self.client = APIClient()
-        self.User = get_user_model()
-        self.user = self.User.objects.create_user(username="u1", email="u1@example.com", password="pass12345")
-        self.hw = Hardware.objects.create(unique_key=uuid.uuid4())
-
-    def test_validate_key_success(self):
-        resp = self.client.post('/api/hardware/validate-key/', {"unique_key": str(self.hw.unique_key)}, format='json')
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertTrue(resp.data.get("valid"))
-        self.assertEqual(resp.data.get("hardware_id"), self.hw.id)
-        self.assertFalse(resp.data.get("is_paired"))
-
-    def test_validate_key_not_found(self):
-        resp = self.client.post('/api/hardware/validate-key/', {"unique_key": str(uuid.uuid4())}, format='json')
-        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_pair_requires_auth(self):
-        resp = self.client.post('/api/hardware/pair/', {"unique_key": str(self.hw.unique_key)}, format='json')
-        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_pair_success(self):
-        self.client.login(username="u1", password="pass12345")
-        resp = self.client.post('/api/hardware/pair/', {"unique_key": str(self.hw.unique_key)}, format='json')
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.hw.refresh_from_db()
-        self.assertTrue(self.hw.is_paired)
-        self.assertEqual(self.hw.paired_user_id, self.user.id)
-        self.assertTrue(ControllerSettings.objects.filter(hardware=self.hw).exists())
-
-    def test_pair_conflict(self):
-        other = self.User.objects.create_user(username="u2", email="u2@example.com", password="pass")
-        self.hw.pair_to_user(other)
-        self.client.login(username="u1", password="pass12345")
-        resp = self.client.post('/api/hardware/pair/', {"unique_key": str(self.hw.unique_key)}, format='json')
-        self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT)
-
-    def test_my_devices_lists_paired(self):
-        self.client.login(username="u1", password="pass12345")
-        self.hw.pair_to_user(self.user)
-        resp = self.client.get('/api/hardware/my-devices/')
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data.get("count"), 1)
-
-    def test_update_settings_unpaired_no_auth(self):
-        resp = self.client.post('/api/controller/update-settings/', {
-            "unique_key": str(self.hw.unique_key),
-            "portion_size": 12,
-            "feeding_schedule": ["08:00", "18:00"],
-            "config": {"timezone": "Asia/Manila"}
-        }, format='json')
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        cs = ControllerSettings.objects.get(hardware=self.hw)
-        self.assertEqual(cs.portion_size, 12)
-
-    def test_update_settings_paired_requires_owner(self):
-        owner = self.User.objects.create_user(username="owner", email="o@example.com", password="pass")
-        self.hw.pair_to_user(owner)
-        # Not logged in
-        resp = self.client.post('/api/controller/update-settings/', {
-            "unique_key": str(self.hw.unique_key),
-            "portion_size": 20
-        }, format='json')
-        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
-        # Logged in as another user
-        self.client.login(username="u1", password="pass12345")
-        resp2 = self.client.post('/api/controller/update-settings/', {
-            "unique_key": str(self.hw.unique_key),
-            "portion_size": 20
-        }, format='json')
-        self.assertEqual(resp2.status_code, status.HTTP_403_FORBIDDEN)
-        # Logged in as owner
-        self.client.login(username="owner", password="pass")
-        resp3 = self.client.post('/api/controller/update-settings/', {
-            "unique_key": str(self.hw.unique_key),
-            "portion_size": 22
-        }, format='json')
-        self.assertEqual(resp3.status_code, status.HTTP_200_OK)
-        cs = ControllerSettings.objects.get(hardware=self.hw)
-        self.assertEqual(cs.portion_size, 22)

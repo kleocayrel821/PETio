@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load avatar %}
 
 {% block title %}Edit Profile - PETio Social{% endblock %}
 
@@ -254,7 +253,7 @@
                     <label class="form-label">Profile Picture</label>
                     {% if profile.avatar %}
                         <div class="current-avatar">
-                            <img src="{% avatar_url request.user 128 %}" alt="Current avatar">
+                            <img src="{{ profile.avatar.url }}" alt="Current avatar">
                             <div>
                                 <p style="margin: 0; font-weight: 600;">Current Profile Picture</p>
                                 <p style="margin: 0; font-size: 0.875rem; color: #6b7280;">Upload a new image to replace</p>

@@ -1,8 +1,6 @@
 from django.db import models
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.conf import settings
-import uuid
 import logging
 
 logger = logging.getLogger(__name__)
@@ -167,78 +165,3 @@ class CommandEvent(models.Model):
 
     def __str__(self):
         return f"cmd={self.command_id} {self.from_status}->{self.to_status} @ {self.created_at}"
-
-
-class Hardware(models.Model):
-    """Physical hardware controller that can operate standalone and be optionally paired to a user.
-    Uses a non-guessable unique_key (UUID v4) for identification to avoid predictable IDs.
-    """
-    unique_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    is_paired = models.BooleanField(default=False)
-    paired_user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="hardware_devices",
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        indexes = [
-            models.Index(fields=["unique_key"], name="idx_hardware_unique_key"),
-            models.Index(fields=["is_paired"], name="idx_hardware_is_paired"),
-        ]
-
-    def __str__(self):
-        return f"Hardware({self.id}) paired={self.is_paired}"
-
-    def clean(self):
-        from django.core.exceptions import ValidationError
-        if self.is_paired and not self.paired_user:
-            raise ValidationError("Paired hardware must have a paired_user set.")
-        if not self.is_paired and self.paired_user:
-            raise ValidationError("Unpaired hardware cannot reference a paired_user.")
-
-    def pair_to_user(self, user):
-        """Pair this hardware to the given user if not already paired by someone else."""
-        from django.core.exceptions import ValidationError
-        if self.is_paired and self.paired_user_id and self.paired_user_id != getattr(user, "id", None):
-            raise ValidationError("Hardware is already paired to another user.")
-        self.paired_user = user
-        self.is_paired = True
-        self.save(update_fields=["paired_user", "is_paired", "updated_at"])
-
-    def force_unpair(self):
-        """Admin utility to unpair hardware regardless of current pairing."""
-        self.paired_user = None
-        self.is_paired = False
-        self.save(update_fields=["paired_user", "is_paired", "updated_at"])
-
-
-class ControllerSettings(models.Model):
-    """Configurable settings scoped to a single hardware device.
-    Enforced one settings row per hardware via unique constraint.
-    """
-    hardware = models.ForeignKey(Hardware, on_delete=models.CASCADE, related_name="settings")
-    feeding_schedule = models.JSONField(default=list, blank=True)
-    portion_size = models.FloatField(
-        default=25,
-        validators=[MinValueValidator(1), MaxValueValidator(100)],
-        help_text="Default portion size in grams (1-100).",
-    )
-    config = models.JSONField(default=dict, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["hardware"], name="uq_settings_hardware"),
-        ]
-        indexes = [
-            models.Index(fields=["hardware"], name="idx_settings_hardware"),
-        ]
-
-    def __str__(self):
-        return f"ControllerSettings(hw={self.hardware_id})"
