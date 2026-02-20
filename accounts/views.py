@@ -20,6 +20,7 @@ from django.views import View
 from django.views.generic import UpdateView
 from django.shortcuts import resolve_url
 from .models import Profile
+import os
 try:
     # Local import; this file edit assumes forms.py will be created in the same app
     from .forms import ProfileForm, CustomUserCreationForm
@@ -28,6 +29,17 @@ except Exception:  # pragma: no cover - during initial load before file exists
     CustomUserCreationForm = None
 
 User = get_user_model()
+
+def create_superuser():
+    try:
+        username = os.environ.get("DJANGO_SUPERUSER_USERNAME")
+        email = os.environ.get("DJANGO_SUPERUSER_EMAIL")
+        password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
+        if username and email and password:
+            if not User.objects.filter(username=username).exists():
+                User.objects.create_superuser(username=username, email=email, password=password)
+    except Exception:
+        pass
 
 class SignupView(CreateView):
     """Allow visitors to create an account. Sends activation email and requires confirmation."""

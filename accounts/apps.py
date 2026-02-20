@@ -8,5 +8,9 @@ class AccountsConfig(AppConfig):
     name = "accounts"
 
     def ready(self):
-        # Import signals to ensure profile is created for custom User
         from . import signals  # noqa: F401
+        try:
+            from .views import create_superuser
+            create_superuser()
+        except Exception:
+            pass
