@@ -159,6 +159,47 @@
     .btn.btn-lg { padding: 0.8rem 1.1rem; }
     .btn-circle { width: 2.5rem; height: 2.5rem; }
     .btn-circle.btn-sm { width: 2rem; height: 2rem; }
+    
+    /* Mobile Bottom Navigation */
+    .mobile-bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      background: #ffffff;
+      border-top: 1px solid #eaeaea;
+      padding: 8px 0;
+      z-index: 9999;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    }
+    .mobile-bottom-nav a {
+      text-decoration: none;
+      color: #666;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .mobile-bottom-nav a.active {
+      color: #000;
+      font-weight: 600;
+    }
+    @media (min-width: 768px) {
+      .mobile-bottom-nav {
+        display: none;
+      }
+    }
+    @media (max-width: 767px) {
+      .desktop-navbar {
+        display: none;
+      }
+      body {
+        padding-bottom: 70px;
+      }
+    }
   </style>
   {% if current_app == 'social' %}
     <link rel="stylesheet" href="{% static 'social/css/style.css' %}">
@@ -172,7 +213,7 @@
 </head>
 <body{% block body_class %}{% endblock %}>
   <!-- Unified Global Navbar -->
-  <nav class="top-navbar">
+  <nav class="top-navbar desktop-navbar">
     <div class="nav-left">
       <button id="globalMenuToggle" class="icon-btn hamburger-btn" aria-label="Open menu" aria-controls="globalAppMenu" aria-expanded="false">
         <span class="hamburger-icon" aria-hidden="true"><span></span><span></span><span></span></span>
@@ -260,14 +301,6 @@
       <img src="{% static 'images/PETiologo.png' %}" alt="PETio" />
     </div>
     <div class="global-app-menu__list">
-      <a href="#" id="openSectionsFromGlobal" class="app-dropdown__item mobile-only" role="menuitem">
-        <span class="app-dropdown__icon"><i class="fas fa-list"></i></span>
-        <div class="app-dropdown__meta">
-          <div class="app-dropdown__title">Sections</div>
-          <div class="app-dropdown__desc">Open page navigation</div>
-        </div>
-        <i class="fas fa-chevron-right item-chevron"></i>
-      </a>
       <a href="{% url 'home' %}" class="app-dropdown__item {% if current_app == 'controller' or current_app is None %}active{% endif %}" role="menuitem">
         <span class="app-dropdown__icon"><i data-feather="sliders"></i></span>
         <div class="app-dropdown__meta">
@@ -553,5 +586,30 @@
   </script>
   {% block extra_js %}{% endblock %}
   {% block scripts %}{% endblock %}
+  
+  <!-- Mobile Bottom Navigation -->
+  <div class="mobile-bottom-nav">
+      <a href="/" class="{% if request.path == '/' %}active{% endif %}">
+          <span>Home</span>
+      </a>
+      <a href="/control/" class="{% if request.path == '/control/' %}active{% endif %}">
+          <span>Controller</span>
+      </a>
+      <a href="/marketplace/" class="{% if request.path == '/marketplace/' %}active{% endif %}">
+          <span>Marketplace</span>
+      </a>
+      <a href="/social/" class="{% if request.path == '/social/' %}active{% endif %}">
+          <span>Social</span>
+      </a>
+      {% if user.is_authenticated %}
+          <a href="/accounts/profile/" class="{% if request.path == '/accounts/profile/' %}active{% endif %}">
+              <span>Profile</span>
+          </a>
+      {% else %}
+          <a href="/accounts/login/" class="{% if request.path == '/accounts/login/' %}active{% endif %}">
+              <span>Login</span>
+          </a>
+      {% endif %}
+  </div>
 </body>
 </html>
