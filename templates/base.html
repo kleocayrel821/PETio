@@ -217,11 +217,7 @@
           <button id="profileToggle" class="icon-btn profile-btn" aria-haspopup="true" aria-expanded="false">
             <span class="avatar" style="margin-right:8px;">
               <span class="w-7 rounded-full" style="display:inline-block; width:28px; height:28px; overflow:hidden; border-radius:9999px;">
-                {% if user.profile and user.profile.avatar %}
-                  <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" style="width:100%; height:100%; object-fit:cover;" />
-                {% else %}
-                  <img src="https://ui-avatars.com/api/?name={{ user.get_full_name|default:user.username|urlencode }}&size=56&background=3B82F6&color=fff" alt="{{ user.username }}" style="width:100%; height:100%; object-fit:cover;" />
-                {% endif %}
+                <img src="{% avatar_url user 56 %}" alt="{{ user.username }}" style="width:100%; height:100%; object-fit:cover;" />
               </span>
             </span>
             <span class="profile-name">{{ user.get_short_name|default:user.username }}</span>
@@ -348,23 +344,7 @@
   {# Mobile Bottom Navigation (context-based) #}
   <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
     {% with path=request.path %}
-      {% if path == '/' or (request.resolver_match and (request.resolver_match.url_name == 'home' or request.resolver_match.url_name == 'schedules_ui' or request.resolver_match.url_name == 'history' or request.resolver_match.url_name == 'pending_commands' or request.resolver_match.url_name == 'bmi_calculator' or request.resolver_match.url_name == 'control_panel' or request.resolver_match.url_name == 'test_base')) %}
-        <a href="/" class="{% if request.path == '/' %}active{% endif %}">
-          <i class="fas fa-home"></i><span>Home</span>
-        </a>
-        <a href="/schedules-ui/" class="{% if request.path == '/schedules-ui/' %}active{% endif %}">
-          <i class="fas fa-calendar-alt"></i><span>Schedules</span>
-        </a>
-        <a href="/history/" class="{% if request.path == '/history/' %}active{% endif %}">
-          <i class="fas fa-history"></i><span>History</span>
-        </a>
-        <a href="/pending-commands/" class="{% if request.path == '/pending-commands/' %}active{% endif %}">
-          <i class="fas fa-spinner"></i><span>Pending</span>
-        </a>
-        <a href="/bmi/" class="{% if request.path == '/bmi/' %}active{% endif %}">
-          <i class="fas fa-dog"></i><span>Pet BMI</span>
-        </a>
-      {% elif path|length >= 8 and path|slice:":8" == "/social/" %}
+      {% if path|length >= 8 and path|slice:":8" == "/social/" %}
         <a href="/social/" class="{% if request.path == '/social/' %}active{% endif %}">
           <i class="fas fa-rss"></i><span>Feed</span>
         </a>
@@ -395,6 +375,22 @@
         </a>
         <a href="/" class="{% if request.path == '/' %}active{% endif %}">
           <i class="fas fa-home"></i><span>Home</span>
+        </a>
+      {% elif path == '/' or '/schedules-ui/' in path or '/history/' in path or '/pending-commands/' in path or '/bmi/' in path or '/control/' in path or '/test-base/' in path %}
+        <a href="/" class="{% if request.path == '/' %}active{% endif %}">
+          <i class="fas fa-home"></i><span>Home</span>
+        </a>
+        <a href="/schedules-ui/" class="{% if request.path == '/schedules-ui/' %}active{% endif %}">
+          <i class="fas fa-calendar-alt"></i><span>Schedules</span>
+        </a>
+        <a href="/history/" class="{% if request.path == '/history/' %}active{% endif %}">
+          <i class="fas fa-history"></i><span>History</span>
+        </a>
+        <a href="/pending-commands/" class="{% if request.path == '/pending-commands/' %}active{% endif %}">
+          <i class="fas fa-spinner"></i><span>Pending</span>
+        </a>
+        <a href="/bmi/" class="{% if request.path == '/bmi/' %}active{% endif %}">
+          <i class="fas fa-dog"></i><span>Pet BMI</span>
         </a>
       {% else %}
         <a href="/" class="{% if request.path == '/' %}active{% endif %}">
