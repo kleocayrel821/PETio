@@ -285,11 +285,7 @@
           <button id="profileToggle" class="icon-btn profile-btn" aria-haspopup="true" aria-expanded="false">
             <span class="avatar" style="margin-right:8px;">
               <span class="w-7 rounded-full" style="display:inline-block; width:28px; height:28px; overflow:hidden; border-radius:9999px;">
-                {% if user.profile and user.profile.avatar %}
-                  <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" style="width:100%; height:100%; object-fit:cover;" />
-                {% else %}
-                  <img src="https://ui-avatars.com/api/?name={{ user.get_full_name|default:user.username|urlencode }}&size=56&background=3B82F6&color=fff" alt="{{ user.username }}" style="width:100%; height:100%; object-fit:cover;" />
-                {% endif %}
+                <img src="{% avatar_url user 56 %}" alt="{{ user.username }}" style="width:100%; height:100%; object-fit:cover;" />
               </span>
             </span>
             <span class="profile-name">{{ user.get_short_name|default:user.username }}</span>
@@ -617,68 +613,68 @@
   <!-- Mobile Bottom Navigation: Context-Aware -->
   <div class="mobile-bottom-nav">
     {% if current_app == 'controller' or current_app is None %}
-      <a href="{% url 'home' %}" class="{% if request.path == '/' or (request.resolver_match and request.resolver_match.url_name in ('home','control_panel','landing')) %}active{% endif %}">
+      <a href="/" class="{% if request.path == '/' or (request.resolver_match and request.resolver_match.url_name in ('home','control_panel','landing')) %}active{% endif %}">
         <i data-feather="home"></i>
         <span>Home</span>
       </a>
-      <a href="{% url 'schedules_ui' %}" class="{% if '/schedules-ui/' in request.path %}active{% endif %}">
+      <a href="/schedules-ui/" class="{% if '/schedules-ui/' in request.path %}active{% endif %}">
         <i data-feather="calendar"></i>
         <span>Schedules</span>
       </a>
-      <a href="{% url 'history' %}" class="{% if '/history' in request.path %}active{% endif %}">
+      <a href="/history/" class="{% if '/history' in request.path %}active{% endif %}">
         <i data-feather="clock"></i>
         <span>History</span>
       </a>
-      <a href="{% url 'pending_commands' %}" class="{% if '/pending-commands' in request.path %}active{% endif %}">
+      <a href="/pending-commands/" class="{% if '/pending-commands' in request.path %}active{% endif %}">
         <i data-feather="inbox"></i>
         <span>Pending</span>
       </a>
-      <a href="{% url 'bmi_calculator' %}" class="{% if '/bmi' in request.path %}active{% endif %}">
+      <a href="/bmi/" class="{% if '/bmi' in request.path %}active{% endif %}">
         <i data-feather="activity"></i>
         <span>Pet BMI</span>
       </a>
     {% elif current_app == 'social' %}
-      <a href="{% url 'social:feed' %}" class="{% if request.path == '/social/' or request.path == '/social/feed/' %}active{% endif %}">
+      <a href="/social/" class="{% if request.path == '/social/' or request.path == '/social/feed/' %}active{% endif %}">
         <i data-feather="home"></i>
         <span>Feed</span>
       </a>
-      <a href="{% url 'social:dashboard' %}" class="{% if '/social/dashboard' in request.path %}active{% endif %}">
+      <a href="/social/dashboard/" class="{% if '/social/dashboard' in request.path %}active{% endif %}">
         <i data-feather="layout"></i>
         <span>Dashboard</span>
       </a>
-      <a href="{% url 'social:notifications' %}" class="{% if '/social/notifications' in request.path %}active{% endif %}">
+      <a href="/social/notifications/" class="{% if '/social/notifications' in request.path %}active{% endif %}">
         <i data-feather="bell"></i>
         <span>Alerts</span>
       </a>
       {% if user.is_authenticated %}
-        <a href="{% url 'social:my_profile' %}" class="{% if '/social/profile/' in request.path %}active{% endif %}">
+        <a href="/social/profile/" class="{% if '/social/profile/' in request.path %}active{% endif %}">
           <i data-feather="user"></i>
           <span>My Profile</span>
         </a>
       {% else %}
-        <a href="{% url 'login' %}" class="{% if '/accounts/login/' in request.path %}active{% endif %}">
+        <a href="/accounts/login/" class="{% if '/accounts/login/' in request.path %}active{% endif %}">
           <i data-feather="log-in"></i>
           <span>Login</span>
         </a>
       {% endif %}
     {% elif current_app == 'marketplace' %}
-      <a href="{% url 'marketplace:home' %}" class="{% if request.path == '/marketplace/' or '/marketplace/catalog' in request.path %}active{% endif %}">
+      <a href="/marketplace/" class="{% if request.path == '/marketplace/' or '/marketplace/catalog' in request.path %}active{% endif %}">
         <i data-feather="shopping-bag"></i>
         <span>Home</span>
       </a>
-      <a href="{% url 'marketplace:dashboard' %}" class="{% if '/marketplace/dashboard' in request.path %}active{% endif %}">
+      <a href="/marketplace/dashboard/" class="{% if '/marketplace/dashboard' in request.path %}active{% endif %}">
         <i data-feather="layout"></i>
         <span>Dashboard</span>
       </a>
-      <a href="{% url 'marketplace:messages' %}" class="{% if '/marketplace/messages' in request.path %}active{% endif %}">
+      <a href="/marketplace/messages/" class="{% if '/marketplace/messages' in request.path %}active{% endif %}">
         <i data-feather="message-circle"></i>
         <span>Messages</span>
       </a>
-      <a href="{% url 'marketplace:notifications' %}" class="{% if '/marketplace/notifications' in request.path %}active{% endif %}">
+      <a href="/marketplace/notifications/" class="{% if '/marketplace/notifications' in request.path %}active{% endif %}">
         <i data-feather="bell"></i>
         <span>Alerts</span>
       </a>
-      <a href="{% url 'marketplace:transactions' %}" class="{% if '/marketplace/transactions' in request.path %}active{% endif %}">
+      <a href="/marketplace/transactions/" class="{% if '/marketplace/transactions' in request.path %}active{% endif %}">
         <i data-feather="credit-card"></i>
         <span>Transactions</span>
       </a>
@@ -687,25 +683,25 @@
         <i data-feather="home"></i>
         <span>Home</span>
       </a>
-      <a href="{% url 'home' %}" class="{% if request.path == '/' %}active{% endif %}">
+      <a href="/" class="{% if request.path == '/' %}active{% endif %}">
         <i data-feather="sliders"></i>
         <span>Controller</span>
       </a>
-      <a href="{% url 'marketplace:home' %}" class="{% if request.path|slice:':13' == '/marketplace/' %}active{% endif %}">
+      <a href="/marketplace/" class="{% if request.path|slice:':13' == '/marketplace/' %}active{% endif %}">
         <i data-feather="shopping-cart"></i>
         <span>Marketplace</span>
       </a>
-      <a href="{% url 'social:feed' %}" class="{% if request.path|slice:':8' == '/social/' %}active{% endif %}">
+      <a href="/social/" class="{% if request.path|slice:':8' == '/social/' %}active{% endif %}">
         <i data-feather="users"></i>
         <span>Social</span>
       </a>
       {% if user.is_authenticated %}
-        <a href="{% url 'accounts:profile' %}" class="{% if '/accounts/profile/' in request.path %}active{% endif %}">
+        <a href="/accounts/profile/" class="{% if '/accounts/profile/' in request.path %}active{% endif %}">
           <i data-feather="user"></i>
           <span>Profile</span>
         </a>
       {% else %}
-        <a href="{% url 'login' %}" class="{% if '/accounts/login/' in request.path %}active{% endif %}">
+        <a href="/accounts/login/" class="{% if '/accounts/login/' in request.path %}active{% endif %}">
           <i data-feather="log-in"></i>
           <span>Login</span>
         </a>
