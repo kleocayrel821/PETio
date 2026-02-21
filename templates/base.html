@@ -159,47 +159,6 @@
     .btn.btn-lg { padding: 0.8rem 1.1rem; }
     .btn-circle { width: 2.5rem; height: 2.5rem; }
     .btn-circle.btn-sm { width: 2rem; height: 2rem; }
-    
-    /* Mobile Bottom Navigation */
-    .mobile-bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      background: #ffffff;
-      border-top: 1px solid #eaeaea;
-      padding: 8px 0;
-      z-index: 9999;
-      box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-    }
-    .mobile-bottom-nav a {
-      text-decoration: none;
-      color: #666;
-      font-size: 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .mobile-bottom-nav a.active {
-      color: #000;
-      font-weight: 600;
-    }
-    @media (min-width: 768px) {
-      .mobile-bottom-nav {
-        display: none;
-      }
-    }
-    @media (max-width: 767px) {
-      .desktop-navbar {
-        display: none;
-      }
-      body {
-        padding-bottom: 70px;
-      }
-    }
   </style>
   {% if current_app == 'social' %}
     <link rel="stylesheet" href="{% static 'social/css/style.css' %}">
@@ -213,7 +172,7 @@
 </head>
 <body{% block body_class %}{% endblock %}>
   <!-- Unified Global Navbar -->
-  <nav class="top-navbar desktop-navbar">
+  <nav class="top-navbar">
     <div class="nav-left">
       <button id="globalMenuToggle" class="icon-btn hamburger-btn" aria-label="Open menu" aria-controls="globalAppMenu" aria-expanded="false">
         <span class="hamburger-icon" aria-hidden="true"><span></span><span></span><span></span></span>
@@ -385,6 +344,83 @@
       </div>
     </div>
   </div>
+
+  {# Mobile Bottom Navigation (context-based) #}
+  <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+    {% with path=request.path %}
+      {% if current_app == 'controller' and not path|slice:":8" == "/social/" and not path|slice:":13" == "/marketplace/" %}
+        <a href="/" class="{% if request.path == '/' %}active{% endif %}">
+          <i class="fas fa-home"></i><span>Home</span>
+        </a>
+        <a href="/schedules-ui/" class="{% if request.path == '/schedules-ui/' %}active{% endif %}">
+          <i class="fas fa-calendar-alt"></i><span>Schedules</span>
+        </a>
+        <a href="/history/" class="{% if request.path == '/history/' %}active{% endif %}">
+          <i class="fas fa-history"></i><span>History</span>
+        </a>
+        <a href="/pending-commands/" class="{% if request.path == '/pending-commands/' %}active{% endif %}">
+          <i class="fas fa-spinner"></i><span>Pending</span>
+        </a>
+        <a href="/bmi/" class="{% if request.path == '/bmi/' %}active{% endif %}">
+          <i class="fas fa-dog"></i><span>Pet BMI</span>
+        </a>
+      {% elif path|length >= 8 and path|slice:":8" == "/social/" %}
+        <a href="/social/" class="{% if request.path == '/social/' %}active{% endif %}">
+          <i class="fas fa-rss"></i><span>Feed</span>
+        </a>
+        <a href="/social/dashboard/" class="{% if request.path == '/social/dashboard/' %}active{% endif %}">
+          <i class="fas fa-tachometer-alt"></i><span>Dashboard</span>
+        </a>
+        <a href="/social/notifications/" class="{% if request.path == '/social/notifications/' %}active{% endif %}">
+          <i class="fas fa-bell"></i><span>Notifs</span>
+        </a>
+        <a href="/social/profile/" class="{% if request.path == '/social/profile/' %}active{% endif %}">
+          <i class="fas fa-user"></i><span>My Profile</span>
+        </a>
+        <a href="/" class="{% if request.path == '/' %}active{% endif %}">
+          <i class="fas fa-home"></i><span>Home</span>
+        </a>
+      {% elif path|length >= 13 and path|slice:":13" == "/marketplace/" %}
+        <a href="/marketplace/" class="{% if request.path == '/marketplace/' %}active{% endif %}">
+          <i class="fas fa-store"></i><span>Browse</span>
+        </a>
+        <a href="/marketplace/dashboard/" class="{% if request.path == '/marketplace/dashboard/' %}active{% endif %}">
+          <i class="fas fa-chart-line"></i><span>Dashboard</span>
+        </a>
+        <a href="/marketplace/transactions/" class="{% if request.path == '/marketplace/transactions/' %}active{% endif %}">
+          <i class="fas fa-receipt"></i><span>Transactions</span>
+        </a>
+        <a href="/marketplace/messages/" class="{% if request.path == '/marketplace/messages/' %}active{% endif %}">
+          <i class="fas fa-comments"></i><span>Messages</span>
+        </a>
+        <a href="/" class="{% if request.path == '/' %}active{% endif %}">
+          <i class="fas fa-home"></i><span>Home</span>
+        </a>
+      {% else %}
+        <a href="/" class="{% if request.path == '/' %}active{% endif %}">
+          <i class="fas fa-home"></i><span>Home</span>
+        </a>
+        <a href="/" class="{% if request.path == '/' %}active{% endif %}">
+          <i class="fas fa-sliders-h"></i><span>Controller</span>
+        </a>
+        <a href="/social/" class="{% if request.path == '/social/' %}active{% endif %}">
+          <i class="fas fa-users"></i><span>Social</span>
+        </a>
+        <a href="/marketplace/" class="{% if request.path == '/marketplace/' %}active{% endif %}">
+          <i class="fas fa-shopping-bag"></i><span>Market</span>
+        </a>
+        {% if user.is_authenticated %}
+          <a href="/accounts/profile/" class="{% if request.path == '/accounts/profile/' %}active{% endif %}">
+            <i class="fas fa-user-circle"></i><span>Profile</span>
+          </a>
+        {% else %}
+          <a href="/accounts/login/" class="{% if request.path == '/accounts/login/' %}active{% endif %}">
+            <i class="fas fa-sign-in-alt"></i><span>Login</span>
+          </a>
+        {% endif %}
+      {% endif %}
+    {% endwith %}
+  </nav>
 
   <!-- Unified Navigation Scripts -->
   <script src="{% static 'js/navigation.js' %}"></script>
@@ -586,30 +622,5 @@
   </script>
   {% block extra_js %}{% endblock %}
   {% block scripts %}{% endblock %}
-  
-  <!-- Mobile Bottom Navigation -->
-  <div class="mobile-bottom-nav">
-      <a href="/" class="{% if request.path == '/' %}active{% endif %}">
-          <span>Home</span>
-      </a>
-      <a href="/control/" class="{% if request.path == '/control/' %}active{% endif %}">
-          <span>Controller</span>
-      </a>
-      <a href="/marketplace/" class="{% if request.path == '/marketplace/' %}active{% endif %}">
-          <span>Marketplace</span>
-      </a>
-      <a href="/social/" class="{% if request.path == '/social/' %}active{% endif %}">
-          <span>Social</span>
-      </a>
-      {% if user.is_authenticated %}
-          <a href="/accounts/profile/" class="{% if request.path == '/accounts/profile/' %}active{% endif %}">
-              <span>Profile</span>
-          </a>
-      {% else %}
-          <a href="/accounts/login/" class="{% if request.path == '/accounts/login/' %}active{% endif %}">
-              <span>Login</span>
-          </a>
-      {% endif %}
-  </div>
 </body>
 </html>
