@@ -348,7 +348,7 @@
   {# Mobile Bottom Navigation (context-based) #}
   <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
     {% with path=request.path %}
-      {% if path == '/' or (request.resolver_match and request.resolver_match.url_name in ('home','schedules_ui','history','pending_commands','bmi_calculator','control_panel','test_base')) %}
+      {% if path == '/' or (request.resolver_match and (request.resolver_match.url_name == 'home' or request.resolver_match.url_name == 'schedules_ui' or request.resolver_match.url_name == 'history' or request.resolver_match.url_name == 'pending_commands' or request.resolver_match.url_name == 'bmi_calculator' or request.resolver_match.url_name == 'control_panel' or request.resolver_match.url_name == 'test_base')) %}
         <a href="/" class="{% if request.path == '/' %}active{% endif %}">
           <i class="fas fa-home"></i><span>Home</span>
         </a>
