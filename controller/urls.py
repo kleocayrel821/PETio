@@ -53,6 +53,12 @@ urlpatterns = [
     path("api/health/", views.health, name="health"),
     path("api/client-errors/", views.client_error_log, name="client_error_log"),
 
+    # Hardware pairing and settings
+    path("api/hardware/validate-key/", views.validate_hardware_key, name="validate_hardware_key"),
+    path("api/hardware/pair/", views.pair_hardware, name="pair_hardware"),
+    path("api/hardware/my-devices/", views.my_devices, name="my_devices"),
+    path("api/controller/update-settings/", views.update_controller_settings, name="update_controller_settings"),
+
     # DRF API endpoints
     path('', include(router.urls)),          # legacy: /logs/, /schedules/, ...
     path('api/', include(router.urls)),      # new: /api/logs/, /api/schedules/, ...

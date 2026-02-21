@@ -6,8 +6,9 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
-from .models import FeedingLog, FeedingSchedule, PendingCommand, PetProfile, DeviceStatus
+from .models import FeedingLog, FeedingSchedule, PendingCommand, PetProfile, DeviceStatus, Hardware, ControllerSettings
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 
 
 class APITests(TestCase):
@@ -227,3 +228,63 @@ class DeviceStatusEndpointTests(TestCase):
         resp = self.client.get(reverse('device_status'), {'device_id': self.device_id})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data.get('status'), 'offline')
+
+
+class HardwarePairingTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.User = get_user_model()
+        self.user = self.User.objects.create_user(username="u1", email="u1@example.com", password="pass12345")
+        self.hardware = Hardware.objects.create()
+
+    def auth(self):
+        self.client.force_authenticate(user=self.user)
+
+    def test_validate_key_invalid(self):
+        resp = self.client.post(reverse('validate_hardware_key'), {"unique_key": "not-a-uuid"}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertFalse(resp.data.get("valid"))
+
+    def test_validate_key_valid(self):
+        resp = self.client.post(reverse('validate_hardware_key'), {"unique_key": str(self.hardware.unique_key)}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(resp.data.get("valid"))
+        self.assertFalse(resp.data.get("paired"))
+
+    def test_pair_hardware(self):
+        self.auth()
+        resp = self.client.post(reverse('pair_hardware'), {"unique_key": str(self.hardware.unique_key)}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.hardware.refresh_from_db()
+        self.assertTrue(self.hardware.is_paired)
+        self.assertEqual(self.hardware.paired_user, self.user)
+        self.assertTrue(ControllerSettings.objects.filter(hardware=self.hardware).exists())
+
+    def test_pair_conflict(self):
+        other = self.User.objects.create_user(username="u2", email="u2@example.com", password="pass12345")
+        self.hardware.paired_user = other
+        self.hardware.is_paired = True
+        self.hardware.save()
+        self.auth()
+        resp = self.client.post(reverse('pair_hardware'), {"unique_key": str(self.hardware.unique_key)}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_my_devices_lists_paired(self):
+        self.auth()
+        self.client.post(reverse('pair_hardware'), {"unique_key": str(self.hardware.unique_key)}, format='json')
+        resp = self.client.get(reverse('my_devices'))
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(resp.data.get("count", 0), 1)
+
+    def test_update_settings_unpaired_allowed(self):
+        resp = self.client.post(reverse('update_controller_settings'), {"unique_key": str(self.hardware.unique_key), "portion_size": 15}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        cfg = ControllerSettings.objects.get(hardware=self.hardware)
+        self.assertEqual(cfg.portion_size, 15)
+
+    def test_update_settings_requires_owner_when_paired(self):
+        self.auth()
+        self.client.post(reverse('pair_hardware'), {"unique_key": str(self.hardware.unique_key)}, format='json')
+        self.client.force_authenticate(user=None)
+        resp = self.client.post(reverse('update_controller_settings'), {"unique_key": str(self.hardware.unique_key), "portion_size": 10}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
