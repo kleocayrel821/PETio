@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import PetProfile, FeedingLog, FeedingSchedule, PendingCommand
+from .models import PetProfile, FeedingLog, FeedingSchedule, PendingCommand, Hardware, ControllerSettings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -141,3 +141,27 @@ class FeedingScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = FeedingSchedule
         fields = '__all__'
+
+
+class ControllerSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ControllerSettings
+        fields = ['id', 'feeding_schedule', 'portion_size', 'config', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_portion_size(self, value):
+        if value is None:
+            return value
+        v = float(value)
+        if v < 1 or v > 100:
+            raise serializers.ValidationError("Portion must be between 1 and 100 grams.")
+        return v
+
+
+class HardwareSerializer(serializers.ModelSerializer):
+    controllersettings = ControllerSettingsSerializer(read_only=True)
+
+    class Meta:
+        model = Hardware
+        fields = ['id', 'unique_key', 'is_paired', 'created_at', 'updated_at', 'controllersettings']
+        read_only_fields = ['id', 'unique_key', 'is_paired', 'created_at', 'updated_at', 'controllersettings']

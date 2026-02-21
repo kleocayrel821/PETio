@@ -3,9 +3,9 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 from rest_framework.response import Response
 from rest_framework import viewsets, status
 from django.db import transaction
-from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
-from .models import PetProfile, FeedingLog, FeedingSchedule, PendingCommand, DeviceStatus
-from .serializers import PetProfileSerializer, FeedingLogSerializer, FeedingScheduleSerializer, PendingCommandSerializer
+from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly, IsAuthenticated
+from .models import PetProfile, FeedingLog, FeedingSchedule, PendingCommand, DeviceStatus, Hardware, ControllerSettings
+from .serializers import PetProfileSerializer, FeedingLogSerializer, FeedingScheduleSerializer, PendingCommandSerializer, HardwareSerializer, ControllerSettingsSerializer
 
 import logging
 logger = logging.getLogger(__name__)
@@ -1006,3 +1006,103 @@ def client_error_log(request):
     except Exception:
         logger.exception("client_error_log failed")
         return Response({"status": "error"}, status=500)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def validate_hardware_key(request):
+    try:
+        key = request.data.get("unique_key")
+        if not key:
+            return Response({"error": "unique_key is required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            import uuid as _uuid
+            k = _uuid.UUID(str(key))
+        except Exception:
+            return Response({"valid": False}, status=status.HTTP_200_OK)
+        exists = Hardware.objects.filter(unique_key=k).exists()
+        if not exists:
+            return Response({"valid": False}, status=status.HTTP_200_OK)
+        obj = Hardware.objects.get(unique_key=k)
+        return Response({"valid": True, "paired": bool(obj.is_paired)})
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def pair_hardware(request):
+    try:
+        key = request.data.get("unique_key")
+        if not key:
+            return Response({"error": "unique_key is required"}, status=status.HTTP_400_BAD_REQUEST)
+        import uuid as _uuid
+        try:
+            k = _uuid.UUID(str(key))
+        except Exception:
+            return Response({"error": "invalid_key"}, status=status.HTTP_400_BAD_REQUEST)
+        from django.db import transaction
+        with transaction.atomic():
+            try:
+                hw = Hardware.objects.select_for_update().get(unique_key=k)
+            except Hardware.DoesNotExist:
+                return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+            if hw.is_paired and hw.paired_user_id and hw.paired_user_id != request.user.id:
+                return Response({"error": "already_paired"}, status=status.HTTP_400_BAD_REQUEST)
+            if hw.is_paired and hw.paired_user_id == request.user.id:
+                ser = HardwareSerializer(hw)
+                return Response({"status": "ok", "paired": True, "hardware": ser.data})
+            hw.pair_to(request.user)
+            ControllerSettings.objects.get_or_create(hardware=hw)
+            ser = HardwareSerializer(hw)
+            return Response({"status": "ok", "paired": True, "hardware": ser.data})
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_devices(request):
+    try:
+        qs = Hardware.objects.filter(paired_user=request.user).order_by("-updated_at")
+        data = HardwareSerializer(qs, many=True).data
+        return Response({"results": data, "count": len(data)})
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def update_controller_settings(request):
+    try:
+        key = request.data.get("unique_key")
+        if not key:
+            return Response({"error": "unique_key is required"}, status=status.HTTP_400_BAD_REQUEST)
+        import uuid as _uuid
+        try:
+            k = _uuid.UUID(str(key))
+        except Exception:
+            return Response({"error": "invalid_key"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            hw = Hardware.objects.get(unique_key=k)
+        except Hardware.DoesNotExist:
+            return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+        if hw.is_paired and hw.paired_user_id and (not request.user.is_authenticated or request.user.id != hw.paired_user_id):
+            return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
+        obj, _ = ControllerSettings.objects.get_or_create(hardware=hw)
+        payload = {}
+        if "feeding_schedule" in request.data:
+            payload["feeding_schedule"] = request.data.get("feeding_schedule") or {}
+        if "portion_size" in request.data:
+            payload["portion_size"] = request.data.get("portion_size")
+        if "config" in request.data:
+            payload["config"] = request.data.get("config") or {}
+        ser = ControllerSettingsSerializer(obj, data=payload, partial=True)
+        if ser.is_valid():
+            ser.save()
+            return Response({"status": "ok", "settings": ser.data})
+        return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
