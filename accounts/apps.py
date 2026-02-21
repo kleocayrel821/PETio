@@ -9,3 +9,8 @@ class AccountsConfig(AppConfig):
 
     def ready(self):
         from . import signals  # noqa: F401
+        try:
+            from .views import create_superuser
+            create_superuser()
+        except Exception:
+            pass
