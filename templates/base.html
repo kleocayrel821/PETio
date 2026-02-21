@@ -348,7 +348,7 @@
   {# Mobile Bottom Navigation (context-based) #}
   <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
     {% with path=request.path %}
-      {% if current_app == 'controller' and not path|slice:":8" == "/social/" and not path|slice:":13" == "/marketplace/" %}
+      {% if path == '/' or (request.resolver_match and request.resolver_match.url_name in ('home','schedules_ui','history','pending_commands','bmi_calculator','control_panel','test_base')) %}
         <a href="/" class="{% if request.path == '/' %}active{% endif %}">
           <i class="fas fa-home"></i><span>Home</span>
         </a>
