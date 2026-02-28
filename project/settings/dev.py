@@ -27,7 +27,6 @@ ALLOWED_HOSTS = os.environ.get(
 print("DEBUG:", DEBUG)
 print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
 
-
 # -----------------------------
 # Time zone
 # -----------------------------

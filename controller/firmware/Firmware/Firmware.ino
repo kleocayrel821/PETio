@@ -23,24 +23,34 @@
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <Servo.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 String nowUtcIso();
 extern unsigned long lastFeedCompletionTime;
 
 // Inlined config.h (undo modularization)
 // Hardware Pin Definitions - RGB LEDs (D7/D0)
-#define RED_LED_PIN 13
+#define RED_LED_PIN 2
 #define BLUE_LED_PIN 16
 
 // Hardware Pin Definitions - Servo and Buttons
 #define SERVO_PIN 14
-#define FEED_NOW_PIN 5
-#define ADD_PORTION_PIN 4
+#define FEED_NOW_PIN 0
+#define ADD_PORTION_PIN 13
 #define REDUCE_PORTION_PIN 12
 #define BUTTON_PIN FEED_NOW_PIN
 
 // Legacy LED pin for compatibility
 #define LED_PIN 2
+#define OLED_SDA_PIN 4
+#define OLED_SCL_PIN 5
+#define OLED_ADDR 0x3C
+#define OLED_WIDTH 128
+#define OLED_HEIGHT 64
+#define OLED_RESET -1
+#define OLED_UPDATE_INTERVAL_MS 500
 
 // Wi-Fi Configuration Settings
 #define WIFI_TIMEOUT_MS 30000
@@ -95,21 +105,8 @@ extern unsigned long lastFeedCompletionTime;
   #define SERVO_ANTI_CLOG_REVERSE 1400
 #endif
 
-// CRITICAL FIX: Portion wheel requires single continuous rotations
-// Disabled chunked feeding thresholds (previously used to split large portions)
-// #define LARGE_PORTION_THRESHOLD 40.0f
-// #define FEED_CHUNK_SIZE 20.0f
-// #define CHUNK_PAUSE_MS 500
-// #define MINI_AGITATION_PULSES 2
-// #define MINI_AGITATION_PULSE_MS 200
-
-// Periodic anti-jam during continuous feeding
 #define ANTI_JAM_INTERVAL_MS 2000
 #define ANTI_JAM_REVERSE_MS 200
-
-// CRITICAL FIX: Portion wheel does not use reverse-clear multi-cycle feeding
-// Disabled reverse-clear threshold; keep timing constants for diagnostics/tests
-// #define REVERSE_CLEAR_THRESHOLD 50.0f
 #define REVERSE_CLEAR_FORWARD_MS 800
 #define REVERSE_CLEAR_REVERSE_MS 300
 #define REVERSE_CLEAR_PAUSE_MS 200
@@ -129,9 +126,9 @@ extern unsigned long lastFeedCompletionTime;
 unsigned int g_feedPulse = SERVO_FEED_SPEED;
 
 // HTTP Communication Constants
-#define DEFAULT_SERVER_URL "https://petio.site"
+#define DEFAULT_SERVER_URL "http://192.168.18.9:8000"
 #define DEFAULT_DEVICE_ID "feeder-1"
-#define DEFAULT_API_KEY "51c1ebc55900af5273e5a43c2ba0c140"
+#define DEFAULT_API_KEY "petio_secure_key_2025"
 #define HTTP_TIMEOUT_MS 3000
 #define HTTP_MAX_RETRIES 2
 
@@ -144,6 +141,8 @@ unsigned int g_feedPulse = SERVO_FEED_SPEED;
 #define SCHEDULE_POLL_INTERVAL 45000
 #define SCHEDULE_GRACE_PERIOD 120
 #define MS_PER_GRAM 20
+// Remote command polling
+#define COMMAND_POLL_INTERVAL 10000
 
 // Calibrated dispensing constants
 #define STARTUP_DELAY_MS 100
@@ -269,6 +268,229 @@ public:
   void startFeedbackBlinkRed(int cycles, unsigned long interval_ms) { overlayRestore = currentState; overlayActive = true; overlayBlue = false; overlayInterval = interval_ms; overlayCycles = cycles; overlayCompleted = 0; overlayOn = false; overlayLastToggle = millis(); }
 };
 
+/**
+ * OledDisplay — redesigned for PETio pet feeder (SSD1306 128×64)
+ *
+ * Layout (Normal state):
+ *  Row  0–13 : WiFi icon (left) + Current time HH:MM:SS (right)
+ *  Row    14 : Horizontal divider line
+ *  Row 15–16 : "PORTION" label (small caps)
+ *  Row 20–52 : Portion grams — large text (textSize 3)
+ *  Row 53–60 : Progress bar (portion vs max) + "RDY" label
+ *
+ * Layout (Dispensing state — full screen swap):
+ *  Row  0–9  : Animated marching-block progress bar
+ *  Row 18–34 : "DISPENSING" centred (textSize 2)
+ *  Row 40–47 : Scrolling dot animation
+ *  Row 54–63 : Divider + portion reminder
+ */
+
+class OledDisplay {
+private:
+  Adafruit_SSD1306 display;
+  unsigned long lastUpdate;
+  uint8_t      animFrame;
+  bool         initialized;
+
+  void scanI2C() {
+    int found = 0;
+    Serial.println("I2C scan start");
+    for (int addr = 1; addr < 127; addr++) {
+      Wire.beginTransmission(addr);
+      if (Wire.endTransmission() == 0) {
+        Serial.print("I2C device at 0x");
+        if (addr < 16) Serial.print("0");
+        Serial.println(addr, HEX);
+        found++;
+      }
+    }
+    if (!found) Serial.println("I2C scan: no devices");
+    Serial.println("I2C scan end");
+  }
+
+  /** Small WiFi "fan" icon at (x, y). Shows X when disconnected. */
+  void drawWifiIcon(int x, int y, bool connected) {
+    if (!connected) {
+      display.drawLine(x,     y,     x + 9, y + 9, SSD1306_WHITE);
+      display.drawLine(x + 9, y,     x,     y + 9, SSD1306_WHITE);
+      return;
+    }
+    for (int r = 8; r >= 2; r -= 3) {
+      display.drawCircle(x + 5, y + 10, r, SSD1306_WHITE);
+      display.fillRect(x, y + 10, 11, 8, SSD1306_BLACK);
+    }
+    display.fillCircle(x + 5, y + 10, 1, SSD1306_WHITE);
+  }
+
+  /** Horizontal progress bar. pct = 0–100 */
+  void drawProgressBar(int x, int y, int w, int h, int pct) {
+    display.drawRect(x, y, w, h, SSD1306_WHITE);
+    int fill = (int)((w - 2) * pct / 100);
+    if (fill > 0)
+      display.fillRect(x + 1, y + 1, fill, h - 2, SSD1306_WHITE);
+  }
+
+  void drawNormalScreen(bool wifiConnected, float portionGrams) {
+    // ── Top bar: WiFi icon + time ─────────────────────────────────────────
+    drawWifiIcon(1, 1, wifiConnected);
+
+    time_t nowTs = time(nullptr);
+    struct tm* t = localtime(&nowTs);
+    char timeBuf[9];
+    snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d",
+             t->tm_hour, t->tm_min, t->tm_sec);
+
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    int timeX = OLED_WIDTH - (int)strlen(timeBuf) * 6 - 1;
+    display.setCursor(timeX, 3);
+    display.print(timeBuf);
+
+    // ── Divider ───────────────────────────────────────────────────────────
+    display.drawLine(0, 14, OLED_WIDTH - 1, 14, SSD1306_WHITE);
+
+    // ── "PORTION" label ───────────────────────────────────────────────────
+    display.setTextSize(1);
+    display.setCursor(2, 16);
+    display.print("Portion:");
+
+    // ── Big number + unit ─────────────────────────────────────────────────
+    int portionInt = (int)(portionGrams + 0.5f);
+    char numBuf[6];
+    snprintf(numBuf, sizeof(numBuf), "%d", portionInt);
+
+    display.setTextSize(3);
+    int numW = (int)strlen(numBuf) * 18 + 12;
+    int numX = (OLED_WIDTH - numW) / 2;
+    display.setCursor(numX, 20);
+    display.print(numBuf);
+
+    display.setTextSize(2);
+    display.setCursor(numX + (int)strlen(numBuf) * 18 + 2, 26);
+    display.print("g");
+
+    // ── Progress bar + RDY ────────────────────────────────────────────────
+    int pct = (int)(portionGrams / MANUAL_PORTION_MAX_GRAMS * 100.0f);
+    pct = constrain(pct, 0, 100);
+    drawProgressBar(0, 53, OLED_WIDTH - 30, 8, pct);
+
+    display.setTextSize(1);
+    display.setCursor(OLED_WIDTH - 28, 54);
+    display.print("RDY");
+  }
+
+  void drawDispensingScreen(float portionGrams) {
+    // ── Marching-block animation ──────────────────────────────────────────
+    const int BLOCK_W   = 12;
+    const int BLOCK_H   = 7;
+    const int BLOCK_GAP = 3;
+    const int NUM_BLOCKS = OLED_WIDTH / (BLOCK_W + BLOCK_GAP);
+    int offset = (animFrame * 3) % (BLOCK_W + BLOCK_GAP);
+
+    for (int i = 0; i < NUM_BLOCKS + 1; i++) {
+      int bx = i * (BLOCK_W + BLOCK_GAP) - offset;
+      if (bx + BLOCK_W > 0 && bx < OLED_WIDTH) {
+        if (i % 3 != 2)
+          display.fillRect(bx, 1, BLOCK_W, BLOCK_H, SSD1306_WHITE);
+        else
+          display.drawRect(bx, 1, BLOCK_W, BLOCK_H, SSD1306_WHITE);
+      }
+    }
+
+    // ── "DISPENSING" text ─────────────────────────────────────────────────
+    display.setTextSize(2);
+    int textW = 10 * 12;
+    int textX = (OLED_WIDTH - textW) / 2;
+    display.setCursor(textX, 18);
+    display.print("DISPENSING");
+
+    // ── Scrolling dot animation ───────────────────────────────────────────
+    const int DOT_R    = 3;
+    const int DOT_GAPS = 12;
+    const int NUM_DOTS = 5;
+    int dotStartX = (OLED_WIDTH - (NUM_DOTS * DOT_GAPS)) / 2;
+    for (int i = 0; i < NUM_DOTS; i++) {
+      int dx  = dotStartX + i * DOT_GAPS;
+      bool lit = ((int)(animFrame % NUM_DOTS) == i);
+      if (lit)
+        display.fillCircle(dx, 43, DOT_R, SSD1306_WHITE);
+      else
+        display.drawCircle(dx, 43, DOT_R - 1, SSD1306_WHITE);
+    }
+
+    // ── Divider + portion reminder ────────────────────────────────────────
+    display.drawLine(0, 54, OLED_WIDTH - 1, 54, SSD1306_WHITE);
+
+    int portionInt = (int)(portionGrams + 0.5f);
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%dg", portionInt);
+
+    display.setTextSize(1);
+    int labelW = (int)strlen(buf) * 6;
+    display.setCursor((OLED_WIDTH - labelW) / 2, 56);
+    display.print(buf);
+  }
+
+public:
+  OledDisplay()
+    : display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RESET),
+      lastUpdate(0), animFrame(0), initialized(false) {}
+
+  void init() {
+    Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
+    Wire.setClock(400000);
+    scanI2C();
+
+    bool ok = display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
+    if (!ok) {
+      uint8_t alt = (OLED_ADDR == 0x3C) ? 0x3D : 0x3C;
+      ok = display.begin(SSD1306_SWITCHCAPVCC, alt);
+    }
+    if (!ok) {
+      Serial.println("OLED init failed");
+      initialized = false;
+      return;
+    }
+
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+    display.setTextSize(2);
+    display.setCursor(20, 20);
+    display.print("PETio");
+    display.setTextSize(1);
+    display.setCursor(28, 40);
+    display.print("Booting...");
+    display.display();
+
+    lastUpdate  = millis();
+    initialized = true;
+    Serial.println("OLED initialized");
+  }
+
+  /**
+   * Call every loop() iteration.
+   * Signature is unchanged from the original — drop-in compatible.
+   */
+  void update(bool wifiConnected, const String& /*ssid*/,
+              float portionGrams, bool isFeeding) {
+    if (!initialized) return;
+    unsigned long now = millis();
+    if (now - lastUpdate < OLED_UPDATE_INTERVAL_MS) return;
+    lastUpdate = now;
+    animFrame++;
+
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+
+    if (isFeeding)
+      drawDispensingScreen(portionGrams);
+    else
+      drawNormalScreen(wifiConnected, portionGrams);
+
+    display.display();
+  }
+};
+
 // Inlined motorcontrol.h/.cpp
 class MotorController {
 private:
@@ -324,9 +546,12 @@ public:
       } else if (lastPulse != targetPulse) { 
         feedingServo.writeMicroseconds(targetPulse); lastPulse = targetPulse; 
       } 
-      if (!antiJamActive && (now - lastAntiJamTs) >= ANTI_JAM_INTERVAL_MS) {
+      // Only apply anti-jam to feeds longer than the interval to avoid triggering on short feeds
+      if (!antiJamActive &&
+          feedingDuration > ANTI_JAM_INTERVAL_MS &&
+          (now - lastAntiJamTs) >= ANTI_JAM_INTERVAL_MS) {
         performAntiJamPulse();
-        feedingStartTime += ANTI_JAM_REVERSE_MS;
+        // Removed feedingStartTime += ANTI_JAM_REVERSE_MS; - This was causing the over-dispensing bug
       }
       if (!clogDetected && elapsed > (feedingDuration + 2000UL)) { 
         clogDetected = true; Serial.println("WARNING: Possible clog detected - feeding taking too long"); 
@@ -428,6 +653,7 @@ public:
   void handleConfigMode() { dnsServer.processNextRequest(); webServer.handleClient(); if (millis() - configModeStartTime > CONFIG_TIMEOUT_MS) { Serial.println("Configuration mode timeout, restarting..."); ESP.restart(); } }
   bool isConfigMode() { return configurationMode; }
   String getDeviceID() { return deviceID; }
+  String getSSID() { return wifiSSID; }
 
   // Wrappers to match firmware.ino usage
   void startConfigurationMode() { startConfigMode(); }
@@ -478,12 +704,12 @@ private:
       } else {
         http.begin(wifiClientPlain, fullURL);
       }
-      http.setTimeout(requestTimeout); http.addHeader("Content-Type", "application/json"); http.addHeader("User-Agent", "ESP8266-PetFeeder/1.0");
+      http.setTimeout(requestTimeout); http.addHeader("Content-Type", "application/json"); http.addHeader("User-Agent", "ESP8266-PetFeeder/1.0"); http.addHeader("Connection", "close"); http.useHTTP10(true); http.setReuse(false);
       if (apiKey.length() > 0) { http.addHeader("X-API-Key", apiKey); }
       int httpCode = -1; if (method == "POST") httpCode = http.POST(payload); else if (method == "GET") httpCode = http.GET();
       if (httpCode > 0) { response = http.getString(); http.end(); if (httpCode >= 200 && httpCode < 300) { lastError = ""; return true; } else { lastError = "HTTP " + String(httpCode) + ": " + response; } }
-      else { lastError = "HTTP request failed: " + String(httpCode); }
-      http.end(); if (attempt < maxRetries - 1) { Serial.println("Request failed, retrying in 2 seconds..."); delay(2000); }
+      else { lastError = "HTTP request failed: " + String(http.errorToString(httpCode)); }
+      http.end(); if (attempt < maxRetries - 1) { Serial.println("Request failed, retrying shortly..."); delay(250); }
     }
     return false;
   }
@@ -540,6 +766,7 @@ public:
 NetworkingManager network;
 LedController ledController;
 MotorController motorController;
+OledDisplay oledDisplay;
 HTTPClientManager httpClient;  // Added HTTP client for backend communication
 
 // NTP Client for time synchronization
@@ -557,7 +784,13 @@ unsigned long lastFeedCompletionTime = 0;
 unsigned long firmwareBootMs = 0;
 unsigned long manualSuppressUntil = 0;
 unsigned long networkBackoffUntil = 0;
-const unsigned long NETWORK_BACKOFF_MS = 60000;
+bool manualLogPending = false;
+int manualLogPortion = 0;
+unsigned long networkBackoffMs = 60000;
+const unsigned long MIN_NETWORK_BACKOFF_MS = 60000;
+const unsigned long MAX_NETWORK_BACKOFF_MS = 300000;
+unsigned long lastCommandPoll = 0;
+float activeFeedPortionGrams = 0.0f;
 
 // Error handling and retry logic
 int consecutiveNetworkErrors = 0;
@@ -590,6 +823,7 @@ void setup() {
 
   // Initialize motor controller with LED reference
   motorController.init(&ledController);
+  oledDisplay.init();
   manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
   #if SERVO_DIRECTION_TEST
     motorController.runAgitationCycle(); // Light motion test; replace with dedicated direction test if needed
@@ -628,6 +862,16 @@ void setup() {
     
     // Initialize NTP time synchronization
     initializeNTP();
+    lastSchedulePoll = millis() - SCHEDULE_POLL_INTERVAL;
+    lastCommandPoll = millis() - COMMAND_POLL_INTERVAL;
+    lastStatusUpdate = millis() - STATUS_UPDATE_INTERVAL;
+    String cfg;
+    bool cfgOk = httpClient.getDeviceConfig(cfg);
+    if (cfgOk) {
+      Serial.println("Startup HTTP check OK");
+    } else {
+      Serial.println("Startup HTTP check failed: " + httpClient.getLastError());
+    }
     
   } else {
     Serial.println("Failed to connect to Wi-Fi");
@@ -645,7 +889,20 @@ void loop() {
   handlePortionAdjustButtons();
   network.update();
   motorController.update();
+  if (activeFeedPortionGrams > 0.0f && !motorController.isFeedingInProgress()) {
+    activeFeedPortionGrams = 0.0f;
+  }
+  float displayPortion = activeFeedPortionGrams > 0.0f ? activeFeedPortionGrams : manualPortionGrams;
+  oledDisplay.update(network.isConnected(), network.getSSID(), displayPortion, motorController.isFeedingInProgress());
+  if (manualLogPending && !motorController.isFeedingInProgress()) {
+    if (network.isConnected()) {
+      bool success = httpClient.sendFeedingLog(manualLogPortion, "manual", "Button press feeding");
+      if (!success) { Serial.println("Failed to log feeding to server: " + httpClient.getLastError()); }
+    }
+    manualLogPending = false;
+  }
   ledController.update();
+  bool allowNetworkWork = !motorController.isFeedingInProgress();
   #if DEBUG_BUTTONS
   static unsigned long lastDebug = 0;
   if (millis() - lastDebug > 500) {
@@ -662,29 +919,30 @@ void loop() {
   }
   #endif
 
-  // Manual handling already prioritized above
-
-  // Step D: NTP time synchronization
-  updateNTPTime();
+  if (allowNetworkWork) {
+    updateNTPTime();
+  }
 
   // Step D: Schedule polling and execution
-  if (network.isConnected()) {
-    pollAndExecuteSchedules();
-    pollAndExecuteRemoteCommands();
-    consecutiveNetworkErrors = 0;  // Reset error counter on successful connection
-  } else {
-    consecutiveNetworkErrors++;
-    if (consecutiveNetworkErrors > MAX_CONSECUTIVE_ERRORS) {
-      Serial.println("Too many consecutive network errors, attempting reconnection...");
-      network.connect();
+  if (allowNetworkWork) {
+    if (network.isConnected()) {
+      pollAndExecuteSchedules();
+      pollAndExecuteRemoteCommands();
       consecutiveNetworkErrors = 0;
+    } else {
+      consecutiveNetworkErrors++;
+      if (consecutiveNetworkErrors > MAX_CONSECUTIVE_ERRORS) {
+        Serial.println("Too many consecutive network errors, attempting reconnection...");
+        network.connect();
+        consecutiveNetworkErrors = 0;
+      }
     }
   }
 
   // Periodic status updates (existing functionality)
   unsigned long currentTime = millis();
   if (currentTime - lastStatusUpdate > STATUS_UPDATE_INTERVAL) {
-    if (network.isConnected()) {
+    if (allowNetworkWork && network.isConnected()) {
       sendDeviceStatus();
     }
     lastStatusUpdate = currentTime;
@@ -768,10 +1026,13 @@ void pollAndExecuteSchedules() {
     
     if (success) {
       processScheduleResponse(scheduleResponse);
+      networkBackoffMs = MIN_NETWORK_BACKOFF_MS;
+      networkBackoffUntil = 0;
     } else {
       Serial.println("Failed to poll schedules: " + httpClient.getLastError());
-      networkBackoffUntil = millis() + NETWORK_BACKOFF_MS;
-      Serial.println("Entering network backoff for 60s");
+      networkBackoffMs = min(networkBackoffMs * 2, MAX_NETWORK_BACKOFF_MS);
+      networkBackoffUntil = millis() + networkBackoffMs;
+      Serial.println("Entering network backoff for " + String(networkBackoffMs / 1000) + "s");
     }
     
     lastSchedulePoll = currentTime;
@@ -1094,18 +1355,17 @@ void handleCalibrationCommands() {
         return;
       }
       if (line.startsWith("CAL RESULT")) {
-        int idx = line.indexOf(' ');
-        if (idx > 0) {
-          String rest = line.substring(idx + 1); rest.trim();
-          float actual = rest.toFloat();
-          if (actual > 0.0f) {
-            float suggested = (float)(calibrationLastDuration > g_startupDelay ? (calibrationLastDuration - g_startupDelay) : 0UL) / actual;
-            float errorPct = calibrationTestGrams > 0.0f ? ((actual - calibrationTestGrams) / calibrationTestGrams) * 100.0f : 0.0f;
-            Serial.println("Calibration RESULT: actual=" + String(actual, 3) + "g error=" + String(errorPct, 2) + "%");
-            Serial.println("Suggested ms_per_g=" + String(suggested, 4) + " (use CAL SET <value> to apply)");
-          } else {
-            Serial.println("Invalid actual grams");
-          }
+        String rest = line.substring(10);
+        rest.trim();
+        float actual = rest.toFloat();
+        if (actual > 0.0f) {
+          float suggested = (float)(calibrationLastDuration > g_startupDelay ? (calibrationLastDuration - g_startupDelay) : 0UL) / actual;
+          float errorPct = calibrationTestGrams > 0.0f ? ((actual - calibrationTestGrams) / calibrationTestGrams) * 100.0f : 0.0f;
+          Serial.println("Calibration RESULT: actual=" + String(actual, 3) + "g error=" + String(errorPct, 2) + "%");
+          saveCalibration(suggested, g_startupDelay);
+          Serial.println("Applied ms_per_g=" + String(suggested, 4));
+        } else {
+          Serial.println("Invalid actual grams");
         }
         calibrationMode = false;
         return;
@@ -1140,7 +1400,7 @@ void executeScheduledFeeding(uint32_t scheduleId, float portionGrams) {
     Serial.println("Scheduled feed rejected: cooldown");
     return;
   }
-  // CRITICAL FIX: Portion wheel → single continuous feed only
+  activeFeedPortionGrams = portionGrams;
   motorController.startFeedingWithAntiClog(feedingDuration);
   ledController.showFeeding();  // Blue LED during feeding
   
@@ -1148,6 +1408,7 @@ void executeScheduledFeeding(uint32_t scheduleId, float portionGrams) {
   while (motorController.isFeedingInProgress()) {
     motorController.update();
     ledController.update();
+    oledDisplay.update(network.isConnected(), network.getSSID(), activeFeedPortionGrams, true);
     delay(100);
   }
   
@@ -1250,11 +1511,10 @@ void handleManualFeeding() {
     }
     // CRITICAL FIX: Portion wheel → single continuous feed only
     // Replaced reverse-clear/chunked logic with simple anti-clog feed
+    activeFeedPortionGrams = manualPortionGrams;
     motorController.startFeedingWithAntiClog(manualFeedDurationMs);
-    if (network.isConnected()) {
-      bool success = httpClient.sendFeedingLog((int)manualPortionGrams, "manual", "Button press feeding");
-      if (!success) { Serial.println("Failed to log feeding to server: " + httpClient.getLastError()); }
-    }
+    manualLogPending = true;
+    manualLogPortion = (int)manualPortionGrams;
     dailyFeeds++;
     lastFeedIso = nowUtcIso();
     return;
@@ -1316,13 +1576,12 @@ void handleManualFeeding() {
         }
       }
     // CRITICAL FIX: Portion wheel → single continuous feed only
+    activeFeedPortionGrams = manualPortionGrams;
     motorController.startFeedingWithAntiClog(manualFeedDurationMs);
     manualSuppressUntil = millis() + 800;
     armed = false;
-    if (network.isConnected()) {
-      bool success = httpClient.sendFeedingLog((int)manualPortionGrams, "manual", "Button press feeding");
-      if (!success) { Serial.println("Failed to log feeding to server: " + httpClient.getLastError()); }
-    }
+    manualLogPending = true;
+    manualLogPortion = (int)manualPortionGrams;
     dailyFeeds++;
     lastFeedIso = nowUtcIso();
   }
@@ -1341,7 +1600,7 @@ void handlePortionAdjustButtons() {
   if (addStatePressed && !addPressed && (millis() - lastAddPress > BUTTON_DEBOUNCE_MS)) {
     addPressed = true;
     lastAddPress = millis();
-    manualSuppressUntil = millis() + 800; // 800ms suppression to prevent conflict detection with Feed button
+    manualSuppressUntil = millis() + 800;
     manualPortionGrams += PORTION_STEP_GRAMS;
     if (manualPortionGrams > MANUAL_PORTION_MAX_GRAMS) manualPortionGrams = MANUAL_PORTION_MAX_GRAMS;
     manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
@@ -1361,7 +1620,7 @@ void handlePortionAdjustButtons() {
   if (reduceStatePressed && !reducePressed && (millis() - lastReducePress > BUTTON_DEBOUNCE_MS)) {
     reducePressed = true;
     lastReducePress = millis();
-    manualSuppressUntil = millis() + 800; // 800ms suppression to prevent conflict detection with Feed button
+    manualSuppressUntil = millis() + 800;
     manualPortionGrams -= PORTION_STEP_GRAMS;
     if (manualPortionGrams < MANUAL_PORTION_MIN_GRAMS) manualPortionGrams = MANUAL_PORTION_MIN_GRAMS;
     manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
@@ -1416,8 +1675,6 @@ void syncDeviceConfiguration() {
 }
 
 // Remote command polling and execution
-#define COMMAND_POLL_INTERVAL 10000
-unsigned long lastCommandPoll = 0;
 
 void pollAndExecuteRemoteCommands() {
   unsigned long currentTime = millis();
@@ -1446,10 +1703,13 @@ void pollAndExecuteRemoteCommands() {
           }
         }
       }
+      networkBackoffMs = MIN_NETWORK_BACKOFF_MS;
+      networkBackoffUntil = 0;
     } else {
       Serial.println("Failed to poll commands: " + httpClient.getLastError());
-      networkBackoffUntil = millis() + NETWORK_BACKOFF_MS;
-      Serial.println("Entering network backoff for 60s");
+      networkBackoffMs = min(networkBackoffMs * 2, MAX_NETWORK_BACKOFF_MS);
+      networkBackoffUntil = millis() + networkBackoffMs;
+      Serial.println("Entering network backoff for " + String(networkBackoffMs / 1000) + "s");
     }
     lastCommandPoll = currentTime;
   }
@@ -1460,13 +1720,14 @@ void executeRemoteFeeding(uint32_t commandId, float portionGrams) {
   if (firmwareBootMs != 0 && (millis() - firmwareBootMs) < BUTTON_BOOT_IGNORE_MS) { httpClient.sendAcknowledge(commandId, "boot_mute"); return; }
   if (lastFeedCompletionTime > 0 && (millis() - lastFeedCompletionTime) < COOLDOWN_PERIOD_MS) { httpClient.sendAcknowledge(commandId, "cooldown"); return; }
   unsigned long feedingDuration = calculateFeedingDuration(portionGrams);
-  // CRITICAL FIX: Portion wheel → single continuous feed only
+  activeFeedPortionGrams = portionGrams;
   motorController.startFeedingWithAntiClog(feedingDuration);
   ledController.showFeeding();
   
   while (motorController.isFeedingInProgress()) {
     motorController.update();
     ledController.update();
+    oledDisplay.update(network.isConnected(), network.getSSID(), activeFeedPortionGrams, true);
     delay(100);
   }
   
