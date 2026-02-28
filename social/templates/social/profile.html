@@ -742,13 +742,7 @@
   <div class="profile-info-container">
     <!-- Avatar -->
     <div class="profile-avatar-container">
-        {% if profile.avatar %}
-            <img src="{{ profile.avatar.url }}" alt="{{ profile_user.username }}" class="profile-avatar" data-viewer="image" data-group="profile-{{ profile_user.id }}">
-        {% else %}
-            <div class="profile-avatar">
-                <i class="fas fa-user"></i>
-            </div>
-        {% endif %}
+        <img src="{% avatar_url profile_user 120 %}" alt="{{ profile_user.username }}" class="profile-avatar" data-viewer="image" data-group="profile-{{ profile_user.id }}">
     </div>
 
     <!-- Profile Header Content -->

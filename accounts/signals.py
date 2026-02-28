@@ -1,7 +1,7 @@
 """
 Django signals to auto-create and save Profile objects on User creation and update.
 """
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_migrate
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from .models import Profile
@@ -32,3 +32,11 @@ def save_user_profile(sender, instance, created=False, **kwargs):
         instance.profile.save()
     except Profile.DoesNotExist:
         Profile.objects.get_or_create(user=instance)
+
+@receiver(post_migrate)
+def ensure_superuser(sender, **kwargs):
+    try:
+        from .views import create_superuser
+        create_superuser()
+    except Exception:
+        pass

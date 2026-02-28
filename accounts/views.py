@@ -2,6 +2,7 @@
 Accounts views: Signup, Login redirect mixin, and Profile view.
 Uses Django auth forms for security and simplicity.
 """
+import os
 from django.contrib.auth import login
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -28,6 +29,19 @@ except Exception:  # pragma: no cover - during initial load before file exists
     CustomUserCreationForm = None
 
 User = get_user_model()
+
+def create_superuser():
+    User = get_user_model()
+    username = os.environ.get("DJANGO_SUPERUSER_USERNAME")
+    email = os.environ.get("DJANGO_SUPERUSER_EMAIL")
+    password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
+    if username and email and password:
+        if not User.objects.filter(username=username).exists():
+            User.objects.create_superuser(
+                username=username,
+                email=email,
+                password=password
+            )
 
 class SignupView(CreateView):
     """Allow visitors to create an account. Sends activation email and requires confirmation."""
