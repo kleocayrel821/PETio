@@ -1,12 +1,28 @@
 from django.conf import settings
+from .models import Hardware
 
 
 def _device_api_key_valid(request):
-    """Validate device API key from header X-API-Key against settings.PETIO_DEVICE_API_KEY if set.
-    Returns True if no key is configured (development convenience).
-    """
     expected = getattr(settings, 'PETIO_DEVICE_API_KEY', None)
     if not expected:
         return True
     supplied = request.headers.get('X-API-Key') or request.META.get('HTTP_X_API_KEY')
     return supplied == expected
+
+
+def device_headers_valid(request):
+    dev_id = request.headers.get('Device-ID') or request.META.get('HTTP_DEVICE_ID')
+    dev_key = request.headers.get('X-Device-Key') or request.META.get('HTTP_X_DEVICE_KEY')
+    if not dev_id or not dev_key:
+        return False
+    try:
+        hw = Hardware.objects.get(device_id=dev_id, is_paired=True)
+    except Hardware.DoesNotExist:
+        return False
+    return hw.check_api_key(dev_key)
+
+
+def device_auth_or_legacy_valid(request):
+    if device_headers_valid(request):
+        return True
+    return _device_api_key_valid(request)

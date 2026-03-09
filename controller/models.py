@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
+from django.contrib.auth.hashers import make_password, check_password
 import uuid
 import logging
 
@@ -173,6 +174,8 @@ class Hardware(models.Model):
     unique_key = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     is_paired = models.BooleanField(default=False, db_index=True)
     paired_user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='hardware_devices')
+    device_id = models.CharField(max_length=100, unique=True, null=True, blank=True, db_index=True)
+    api_key_hash = models.CharField(max_length=256, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -192,6 +195,15 @@ class Hardware(models.Model):
         self.is_paired = True
         self.save(update_fields=['paired_user', 'is_paired', 'updated_at'])
 
+    def set_api_key(self, raw_key: str):
+        self.api_key_hash = make_password(raw_key)
+        self.save(update_fields=['api_key_hash', 'updated_at'])
+
+    def check_api_key(self, raw_key: str) -> bool:
+        if not self.api_key_hash:
+            return False
+        return check_password(raw_key, self.api_key_hash)
+
 
 class ControllerSettings(models.Model):
     hardware = models.OneToOneField(Hardware, on_delete=models.CASCADE, related_name='controllersettings')
@@ -208,3 +220,22 @@ class ControllerSettings(models.Model):
 
     def __str__(self):
         return f"Settings for {self.hardware_id}"
+
+
+class PairingSession(models.Model):
+    hardware = models.ForeignKey(Hardware, on_delete=models.CASCADE, related_name='pairing_sessions')
+    pin = models.CharField(max_length=6, db_index=True)
+    expires_at = models.DateTimeField(db_index=True)
+    claimed = models.BooleanField(default=False, db_index=True)
+    claimed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    provision_key = models.CharField(max_length=128, null=True, blank=True)
+    served = models.BooleanField(default=False, db_index=True)
+    attempts_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['pin', 'expires_at']),
+            models.Index(fields=['claimed', 'served']),
+        ]
+        ordering = ['-created_at']

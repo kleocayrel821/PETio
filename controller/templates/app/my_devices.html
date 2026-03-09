@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <h2>My Devices</h2>
+  <p><a href="{% url 'claim_device_page' %}">Claim a new device</a></p>
+  {% if devices %}
+  <table border="1" cellspacing="0" cellpadding="6">
+    <thead>
+      <tr>
+        <th>Unique Key</th>
+        <th>Paired</th>
+        <th>Updated</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for d in devices %}
+      <tr>
+        <td>{{ d.unique_key }}</td>
+        <td>{{ d.is_paired|yesno:"Yes,No" }}</td>
+        <td>{{ d.updated_at }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No devices yet. <a href="{% url 'claim_device_page' %}">Pair one now</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}
