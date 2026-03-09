@@ -115,6 +115,14 @@ def _user_owns_device(user, device_id: str) -> bool:
     except Exception:
         return False
 
+def _single_device_id_for_user(user) -> str:
+    try:
+        qs = Hardware.objects.filter(paired_user=user, is_paired=True).values_list("device_id", flat=True)
+        if qs.count() == 1:
+            return qs.first()
+    except Exception:
+        pass
+    return ""
 @login_required
 def my_devices_page(request):
     items = Hardware.objects.filter(paired_user=request.user).order_by("-updated_at")
@@ -266,7 +274,9 @@ def feed_now(request):
         if portion_size <= 0 or portion_size > 100:
             return Response({"status": "error", "message": "Portion must be between 1 and 100 grams", "success": False, "error": "portion_out_of_range"}, status=status.HTTP_400_BAD_REQUEST)
 
-        device_id = request.data.get("device_id") or getattr(settings, "DEVICE_ID", "feeder-1")
+        device_id = request.data.get("device_id")
+        if not device_id:
+            device_id = _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
         if not _user_owns_device(request.user, device_id):
             return Response({"status": "error", "message": "Forbidden: device not owned by user", "success": False, "error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         device_ip = request.data.get("device_ip") or getattr(settings, "PETIO_DEVICE_IP", os.getenv("PETIO_DEVICE_IP"))
@@ -738,7 +748,7 @@ def command_status(request):
 def stop_feeding(request):
     """Queue a stop feeding command for ESP8266"""
     try:
-        device_id = request.data.get("device_id") or getattr(settings, "DEVICE_ID", "feeder-1")
+        device_id = request.data.get("device_id") or _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
         if not _user_owns_device(request.user, device_id):
             return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         with transaction.atomic():
@@ -759,7 +769,7 @@ def stop_feeding(request):
 def calibrate(request):
     """Queue a calibrate command for ESP8266"""
     try:
-        device_id = request.data.get("device_id") or getattr(settings, "DEVICE_ID", "feeder-1")
+        device_id = request.data.get("device_id") or _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
         if not _user_owns_device(request.user, device_id):
             return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         with transaction.atomic():
