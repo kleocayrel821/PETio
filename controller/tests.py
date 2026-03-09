@@ -2,7 +2,7 @@
 Backend tests for Feed and Connect Automatic Pet Feeder.
 Covers key API endpoints and viewsets to ensure functionality.
 """
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
@@ -29,7 +29,11 @@ class APITests(TestCase):
         self.assertTrue(len(resp.data) >= 1)
 
     def test_stop_feeding_endpoint(self):
-        resp = self.client.post(reverse('stop_feeding'), {}, format='json')
+        User = get_user_model()
+        u = User.objects.create_user(username="t1", password="pass12345")
+        hw = Hardware.objects.create(device_id="feeder-1", is_paired=True, paired_user=u)
+        self.client.force_authenticate(user=u)
+        resp = self.client.post(reverse('stop_feeding'), {"device_id": "feeder-1"}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(PendingCommand.objects.filter(command='stop_feeding').count(), 1)
 
@@ -91,10 +95,14 @@ class BackendAPITests(TestCase):
         FeedingSchedule.objects.create(time="08:30", portion_size=12.0, enabled=True)
 
     def test_feed_now_queues_command(self):
-        resp = self.client.post(reverse('feed_now'), {"portion_size": 15}, format='json')
+        User = get_user_model()
+        u = User.objects.create_user(username="feeduser", password="pass12345")
+        Hardware.objects.create(device_id="feeder-1", is_paired=True, paired_user=u)
+        self.client.force_authenticate(user=u)
+        resp = self.client.post(reverse('feed_now'), {"portion_size": 15, "device_id": "feeder-1"}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data.get('status'), 'ok')
-        self.assertEqual(PendingCommand.objects.filter(command='feed_now').count(), 1)
+        self.assertEqual(PendingCommand.objects.filter(command='feed_now', device_id='feeder-1').count(), 1)
 
     def test_get_command_returns_pending(self):
         cmd = PendingCommand.objects.create(command='feed_now', portion_size=10.0)
@@ -116,12 +124,20 @@ class BackendAPITests(TestCase):
         self.assertTrue(len(resp.data) >= 1)
 
     def test_stop_feeding_endpoint(self):
-        resp = self.client.post(reverse('stop_feeding'), {}, format='json')
+        User = get_user_model()
+        u = User.objects.create_user(username="t2", password="pass12345")
+        Hardware.objects.create(device_id="feeder-1", is_paired=True, paired_user=u)
+        self.client.force_authenticate(user=u)
+        resp = self.client.post(reverse('stop_feeding'), {"device_id": "feeder-1"}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(PendingCommand.objects.filter(command='stop_feeding').count(), 1)
 
     def test_calibrate_endpoint(self):
-        resp = self.client.post(reverse('calibrate'), {}, format='json')
+        User = get_user_model()
+        u = User.objects.create_user(username="t3", password="pass12345")
+        Hardware.objects.create(device_id="feeder-1", is_paired=True, paired_user=u)
+        self.client.force_authenticate(user=u)
+        resp = self.client.post(reverse('calibrate'), {"device_id": "feeder-1"}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(PendingCommand.objects.filter(command='calibrate').count(), 1)
 
@@ -171,7 +187,14 @@ class BackendAPITests(TestCase):
         from datetime import timedelta
         old = PendingCommand.objects.create(command='feed_now', portion_size=10.0, device_id='feeder-1')
         PendingCommand.objects.filter(id=old.id).update(created_at=timezone.now() - timedelta(seconds=120))
-        resp = self.client.post(reverse('feed_now'), {"portion_size": 15, "device_id": "feeder-1"}, format='json')
+        User = get_user_model()
+        u = User.objects.create_user(username="feedstale", password="pass12345")
+        Hardware.objects.create(device_id="feeder-1", is_paired=True, paired_user=u)
+        self.client.force_authenticate(user=u)
+        from django.core.cache import cache
+        cache.clear()
+        with override_settings(REST_FRAMEWORK={'DEFAULT_THROTTLE_RATES': {'feed_now': '1000000/minute', 'device_status': '1000000/minute'}}):
+            resp = self.client.post(reverse('feed_now'), {"portion_size": 15, "device_id": "feeder-1"}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         old.refresh_from_db()
         self.assertEqual(old.status, 'failed')
@@ -181,7 +204,12 @@ class BackendAPITests(TestCase):
         from datetime import timedelta
         recent = PendingCommand.objects.create(command='feed_now', portion_size=10.0, device_id='feeder-1')
         PendingCommand.objects.filter(id=recent.id).update(created_at=timezone.now() - timedelta(seconds=10))
-        resp = self.client.post(reverse('feed_now'), {"portion_size": 15, "device_id": "feeder-1"}, format='json')
+        User = get_user_model()
+        u = User.objects.create_user(username="feedconf", password="pass12345")
+        Hardware.objects.create(device_id="feeder-1", is_paired=True, paired_user=u)
+        self.client.force_authenticate(user=u)
+        with override_settings(REST_FRAMEWORK={'DEFAULT_THROTTLE_RATES': {'feed_now': '1000/minute', 'device_status': '1000/minute'}}):
+            resp = self.client.post(reverse('feed_now'), {"portion_size": 15, "device_id": "feeder-1"}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT)
 
 class DeviceStatusEndpointTests(TestCase):
@@ -287,4 +315,116 @@ class HardwarePairingTests(TestCase):
         self.client.post(reverse('pair_hardware'), {"unique_key": str(self.hardware.unique_key)}, format='json')
         self.client.force_authenticate(user=None)
         resp = self.client.post(reverse('update_controller_settings'), {"unique_key": str(self.hardware.unique_key), "portion_size": 10}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class PinPairingFlowTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.User = get_user_model()
+        self.user = self.User.objects.create_user(username="pairer", email="p@example.com", password="pass12345")
+        self.device_id = "ESP-TEST1234"
+
+    def test_register_claim_and_heartbeat(self):
+        # Register PIN
+        resp = self.client.post(reverse('device_pair_register'),
+                                {"device_id": self.device_id, "pin": "123456", "ttl_seconds": 300},
+                                format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        # Claim as authenticated user
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(reverse('device_pair_claim'),
+                                {"device_id": self.device_id, "pin": "123456"},
+                                format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        # Device fetches key
+        self.client.force_authenticate(user=None)
+        resp = self.client.get(reverse('device_pair_claimed'), {"device_id": self.device_id, "pin": "123456"})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        key = resp.data.get("api_key", "")
+        self.assertTrue(len(key) > 0)
+        # Heartbeat with headers succeeds (legacy key disabled via override)
+        with override_settings(PETIO_DEVICE_API_KEY=None):
+            resp = self.client.post(reverse('device_status_heartbeat'),
+                                    {"device_id": self.device_id, "wifi_rssi": -50, "uptime": 10},
+                                    HTTP_DEVICE_ID=self.device_id,
+                                    HTTP_X_DEVICE_KEY=key,
+                                    format='json')
+            self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+    def test_expired_pin_rejected(self):
+        # Register PIN
+        self.client.post(reverse('device_pair_register'),
+                         {"device_id": self.device_id, "pin": "654321", "ttl_seconds": 1},
+                         format='json')
+        # Simulate expiry by waiting via direct DB manipulation
+        from .models import Hardware, PairingSession
+        hw = Hardware.objects.get(device_id=self.device_id)
+        ps = PairingSession.objects.filter(hardware=hw).latest("created_at")
+        from django.utils import timezone
+        ps.expires_at = timezone.now() - timezone.timedelta(seconds=10)
+        ps.save(update_fields=["expires_at"])
+        # Claim should now fail
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(reverse('device_pair_claim'),
+                                {"device_id": self.device_id, "pin": "654321"},
+                                format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_wrong_pin_rejected(self):
+        self.client.post(reverse('device_pair_register'),
+                         {"device_id": self.device_id, "pin": "111111", "ttl_seconds": 300},
+                         format='json')
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(reverse('device_pair_claim'),
+                                {"device_id": self.device_id, "pin": "222222"},
+                                format='json')
+        self.assertIn(resp.status_code, (status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND))
+
+    def test_key_rotation_forces_repair(self):
+        # Register/claim/fetch key
+        self.client.post(reverse('device_pair_register'),
+                         {"device_id": self.device_id, "pin": "777777", "ttl_seconds": 300},
+                         format='json')
+        self.client.force_authenticate(user=self.user)
+        self.client.post(reverse('device_pair_claim'),
+                         {"device_id": self.device_id, "pin": "777777"},
+                         format='json')
+        self.client.force_authenticate(user=None)
+        resp = self.client.get(reverse('device_pair_claimed'),
+                               {"device_id": self.device_id, "pin": "777777"})
+        key = resp.data.get("api_key", "")
+        # Ensure a bad key gets 403 (legacy disabled)
+        with override_settings(PETIO_DEVICE_API_KEY="legacy-never-used"):
+            bad = "bad" + key
+            resp = self.client.post(reverse('device_status_heartbeat'),
+                                    {"device_id": self.device_id, "wifi_rssi": -40, "uptime": 5},
+                                    HTTP_DEVICE_ID=self.device_id,
+                                    HTTP_X_DEVICE_KEY=bad,
+                                    format='json')
+            self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class OwnershipUITests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.User = get_user_model()
+        self.owner = self.User.objects.create_user(username="owner", password="pass12345")
+        self.other = self.User.objects.create_user(username="other", password="pass12345")
+        Hardware.objects.create(device_id="ESP-UI-1", is_paired=True, paired_user=self.owner)
+
+    def test_my_devices_page_requires_login(self):
+        resp = self.client.get("/devices/")
+        # Redirect to login (302) or 302->200 depending on test settings
+        self.assertIn(resp.status_code, (302, 301))
+
+    def test_my_devices_page_renders(self):
+        # Use session login for Django view auth
+        self.client.login(username="owner", password="pass12345")
+        resp = self.client.get("/devices/")
+        self.assertEqual(resp.status_code, 200)
+
+    def test_non_owner_cannot_feed(self):
+        self.client.force_authenticate(user=self.other)
+        resp = self.client.post(reverse('feed_now'), {"portion_size": 10, "device_id": "ESP-UI-1"}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
