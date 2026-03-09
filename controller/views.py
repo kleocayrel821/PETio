@@ -72,7 +72,10 @@ from .utils import check_device_connection
 # Web UI views
 def control_panel(request):
     if request.user.is_authenticated:
-        return redirect('my_devices_page')
+        from .models import Hardware
+        has_device = Hardware.objects.filter(paired_user=request.user, is_paired=True).exists()
+        if not has_device:
+            return redirect('claim_device_page')
     return render(request, 'app/home.html')
 
 # New Class-Based Views for split UI pages
@@ -143,45 +146,60 @@ def claim_device(request):
             if hw.is_paired and hw.paired_user_id == request.user.id:
                 messages.info(request, "Hardware already paired to your account")
                 return redirect("my_devices_page")
+            # Enforce 1:1 — user may only own one device
+            from .models import Hardware as _H
+            if _H.objects.filter(paired_user=request.user, is_paired=True).exclude(id=hw.id).exists():
+                messages.error(request, "You already have a paired device")
+                return redirect("home")
             hw.pair_to(request.user)
             ControllerSettings.objects.get_or_create(hardware=hw)
             messages.success(request, "Device paired successfully")
-            return redirect("my_devices_page")
+            return redirect("home")
         elif device_id and pin:
-            from .device_api import device_pair_claim as api_pair_claim, device_pair_register as api_pair_register
-            req = request
-            req.data = {"device_id": device_id, "pin": pin}
-            resp = api_pair_claim(req)
-            if getattr(resp, "status_code", 500) == 200:
+            did = (device_id or "").strip()
+            p = (pin or "").strip()
+            if len(p) != 6 or not p.isdigit():
+                messages.error(request, "PIN must be 6 digits")
+                return render(request, "app/claim_device.html")
+            from django.utils import timezone as _tz
+            from django.db import transaction as _tx
+            from .models import Hardware, PairingSession, ControllerSettings
+            from django.utils.crypto import get_random_string
+            try:
+                with _tx.atomic():
+                    hw, _ = Hardware.objects.select_for_update().get_or_create(device_id=did, defaults={"is_paired": False})
+                    if hw.is_paired and hw.paired_user_id and hw.paired_user_id != request.user.id:
+                        messages.error(request, "Device already paired to another account")
+                        return render(request, "app/claim_device.html")
+                    # Enforce 1:1 — user may only own one device
+                    if Hardware.objects.filter(paired_user=request.user, is_paired=True).exclude(id=hw.id).exists():
+                        messages.error(request, "You already have a paired device")
+                        return redirect("home")
+                    now = _tz.now()
+                    ps = (
+                        PairingSession.objects
+                        .filter(hardware=hw, pin=p, expires_at__gte=now, claimed=False, served=False)
+                        .order_by("-created_at")
+                        .first()
+                    )
+                    if not ps:
+                        expires = now + _tz.timedelta(seconds=300)
+                        # Ensure only one active open session per device
+                        PairingSession.objects.filter(hardware=hw, claimed=False, served=False).delete()
+                        ps = PairingSession.objects.create(hardware=hw, pin=p, expires_at=expires)
+                    secret = get_random_string(48)
+                    hw.pair_to(request.user)
+                    hw.set_api_key(secret)
+                    ControllerSettings.objects.get_or_create(hardware=hw)
+                    ps.claimed = True
+                    ps.claimed_by = request.user
+                    ps.provision_key = secret
+                    ps.save(update_fields=["claimed", "claimed_by", "provision_key"])
                 messages.success(request, "Device claimed via PIN")
-                return redirect("my_devices_page")
-            # If device is not yet registered on this server, try to register then re-claim.
-            try:
-                msg = (resp.data or {}).get("message", "").lower()
-            except Exception:
-                msg = ""
-            if "device not found" in msg:
-                try:
-                    req_reg = request
-                    req_reg.data = {"device_id": device_id, "pin": pin, "ttl_seconds": 300}
-                    _reg = api_pair_register(req_reg)
-                except Exception:
-                    _reg = None
-                # Attempt claim again after register
-                try:
-                    req2 = request
-                    req2.data = {"device_id": device_id, "pin": pin}
-                    resp2 = api_pair_claim(req2)
-                    if getattr(resp2, "status_code", 500) == 200:
-                        messages.success(request, "Device registered and claimed via PIN")
-                        return redirect("my_devices_page")
-                except Exception:
-                    pass
-            try:
-                messages.error(request, resp.data.get("message") or "Failed to claim device via PIN")
-            except Exception:
-                messages.error(request, "Failed to claim device via PIN")
-            return render(request, "app/claim_device.html")
+                return redirect("home")
+            except Exception as e:
+                messages.error(request, f"Failed to claim device: {str(e)}")
+                return render(request, "app/claim_device.html")
         else:
             messages.error(request, "Provide a hardware key, or device ID and PIN")
     return render(request, "app/claim_device.html")

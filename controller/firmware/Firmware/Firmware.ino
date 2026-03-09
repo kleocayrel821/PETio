@@ -133,9 +133,9 @@ extern unsigned long lastFeedCompletionTime;
 unsigned int g_feedPulse = SERVO_FEED_SPEED;
 
 // HTTP Communication Constants
-#define DEFAULT_SERVER_URL "http://192.168.18.9:8000"
-#define DEFAULT_DEVICE_ID "feeder-1"
-#define DEFAULT_API_KEY "petio_secure_key_2025"
+#define DEFAULT_SERVER_URL "https://petio.site"
+#define DEFAULT_DEVICE_ID "ESP-0081CA63"
+#define DEFAULT_API_KEY "51c1ebc55900af5273e5a43c2ba0c140"
 #define HTTP_TIMEOUT_MS 3000
 #define HTTP_MAX_RETRIES 2
 
@@ -954,7 +954,13 @@ void setup() {
   network.loadConfiguration();
 
   // Initialize HTTP client for Django backend communication
-  httpClient.init(DEFAULT_SERVER_URL, network.getDeviceID());
+  {
+    String devId = network.getDeviceID();
+    if (!devId.startsWith("ESP-")) {
+      devId = String("ESP-") + devId;
+    }
+    httpClient.init(DEFAULT_SERVER_URL, devId);
+  }
   httpClient.setApiKey(DEFAULT_API_KEY);
 
   if (!network.isConfigured()) {
@@ -1012,7 +1018,13 @@ void setup() {
 void loop() {
   if (g_pairingActive) {
     int secsLeft = (g_pairExpireMs > millis()) ? (int)((g_pairExpireMs - millis()) / 1000UL) : 0;
-    oledDisplay.updatePairing(g_pairPin, secsLeft, network.getDeviceID());
+    {
+      String devId = network.getDeviceID();
+      if (!devId.startsWith("ESP-")) {
+        devId = String("ESP-") + devId;
+      }
+      oledDisplay.updatePairing(g_pairPin, secsLeft, devId);
+    }
     if (network.isConnected()) {
       if (!g_pairRegistered) {
         bool ok = httpClient.pairRegister(g_pairPin, 300);
