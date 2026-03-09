@@ -73,9 +73,14 @@ from .utils import check_device_connection
 def control_panel(request):
     if request.user.is_authenticated:
         from .models import Hardware
-        has_device = Hardware.objects.filter(paired_user=request.user, is_paired=True).exists()
-        if not has_device:
+        qs = Hardware.objects.filter(paired_user=request.user, is_paired=True).values_list("device_id", flat=True)
+        count = qs.count()
+        if count == 0:
             return redirect('claim_device_page')
+        ctx = {}
+        if count == 1:
+            ctx["DEVICE_ID"] = qs.first()
+        return render(request, 'app/home.html', ctx)
     return render(request, 'app/home.html')
 
 # New Class-Based Views for split UI pages
@@ -111,7 +116,14 @@ def _user_owns_device(user, device_id: str) -> bool:
             return False
         if not device_id:
             return False
-        return Hardware.objects.filter(paired_user=user, device_id=device_id).exists()
+        dev = (device_id or "").strip()
+        if not dev:
+            return False
+        # Canonicalize: ensure "ESP-" prefix and uppercase chip id
+        dev_up = dev.upper()
+        if not dev_up.startswith("ESP-"):
+            dev_up = "ESP-" + dev_up
+        return Hardware.objects.filter(paired_user=user, device_id__iexact=dev_up).exists()
     except Exception:
         return False
 
@@ -277,6 +289,12 @@ def feed_now(request):
         device_id = request.data.get("device_id")
         if not device_id:
             device_id = _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
+        # Canonicalize device id consistently
+        if device_id:
+            dev_up = device_id.strip().upper()
+            if not dev_up.startswith("ESP-"):
+                dev_up = "ESP-" + dev_up
+            device_id = dev_up
         if not _user_owns_device(request.user, device_id):
             return Response({"status": "error", "message": "Forbidden: device not owned by user", "success": False, "error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         device_ip = request.data.get("device_ip") or getattr(settings, "PETIO_DEVICE_IP", os.getenv("PETIO_DEVICE_IP"))
@@ -749,6 +767,11 @@ def stop_feeding(request):
     """Queue a stop feeding command for ESP8266"""
     try:
         device_id = request.data.get("device_id") or _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
+        if device_id:
+            dev_up = device_id.strip().upper()
+            if not dev_up.startswith("ESP-"):
+                dev_up = "ESP-" + dev_up
+            device_id = dev_up
         if not _user_owns_device(request.user, device_id):
             return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         with transaction.atomic():
@@ -770,6 +793,11 @@ def calibrate(request):
     """Queue a calibrate command for ESP8266"""
     try:
         device_id = request.data.get("device_id") or _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
+        if device_id:
+            dev_up = device_id.strip().upper()
+            if not dev_up.startswith("ESP-"):
+                dev_up = "ESP-" + dev_up
+            device_id = dev_up
         if not _user_owns_device(request.user, device_id):
             return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         with transaction.atomic():
