@@ -71,7 +71,8 @@ from .utils import check_device_connection
 
 # Web UI views
 def control_panel(request):
-    # Render the original control panel located at app/templates/app/home.html
+    if request.user.is_authenticated:
+        return redirect('my_devices_page')
     return render(request, 'app/home.html')
 
 # New Class-Based Views for split UI pages
@@ -101,6 +102,15 @@ class PendingCommandsView(TemplateView):
 def test_base(request):
     return render(request, 'controller/test_base_usage.html')
 
+def _user_owns_device(user, device_id: str) -> bool:
+    try:
+        if not user or not getattr(user, "is_authenticated", False):
+            return False
+        if not device_id:
+            return False
+        return Hardware.objects.filter(paired_user=user, device_id=device_id).exists()
+    except Exception:
+        return False
 
 @login_required
 def my_devices_page(request):
@@ -189,8 +199,7 @@ def get_command(request):
 
 
 @api_view(["POST"])
-@permission_classes([AllowAny])
-@authentication_classes([])
+@permission_classes([IsAuthenticated])
 @throttle_classes([FeedNowThrottle])
 @csrf_exempt
 def feed_now(request):
@@ -218,6 +227,8 @@ def feed_now(request):
             return Response({"status": "error", "message": "Portion must be between 1 and 100 grams", "success": False, "error": "portion_out_of_range"}, status=status.HTTP_400_BAD_REQUEST)
 
         device_id = request.data.get("device_id") or getattr(settings, "DEVICE_ID", "feeder-1")
+        if not _user_owns_device(request.user, device_id):
+            return Response({"status": "error", "message": "Forbidden: device not owned by user", "success": False, "error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         device_ip = request.data.get("device_ip") or getattr(settings, "PETIO_DEVICE_IP", os.getenv("PETIO_DEVICE_IP"))
 
         # Connectivity check with TTL fallback
@@ -683,11 +694,13 @@ def command_status(request):
 
 # Additional device control endpoints
 @api_view(["POST"])
-@permission_classes([AllowAny])
-@authentication_classes([])
+@permission_classes([IsAuthenticated])
 def stop_feeding(request):
     """Queue a stop feeding command for ESP8266"""
     try:
+        device_id = request.data.get("device_id") or getattr(settings, "DEVICE_ID", "feeder-1")
+        if not _user_owns_device(request.user, device_id):
+            return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         with transaction.atomic():
             command = PendingCommand.objects.create(
                 command='stop_feeding',
@@ -702,11 +715,13 @@ def stop_feeding(request):
         return Response({"error": f"Failed to queue stop feeding: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(["POST"])
-@permission_classes([AllowAny])
-@authentication_classes([])
+@permission_classes([IsAuthenticated])
 def calibrate(request):
     """Queue a calibrate command for ESP8266"""
     try:
+        device_id = request.data.get("device_id") or getattr(settings, "DEVICE_ID", "feeder-1")
+        if not _user_owns_device(request.user, device_id):
+            return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         with transaction.atomic():
             command = PendingCommand.objects.create(
                 command='calibrate',

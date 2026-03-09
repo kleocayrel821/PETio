@@ -259,6 +259,45 @@ def device_status_heartbeat(request):
     """
     if not device_auth_or_legacy_valid(request):
         return _resp_error("Invalid or missing API key.", http_status=status.HTTP_403_FORBIDDEN)
+    try:
+        from django.utils import timezone
+        device_id = request.data.get("device_id") or getattr(settings, 'DEVICE_ID', 'feeder-1')
+        if not device_id:
+            return _resp_error("device_id is required")
+
+        wifi_rssi = request.data.get("wifi_rssi")
+        uptime = request.data.get("uptime")
+        daily_feeds = request.data.get("daily_feeds")
+        last_feed = request.data.get("last_feed")
+        error_message = request.data.get("error_message", "")
+
+        def to_int(val, default=None):
+            try:
+                return int(val)
+            except Exception:
+                return default
+
+        wifi_rssi = to_int(wifi_rssi)
+        uptime = to_int(uptime)
+        daily_feeds = to_int(daily_feeds, default=0) or 0
+
+        parsed_last_feed = None
+        if last_feed:
+            from django.utils.dateparse import parse_datetime
+            parsed_last_feed = parse_datetime(last_feed)
+
+        ds, _ = DeviceStatus.objects.get_or_create(device_id=device_id)
+        ds.last_seen = timezone.now()
+        ds.wifi_rssi = wifi_rssi
+        ds.uptime = uptime
+        ds.daily_feeds = daily_feeds
+        ds.last_feed = parsed_last_feed
+        ds.error_message = error_message
+        ds.save()
+        return _resp_ok("heartbeat recorded")
+    except Exception as e:
+        logger.exception("device_status_heartbeat failed")
+        return _resp_error(str(e), http_status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(["POST"])
@@ -328,6 +367,7 @@ def device_pair_claim(request):
 @csrf_exempt
 def device_pair_claimed(request):
     try:
+        from django.utils import timezone
         device_id = request.query_params.get("device_id") or request.GET.get("device_id")
         pin = request.query_params.get("pin") or request.GET.get("pin")
         if not device_id or not pin:
@@ -354,42 +394,3 @@ def device_pair_claimed(request):
         logger.exception("device_pair_claimed failed")
         return _resp_error(str(e), http_status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    try:
-        from django.utils import timezone
-        device_id = request.data.get("device_id") or getattr(settings, 'DEVICE_ID', 'feeder-1')
-        if not device_id:
-            return _resp_error("device_id is required")
-
-        wifi_rssi = request.data.get("wifi_rssi")
-        uptime = request.data.get("uptime")
-        daily_feeds = request.data.get("daily_feeds")
-        last_feed = request.data.get("last_feed")
-        error_message = request.data.get("error_message", "")
-
-        def to_int(val, default=None):
-            try:
-                return int(val)
-            except Exception:
-                return default
-
-        wifi_rssi = to_int(wifi_rssi)
-        uptime = to_int(uptime)
-        daily_feeds = to_int(daily_feeds, default=0) or 0
-
-        parsed_last_feed = None
-        if last_feed:
-            from django.utils.dateparse import parse_datetime
-            parsed_last_feed = parse_datetime(last_feed)
-
-        ds, _ = DeviceStatus.objects.get_or_create(device_id=device_id)
-        ds.last_seen = timezone.now()
-        ds.wifi_rssi = wifi_rssi
-        ds.uptime = uptime
-        ds.daily_feeds = daily_feeds
-        ds.last_feed = parsed_last_feed
-        ds.error_message = error_message
-        ds.save()
-        return _resp_ok("heartbeat recorded")
-    except Exception as e:
-        logger.exception("device_status_heartbeat failed")
-        return _resp_error(str(e), http_status=status.HTTP_500_INTERNAL_SERVER_ERROR)
