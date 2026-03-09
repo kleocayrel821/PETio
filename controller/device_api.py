@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.db import transaction
@@ -10,8 +10,11 @@ from django.views.decorators.cache import cache_page
 import logging
 logger = logging.getLogger(__name__)
 
-from .models import FeedingSchedule, PendingCommand, FeedingLog, DeviceStatus
-from .auth_utils import _device_api_key_valid
+from .models import FeedingSchedule, PendingCommand, FeedingLog, DeviceStatus, Hardware, PairingSession
+from .auth_utils import _device_api_key_valid, device_auth_or_legacy_valid
+from django.utils import timezone
+from django.utils.crypto import get_random_string
+from datetime import timedelta
 
 
 
@@ -43,7 +46,7 @@ def device_config(request):
     """GET /api/device/config/
     Returns schedule configuration JSON and endpoint hints for firmware.
     """
-    if not _device_api_key_valid(request):
+    if not device_auth_or_legacy_valid(request):
         return _resp_error("Invalid or missing API key.", http_status=status.HTTP_403_FORBIDDEN)
 
     try:
@@ -99,7 +102,7 @@ def device_command_fetch(request):
     """GET /api/device/command/
     Returns next pending command for the given device_id, marks processing.
     """
-    if not _device_api_key_valid(request):
+    if not device_auth_or_legacy_valid(request):
         return _resp_error("Invalid or missing API key.", http_status=status.HTTP_403_FORBIDDEN)
 
     try:
@@ -153,7 +156,7 @@ def device_command_ack(request):
     """POST /api/device/command/ack/
     Acknowledge completion result for command: completed|failed
     """
-    if not _device_api_key_valid(request):
+    if not device_auth_or_legacy_valid(request):
         return _resp_error("Invalid or missing API key.", http_status=status.HTTP_403_FORBIDDEN)
 
     try:
@@ -208,7 +211,7 @@ def device_logs(request):
     """POST /api/device/logs/
     Receives logs from the ESP8266: { logs: [ {timestamp, portion_dispensed, source} ] } or single log body.
     """
-    if not _device_api_key_valid(request):
+    if not device_auth_or_legacy_valid(request):
         return _resp_error("Invalid or missing API key.", http_status=status.HTTP_403_FORBIDDEN)
 
     payload = request.data or {}
@@ -254,8 +257,102 @@ def device_status_heartbeat(request):
     """POST /api/device/status/
     Heartbeat from device with telemetry. Mirrors behavior of existing device_status POST.
     """
-    if not _device_api_key_valid(request):
+    if not device_auth_or_legacy_valid(request):
         return _resp_error("Invalid or missing API key.", http_status=status.HTTP_403_FORBIDDEN)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@authentication_classes([])
+@csrf_exempt
+def device_pair_register(request):
+    try:
+        device_id = request.data.get("device_id")
+        pin = request.data.get("pin")
+        ttl = int(request.data.get("ttl_seconds") or 300)
+        if not device_id or not pin or len(str(pin)) != 6:
+            return _resp_error("device_id and 6-digit pin are required")
+        hw, _ = Hardware.objects.get_or_create(device_id=device_id, defaults={"is_paired": False})
+        if hw.is_paired:
+            return _resp_error("device already paired", http_status=status.HTTP_409_CONFLICT)
+        PairingSession.objects.filter(hardware=hw, claimed=False, served=False).delete()
+        expires_at = timezone.now() + timedelta(seconds=max(60, min(ttl, 600)))
+        ps = PairingSession.objects.create(hardware=hw, pin=str(pin).zfill(6), expires_at=expires_at)
+        return _resp_ok("registered", {"device_id": device_id, "expires_at": expires_at.isoformat()})
+    except Exception as e:
+        logger.exception("device_pair_register failed")
+        return _resp_error(str(e), http_status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def device_pair_claim(request):
+    try:
+        device_id = request.data.get("device_id")
+        pin = request.data.get("pin")
+        if not device_id or not pin:
+            return _resp_error("device_id and pin are required")
+        try:
+            hw = Hardware.objects.get(device_id=device_id)
+        except Hardware.DoesNotExist:
+            return _resp_error("device not found", http_status=status.HTTP_404_NOT_FOUND)
+        if hw.is_paired and hw.paired_user_id and hw.paired_user_id != request.user.id:
+            return _resp_error("device already paired", http_status=status.HTTP_409_CONFLICT)
+        now = timezone.now()
+        ps = (
+            PairingSession.objects
+            .filter(hardware=hw, pin=str(pin).zfill(6), expires_at__gte=now, claimed=False, served=False)
+            .order_by("-created_at")
+            .first()
+        )
+        if not ps:
+            return _resp_error("invalid or expired pin", http_status=status.HTTP_400_BAD_REQUEST)
+        secret = get_random_string(48)
+        hw.paired_user = request.user
+        hw.is_paired = True
+        hw.set_api_key(secret)
+        hw.save(update_fields=["paired_user", "is_paired", "updated_at"])
+        ps.claimed = True
+        ps.claimed_by = request.user
+        ps.provision_key = secret
+        ps.save(update_fields=["claimed", "claimed_by", "provision_key"])
+        return _resp_ok("claimed", {"device_id": device_id})
+    except Exception as e:
+        logger.exception("device_pair_claim failed")
+        return _resp_error(str(e), http_status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+@authentication_classes([])
+@csrf_exempt
+def device_pair_claimed(request):
+    try:
+        device_id = request.query_params.get("device_id") or request.GET.get("device_id")
+        pin = request.query_params.get("pin") or request.GET.get("pin")
+        if not device_id or not pin:
+            return _resp_error("device_id and pin are required")
+        try:
+            hw = Hardware.objects.get(device_id=device_id)
+        except Hardware.DoesNotExist:
+            return _resp_error("device not found", http_status=status.HTTP_404_NOT_FOUND)
+        now = timezone.now()
+        ps = (
+            PairingSession.objects
+            .filter(hardware=hw, pin=str(pin).zfill(6), expires_at__gte=now, claimed=True, served=False)
+            .order_by("-created_at")
+            .first()
+        )
+        if not ps:
+            return _resp_error("not claimed yet", http_status=status.HTTP_404_NOT_FOUND)
+        key = ps.provision_key or ""
+        ps.served = True
+        ps.provision_key = ""
+        ps.save(update_fields=["served", "provision_key"])
+        return _resp_ok("provision", {"device_id": device_id, "api_key": key})
+    except Exception as e:
+        logger.exception("device_pair_claimed failed")
+        return _resp_error(str(e), http_status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     try:
         from django.utils import timezone

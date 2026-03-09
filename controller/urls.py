@@ -22,6 +22,8 @@ urlpatterns = [
     path('test-base/', views.test_base, name='test_base'),
     # Temporary legacy route to the old control panel (optional; can remove later)
     path('control/', views.control_panel, name='control_panel'),
+    path('devices/', views.my_devices_page, name='my_devices_page'),
+    path('devices/claim/', views.claim_device, name='claim_device_page'),
 
     # ESP8266 API endpoints
     path("command/", views.get_command, name="get_command"),
@@ -50,6 +52,9 @@ urlpatterns = [
     path("api/device/logs/", device_api.device_logs, name="device_logs"),
     path("api/device/status/", device_api.device_status_heartbeat, name="device_status_heartbeat"),
     path("api/device/acknowledge/", device_api.device_acknowledge, name="device_acknowledge"),
+    path("api/device/pair/register/", device_api.device_pair_register, name="device_pair_register"),
+    path("api/device/pair/claim/", device_api.device_pair_claim, name="device_pair_claim"),
+    path("api/device/pair/claimed/", device_api.device_pair_claimed, name="device_pair_claimed"),
     path("api/health/", views.health, name="health"),
     path("api/client-errors/", views.client_error_log, name="client_error_log"),
 

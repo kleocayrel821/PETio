@@ -61,6 +61,13 @@ extern unsigned long lastFeedCompletionTime;
 #define CONFIG_FLAG_ADDR 0
 #define WIFI_SSID_ADDR 1
 #define WIFI_PASS_ADDR 33
+#define LAST_SCHEDULE_ID_ADDR 65
+#define CALIB_FLAG_ADDR 68
+#define MS_PER_GRAM_ADDR 69
+#define STARTUP_DELAY_ADDR 73
+#define API_KEY_FLAG_ADDR 80
+#define API_KEY_ADDR 81
+#define API_KEY_MAX_LEN 64
 
 // Wi-Fi Credential Limits
 #define MAX_SSID_LENGTH 32
@@ -431,6 +438,24 @@ private:
     display.print(buf);
   }
 
+  void drawPairingScreen(const String& pin, int secondsLeft) {
+    display.setTextSize(2);
+    display.setCursor(6, 0);
+    display.print("PAIR");
+    display.drawLine(0, 14, OLED_WIDTH - 1, 14, SSD1306_WHITE);
+    display.setTextSize(1);
+    display.setCursor(2, 18);
+    display.print("CODE");
+    display.setTextSize(3);
+    int w = 6 * pin.length();
+    display.setCursor((OLED_WIDTH - w * 3) / 2, 28);
+    display.print(pin);
+    display.setTextSize(1);
+    display.setCursor(2, 56);
+    display.print(secondsLeft);
+    display.print("s");
+  }
+
 public:
   OledDisplay()
     : display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RESET),
@@ -487,6 +512,16 @@ public:
     else
       drawNormalScreen(wifiConnected, portionGrams);
 
+    display.display();
+  }
+
+  void updatePairing(const String& pin, int secondsLeft) {
+    unsigned long now = millis();
+    if (now - lastUpdate < OLED_UPDATE_INTERVAL_MS) return;
+    lastUpdate = now;
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+    drawPairingScreen(pin, secondsLeft);
     display.display();
   }
 };
@@ -689,7 +724,7 @@ extern String lastFeedIso;
 // Inlined httpclient.h/.cpp
 class HTTPClientManager {
 private:
-  HTTPClient http; WiFiClient wifiClientPlain; WiFiClientSecure wifiClientTLS; String serverURL; String deviceID; unsigned long requestTimeout; int maxRetries; String lastError; String apiKey;
+  HTTPClient http; WiFiClient wifiClientPlain; WiFiClientSecure wifiClientTLS; String serverURL; String deviceID; unsigned long requestTimeout; int maxRetries; String lastError; String apiKey; String deviceKey;
   String canonicalize(const String& input) { String s = input; s.trim(); return s; }
   bool makeRequest(const String& endpoint, const String& method, const String& payload, String& response) {
     if (!WiFi.isConnected()) { lastError = "WiFi not connected"; return false; }
@@ -705,6 +740,8 @@ private:
         http.begin(wifiClientPlain, fullURL);
       }
       http.setTimeout(requestTimeout); http.addHeader("Content-Type", "application/json"); http.addHeader("User-Agent", "ESP8266-PetFeeder/1.0"); http.addHeader("Connection", "close"); http.useHTTP10(true); http.setReuse(false);
+      if (deviceID.length() > 0) { http.addHeader("Device-ID", deviceID); }
+      if (deviceKey.length() > 0) { http.addHeader("X-Device-Key", deviceKey); }
       if (apiKey.length() > 0) { http.addHeader("X-API-Key", apiKey); }
       int httpCode = -1; if (method == "POST") httpCode = http.POST(payload); else if (method == "GET") httpCode = http.GET();
       if (httpCode > 0) { response = http.getString(); http.end(); if (httpCode >= 200 && httpCode < 300) { lastError = ""; return true; } else { lastError = "HTTP " + String(httpCode) + ": " + response; } }
@@ -734,6 +771,7 @@ public:
   HTTPClientManager() : requestTimeout(HTTP_TIMEOUT_MS), maxRetries(HTTP_MAX_RETRIES), lastError("") {}
   void init(const String& serverUrl, const String& devID) { serverURL = canonicalize(serverUrl); deviceID = devID; if (!serverURL.endsWith("/api")) { if (!serverURL.endsWith("/")) serverURL += "/"; serverURL += "api"; } wifiClientTLS.setInsecure(); Serial.println("HTTP Client initialized:"); Serial.println("Server URL: " + serverURL); Serial.println("Device ID: " + deviceID); }
   void setApiKey(const String& key) { apiKey = key; Serial.println("API key configured (length): " + String(apiKey.length())); }
+  void setDeviceKey(const String& key) { deviceKey = key; Serial.println("Device key configured (length): " + String(deviceKey.length())); }
   bool sendFeedingLog(int portionSize, const String& feedType, const String& notes = "") { String payload = createFeedingPayload(portionSize, feedType, notes); String response; Serial.println("Sending feeding log to server..."); printPretty(payload); return makeRequest("/device/logs/", "POST", payload, response); }
   bool sendDeviceStatus(const String& /*status*/, int /*batteryLevel*/ = 100, int wifiSignal = -50) { DynamicJsonDocument doc(512); doc["device_id"] = deviceID; doc["wifi_rssi"] = wifiSignal; doc["uptime"] = (int)(millis()/1000); doc["daily_feeds"] = dailyFeeds; if (lastFeedIso.length() > 0) doc["last_feed"] = lastFeedIso; doc["error_message"] = ""; String payload; serializeJson(doc, payload); String response; bool success = makeRequest("/device/status/", "POST", payload, response); if (success) { Serial.println("Device status sent successfully"); return true; } else { Serial.println("Failed to send device status: " + lastError); return false; } }
   bool getDeviceConfig(String& configResponse) { String endpoint = String("/device/config/?device_id=") + deviceID; Serial.println("Requesting device configuration..."); bool success = makeRequest(endpoint, "GET", "", configResponse); if (success) { Serial.println("Device configuration retrieved successfully"); return true; } else { Serial.println("Failed to get device configuration: " + lastError); return false; } }
@@ -759,6 +797,22 @@ public:
     String response; 
     if (makeRequest("/device/command/ack/", "POST", payload, response)) return true; 
     return makeRequest("/device/acknowledge/", "POST", payload, response); 
+  }
+  bool pairRegister(const String& pin, int ttl_seconds) {
+    DynamicJsonDocument doc(256);
+    doc["device_id"] = deviceID;
+    doc["pin"] = pin;
+    doc["ttl_seconds"] = ttl_seconds;
+    String payload; serializeJson(doc, payload);
+    String resp; return makeRequest("/device/pair/register/", "POST", payload, resp);
+  }
+  bool pairClaimed(const String& pin, String& keyOut) {
+    String endpoint = String("/device/pair/claimed/?device_id=") + deviceID + String("&pin=") + pin;
+    String resp; if (!makeRequest(endpoint, "GET", "", resp)) return false;
+    DynamicJsonDocument doc(256);
+    if (deserializeJson(doc, resp)) return false;
+    keyOut = String((const char*)doc["api_key"]);
+    return keyOut.length() > 0;
   }
 };
 
@@ -800,6 +854,43 @@ const unsigned long STATUS_UPDATE_INTERVAL = 60000;  // Send status every 60 sec
 const unsigned long CONFIG_SYNC_INTERVAL = 300000;   // Sync config every 5 minutes
 
 
+String g_deviceKey = "";
+bool g_pairingActive = false;
+String g_pairPin = "";
+unsigned long g_pairExpireMs = 0;
+unsigned long g_lastPairPoll = 0;
+bool g_pairRegistered = false;
+
+String loadDeviceKey() {
+  if (EEPROM.read(API_KEY_FLAG_ADDR) != 0xDA) return "";
+  char buf[API_KEY_MAX_LEN + 1];
+  for (int i = 0; i < API_KEY_MAX_LEN; i++) {
+    buf[i] = (char)EEPROM.read(API_KEY_ADDR + i);
+  }
+  buf[API_KEY_MAX_LEN] = 0;
+  String s = String(buf); s.trim(); return s;
+}
+void saveDeviceKey(const String& key) {
+  int n = min((int)key.length(), API_KEY_MAX_LEN - 1);
+  for (int i = 0; i < API_KEY_MAX_LEN; i++) {
+    char c = (i < n) ? key[i] : 0;
+    EEPROM.write(API_KEY_ADDR + i, c);
+  }
+  EEPROM.write(API_KEY_FLAG_ADDR, 0xDA);
+  EEPROM.commit();
+}
+void clearDeviceKey() {
+  for (int i = 0; i < API_KEY_MAX_LEN; i++) EEPROM.write(API_KEY_ADDR + i, 0);
+  EEPROM.write(API_KEY_FLAG_ADDR, 0x00);
+  EEPROM.commit();
+}
+String genPin6() {
+  unsigned long r = ((unsigned long)ESP.getChipId() ^ micros()) ^ random(0xFFFFFF);
+  int v = (int)(r % 1000000UL);
+  char b[7]; snprintf(b, sizeof(b), "%06d", v);
+  return String(b);
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println("ESP8266 Pet Feeder Starting with Step D Features...");
@@ -839,7 +930,7 @@ void setup() {
   network.loadConfiguration();
 
   // Initialize HTTP client for Django backend communication
-  httpClient.init(DEFAULT_SERVER_URL, DEFAULT_DEVICE_ID);
+  httpClient.init(DEFAULT_SERVER_URL, network.getDeviceID());
   httpClient.setApiKey(DEFAULT_API_KEY);
 
   if (!network.isConfigured()) {
@@ -865,6 +956,18 @@ void setup() {
     lastSchedulePoll = millis() - SCHEDULE_POLL_INTERVAL;
     lastCommandPoll = millis() - COMMAND_POLL_INTERVAL;
     lastStatusUpdate = millis() - STATUS_UPDATE_INTERVAL;
+    g_deviceKey = loadDeviceKey();
+    if (g_deviceKey.length() > 0) {
+      httpClient.setDeviceKey(g_deviceKey);
+      Serial.println("Loaded device key");
+    } else {
+      g_pairingActive = true;
+      g_pairPin = genPin6();
+      g_pairExpireMs = millis() + 300000UL;
+      g_lastPairPoll = 0;
+      g_pairRegistered = false;
+      Serial.println("Pairing mode active");
+    }
     String cfg;
     bool cfgOk = httpClient.getDeviceConfig(cfg);
     if (cfgOk) {
@@ -883,6 +986,37 @@ void setup() {
 }
 
 void loop() {
+  if (g_pairingActive) {
+    int secsLeft = (g_pairExpireMs > millis()) ? (int)((g_pairExpireMs - millis()) / 1000UL) : 0;
+    oledDisplay.updatePairing(g_pairPin, secsLeft);
+    if (network.isConnected()) {
+      if (!g_pairRegistered) {
+        bool ok = httpClient.pairRegister(g_pairPin, 300);
+        g_pairRegistered = ok;
+        g_lastPairPoll = 0;
+      } else {
+        if (millis() - g_lastPairPoll > 4000UL) {
+          String k;
+          bool claimed = httpClient.pairClaimed(g_pairPin, k);
+          g_lastPairPoll = millis();
+          if (claimed && k.length() > 0) {
+            g_deviceKey = k;
+            saveDeviceKey(k);
+            httpClient.setDeviceKey(k);
+            g_pairingActive = false;
+            ledController.showReady();
+          }
+        }
+      }
+      if (millis() >= g_pairExpireMs) {
+        g_pairPin = genPin6();
+        g_pairExpireMs = millis() + 300000UL;
+        g_pairRegistered = false;
+      }
+    }
+    delay(50);
+    return;
+  }
   handleCalibrationCommands();
   // Update all controllers
   handleManualFeeding();

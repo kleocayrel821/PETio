@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <h2>Claim Device</h2>
+  <form method="post" action="{% url 'claim_device_page' %}">
+    {% csrf_token %}
+    <fieldset>
+      <legend>Using Hardware Key</legend>
+      <label for="unique_key">Hardware Key (UUID)</label>
+      <input type="text" id="unique_key" name="unique_key" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+    </fieldset>
+    <fieldset>
+      <legend>Using Device PIN (Option B)</legend>
+      <label for="device_id">Device ID</label>
+      <input type="text" id="device_id" name="device_id" placeholder="ESP-XXXXXXXX" />
+      <label for="pin">6-digit PIN</label>
+      <input type="text" id="pin" name="pin" maxlength="6" minlength="6" placeholder="123456" />
+    </fieldset>
+    <button type="submit">Claim</button>
+  </form>
+  {% if messages %}
+    <ul>
+      {% for m in messages %}
+        <li>{{ m }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  <p><a href="{% url 'my_devices_page' %}">Back to My Devices</a></p>
+  </div>
+{% endblock %}

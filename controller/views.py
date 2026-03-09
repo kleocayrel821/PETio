@@ -17,6 +17,10 @@ from django.utils.decorators import method_decorator
 from rest_framework.filters import OrderingFilter
 from rest_framework.decorators import action
 from rest_framework.throttling import SimpleRateThrottle
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
+from django.contrib import messages
+from django.shortcuts import redirect
 
 class FeedNowThrottle(SimpleRateThrottle):
     scope = "feed_now"
@@ -98,6 +102,57 @@ def test_base(request):
     return render(request, 'controller/test_base_usage.html')
 
 
+@login_required
+def my_devices_page(request):
+    items = Hardware.objects.filter(paired_user=request.user).order_by("-updated_at")
+    return render(request, "app/my_devices.html", {"devices": items})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def claim_device(request):
+    if request.method == "POST":
+        unique_key = request.POST.get("unique_key") or ""
+        device_id = request.POST.get("device_id") or ""
+        pin = request.POST.get("pin") or ""
+        if unique_key:
+            import uuid as _uuid
+            try:
+                k = _uuid.UUID(str(unique_key))
+            except Exception:
+                messages.error(request, "Invalid hardware key")
+                return render(request, "app/claim_device.html")
+            try:
+                hw = Hardware.objects.get(unique_key=k)
+            except Hardware.DoesNotExist:
+                messages.error(request, "Hardware not found")
+                return render(request, "app/claim_device.html")
+            if hw.is_paired and hw.paired_user_id and hw.paired_user_id != request.user.id:
+                messages.error(request, "Hardware already paired to another account")
+                return render(request, "app/claim_device.html")
+            if hw.is_paired and hw.paired_user_id == request.user.id:
+                messages.info(request, "Hardware already paired to your account")
+                return redirect("my_devices_page")
+            hw.pair_to(request.user)
+            ControllerSettings.objects.get_or_create(hardware=hw)
+            messages.success(request, "Device paired successfully")
+            return redirect("my_devices_page")
+        elif device_id and pin:
+            from .device_api import device_pair_claim as api_pair_claim
+            req = request
+            req.data = {"device_id": device_id, "pin": pin}
+            resp = api_pair_claim(req)
+            if getattr(resp, "status_code", 500) == 200:
+                messages.success(request, "Device claimed via PIN")
+                return redirect("my_devices_page")
+            try:
+                messages.error(request, resp.data.get("message") or "Failed to claim device via PIN")
+            except Exception:
+                messages.error(request, "Failed to claim device via PIN")
+            return render(request, "app/claim_device.html")
+        else:
+            messages.error(request, "Provide a hardware key, or device ID and PIN")
+    return render(request, "app/claim_device.html")
 # API views for ESP8266 communication
 @permission_classes([AllowAny])
 @authentication_classes([])
