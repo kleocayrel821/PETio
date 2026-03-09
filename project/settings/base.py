@@ -131,6 +131,8 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'feed_now': '2/minute',
         'device_status': '120/minute',
+        'pair_register': '5/minute',
+        'pair_claim': '10/minute',
     },
 }
 
@@ -160,4 +162,8 @@ PETIO_DEVICE_API_KEY = os.getenv('PETIO_DEVICE_API_KEY')
 DEVICE_ID = os.getenv('DEVICE_ID', 'feeder-1')
 DEVICE_HEARTBEAT_TTL = int(os.getenv('DEVICE_HEARTBEAT_TTL', '90'))
 
+
+# Rollout control: allow legacy device header X-API-Key (global) only when enabled
+DEVICE_LEGACY_KEY_ENABLED = os.getenv('DEVICE_LEGACY_KEY_ENABLED', 'true').lower() == 'true'
+#MEDIA_URL = '/media/'
 #MEDIA_URL = '/media/'
