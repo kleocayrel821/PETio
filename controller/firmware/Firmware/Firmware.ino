@@ -438,46 +438,22 @@ private:
     display.print(buf);
   }
 
-  void drawPairingScreen(const String& pin, int secondsLeft, const String& devId) {
-    display.fillRect(0, 0, OLED_WIDTH, 13, SSD1306_WHITE);
-    display.setTextColor(SSD1306_BLACK);
-    display.setTextSize(1);
-    const char* header = "* PAIRING MODE *";
-    int hW = strlen(header) * 6;
-    display.setCursor((OLED_WIDTH - hW) / 2, 3);
-    display.print(header);
-
-    display.setTextColor(SSD1306_WHITE);
-    display.setTextSize(1);
-    const char* label = "Enter in app:";
-    int lW = strlen(label) * 6;
-    display.setCursor((OLED_WIDTH - lW) / 2, 17);
-    display.print(label);
-
+  void drawPairingScreen(const String& pin, int secondsLeft) {
     display.setTextSize(2);
-    String formatted = pin.substring(0, 3) + " " + pin.substring(3);
-    int pW = formatted.length() * 12;
-    display.setCursor((OLED_WIDTH - pW) / 2, 27);
-    display.print(formatted);
-
-    display.drawLine(10, 47, OLED_WIDTH - 10, 47, SSD1306_WHITE);
-
+    display.setCursor(6, 0);
+    display.print("PAIR");
+    display.drawLine(0, 14, OLED_WIDTH - 1, 14, SSD1306_WHITE);
     display.setTextSize(1);
-    String shortId = devId.length() > 8 ? devId.substring(0, 8) : devId;
-    display.setCursor(2, 52);
-    display.print(String("ID:") + shortId);
-
-    String cStr = String(secondsLeft) + "s";
-    int cX = OLED_WIDTH - (int)cStr.length() * 6 - 2;
-    display.setCursor(cX, 52);
-    display.print(cStr);
-
-    int pct = (secondsLeft * 100) / 300;
-    pct = constrain(pct, 0, 100);
-    int barW = OLED_WIDTH - 4;
-    display.drawRect(2, 59, barW, 4, SSD1306_WHITE);
-    int fill = (barW - 2) * pct / 100;
-    if (fill > 0) display.fillRect(3, 60, fill, 2, SSD1306_WHITE);
+    display.setCursor(2, 18);
+    display.print("CODE");
+    display.setTextSize(3);
+    int w = 6 * pin.length();
+    display.setCursor((OLED_WIDTH - w * 3) / 2, 28);
+    display.print(pin);
+    display.setTextSize(1);
+    display.setCursor(2, 56);
+    display.print(secondsLeft);
+    display.print("s");
   }
 
 public:
