@@ -148,13 +148,35 @@ def claim_device(request):
             messages.success(request, "Device paired successfully")
             return redirect("my_devices_page")
         elif device_id and pin:
-            from .device_api import device_pair_claim as api_pair_claim
+            from .device_api import device_pair_claim as api_pair_claim, device_pair_register as api_pair_register
             req = request
             req.data = {"device_id": device_id, "pin": pin}
             resp = api_pair_claim(req)
             if getattr(resp, "status_code", 500) == 200:
                 messages.success(request, "Device claimed via PIN")
                 return redirect("my_devices_page")
+            # If device is not yet registered on this server, try to register then re-claim.
+            try:
+                msg = (resp.data or {}).get("message", "").lower()
+            except Exception:
+                msg = ""
+            if "device not found" in msg:
+                try:
+                    req_reg = request
+                    req_reg.data = {"device_id": device_id, "pin": pin, "ttl_seconds": 300}
+                    _reg = api_pair_register(req_reg)
+                except Exception:
+                    _reg = None
+                # Attempt claim again after register
+                try:
+                    req2 = request
+                    req2.data = {"device_id": device_id, "pin": pin}
+                    resp2 = api_pair_claim(req2)
+                    if getattr(resp2, "status_code", 500) == 200:
+                        messages.success(request, "Device registered and claimed via PIN")
+                        return redirect("my_devices_page")
+                except Exception:
+                    pass
             try:
                 messages.error(request, resp.data.get("message") or "Failed to claim device via PIN")
             except Exception:
