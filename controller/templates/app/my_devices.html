@@ -86,7 +86,7 @@
 {% endblock %}
 {% block extra_js %}
 <script>
-  const hasDevices = false;
+  const hasDevices = ({{ devices|length|default:0 }}) > 0;
   function applySidebarFilter(){
     var nav=document.querySelector('.sidebar nav');
     if(!nav) return;
