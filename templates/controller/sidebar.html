@@ -32,4 +32,8 @@ Expects: view_name set to a url_name for active highlighting
     <i class="fas fa-heartbeat"></i>
     <span>Pet BMI</span>
   </a>
+  <a href="{% url 'my_devices_page' %}" class="sidebar-item {% if view_name == 'my_devices_page' %}active{% endif %}">
+    <i class="fas fa-microchip"></i>
+    <span>My Devices</span>
+  </a>
 </nav>
