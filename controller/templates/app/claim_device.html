@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block sidebar %}{% include 'controller/sidebar.html' with view_name='my_devices_page' %}{% endblock %}
 {% block extra_head %}
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
@@ -6,6 +7,8 @@
   .claim-page{min-height:calc(100vh - 120px);display:grid;place-items:center;padding:32px 16px;position:relative}
   .claim-page::before{content:"";position:absolute;inset:0;background:radial-gradient(60px 60px at 15% 20%,rgba(124,58,237,.06) 0,rgba(124,58,237,0) 70%),radial-gradient(110px 110px at 85% 75%,rgba(167,139,250,.08) 0,rgba(167,139,250,0) 70%);pointer-events:none}
   .claim-card{width:100%;max-width:480px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:28px;position:relative}
+  .back-link{display:inline-flex;align-items:center;gap:8px;color:#6b7280;text-decoration:none;font-weight:700;margin-bottom:12px}
+  .back-link:hover{color:var(--p)}
   .brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}
   .brand-logo{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--p),var(--p400));color:#fff}
   .brand-title{font-family:"Nunito",system-ui;line-height:1.15;margin:0;font-size:26px;letter-spacing:.2px}
@@ -40,6 +43,10 @@
 {% endblock %}
 {% block content %}
 <div class="claim-page">
+  <a href="{% url 'my_devices_page' %}" class="back-link" aria-label="Back to My Devices">
+    <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>My Devices</span>
+  </a>
   <div class="claim-card">
     <div class="brand">
       <div class="brand-logo" aria-hidden="true">
@@ -101,6 +108,17 @@
 {% endblock %}
 {% block extra_js %}
 <script>
+  const hasDevices = false;
+  function applySidebarFilter(){
+    var nav=document.querySelector('.sidebar nav');
+    if(!nav) return;
+    var links=nav.querySelectorAll('.sidebar-item');
+    links.forEach(function(a){
+      var key=a.getAttribute('data-nav-key')||'';
+      if(!hasDevices && key && key!=='devices'){ a.style.display='none'; }
+      else{ a.style.display=''; }
+    });
+  }
   const hardwareKey=document.getElementById('hardwareKey');const deviceId=document.getElementById('deviceId');const pin=document.getElementById('pin');const claimBtn=document.getElementById('claimBtn');const uuidStatus=document.getElementById('uuidStatus');const pinStatus=document.getElementById('pinStatus');const optA=document.getElementById('optA');const optB=document.getElementById('optB');const btnText=document.getElementById('btnText');const btnSpin=document.getElementById('btnSpin');const API_BASE='';
   function csrf(){const m=document.querySelector('meta[name="csrf-token"]');return m?m.content:''}
   function isUUID(v){return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test((v||'').trim())}
@@ -112,6 +130,6 @@
   function setLoading(v){claimBtn.disabled=v;btnText.textContent=v?'Claiming…':'Claim Device';btnSpin.style.display=v?'inline':'none'}
   async function validateKey(uuid){try{const res=await fetch(API_BASE+'/api/hardware/validate-key/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},body:JSON.stringify({unique_key:uuid})});if(!res.ok)return null;return await res.json()}catch(e){return null}}
   async function submitClaim(e){e.preventDefault();norm();uuidStatus.style.display='none';pinStatus.style.display='none';const usingUUID=isUUID(hardwareKey.value);const usingPIN=isDevId(deviceId.value)&&isPin(pin.value);if(!(usingUUID||usingPIN))return;setLoading(true);try{if(usingUUID){const key=hardwareKey.value.trim();const v=await validateKey(key);if(v&&v.valid===false){uuidStatus.textContent='Key is not recognized';uuidStatus.className='status err';uuidStatus.style.display='block';setLoading(false);return}const r=await fetch(API_BASE+'/api/hardware/pair/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},body:JSON.stringify({unique_key:key})});const d=await r.json().catch(()=>({}));if(r.ok){toast('Device claimed');hardwareKey.value='';choose();window.setTimeout(()=>{window.location.href='{% url "my_devices_page" %}'},800)}else if(r.status===403){toast('Please log in to claim', 'error');window.location.href='{% url "login" %}?next={{ request.path }}'}else{const msg=d&&(d.error||d.message)||'Unable to claim with this key';uuidStatus.textContent=msg;uuidStatus.className='status err';uuidStatus.style.display='block';toast(msg,'error')}}else{const payload={device_id:deviceId.value.trim().toUpperCase(),pin:pin.value.trim()};const r=await fetch(API_BASE+'/api/device/pair/claim/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},body:JSON.stringify(payload)});const d=await r.json().catch(()=>({}));if(r.ok){toast('Device claimed');deviceId.value='';pin.value='';choose();window.setTimeout(()=>{window.location.href='{% url "my_devices_page" %}'},800)}else if(r.status===403){toast('Please log in to claim', 'error');window.location.href='{% url "login" %}?next={{ request.path }}'}else{const msg=d&&(d.error||d.message)||'Invalid Device ID or PIN';pinStatus.textContent=msg;pinStatus.className='status err';pinStatus.style.display='block';toast(msg,'error')}}}catch(err){toast('Network error','error')}finally{setLoading(false)}}
-  ;['input','blur','keyup','change'].forEach(ev=>{hardwareKey.addEventListener(ev,()=>{norm();choose()});deviceId.addEventListener(ev,()=>{norm();choose()});pin.addEventListener(ev,()=>{norm();choose()})});document.getElementById('claimForm').addEventListener('submit',submitClaim);choose();
+  ;['input','blur','keyup','change'].forEach(ev=>{hardwareKey.addEventListener(ev,()=>{norm();choose()});deviceId.addEventListener(ev,()=>{norm();choose()});pin.addEventListener(ev,()=>{norm();choose()})});document.getElementById('claimForm').addEventListener('submit',submitClaim);applySidebarFilter();choose();
 </script>
 {% endblock %}
