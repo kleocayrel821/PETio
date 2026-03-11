@@ -52,14 +52,6 @@
         <h1 class="brand-title">Claim Your Petio Device</h1>
         <p class="brand-sub">Securely link your feeder to your account</p>
       </div>
-      <div style="margin-left:auto;">
-        <a href="{% url 'my_devices_page' %}" class="btn-primary" style="padding:10px 14px;border-radius:999px;text-decoration:none;">
-          <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" style="margin-right:6px;">
-            <path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round"/>
-          </svg>
-          <span>My Devices</span>
-        </a>
-      </div>
     </div>
 
     <form id="claimForm" method="post" action="{% url 'claim_device_page' %}" novalidate>
