@@ -7,8 +7,6 @@
   .claim-page{min-height:calc(100vh - 120px);display:grid;place-items:center;padding:32px 16px;position:relative}
   .claim-page::before{content:"";position:absolute;inset:0;background:radial-gradient(60px 60px at 15% 20%,rgba(124,58,237,.06) 0,rgba(124,58,237,0) 70%),radial-gradient(110px 110px at 85% 75%,rgba(167,139,250,.08) 0,rgba(167,139,250,0) 70%);pointer-events:none}
   .claim-card{width:100%;max-width:480px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:28px;position:relative}
-  .back-link{display:inline-flex;align-items:center;gap:8px;color:#6b7280;text-decoration:none;font-weight:700;margin-bottom:12px}
-  .back-link:hover{color:var(--p)}
   .brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}
   .brand-logo{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--p),var(--p400));color:#fff}
   .brand-title{font-family:"Nunito",system-ui;line-height:1.15;margin:0;font-size:26px;letter-spacing:.2px}
@@ -43,10 +41,6 @@
 {% endblock %}
 {% block content %}
 <div class="claim-page">
-  <a href="{% url 'my_devices_page' %}" class="back-link" aria-label="Back to My Devices">
-    <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <span>My Devices</span>
-  </a>
   <div class="claim-card">
     <div class="brand">
       <div class="brand-logo" aria-hidden="true">
