@@ -85,27 +85,49 @@
   </div>
 {% endblock %}
 {% block extra_js %}
-{% if devices %}
 <script>
-  document.addEventListener('DOMContentLoaded',function(){
-    var cards=document.querySelectorAll('.card[data-device-id]');
-    cards.forEach(function(card){
-      var id=(card.getAttribute('data-device-id')||'').trim();
-      if(!id) return;
-      fetch('/api/device-status/?device_id='+encodeURIComponent(id))
-        .then(function(r){return r.json()})
-        .then(function(data){
-          var badge=card.querySelector('[data-status]');
-          if(!badge) return;
-          var st=(data&&data.status)||'unknown';
-          badge.classList.remove('online','offline','unknown');
-          if(st==='online'){badge.classList.add('online');badge.textContent='Online'}
-          else if(st==='offline'){badge.classList.add('offline');badge.textContent='Offline'}
-          else {badge.classList.add('unknown');badge.textContent='Unknown'}
-        })
-        .catch(function(){});
+  const hasDevices = false;
+  function applySidebarFilter(){
+    var nav=document.querySelector('.sidebar nav');
+    if(!nav) return;
+    var links=nav.querySelectorAll('.sidebar-item');
+    links.forEach(function(a){
+      var key=a.getAttribute('data-nav-key')||'';
+      if(!hasDevices && key && key!=='devices'){ a.style.display='none'; }
+      else{ a.style.display=''; }
     });
+  }
+  function toggleDevicesUI(){
+    var grid=document.getElementById('devicesGrid');
+    var empty=document.querySelector('.empty-card');
+    if(hasDevices){
+      if(grid) grid.style.display='';
+      if(empty) empty.style.display='none';
+      // Optional: fetch statuses
+      document.querySelectorAll('.card[data-device-id]').forEach(function(card){
+        var id=(card.getAttribute('data-device-id')||'').trim();
+        if(!id) return;
+        fetch('/api/device-status/?device_id='+encodeURIComponent(id))
+          .then(function(r){return r.json()})
+          .then(function(data){
+            var badge=card.querySelector('[data-status]');
+            if(!badge) return;
+            var st=(data&&data.status)||'unknown';
+            badge.classList.remove('online','offline','unknown');
+            if(st==='online'){badge.classList.add('online');badge.textContent='Online'}
+            else if(st==='offline'){badge.classList.add('offline');badge.textContent='Offline'}
+            else {badge.classList.add('unknown');badge.textContent='Unknown'}
+          })
+          .catch(function(){});
+      });
+    }else{
+      if(grid) grid.style.display='none';
+      if(empty) empty.style.display='';
+    }
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    applySidebarFilter();
+    toggleDevicesUI();
   });
 </script>
-{% endif %}
 {% endblock %}
