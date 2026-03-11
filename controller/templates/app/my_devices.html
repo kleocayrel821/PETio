@@ -1,29 +1,110 @@
 {% extends "base.html" %}
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{--p:#7C3AED;--p500:#8B5CF6;--p400:#A78BFA;--bg:#F9FAFB;--card:#fff;--text:#0f172a;--muted:#64748b;--ring:rgba(124,58,237,.18);--radius:18px;--pill:999px;--t:200ms ease;--shadow:0 20px 30px rgba(16,24,40,.06),0 12px 16px rgba(16,24,40,.04)}
+  .devices-page{min-height:calc(100vh - 120px);padding:32px 16px;display:flex;justify-content:center}
+  .devices-wrap{width:100%;max-width:860px}
+  .devices-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+  .devices-title{font-family:"Nunito",system-ui;font-size:28px;letter-spacing:.2px;margin:0}
+  .btn-claim{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--p),var(--p400));color:#fff;border:none;border-radius:var(--pill);padding:12px 16px;font-weight:800;letter-spacing:.2px;transition:transform var(--t), box-shadow var(--t);text-decoration:none}
+  .btn-claim:hover{transform:translateY(-1px) scale(1.015);box-shadow:0 16px 30px rgba(124,58,237,.26)}
+  .empty-card{margin-top:16px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:36px;text-align:center;position:relative;overflow:hidden}
+  .empty-art{width:90px;height:90px;margin:0 auto 10px;display:block;color:var(--p)}
+  .empty-title{font-family:"Nunito",system-ui;font-size:22px;margin:6px 0 4px}
+  .empty-sub{color:var(--muted);margin:0 0 12px}
+  .btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:10px;color:#fff;background:linear-gradient(135deg,var(--p),var(--p400));border:none;border-radius:var(--pill);padding:12px 18px;font-weight:800;letter-spacing:.2px;transition:transform var(--t), box-shadow var(--t);text-decoration:none}
+  .btn-primary:hover{transform:translateY(-1px) scale(1.015);box-shadow:0 16px 30px rgba(124,58,237,.26)}
+  .grid{margin-top:12px;display:grid;gap:14px;grid-template-columns:1fr}
+  @media(min-width:640px){.grid{grid-template-columns:1fr 1fr}}
+  @media(min-width:960px){.grid{grid-template-columns:1fr 1fr 1fr}}
+  .card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;gap:12px;transition:transform var(--t),box-shadow var(--t)}
+  .card:hover{transform:translateY(-2px);box-shadow:0 16px 28px rgba(16,24,40,.1)}
+  .card-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .dev-name{font-weight:800}
+  .badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800;letter-spacing:.3px}
+  .online{background:rgba(16,185,129,.18);color:#047857;border:1px solid rgba(16,185,129,.32)}
+  .offline{background:rgba(239,68,68,.18);color:#991b1b;border:1px solid rgba(239,68,68,.32)}
+  .unknown{background:#f5f3ff;color:#6d28d9;border:1px solid #e9d5ff}
+  .dev-meta{font-size:13px;color:#334155;word-break:break-all}
+  .actions{display:flex;gap:10px}
+  .icon-btn{width:36px;height:36px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;display:grid;place-items:center;cursor:pointer;transition:transform var(--t), box-shadow var(--t)}
+  .icon-btn:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(16,24,40,.08)}
+</style>
+{% endblock %}
 {% block content %}
-<div class="container">
-  <h2>My Devices</h2>
-  <p><a href="{% url 'claim_device_page' %}">Claim a new device</a></p>
-  {% if devices %}
-  <table border="1" cellspacing="0" cellpadding="6">
-    <thead>
-      <tr>
-        <th>Unique Key</th>
-        <th>Paired</th>
-        <th>Updated</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for d in devices %}
-      <tr>
-        <td>{{ d.unique_key }}</td>
-        <td>{{ d.is_paired|yesno:"Yes,No" }}</td>
-        <td>{{ d.updated_at }}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <p>No devices yet. <a href="{% url 'claim_device_page' %}">Pair one now</a>.</p>
-  {% endif %}
-</div>
+<div class="devices-page">
+  <div class="devices-wrap">
+    <div class="devices-header">
+      <h1 class="devices-title">My Devices</h1>
+      <a href="{% url 'claim_device_page' %}" class="btn-claim">
+        <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+        <span>Claim a New Device</span>
+      </a>
+    </div>
+
+    {% if devices %}
+      <div class="grid" id="devicesGrid">
+        {% for d in devices %}
+        <div class="card" data-device-id="{{ d.device_id|default:'' }}">
+          <div class="card-top">
+            <div class="dev-name">{{ d.device_id|default:"Petio Device" }}</div>
+            <span class="badge unknown" data-status>Unknown</span>
+          </div>
+          <div class="dev-meta">
+            <div><strong>ID:</strong> {{ d.device_id|default:"N/A" }}</div>
+            <div><strong>Key:</strong> {{ d.unique_key }}</div>
+          </div>
+          <div class="actions">
+            <a class="icon-btn" href="{% url 'claim_device_page' %}" title="Add another">
+              <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+            </a>
+            <a class="icon-btn" href="/" title="Open">
+              <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-card">
+        <svg class="empty-art" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="60" cy="70" r="22" fill="currentColor" opacity="0.12"/>
+          <circle cx="40" cy="46" r="10" fill="currentColor" opacity="0.18"/>
+          <circle cx="60" cy="38" r="10" fill="currentColor" opacity="0.18"/>
+          <circle cx="80" cy="46" r="10" fill="currentColor" opacity="0.18"/>
+          <circle cx="92" cy="60" r="9" fill="currentColor" opacity="0.14"/>
+        </svg>
+        <h3 class="empty-title">No devices yet</h3>
+        <p class="empty-sub">Pair your first Petio device to get started.</p>
+        <a class="btn-primary" href="{% url 'claim_device_page' %}">Pair a Device Now</a>
+      </div>
+    {% endif %}
+  </div>
+  </div>
+{% endblock %}
+{% block extra_js %}
+{% if devices %}
+<script>
+  document.addEventListener('DOMContentLoaded',function(){
+    var cards=document.querySelectorAll('.card[data-device-id]');
+    cards.forEach(function(card){
+      var id=(card.getAttribute('data-device-id')||'').trim();
+      if(!id) return;
+      fetch('/api/device-status/?device_id='+encodeURIComponent(id))
+        .then(function(r){return r.json()})
+        .then(function(data){
+          var badge=card.querySelector('[data-status]');
+          if(!badge) return;
+          var st=(data&&data.status)||'unknown';
+          badge.classList.remove('online','offline','unknown');
+          if(st==='online'){badge.classList.add('online');badge.textContent='Online'}
+          else if(st==='offline'){badge.classList.add('offline');badge.textContent='Offline'}
+          else {badge.classList.add('unknown');badge.textContent='Unknown'}
+        })
+        .catch(function(){});
+    });
+  });
+</script>
+{% endif %}
 {% endblock %}
