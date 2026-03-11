@@ -929,13 +929,31 @@ class FeedingLogViewSet(viewsets.ModelViewSet):
     ordering = ["-timestamp"]
 
     def get_queryset(self):
-        """Filter logs by start_date/end_date, feed_type, and search.
+        """Filter logs by ownership and optional params.
+        Ownership:
+        - If authenticated, restrict logs to the user's paired hardware devices (by device_id).
+        - If unauthenticated or user has no devices, return an empty queryset.
+        
+        Additional filters:
         - start_date: include logs with timestamp >= start_date 00:00:00
         - end_date: include logs with timestamp <= end_date 23:59:59.999999
         - feed_type: maps UI values to source categories (manual->[manual_button,button,manual], automatic->[automatic_button,remote_command,web,esp,serial_command], scheduled->[schedule,scheduled]); legacy keys 'button','remote','esp' are also supported
         - search: case-insensitive contains on source
         """
-        qs = FeedingLog.objects.order_by("-timestamp")
+        # Determine device ownership
+        user = getattr(self.request, "user", None)
+        device_ids = []
+        if user and getattr(user, "is_authenticated", False):
+            device_ids = list(
+                Hardware.objects.filter(
+                    paired_user=user, is_paired=True
+                ).exclude(device_id__isnull=True).values_list("device_id", flat=True)
+            )
+        # If no owned devices or unauthenticated, return empty queryset
+        if not device_ids:
+            return FeedingLog.objects.none()
+
+        qs = FeedingLog.objects.filter(device_id__in=device_ids).order_by("-timestamp")
         params = getattr(self.request, 'query_params', {})
         start_date = params.get('start_date')
         end_date = params.get('end_date')
