@@ -28,8 +28,8 @@
   .unknown{background:#f5f3ff;color:#6d28d9;border:1px solid #e9d5ff}
   .dev-meta{font-size:13px;color:#334155;word-break:break-all}
   .actions{display:flex;gap:10px}
-  .icon-btn{width:36px;height:36px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;display:grid;place-items:center;cursor:pointer;transition:transform var(--t), box-shadow var(--t)}
-  .icon-btn:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(16,24,40,.08)}
+  .dev-icon-btn{width:36px;height:36px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;display:grid;place-items:center;cursor:pointer;transition:transform var(--t), box-shadow var(--t)}
+  .dev-icon-btn:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(16,24,40,.08)}
 </style>
 {% endblock %}
 {% block content %}
@@ -56,10 +56,10 @@
             <div><strong>Key:</strong> {{ d.unique_key }}</div>
           </div>
           <div class="actions">
-            <a class="icon-btn" href="{% url 'claim_device_page' %}" title="Add another">
+            <a class="dev-icon-btn" href="{% url 'claim_device_page' %}" title="Add another">
               <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
             </a>
-            <a class="icon-btn" href="/" title="Open">
+            <a class="dev-icon-btn" href="/" title="Open">
               <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </a>
           </div>
