@@ -822,8 +822,43 @@ def feed_command_status(request):
         device_id = request.query_params.get('device_id') or request.GET.get('device_id')
         if not device_id:
             return Response({"status": "unknown", "message": "device_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-        pending_qs = PendingCommand.objects.filter(command='feed_now', device_id=device_id, status='pending')
-        processing_qs = PendingCommand.objects.filter(command='feed_now', device_id=device_id, status='processing')
+        # Canonicalize device id format
+        dev_up = (device_id or "").strip().upper()
+        if not dev_up.startswith("ESP-"):
+            dev_up = "ESP-" + dev_up
+        # Clean up stale commands before reporting
+        from django.utils import timezone as _tz
+        from datetime import timedelta as _td
+        now = _tz.now()
+        pending_stale_cutoff = now - _td(seconds=60)
+        processing_stale_cutoff = now - _td(seconds=180)
+        try:
+            with transaction.atomic():
+                stale_pending = PendingCommand.objects.select_for_update().filter(
+                    command='feed_now', device_id=dev_up, status='pending', created_at__lte=pending_stale_cutoff
+                )
+                for cmd in stale_pending:
+                    try:
+                        cmd.mark_failed("expired pending")
+                    except Exception:
+                        cmd.status = 'failed'
+                        cmd.save(update_fields=["status", "updated_at"])
+                stale_processing = PendingCommand.objects.select_for_update().filter(
+                    command='feed_now', device_id=dev_up, status='processing'
+                )
+                for cmd in stale_processing:
+                    ts = cmd.processed_at or cmd.created_at
+                    if ts and ts <= processing_stale_cutoff:
+                        try:
+                            cmd.mark_failed("expired processing")
+                        except Exception:
+                            cmd.status = 'failed'
+                            cmd.save(update_fields=["status", "updated_at"])
+        except Exception:
+            # Non-fatal; continue to report current state
+            pass
+        pending_qs = PendingCommand.objects.filter(command='feed_now', device_id=dev_up, status='pending')
+        processing_qs = PendingCommand.objects.filter(command='feed_now', device_id=dev_up, status='processing')
         pending_count = pending_qs.count()
         processing_cmd = processing_qs.order_by('created_at').first()
         if processing_cmd:
