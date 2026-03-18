@@ -17,8 +17,6 @@
 #include <EEPROM.h>
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-#include <DNSServer.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
@@ -26,6 +24,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <ESP8266WebServer.h>
 
 String nowUtcIso();
 extern unsigned long lastFeedCompletionTime;
@@ -54,15 +53,12 @@ extern unsigned long lastFeedCompletionTime;
 
 // Wi-Fi Configuration Settings
 #define WIFI_TIMEOUT_MS 30000
-#define CONFIG_TIMEOUT_MS 300000
-#define SOFTAP_PASSWORD "PetFeeder2025"  // Simple password for SoftAP mode
-#define SOFTAP_CHANNEL 6                 // Common WiFi channel, less congested
+#define WIFI_SSID ""
+#define WIFI_PASSWORD ""
+#define FORCE_PAIR_ON_BOOT 1
 
 // EEPROM Configuration
 #define EEPROM_SIZE 512
-#define CONFIG_FLAG_ADDR 0
-#define WIFI_SSID_ADDR 1
-#define WIFI_PASS_ADDR 33
 #define LAST_SCHEDULE_ID_ADDR 65
 #define CALIB_FLAG_ADDR 68
 #define MS_PER_GRAM_ADDR 69
@@ -70,17 +66,11 @@ extern unsigned long lastFeedCompletionTime;
 #define API_KEY_FLAG_ADDR 80
 #define API_KEY_ADDR 81
 #define API_KEY_MAX_LEN 64
-#define SERVER_URL_FLAG_ADDR 150
-#define SERVER_URL_ADDR 151
-#define SERVER_URL_MAX_LEN 128
-
-// Forward declarations for server URL persistence helpers
-String loadServerURL();
-void saveServerURL(const String& url);
-
-// Wi-Fi Credential Limits
-#define MAX_SSID_LENGTH 32
-#define MAX_PASS_LENGTH 64
+#define WIFI_FLAG_ADDR 146
+#define WIFI_SSID_ADDR 147
+#define WIFI_SSID_MAX_LEN 32
+#define WIFI_PASS_ADDR (WIFI_SSID_ADDR + WIFI_SSID_MAX_LEN)
+#define WIFI_PASS_MAX_LEN 64
 
 // LED Blink Intervals (milliseconds)
 #define LED_BLINK_FAST 200
@@ -150,7 +140,7 @@ unsigned int g_feedPulse = SERVO_FEED_SPEED;
 
 // NTP and Time Synchronization Constants
 #define NTP_SERVER "pool.ntp.org"
-#define NTP_TIMEZONE_OFFSET (8*3600)
+#define NTP_TIMEZONE_OFFSET 0
 #define NTP_UPDATE_INTERVAL 3600000
 
 // Schedule Polling Constants
@@ -226,7 +216,7 @@ private:
 
 public:
   LedController() : currentState(LED_OFF), blinkState(false), lastBlinkTime(0), overlayActive(false), overlayBlue(false), overlayLastToggle(0), overlayInterval(0), overlayOn(false), overlayCycles(0), overlayCompleted(0), overlayRestore(LED_OFF) {}
-  void init() { pinMode(RED_LED_PIN, OUTPUT); pinMode(BLUE_LED_PIN, OUTPUT); turnOffAllLEDs(); Serial.println("LED Controller initialized"); }
+  void init() { pinMode(RED_LED_PIN, OUTPUT); pinMode(BLUE_LED_PIN, OUTPUT); turnOffAllLEDs(); }
   void setState(LedState state) {
     currentState = state; resetBlinkTimer();
     switch (currentState) {
@@ -284,22 +274,7 @@ public:
   void startFeedbackBlinkRed(int cycles, unsigned long interval_ms) { overlayRestore = currentState; overlayActive = true; overlayBlue = false; overlayInterval = interval_ms; overlayCycles = cycles; overlayCompleted = 0; overlayOn = false; overlayLastToggle = millis(); }
 };
 
-/**
- * OledDisplay — redesigned for PETio pet feeder (SSD1306 128×64)
- *
- * Layout (Normal state):
- *  Row  0–13 : WiFi icon (left) + Current time HH:MM:SS (right)
- *  Row    14 : Horizontal divider line
- *  Row 15–16 : "PORTION" label (small caps)
- *  Row 20–52 : Portion grams — large text (textSize 3)
- *  Row 53–60 : Progress bar (portion vs max) + "RDY" label
- *
- * Layout (Dispensing state — full screen swap):
- *  Row  0–9  : Animated marching-block progress bar
- *  Row 18–34 : "DISPENSING" centred (textSize 2)
- *  Row 40–47 : Scrolling dot animation
- *  Row 54–63 : Divider + portion reminder
- */
+
 
 class OledDisplay {
 private:
@@ -310,18 +285,12 @@ private:
 
   void scanI2C() {
     int found = 0;
-    Serial.println("I2C scan start");
     for (int addr = 1; addr < 127; addr++) {
       Wire.beginTransmission(addr);
       if (Wire.endTransmission() == 0) {
-        Serial.print("I2C device at 0x");
-        if (addr < 16) Serial.print("0");
-        Serial.println(addr, HEX);
         found++;
       }
     }
-    if (!found) Serial.println("I2C scan: no devices");
-    Serial.println("I2C scan end");
   }
 
   /** Small WiFi "fan" icon at (x, y). Shows X when disconnected. */
@@ -497,7 +466,6 @@ public:
   void init() {
     Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
     Wire.setClock(400000);
-    scanI2C();
 
     bool ok = display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
     if (!ok) {
@@ -505,7 +473,6 @@ public:
       ok = display.begin(SSD1306_SWITCHCAPVCC, alt);
     }
     if (!ok) {
-      Serial.println("OLED init failed");
       initialized = false;
       return;
     }
@@ -522,7 +489,6 @@ public:
 
     lastUpdate  = millis();
     initialized = true;
-    Serial.println("OLED initialized");
   }
 
   /**
@@ -564,13 +530,13 @@ class MotorController {
 private:
   Servo feedingServo; bool servoAttached; bool feedingInProgress; unsigned long feedingStartTime; unsigned long feedingDuration; LedController* ledController; unsigned int lastPulse; unsigned int targetPulse; bool antiClogMode; bool clogDetected;
   unsigned long lastAntiJamTs; bool antiJamActive; unsigned long antiJamStart; int retryAttempts;
-  void attachServo() { if (!servoAttached) { feedingServo.attach(SERVO_PIN); servoAttached = true; feedingServo.writeMicroseconds(SERVO_NEUTRAL); delay(100); Serial.println("Servo attached and set to neutral"); } }
+  void attachServo() { if (!servoAttached) { feedingServo.attach(SERVO_PIN); servoAttached = true; feedingServo.writeMicroseconds(SERVO_NEUTRAL); delay(100); } }
   void detachServo() { if (servoAttached) { feedingServo.detach(); servoAttached = false; Serial.println("Servo detached"); } }
   void startServo() { if (servoAttached) { lastPulse = SERVO_RAMP_START; feedingServo.writeMicroseconds(lastPulse); Serial.print("Servo started - Forward rotation ("); Serial.print(lastPulse); Serial.println(" µs)"); } }
   void stopServo() { if (servoAttached) { feedingServo.writeMicroseconds(SERVO_NEUTRAL); lastPulse = SERVO_NEUTRAL; Serial.print("Servo stopped - Neutral position ("); Serial.print(SERVO_NEUTRAL); Serial.println(" µs)"); } }
 public:
   MotorController() : servoAttached(false), feedingInProgress(false), feedingStartTime(0), feedingDuration(0), ledController(nullptr), lastPulse(SERVO_NEUTRAL), targetPulse(SERVO_FORWARD), antiClogMode(false), clogDetected(false), lastAntiJamTs(0), antiJamActive(false), antiJamStart(0), retryAttempts(0) {}
-  void init(LedController* ledCtrl) { ledController = ledCtrl; attachServo(); Serial.println("Motor Controller initialized"); Serial.print("Servo pin: "); Serial.println(SERVO_PIN); }
+  void init(LedController* ledCtrl) { ledController = ledCtrl; attachServo(); }
   void waitWithLED(unsigned long duration_ms) {
     unsigned long start = millis();
     while (millis() - start < duration_ms) {
@@ -702,282 +668,267 @@ public:
   }
 };
 
-// Inlined NetworkingModule.h/.cpp with wrappers for firmware method names
+bool loadWifiCredentials(String& ssidOut, String& passOut);
+void saveWifiCredentials(const String& ssid, const String& pass);
+void clearWifiCredentials();
+
 class NetworkingManager {
 private:
-  ESP8266WebServer webServer; DNSServer dnsServer; String wifiSSID; String wifiPassword; String deviceID; bool configurationMode; bool wifiConnected; unsigned long lastConnectionAttempt; unsigned long configModeStartTime; LedController* ledController;
-public:
-  NetworkingManager() : webServer(80), dnsServer(), wifiSSID(""), wifiPassword(""), deviceID(""), configurationMode(false), wifiConnected(false), lastConnectionAttempt(0), configModeStartTime(0), ledController(nullptr) {}
-  void init(LedController* ledCtrl) { 
-    Serial.println("Initializing Wi-Fi Configuration Manager..."); 
-    ledController = ledCtrl; 
-    EEPROM.begin(EEPROM_SIZE); 
-    
-    // Disable persistent WiFi settings to prevent interference
-    WiFi.persistent(false);
-    WiFi.setAutoConnect(false);      // BUG FIX #3: Prevent auto-connect
-    WiFi.setAutoReconnect(false);    // BUG FIX #3: Prevent auto-reconnect
-    
-    // Initialize WiFi in NULL mode first to avoid conflicts
-    WiFi.mode(WIFI_OFF);
-    delay(100);
-    
-    generateDeviceID(); 
-    
-    Serial.print("Device ID: "); 
-    Serial.println(deviceID); 
-    Serial.println("Wi-Fi Configuration Manager initialized"); 
-  }
-  void loadConfiguration() { Serial.println("Loading Wi-Fi configuration..."); byte configFlag = EEPROM.read(CONFIG_FLAG_ADDR); if (configFlag != 0xAA) { Serial.println("No saved configuration found"); return; } char ssidBuffer[MAX_SSID_LENGTH + 1]; for (int i = 0; i < MAX_SSID_LENGTH; i++) { ssidBuffer[i] = EEPROM.read(WIFI_SSID_ADDR + i); if (ssidBuffer[i] == 0) break; } ssidBuffer[MAX_SSID_LENGTH] = 0; wifiSSID = String(ssidBuffer); char passBuffer[MAX_PASS_LENGTH + 1]; for (int i = 0; i < MAX_PASS_LENGTH; i++) { passBuffer[i] = EEPROM.read(WIFI_PASS_ADDR + i); if (passBuffer[i] == 0) break; } passBuffer[MAX_PASS_LENGTH] = 0; wifiPassword = String(passBuffer); Serial.print("Loaded SSID: "); Serial.println(wifiSSID); }
-  void saveConfiguration() { Serial.println("Saving Wi-Fi configuration..."); for (int i = 0; i < MAX_SSID_LENGTH; i++) { if (i < wifiSSID.length()) EEPROM.write(WIFI_SSID_ADDR + i, wifiSSID[i]); else EEPROM.write(WIFI_SSID_ADDR + i, 0); } for (int i = 0; i < MAX_PASS_LENGTH; i++) { if (i < wifiPassword.length()) EEPROM.write(WIFI_PASS_ADDR + i, wifiPassword[i]); else EEPROM.write(WIFI_PASS_ADDR + i, 0); } EEPROM.write(CONFIG_FLAG_ADDR, 0xAA); EEPROM.commit(); Serial.println("Configuration saved to EEPROM"); }
-  bool isConfigured() { return (wifiSSID.length() > 0 && wifiPassword.length() > 0); }
-  void connectToWiFi() { 
-    Serial.print("Connecting to Wi-Fi: "); 
-    Serial.println(wifiSSID); 
-    
-    WiFi.softAPdisconnect(true);
-    WiFi.mode(WIFI_STA);
-    delay(100);
-    
-    WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str()); 
-    lastConnectionAttempt = millis(); 
-    wifiConnected = false; 
-  }
-  void handleWiFiConnection() { if (WiFi.status() == WL_CONNECTED && !wifiConnected) { wifiConnected = true; Serial.println("Wi-Fi connected successfully!"); Serial.print("IP address: "); Serial.println(WiFi.localIP()); if (ledController) ledController->showReady(); } else if (WiFi.status() != WL_CONNECTED && wifiConnected) { wifiConnected = false; Serial.println("Wi-Fi connection lost"); if (ledController) ledController->showConnecting(); }
-    if (!wifiConnected && (millis() - lastConnectionAttempt > WIFI_TIMEOUT_MS)) { Serial.println("Wi-Fi connection timeout, starting configuration mode"); startConfigMode(); }
-  }
-  bool isConnected() { return wifiConnected; }
-  void startConfigMode() { 
-    Serial.println("\n=== STARTING SOFTAP CONFIGURATION MODE ==="); 
-    configurationMode = true; 
-    configModeStartTime = millis(); 
-    
-    // Enhanced debugging for SSID generation
-    Serial.print("Device ID: "); 
-    Serial.println(deviceID);
-    // BUG FIX #4: Use safe char array instead of String.c_str()
-    char apName[32];
-    String apSuffix = deviceID.substring(0, 6);
-    snprintf(apName, sizeof(apName), "ESP8266-Config-%s", apSuffix.c_str());
-    Serial.print("Generated AP Name: ");
-    Serial.println(apName);
-    Serial.print("AP Name Length: ");
-    Serial.println(strlen(apName));
-    
-    // Check current WiFi mode before changes
-    Serial.print("Current WiFi mode: ");
-    Serial.println(WiFi.getMode());
-    
-    // Safe WiFi mode transition - BUG FIX #2
-    Serial.println("Setting WiFi mode to AP...");
-    WiFi.mode(WIFI_OFF);       // Ensure clean state
-    delay(100);
-    WiFi.mode(WIFI_AP);        // Transition directly to AP
-    delay(200);                // Allow mode change to stabilize
-    
-    Serial.print("New WiFi mode: ");
-    Serial.println(WiFi.getMode());
-    
-    // Configure SoftAP with proper parameters
-    Serial.println("Starting SoftAP with parameters:");
-    Serial.print("  SSID: ");
-    Serial.println(apName);
-    Serial.print("  Password: ");
-    Serial.println(SOFTAP_PASSWORD);
-    Serial.print("  Channel: ");
-    Serial.println(SOFTAP_CHANNEL);
-    Serial.println("  Hidden: 0 (visible)");
-    Serial.println("  Max connections: 4");
-    
-    // Configure SoftAP with password and optimal settings - BUG FIX #4: Use safe char array
-    bool apResult = WiFi.softAP(apName, SOFTAP_PASSWORD, SOFTAP_CHANNEL, 0, 4); // SSID, password, channel, hidden, max connections
-    
-    Serial.print("SoftAP result: ");
-    Serial.println(apResult ? "SUCCESS" : "FAILED");
-    
-    if (apResult) {
-      Serial.print("Configuration AP started: ");
-      Serial.println(apName);
-      
-      // BUG FIX #5: Guarantee 192.168.4.1 IP address
-      IPAddress local_IP(192, 168, 4, 1);
-      IPAddress gateway(192, 168, 4, 1);
-      IPAddress subnet(255, 255, 255, 0);
-      WiFi.softAPConfig(local_IP, gateway, subnet);
-      delay(100); // Allow IP config to apply
-      
-      Serial.print("AP IP address: ");
-      Serial.println(WiFi.softAPIP());
-      
-      // Test AP visibility
-      Serial.println("Testing AP visibility...");
-      delay(300); // Give more time for beacon frames
-      
-      Serial.print("AP MAC address: ");
-      Serial.println(WiFi.softAPmacAddress());
-      
-      Serial.print("Number of connected stations: ");
-      Serial.println(WiFi.softAPgetStationNum());
-      
-      setupConfigServer();
-      dnsServer.start(53, "*", WiFi.softAPIP());
-      Serial.println("Configuration portal ready");
-      
-      // Run diagnostic test to verify AP is working
-      testSoftAPConfiguration();
-      
-      Serial.println("=== SOFTAP CONFIGURATION COMPLETE ===\n");
-    } else {
-      Serial.println("ERROR: Failed to start SoftAP!");
-      Serial.println("Attempting to restart WiFi module...");
-      
-      // Try to recover by reinitializing WiFi
-      WiFi.forceSleepBegin();
-      delay(1000);
-      WiFi.forceSleepWake();
-      delay(500);
-      
-      // Retry SoftAP setup
-      Serial.println("Retrying SoftAP setup...");
-      WiFi.mode(WIFI_AP);
-      delay(200);
-      bool retryResult = WiFi.softAP(apName, SOFTAP_PASSWORD, SOFTAP_CHANNEL, 0, 4); // BUG FIX #4: Use safe char array
-      
-      Serial.print("Retry result: ");
-      Serial.println(retryResult ? "SUCCESS" : "FAILED");
-      
-      if (retryResult) {
-        Serial.println("SoftAP started successfully on retry");
-        setupConfigServer();
-        dnsServer.start(53, "*", WiFi.softAPIP());
-        Serial.println("=== SOFTAP CONFIGURATION COMPLETE (RETRY) ===\n");
-      } else {
-        Serial.println("CRITICAL: SoftAP failed to start after retry");
-        Serial.println("=== SOFTAP CONFIGURATION FAILED ===\n");
-      }
-    }
-    
-    if (ledController) ledController->showConfigMode(); 
-  }
-  void handleConfigMode() { 
-    dnsServer.processNextRequest(); 
-    webServer.handleClient(); 
-    
-    // Add periodic status messages for debugging
-    static unsigned long lastStatusPrint = 0;
-    if (millis() - lastStatusPrint > 10000) { // Every 10 seconds
-      Serial.println("SoftAP Status: " + WiFi.softAPIP().toString() + " | Clients: " + String(WiFi.softAPgetStationNum()));
-      
-      // Verify AP is still active
-      if (WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA) {
-        Serial.println("ERROR: WiFi mode changed from AP! Restarting AP...");
-        startConfigMode();
-        return;
-      }
-      
-      lastStatusPrint = millis();
-    }
-    
-    if (millis() - configModeStartTime > CONFIG_TIMEOUT_MS) { 
-      Serial.println("Configuration mode timeout, restarting..."); 
-      ESP.restart(); 
-    } 
-  }
-  bool isConfigMode() { return configurationMode; }
-  String getDeviceID() { return deviceID; }
-  String getSSID() { return wifiSSID; }
+  String deviceID;
+  bool wifiConnected;
+  unsigned long lastConnectionAttempt;
+  unsigned long lastStatusPrint;
+  int lastStatusSeen;
+  LedController* ledController;
+  bool configMode;
+  bool hasCredentialsVal;
+  String storedSsid;
+  String storedPass;
+  ESP8266WebServer* configServer;
+  String apSsid;
 
-  // Wrappers to match firmware.ino usage
-  void startConfigurationMode() { startConfigMode(); }
-  void handleConfigurationMode() { handleConfigMode(); }
-  bool connect() { connectToWiFi(); unsigned long start = millis(); while (millis() - start < WIFI_TIMEOUT_MS) { handleWiFiConnection(); if (isConnected()) return true; delay(100); } return false; }
-  void update() { if (isConfigMode()) handleConfigMode(); else handleWiFiConnection(); }
-
-private:
-  void setupConfigServer() { webServer.on("/", [this]() { handleConfigRoot(); }); webServer.on("/save", HTTP_POST, [this]() { handleConfigSave(); }); webServer.on("/ping", HTTP_GET, [this]() { webServer.send(200, "text/plain", "OK"); }); webServer.onNotFound([this]() { handleConfigRoot(); }); webServer.begin(); }
-  void handleConfigRoot() { webServer.send(200, "text/html", getConfigPage()); }
-  void handleConfigSave() { if (webServer.hasArg("ssid") && webServer.hasArg("password")) { wifiSSID = webServer.arg("ssid"); wifiPassword = webServer.arg("password"); String srv = webServer.hasArg("server_url") ? webServer.arg("server_url") : ""; if (srv.length() > 0) { saveServerURL(srv); } Serial.print("Received SSID: "); Serial.println(wifiSSID); saveConfiguration(); webServer.send(200, "text/html", "Configuration saved! Device will restart..."); switchToStationMode(); delay(2000); ESP.restart(); } else { webServer.send(400, "text/plain", "Missing parameters"); } }
-  void switchToStationMode() { WiFi.softAPdisconnect(true); WiFi.mode(WIFI_STA); delay(200); }
-  String getConfigPage() {
-    String page = "<html><head><title>ESP8266 Config</title></head><body>";
-    page += "<h1>ESP8266 Pet Feeder Configuration</h1>";
-    page += "<p><strong>Device:</strong> " + deviceID + "<br>";
-    page += "<strong>AP Password:</strong> " + String(SOFTAP_PASSWORD) + "</p>";
-    page += "<form method=\"POST\" action=\"/save\">";
-    page += "WiFi Network Name (SSID): <input type=\"text\" name=\"ssid\" required><br>";
-    page += "WiFi Password: <input type=\"password\" name=\"password\" required><br>";
-    String curSrv = loadServerURL();
-    if (curSrv.length() == 0) curSrv = String(DEFAULT_SERVER_URL);
-    page += "Server URL: <input type=\"text\" name=\"server_url\" value=\"" + curSrv + "\" required><br>";
-    page += "<input type=\"submit\" value=\"Save and Connect\"></form>";
-    page += "<p><em>After saving, the device will restart and connect to your WiFi network.</em></p>";
-    page += "</body></html>";
-    return page;
-  }
   void generateDeviceID() {
     uint32_t chipId = ESP.getChipId();
     char id[16];
     sprintf(id, "%08X", chipId);
     deviceID = String(id);
-    
-    // Debug the chip ID and device ID generation
-    Serial.print("ESP8266 Chip ID: 0x");
-    Serial.println(chipId, HEX);
-    Serial.print("Generated Device ID: ");
+    Serial.print("Device ID: ");
     Serial.println(deviceID);
-    
-    // Verify the device ID is valid
-    if (deviceID.length() < 6) {
-      Serial.println("WARNING: Device ID too short, using fallback");
-      deviceID = "12345678"; // Fallback ID
-    }
   }
-  
-  void testSoftAPConfiguration() {
-    Serial.println("\n=== SOFTAP DIAGNOSTIC TEST ===");
-    
-    // Test 1: Check WiFi hardware status
-    Serial.print("WiFi Hardware Status: ");
-    Serial.println(WiFi.status() == WL_NO_SHIELD ? "NOT FOUND" : "OK");
-    
-    // Test 2: Check current mode
-    Serial.print("Current WiFi Mode: ");
-    switch(WiFi.getMode()) {
-      case WIFI_OFF: Serial.println("OFF"); break;
-      case WIFI_STA: Serial.println("STATION"); break;
-      case WIFI_AP: Serial.println("ACCESS POINT"); break;
-      case WIFI_AP_STA: Serial.println("AP + STATION"); break;
-      default: Serial.println("UNKNOWN"); break;
+
+  static String htmlEscape(const String& in) {
+    String out;
+    out.reserve(in.length() + 8);
+    for (size_t i = 0; i < in.length(); i++) {
+      char c = in[i];
+      if (c == '&') out += "&amp;";
+      else if (c == '<') out += "&lt;";
+      else if (c == '>') out += "&gt;";
+      else if (c == '\"') out += "&quot;";
+      else out += c;
     }
-    
-    // Test 3: Check AP configuration
-    if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
-      Serial.println("AP Configuration:");
-      Serial.print("  SSID: ");
-      Serial.println(WiFi.SSID());
-      Serial.print("  IP Address: ");
-      Serial.println(WiFi.softAPIP());
-      Serial.print("  MAC Address: ");
-      Serial.println(WiFi.softAPmacAddress());
-      Serial.print("  Channel: ");
-      Serial.println(WiFi.channel());
-      Serial.print("  Connected Clients: ");
-      Serial.println(WiFi.softAPgetStationNum());
-      
-      // Test 4: Check if AP is actually broadcasting
-      Serial.print("AP Broadcasting Test: ");
-      String testSSID = WiFi.softAPSSID();  // FIX: Use softAPSSID() instead of SSID()
-      if (testSSID.length() > 0 && testSSID.startsWith("ESP8266-Config-")) {
-        Serial.println("SSID VALID - AP should be visible");
-      } else {
-        Serial.println("SSID INVALID - AP may not be visible");
+    return out;
+  }
+
+  static String urlEncode(const String& in) {
+    const char* hex = "0123456789ABCDEF";
+    String out;
+    for (size_t i = 0; i < in.length(); i++) {
+      uint8_t c = (uint8_t)in[i];
+      bool safe = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                  (c >= '0' && c <= '9') || c == '-' || c == '_' ||
+                  c == '.' || c == '~';
+      if (safe) out += (char)c;
+      else {
+        out += '%';
+        out += hex[(c >> 4) & 0x0F];
+        out += hex[c & 0x0F];
       }
-    } else {
-      Serial.println("AP is NOT active!");
     }
-    
-    Serial.println("=== END SOFTAP DIAGNOSTIC TEST ===\n");
+    return out;
   }
+
+  static const char* encTypeStr(uint8_t e) {
+    switch (e) {
+      case ENC_TYPE_NONE: return "OPEN";
+      case ENC_TYPE_WEP: return "WEP";
+      case ENC_TYPE_TKIP: return "WPA/TKIP";
+      case ENC_TYPE_CCMP: return "WPA2/CCMP";
+      case ENC_TYPE_AUTO: return "AUTO";
+      default: return "?";
+    }
+  }
+
+  void startConfigPortal() {
+    if (configServer) return;
+    configMode = true;
+    WiFi.mode(WIFI_AP_STA);
+    delay(100);
+    String suffix = deviceID;
+    if (suffix.length() > 4) suffix = suffix.substring(suffix.length() - 4);
+    apSsid = String("PETio-Setup-") + suffix;
+    WiFi.softAP(apSsid.c_str());
+    configServer = new ESP8266WebServer(80);
+    configServer->on("/", [this]() {
+      String ssidPref = "";
+      if (configServer->hasArg("ssid")) ssidPref = configServer->arg("ssid");
+      String ssidVal = htmlEscape(ssidPref);
+      String html =
+        "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'/>"
+        "<title>WiFi Setup</title><style>body{font-family:Arial;margin:20px}input{padding:8px;margin:6px 0;width:100%}"
+        "button{padding:10px 14px}</style></head><body>"
+        "<h2>WiFi Setup</h2>"
+        "<p><a href='/scan'>Scan for networks</a></p>"
+        "<form method='POST' action='/save'>"
+        "<label>SSID</label><input name='ssid' value='" + ssidVal + "' maxlength='" + String(WIFI_SSID_MAX_LEN - 1) + "' required/>"
+        "<label>Password</label><input name='pass' type='password' maxlength='" + String(WIFI_PASS_MAX_LEN - 1) + "'/>"
+        "<button type='submit'>Save</button></form>"
+        "</body></html>";
+      configServer->send(200, "text/html", html);
+    });
+    configServer->on("/scan", [this]() {
+      Serial.println("Scanning for networks...");
+      int n = WiFi.scanNetworks();
+      String html =
+        "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'/>"
+        "<title>Network Scan</title><style>body{font-family:Arial;margin:20px}table{border-collapse:collapse;width:100%}"
+        "th,td{border:1px solid #ccc;padding:6px;text-align:left}</style></head><body>"
+        "<h2>Nearby Networks</h2>"
+        "<p><a href='/'>&larr; Back to setup</a> | <a href='/scan'>Refresh</a></p>"
+        "<table><tr><th>SSID</th><th>RSSI</th><th>Security</th><th></th></tr>";
+      for (int i = 0; i < n; i++) {
+        String ssid = WiFi.SSID(i);
+        if (ssid.length() == 0) continue;
+        long rssi = WiFi.RSSI(i);
+        uint8_t enc = WiFi.encryptionType(i);
+        String esc = htmlEscape(ssid);
+        String link = String("/?ssid=") + urlEncode(ssid);
+        html += "<tr><td>" + esc + "</td><td>" + String(rssi) + " dBm</td><td>" + String(encTypeStr(enc)) + "</td>"
+                "<td><a href='" + link + "'>Use</a></td></tr>";
+      }
+      html += "</table></body></html>";
+      configServer->send(200, "text/html", html);
+    });
+    configServer->on("/save", [this]() {
+      if (!configServer->hasArg("ssid")) { configServer->send(400, "text/plain", "Missing ssid"); return; }
+      String ssid = configServer->arg("ssid");
+      String pass = configServer->arg("pass");
+      saveWifiCredentials(ssid, pass);
+      storedSsid = ssid;
+      storedPass = pass;
+      hasCredentialsVal = true;
+      String resp = String("Saved. Connecting to ") + ssid + String(" ...");
+      configServer->send(200, "text/plain", resp);
+      delay(200);
+      stopConfigPortal();
+      connect();
+    });
+    configServer->begin();
+    if (ledController) ledController->showError();
+    Serial.print("AP started: ");
+    Serial.println(apSsid);
+  }
+
+  void stopConfigPortal() {
+    if (configServer) {
+      configServer->stop();
+      delete configServer;
+      configServer = nullptr;
+    }
+    WiFi.softAPdisconnect(true);
+    configMode = false;
+  }
+
+public:
+  NetworkingManager()
+    : deviceID(""), wifiConnected(false),
+      lastConnectionAttempt(0), lastStatusPrint(0), lastStatusSeen(-1), ledController(nullptr),
+      configMode(false), hasCredentialsVal(false), storedSsid(""), storedPass(""), configServer(nullptr), apSsid("") {}
+
+  void init(LedController* ledCtrl) {
+    ledController = ledCtrl;
+    WiFi.persistent(false);
+    WiFi.setAutoConnect(false);
+    WiFi.setAutoReconnect(false);
+    WiFi.mode(WIFI_OFF);
+    delay(100);
+    generateDeviceID();
+    Serial.println("Networking initialized");
+    String ssid, pass;
+    if (loadWifiCredentials(ssid, pass)) {
+      storedSsid = ssid;
+      storedPass = pass;
+      hasCredentialsVal = true;
+    } else {
+      hasCredentialsVal = false;
+    }
+  }
+
+  void begin() {
+    if (hasCredentialsVal) {
+      connect();
+    } else {
+      startConfigPortal();
+    }
+  }
+
+  void connect() {
+    if (!hasCredentialsVal) {
+      startConfigPortal();
+      return;
+    }
+    Serial.print("Connecting to WiFi...");
+    Serial.print(" SSID length=");
+    Serial.println(storedSsid.length());
+    WiFi.mode(WIFI_STA);
+    delay(100);
+    WiFi.disconnect();
+    delay(50);
+    WiFi.begin(storedSsid.c_str(), storedPass.length() > 0 ? storedPass.c_str() : nullptr);
+    lastConnectionAttempt = millis();
+    lastStatusPrint = 0;
+    lastStatusSeen = -1;
+    wifiConnected = false;
+  }
+
+  void reconnectNonBlocking() {
+    if (!hasCredentialsVal) return;
+    Serial.println("Reconnecting to WiFi");
+    WiFi.mode(WIFI_STA);
+    delay(100);
+    WiFi.disconnect();
+    delay(50);
+    WiFi.begin(storedSsid.c_str(), storedPass.length() > 0 ? storedPass.c_str() : nullptr);
+    lastConnectionAttempt = millis();
+    lastStatusPrint = 0;
+    lastStatusSeen = -1;
+    wifiConnected = false;
+  }
+
+  void update() {
+    if (configMode && configServer) {
+      configServer->handleClient();
+    }
+    if (WiFi.status() == WL_CONNECTED && !wifiConnected) {
+      wifiConnected = true;
+      Serial.println("WiFi connected!");
+      Serial.print("IP address: ");
+      Serial.println(WiFi.localIP());
+      if (ledController) ledController->showReady();
+      if (configMode) stopConfigPortal();
+    } else if (WiFi.status() != WL_CONNECTED && wifiConnected) {
+      wifiConnected = false;
+      Serial.println("WiFi connection lost");
+      if (ledController) ledController->showConnecting();
+    } else if (WiFi.status() != WL_CONNECTED) {
+      unsigned long now = millis();
+      int s = WiFi.status();
+      if (s != lastStatusSeen || (now - lastStatusPrint) > 3000) {
+        lastStatusSeen = s;
+        lastStatusPrint = now;
+        Serial.print("WiFi status: ");
+        switch (s) {
+          case WL_CONNECT_FAILED: Serial.println("WRONG PASSWORD"); break;
+          case WL_NO_SSID_AVAIL: Serial.println("SSID NOT FOUND"); break;
+          case WL_IDLE_STATUS: Serial.println("CONNECTING..."); break;
+          case WL_DISCONNECTED: Serial.println("DISCONNECTED"); break;
+          default: Serial.println("CODE " + String(s)); break;
+        }
+      }
+      if (!configMode && hasCredentialsVal && (now - lastConnectionAttempt) > WIFI_TIMEOUT_MS) {
+        reconnectNonBlocking();
+      }
+    }
+  }
+
+  bool isConnected() { return wifiConnected; }
+  bool isConfigured() { return hasCredentialsVal; }
+  bool isConfigMode() { return configMode; }
+  String getDeviceID() { return deviceID; }
+  String getSSID() { return storedSsid; }
+  void enterConfigMode() { startConfigPortal(); }
+  void clearCredentials() { clearWifiCredentials(); hasCredentialsVal = false; storedSsid = ""; storedPass = ""; }
+  int getLastConnectionStatus() { return WiFi.status(); }
 };
 
 extern int dailyFeeds;
@@ -1024,10 +975,21 @@ private:
     }
   }
   String createFeedingPayload(int portionSize, const String& feedType, const String& notes = "") {
-    DynamicJsonDocument doc(512); doc["timestamp"] = nowUtcIso(); doc["portion_dispensed"] = portionSize; doc["source"] = feedType; String payload; serializeJson(doc, payload); return payload;
+    DynamicJsonDocument doc(512);
+    doc["device_id"] = deviceID;
+    doc["timestamp"] = nowUtcIso();
+    doc["portion_dispensed"] = portionSize;
+    doc["source"] = feedType;
+    if (notes.length() > 0) doc["notes"] = notes;
+    String payload; serializeJson(doc, payload); return payload;
   }
   String createScheduledFeedingPayload(int portionSize, const String& feedType, uint32_t /*scheduleId*/, const String& /*notes*/ = "") {
-    DynamicJsonDocument doc(256); doc["timestamp"] = nowUtcIso(); doc["portion_dispensed"] = portionSize; doc["source"] = "scheduled"; String payload; serializeJson(doc, payload); return payload;
+    DynamicJsonDocument doc(256);
+    doc["device_id"] = deviceID;
+    doc["timestamp"] = nowUtcIso();
+    doc["portion_dispensed"] = portionSize;
+    doc["source"] = "scheduled";
+    String payload; serializeJson(doc, payload); return payload;
   }
 public:
   HTTPClientManager() : requestTimeout(HTTP_TIMEOUT_MS), maxRetries(HTTP_MAX_RETRIES), lastError("") {}
@@ -1066,7 +1028,13 @@ public:
     doc["pin"] = pin;
     doc["ttl_seconds"] = ttl_seconds;
     String payload; serializeJson(doc, payload);
-    String resp; return makeRequest("/device/pair/register/", "POST", payload, resp);
+    String resp;
+    bool ok = makeRequest("/device/pair/register/", "POST", payload, resp);
+    if (!ok && lastError.indexOf("409") >= 0) {
+      Serial.println("Device already paired on server (409) - skipping to claim poll");
+      return true;
+    }
+    return ok;
   }
   bool pairClaimed(const String& pin, String& keyOut) {
     String endpoint = String("/device/pair/claimed/?device_id=") + deviceID + String("&pin=") + pin;
@@ -1093,6 +1061,7 @@ HTTPClientManager httpClient;  // Added HTTP client for backend communication
 unsigned long lastStatusUpdate = 0;
 unsigned long lastSchedulePoll = 0;
 unsigned long lastNTPUpdate = 0;
+bool ntpSynced = false;
 uint32_t lastExecutedScheduleId = 0;
 int dailyFeeds = 0;
 String lastFeedIso = "";
@@ -1106,6 +1075,8 @@ unsigned long networkBackoffMs = 60000;
 const unsigned long MIN_NETWORK_BACKOFF_MS = 60000;
 const unsigned long MAX_NETWORK_BACKOFF_MS = 300000;
 unsigned long lastCommandPoll = 0;
+unsigned long lastReconnectAttempt = 0;
+const unsigned long RECONNECT_INTERVAL_MS = 30000;
 float activeFeedPortionGrams = 0.0f;
 
 // Error handling and retry logic
@@ -1122,26 +1093,6 @@ String g_pairPin = "";
 unsigned long g_pairExpireMs = 0;
 unsigned long g_lastPairPoll = 0;
 bool g_pairRegistered = false;
-String loadServerURL() {
-  if (EEPROM.read(SERVER_URL_FLAG_ADDR) != 0xBC) return "";
-  char buf[SERVER_URL_MAX_LEN + 1];
-  for (int i = 0; i < SERVER_URL_MAX_LEN; i++) {
-    buf[i] = (char)EEPROM.read(SERVER_URL_ADDR + i);
-  }
-  buf[SERVER_URL_MAX_LEN] = 0;
-  String s = String(buf);
-  s.trim();
-  return s;
-}
-void saveServerURL(const String& url) {
-  int n = min((int)url.length(), SERVER_URL_MAX_LEN - 1);
-  for (int i = 0; i < SERVER_URL_MAX_LEN; i++) {
-    char c = (i < n) ? url[i] : 0;
-    EEPROM.write(SERVER_URL_ADDR + i, c);
-  }
-  EEPROM.write(SERVER_URL_FLAG_ADDR, 0xBC);
-  EEPROM.commit();
-}
 
 String loadDeviceKey() {
   if (EEPROM.read(API_KEY_FLAG_ADDR) != 0xDA) return "";
@@ -1171,6 +1122,52 @@ String genPin6() {
   int v = (int)(r % 1000000UL);
   char b[7]; snprintf(b, sizeof(b), "%06d", v);
   return String(b);
+}
+
+String eepromReadString(int baseAddr, int maxLen) {
+  char buf[128];
+  int n = maxLen;
+  if (n > (int)sizeof(buf) - 1) n = sizeof(buf) - 1;
+  for (int i = 0; i < n; i++) {
+    buf[i] = (char)EEPROM.read(baseAddr + i);
+  }
+  buf[n] = 0;
+  String s = String(buf);
+  s.trim();
+  return s;
+}
+
+void eepromWriteString(int baseAddr, int maxLen, const String& value) {
+  int n = min((int)value.length(), maxLen - 1);
+  for (int i = 0; i < maxLen; i++) {
+    char c = (i < n) ? value[i] : 0;
+    EEPROM.write(baseAddr + i, c);
+  }
+  EEPROM.commit();
+}
+
+bool loadWifiCredentials(String& ssidOut, String& passOut) {
+  if (EEPROM.read(WIFI_FLAG_ADDR) != 0xA5) return false;
+  String ssid = eepromReadString(WIFI_SSID_ADDR, WIFI_SSID_MAX_LEN);
+  String pass = eepromReadString(WIFI_PASS_ADDR, WIFI_PASS_MAX_LEN);
+  if (ssid.length() == 0) return false;
+  ssidOut = ssid;
+  passOut = pass;
+  return true;
+}
+
+void saveWifiCredentials(const String& ssid, const String& pass) {
+  eepromWriteString(WIFI_SSID_ADDR, WIFI_SSID_MAX_LEN, ssid);
+  eepromWriteString(WIFI_PASS_ADDR, WIFI_PASS_MAX_LEN, pass);
+  EEPROM.write(WIFI_FLAG_ADDR, 0xA5);
+  EEPROM.commit();
+}
+
+void clearWifiCredentials() {
+  for (int i = 0; i < WIFI_SSID_MAX_LEN; i++) EEPROM.write(WIFI_SSID_ADDR + i, 0);
+  for (int i = 0; i < WIFI_PASS_MAX_LEN; i++) EEPROM.write(WIFI_PASS_ADDR + i, 0);
+  EEPROM.write(WIFI_FLAG_ADDR, 0x00);
+  EEPROM.commit();
 }
 
 void setup() {
@@ -1209,7 +1206,6 @@ void setup() {
 
   // Initialize networking with LED reference
   network.init(&ledController);
-  network.loadConfiguration();
 
   // Initialize HTTP client for Django backend communication
   {
@@ -1217,35 +1213,30 @@ void setup() {
     if (!devId.startsWith("ESP-")) {
       devId = String("ESP-") + devId;
     }
-    String srv = loadServerURL();
-    if (srv.length() == 0) srv = String(DEFAULT_SERVER_URL);
-    httpClient.init(srv, devId);
+    httpClient.init(DEFAULT_SERVER_URL, devId);
   }
   httpClient.setApiKey(DEFAULT_API_KEY);
 
-  if (!network.isConfigured()) {
-    Serial.println("No Wi-Fi credentials found, starting configuration mode");
-    network.startConfigurationMode();
-    
-    while (!network.isConfigured()) {
-      network.handleConfigurationMode();
-      delay(100);
-    }
+  network.begin();
+
+  // Wait up to 30 seconds for initial connection
+  unsigned long connectStart = millis();
+  while (!network.isConfigMode() && WiFi.status() != WL_CONNECTED &&
+         millis() - connectStart < WIFI_TIMEOUT_MS) {
+    network.update();
+    delay(100);
   }
 
-  // Connect to Wi-Fi
-  Serial.println("Connecting to Wi-Fi...");
-  ledController.showConnecting();
-  
-  if (network.connect()) {
-    Serial.println("Wi-Fi connected successfully");
+  if (network.isConnected()) {
+    Serial.println("WiFi connected successfully");
     ledController.showReady();
-    
-    // Initialize NTP time synchronization
     initializeNTP();
     lastSchedulePoll = millis() - SCHEDULE_POLL_INTERVAL;
     lastCommandPoll = millis() - COMMAND_POLL_INTERVAL;
     lastStatusUpdate = millis() - STATUS_UPDATE_INTERVAL;
+#if FORCE_PAIR_ON_BOOT
+    clearDeviceKey();
+#endif
     g_deviceKey = loadDeviceKey();
     if (g_deviceKey.length() > 0) {
       httpClient.setDeviceKey(g_deviceKey);
@@ -1264,11 +1255,26 @@ void setup() {
       Serial.println("Startup HTTP check OK");
     } else {
       Serial.println("Startup HTTP check failed: " + httpClient.getLastError());
+      if (g_deviceKey.length() > 0 && httpClient.getLastError().indexOf("HTTP 403") >= 0) {
+        Serial.println("Saved device key rejected by server - clearing key and entering pairing mode");
+        clearDeviceKey();
+        g_deviceKey = "";
+        httpClient.setDeviceKey("");
+        g_pairingActive = true;
+        g_pairPin = genPin6();
+        g_pairExpireMs = millis() + 300000UL;
+        g_lastPairPoll = 0;
+        g_pairRegistered = false;
+        Serial.println("Pairing mode active");
+      }
     }
-    
-  } else {
-    Serial.println("Failed to connect to Wi-Fi");
+  } else if (!network.isConfigMode()) {
+    Serial.println("WiFi unavailable at boot - will retry in background");
     ledController.showError();
+    consecutiveNetworkErrors = 0;
+    lastReconnectAttempt = 0;
+  } else {
+    Serial.println("WiFi credentials not set - configuration AP active");
   }
 
   Serial.println("Setup complete - entering main loop");
@@ -1276,6 +1282,39 @@ void setup() {
 }
 
 void loop() {
+  // Long-press FEED button (5s) to clear device key and force pairing mode
+  {
+    static unsigned long holdStart = 0;
+    static bool acted = false;
+    bool down = (digitalRead(FEED_NOW_PIN) == LOW);
+    if (down) {
+      if (holdStart == 0) holdStart = millis();
+      unsigned long held = millis() - holdStart;
+      if (held > 1000 && held < 5000) {
+        ledController.startFeedbackBlinkRed(1, 150);
+      }
+      if (held >= 5000 && !acted) {
+        acted = true;
+        Serial.println("=== BUTTON HOLD DETECTED - FORCING PAIRING MODE ===");
+        clearDeviceKey();
+        g_deviceKey = "";
+        httpClient.setDeviceKey("");
+        clearWifiCredentials();
+        network.clearCredentials();
+        network.enterConfigMode();
+        g_pairingActive = true;
+        g_pairPin = genPin6();
+        g_pairExpireMs = millis() + 300000UL;
+        g_lastPairPoll = 0;
+        g_pairRegistered = false;
+        Serial.print("Pairing PIN: ");
+        Serial.println(g_pairPin);
+      }
+    } else {
+      holdStart = 0;
+      acted = false;
+    }
+  }
   if (g_pairingActive) {
     int secsLeft = (g_pairExpireMs > millis()) ? (int)((g_pairExpireMs - millis()) / 1000UL) : 0;
     {
@@ -1288,8 +1327,14 @@ void loop() {
     if (network.isConnected()) {
       if (!g_pairRegistered) {
         bool ok = httpClient.pairRegister(g_pairPin, 300);
-        g_pairRegistered = ok;
-        g_lastPairPoll = 0;
+        if (ok) {
+          g_pairRegistered = true;
+          g_lastPairPoll = 0;
+          Serial.println("Pairing registered - waiting for app claim");
+        } else {
+          Serial.println("Pairing registration failed - backing off 10s before retry");
+          delay(10000);
+        }
       } else {
         if (millis() - g_lastPairPoll > 4000UL) {
           String k;
@@ -1305,6 +1350,20 @@ void loop() {
         }
       }
       if (millis() >= g_pairExpireMs) {
+        if (!g_pairRegistered) {
+          Serial.println("Pairing timed out with no server registration - exiting pairing mode");
+          g_pairingActive = false;
+          g_deviceKey = loadDeviceKey();
+          if (g_deviceKey.length() > 0) {
+            httpClient.setDeviceKey(g_deviceKey);
+            ledController.showReady();
+            Serial.println("Found saved device key - resuming normal operation");
+          } else {
+            Serial.println("No key found - device needs re-pairing from the app");
+            ledController.showError();
+          }
+          return;
+        }
         g_pairPin = genPin6();
         g_pairExpireMs = millis() + 300000UL;
         g_pairRegistered = false;
@@ -1318,6 +1377,13 @@ void loop() {
   handleManualFeeding();
   handlePortionAdjustButtons();
   network.update();
+  if (network.isConnected() && !ntpSynced) {
+    Serial.println("WiFi connected - performing initial NTP sync...");
+    initializeNTP();
+  }
+  if (network.isConfigured() && !network.isConnected() && !network.isConfigMode()) {
+    ledController.showConnecting();
+  }
   motorController.update();
   if (activeFeedPortionGrams > 0.0f && !motorController.isFeedingInProgress()) {
     activeFeedPortionGrams = 0.0f;
@@ -1356,16 +1422,26 @@ void loop() {
   // Step D: Schedule polling and execution
   if (allowNetworkWork) {
     if (network.isConnected()) {
+      // Connected — run normal operations and reset all error state
       pollAndExecuteSchedules();
       pollAndExecuteRemoteCommands();
       consecutiveNetworkErrors = 0;
-    } else {
-      consecutiveNetworkErrors++;
-      if (consecutiveNetworkErrors > MAX_CONSECUTIVE_ERRORS) {
-        Serial.println("Too many consecutive network errors, attempting reconnection...");
-        network.connect();
-        consecutiveNetworkErrors = 0;
+      networkBackoffUntil = 0;
+      lastReconnectAttempt = 0;
+    } else if (!network.isConfigMode() && network.isConfigured()) {
+      // Not connected, not in AP mode, credentials exist — retry on cooldown
+      unsigned long now = millis();
+      if (lastReconnectAttempt == 0 ||
+          (now - lastReconnectAttempt) >= RECONNECT_INTERVAL_MS) {
+        lastReconnectAttempt = now;
+        Serial.println("Network unavailable - attempting reconnect...");
+        Serial.print("Next retry in ");
+        Serial.print(RECONNECT_INTERVAL_MS / 1000);
+        Serial.println("s if this fails");
+        network.reconnectNonBlocking();
       }
+      // Do NOT increment consecutiveNetworkErrors here —
+      // that counter is only for HTTP operation failures, not WiFi state
     }
   }
 
@@ -1399,12 +1475,19 @@ void initializeNTP() {
   
   if (retries < 10) {
     Serial.println("NTP time synchronized successfully");
-    Serial.println("Current UTC time: " + timeClient.getFormattedTime());
+    Serial.println("Current UTC time (NTP): " + timeClient.getFormattedTime());
     
     // Set system time for time() functions
     time_t epochTime = timeClient.getEpochTime();
     struct timeval tv = { epochTime, 0 };
     settimeofday(&tv, NULL);
+    setenv("TZ", "PHT-8", 1);
+    tzset();
+    time_t nowLocal = time(nullptr);
+    struct tm* lt = localtime(&nowLocal);
+    char buf[9]; snprintf(buf, sizeof(buf), "%02d:%02d:%02d", lt->tm_hour, lt->tm_min, lt->tm_sec);
+    Serial.println("Local time (PHT): " + String(buf));
+    ntpSynced = true;
     
   } else {
     Serial.println("Failed to synchronize with NTP server");
@@ -1422,12 +1505,18 @@ void updateNTPTime() {
       Serial.println("Updating NTP time...");
       
       if (timeClient.update()) {
-        Serial.println("NTP time updated: " + timeClient.getFormattedTime());
+        Serial.println("NTP time updated (UTC): " + timeClient.getFormattedTime());
         
         // Update system time
         time_t epochTime = timeClient.getEpochTime();
         struct timeval tv = { epochTime, 0 };
         settimeofday(&tv, NULL);
+        setenv("TZ", "PHT-8", 1);
+        tzset();
+        time_t nowLocal = time(nullptr);
+        struct tm* lt = localtime(&nowLocal);
+        char buf[9]; snprintf(buf, sizeof(buf), "%02d:%02d:%02d", lt->tm_hour, lt->tm_min, lt->tm_sec);
+        Serial.println("Local time (PHT): " + String(buf));
         
       } else {
         Serial.println("Failed to update NTP time");
