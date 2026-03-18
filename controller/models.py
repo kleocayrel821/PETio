@@ -93,7 +93,7 @@ class PetProfile(models.Model):
 
 
 class FeedingLog(models.Model):
-    timestamp = models.DateTimeField()  # BUG FIX #5: Remove auto_now_add to allow firmware timestamps
+    timestamp = models.DateTimeField(auto_now_add=True)
     portion_dispensed = models.FloatField()
     source = models.CharField(max_length=50)  # e.g. "button", "web"
     # New: scope logs to device
