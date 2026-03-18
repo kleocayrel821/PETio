@@ -55,7 +55,7 @@ extern unsigned long lastFeedCompletionTime;
 #define WIFI_TIMEOUT_MS 30000
 #define WIFI_SSID ""
 #define WIFI_PASSWORD ""
-#define FORCE_PAIR_ON_BOOT 1
+#define FORCE_PAIR_ON_BOOT 0
 
 // EEPROM Configuration
 #define EEPROM_SIZE 512
@@ -2178,6 +2178,10 @@ void sendDeviceStatus() {
   int wifiSignal = WiFi.RSSI();
   int batteryLevel = 100;  // Placeholder - implement actual battery reading if available
   
+  if (g_deviceKey.length() == 0) {
+    Serial.println("Skipping status send: device not paired yet (no device key)");
+    return;
+  }
   bool success = httpClient.sendDeviceStatus("online", batteryLevel, wifiSignal);
   if (success) {
     Serial.println("Device status sent to server successfully");
@@ -2211,6 +2215,12 @@ void syncDeviceConfiguration() {
 void pollAndExecuteRemoteCommands() {
   unsigned long currentTime = millis();
   if (currentTime - lastCommandPoll > COMMAND_POLL_INTERVAL) {
+    if (g_deviceKey.length() == 0) {
+      // Avoid hammering auth-protected endpoints before pairing
+      lastCommandPoll = currentTime;
+      Serial.println("Skipping command poll: device not paired yet (no device key)");
+      return;
+    }
     if (millis() < networkBackoffUntil) {
       Serial.println("Network backoff active; skipping command poll");
       lastCommandPoll = currentTime;
