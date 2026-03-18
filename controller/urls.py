@@ -55,6 +55,7 @@ urlpatterns = [
     path("api/device/pair/register/", device_api.device_pair_register, name="device_pair_register"),
     path("api/device/pair/claim/", device_api.device_pair_claim, name="device_pair_claim"),
     path("api/device/pair/claimed/", device_api.device_pair_claimed, name="device_pair_claimed"),
+    path("api/device/unpair/", device_api.device_unpair_self, name="device_unpair_self"),
     path("api/health/", views.health, name="health"),
     path("api/client-errors/", views.client_error_log, name="client_error_log"),
 
