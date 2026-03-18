@@ -341,6 +341,7 @@ def device_status_heartbeat(request):
 
         ds, _ = DeviceStatus.objects.get_or_create(device_id=device_id)
         ds.last_seen = timezone.now()
+        ds.status = "online"
         ds.wifi_rssi = wifi_rssi
         ds.uptime = uptime
         ds.daily_feeds = daily_feeds
