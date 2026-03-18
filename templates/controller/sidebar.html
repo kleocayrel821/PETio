@@ -12,24 +12,28 @@ Expects: view_name set to a url_name for active highlighting
   .sidebar .sidebar-item.active i { background: rgba(31,69,110,0.12); color: #1f456e; }
 </style>
 <nav>
-  <a href="{% url 'home' %}" class="sidebar-item {% if view_name == 'home' %}active{% endif %}">
+  <a href="{% url 'home' %}" class="sidebar-item {% if view_name == 'home' %}active{% endif %}" data-nav-key="home">
     <i class="fas fa-home"></i>
     <span>Home</span>
   </a>
-  <a href="{% url 'schedules_ui' %}" class="sidebar-item {% if view_name == 'schedules_ui' %}active{% endif %}">
+  <a href="{% url 'schedules_ui' %}" class="sidebar-item {% if view_name == 'schedules_ui' %}active{% endif %}" data-nav-key="schedules">
     <i class="fas fa-calendar-alt"></i>
     <span>Schedules</span>
   </a>
-  <a href="{% url 'history' %}" class="sidebar-item {% if view_name == 'history' %}active{% endif %}">
+  <a href="{% url 'history' %}" class="sidebar-item {% if view_name == 'history' %}active{% endif %}" data-nav-key="history">
     <i class="fas fa-history"></i>
     <span>History</span>
   </a>
-  <a href="{% url 'pending_commands' %}" class="sidebar-item {% if view_name == 'pending_commands' %}active{% endif %}">
+  <a href="{% url 'pending_commands' %}" class="sidebar-item {% if view_name == 'pending_commands' %}active{% endif %}" data-nav-key="pending">
     <i class="fas fa-clipboard-list"></i>
     <span>Pending Commands</span>
   </a>
-  <a href="{% url 'bmi_calculator' %}" class="sidebar-item {% if view_name == 'bmi_calculator' %}active{% endif %}">
+  <a href="{% url 'bmi_calculator' %}" class="sidebar-item {% if view_name == 'bmi_calculator' %}active{% endif %}" data-nav-key="bmi">
     <i class="fas fa-heartbeat"></i>
     <span>Pet BMI</span>
+  </a>
+  <a href="{% url 'my_devices_page' %}" class="sidebar-item {% if view_name == 'my_devices_page' %}active{% endif %}" data-nav-key="devices">
+    <i class="fas fa-microchip"></i>
+    <span>My Devices</span>
   </a>
 </nav>

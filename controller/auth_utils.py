@@ -25,4 +25,9 @@ def device_headers_valid(request):
 def device_auth_or_legacy_valid(request):
     if device_headers_valid(request):
         return True
-    return _device_api_key_valid(request)
+    try:
+        if getattr(settings, 'DEVICE_LEGACY_KEY_ENABLED', False):
+            return _device_api_key_valid(request)
+    except Exception:
+        pass
+    return False

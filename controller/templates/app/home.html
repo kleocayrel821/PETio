@@ -481,7 +481,8 @@ async function feedNow() {
             credentials: 'same-origin',
             body: JSON.stringify({
                 portion_size: parseInt(portionSize),
-                device_id: (window.DEVICE_ID || '{{ DEVICE_ID }}')
+                device_id: (window.DEVICE_ID || '{{ DEVICE_ID }}'),
+                device_ip: (window.DEVICE_IP || '{{ DEVICE_IP|default:"" }}')
             })
         });
         const data = await parseJsonSafe(response);

@@ -1,4 +1,4 @@
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes, throttle_classes
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -10,17 +10,55 @@ from django.views.decorators.cache import cache_page
 import logging
 logger = logging.getLogger(__name__)
 
-from .models import FeedingSchedule, PendingCommand, FeedingLog, DeviceStatus, Hardware, PairingSession
+from .models import FeedingSchedule, PendingCommand, FeedingLog, DeviceStatus, Hardware, PairingSession, ControllerSettings
 from .auth_utils import _device_api_key_valid, device_auth_or_legacy_valid
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from datetime import timedelta
+from rest_framework.throttling import SimpleRateThrottle
+from django.core.cache import cache
+
+
+class PairRegisterThrottle(SimpleRateThrottle):
+    scope = "pair_register"
+    def get_cache_key(self, request, view):
+        try:
+            device_id = request.data.get("device_id")
+        except Exception:
+            device_id = None
+        ident = self.get_ident(request)
+        if device_id:
+            return f"throttle_pair_register_{ident}_{device_id}"
+        return f"throttle_pair_register_{ident}"
+
+
+class PairClaimThrottle(SimpleRateThrottle):
+    scope = "pair_claim"
+    def get_cache_key(self, request, view):
+        try:
+            if getattr(request, 'user', None) and request.user.is_authenticated:
+                return f"throttle_pair_claim_user_{request.user.pk}"
+        except Exception:
+            pass
+        ident = self.get_ident(request)
+        return f"throttle_pair_claim_ip_{ident}"
 
 
 
 # ----------------------
 # Helpers
 # ----------------------
+
+def _client_ip(request):
+    try:
+        xff = request.META.get('HTTP_X_FORWARDED_FOR')
+        if xff:
+            parts = [p.strip() for p in xff.split(',') if p.strip()]
+            if parts:
+                return parts[0]
+        return request.META.get('REMOTE_ADDR') or ''
+    except Exception:
+        return ''
 
 def _resp_ok(message, extra=None):
     data = {"status": "ok", "message": message, "success": True}
@@ -265,6 +303,21 @@ def device_status_heartbeat(request):
         if not device_id:
             return _resp_error("device_id is required")
 
+        # Auto-populate device_ip to ControllerSettings from client IP
+        try:
+            hw = Hardware.objects.filter(device_id__iexact=device_id).first()
+            if hw:
+                cfg_obj, _ = ControllerSettings.objects.get_or_create(hardware=hw)
+                cfg = dict(cfg_obj.config or {})
+                ip = _client_ip(request)
+                if ip and cfg.get('device_ip') != ip:
+                    cfg['device_ip'] = ip
+                    cfg_obj.config = cfg
+                    cfg_obj.save(update_fields=['config'])
+        except Exception:
+            # Non-fatal path; continue processing heartbeat
+            pass
+
         wifi_rssi = request.data.get("wifi_rssi")
         uptime = request.data.get("uptime")
         daily_feeds = request.data.get("daily_feeds")
@@ -304,6 +357,7 @@ def device_status_heartbeat(request):
 @permission_classes([AllowAny])
 @authentication_classes([])
 @csrf_exempt
+@throttle_classes([PairRegisterThrottle])
 def device_pair_register(request):
     try:
         device_id = request.data.get("device_id")
@@ -317,6 +371,7 @@ def device_pair_register(request):
         PairingSession.objects.filter(hardware=hw, claimed=False, served=False).delete()
         expires_at = timezone.now() + timedelta(seconds=max(60, min(ttl, 600)))
         ps = PairingSession.objects.create(hardware=hw, pin=str(pin).zfill(6), expires_at=expires_at)
+        logger.info("pair_register", extra={"event": "pair_register", "device_id": device_id, "ip": request.META.get("REMOTE_ADDR", "")})
         return _resp_ok("registered", {"device_id": device_id, "expires_at": expires_at.isoformat()})
     except Exception as e:
         logger.exception("device_pair_register failed")
@@ -325,12 +380,17 @@ def device_pair_register(request):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([PairClaimThrottle])
 def device_pair_claim(request):
     try:
         device_id = request.data.get("device_id")
         pin = request.data.get("pin")
         if not device_id or not pin:
             return _resp_error("device_id and pin are required")
+        fail_key = f"pair_claim_fail:{request.user.id}"
+        fails = cache.get(fail_key, 0)
+        if fails >= 5:
+            return _resp_error("too many attempts, try later", http_status=status.HTTP_429_TOO_MANY_REQUESTS)
         try:
             hw = Hardware.objects.get(device_id=device_id)
         except Hardware.DoesNotExist:
@@ -345,6 +405,10 @@ def device_pair_claim(request):
             .first()
         )
         if not ps:
+            try:
+                cache.set(fail_key, fails + 1, timeout=300)
+            except Exception:
+                pass
             return _resp_error("invalid or expired pin", http_status=status.HTTP_400_BAD_REQUEST)
         secret = get_random_string(48)
         hw.paired_user = request.user
@@ -355,6 +419,11 @@ def device_pair_claim(request):
         ps.claimed_by = request.user
         ps.provision_key = secret
         ps.save(update_fields=["claimed", "claimed_by", "provision_key"])
+        try:
+            cache.delete(fail_key)
+        except Exception:
+            pass
+        logger.info("pair_claim", extra={"event": "pair_claim", "device_id": device_id, "user_id": request.user.id})
         return _resp_ok("claimed", {"device_id": device_id})
     except Exception as e:
         logger.exception("device_pair_claim failed")
@@ -389,6 +458,7 @@ def device_pair_claimed(request):
         ps.served = True
         ps.provision_key = ""
         ps.save(update_fields=["served", "provision_key"])
+        logger.info("pair_claimed", extra={"event": "pair_claimed", "device_id": device_id})
         return _resp_ok("provision", {"device_id": device_id, "api_key": key})
     except Exception as e:
         logger.exception("device_pair_claimed failed")
