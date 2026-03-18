@@ -1,29 +1,80 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container">
-  <h2>My Devices</h2>
-  <p><a href="{% url 'claim_device_page' %}">Claim a new device</a></p>
+<div class="container max-w-5xl mx-auto">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-2xl font-bold">My Devices</h2>
+    <a href="{% url 'claim_device_page' %}" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>Claim New</a>
+  </div>
   {% if devices %}
-  <table border="1" cellspacing="0" cellpadding="6">
-    <thead>
-      <tr>
-        <th>Unique Key</th>
-        <th>Paired</th>
-        <th>Updated</th>
-      </tr>
-    </thead>
-    <tbody>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     {% for d in devices %}
-      <tr>
-        <td>{{ d.unique_key }}</td>
-        <td>{{ d.is_paired|yesno:"Yes,No" }}</td>
-        <td>{{ d.updated_at }}</td>
-      </tr>
+    <div class="enhanced-card">
+      <div class="flex items-start justify-between">
+        <div>
+          <div class="text-lg font-semibold">{{ d.device_id|default:"(unregistered)" }}</div>
+          <div class="text-xs text-base-content/60">ID: {{ d.device_id|default:"n/a" }}</div>
+          <div class="text-xs text-base-content/60 break-all">Key: {{ d.unique_key }}</div>
+        </div>
+        <div>
+          {% if d.is_paired %}
+          <span class="badge badge-success">Online</span>
+          {% else %}
+          <span class="badge">Unpaired</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="mt-4 flex items-center gap-2">
+        <button class="btn btn-error btn-sm" data-unpair data-unique="{{ d.unique_key }}" aria-label="Unpair Device"><i class="fas fa-unlink mr-1"></i>Unpair</button>
+        <a href="{% url 'claim_device_page' %}" class="btn btn-ghost btn-sm" aria-label="Manage"><i class="fas fa-chevron-right"></i></a>
+      </div>
+    </div>
     {% endfor %}
-    </tbody>
-  </table>
+  </div>
   {% else %}
-    <p>No devices yet. <a href="{% url 'claim_device_page' %}">Pair one now</a>.</p>
+    <div class="enhanced-card">
+      <p>No devices yet.</p>
+      <a href="{% url 'claim_device_page' %}" class="btn btn-primary mt-2">Pair one now</a>
+    </div>
   {% endif %}
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  function getCSRFToken() {
+    const name = 'csrftoken';
+    const cookies = document.cookie ? document.cookie.split(';') : [];
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.startsWith(name + '=')) return decodeURIComponent(cookie.substring(name.length + 1));
+    }
+    return '';
+  }
+  document.querySelectorAll('[data-unpair]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const unique = btn.getAttribute('data-unique');
+      if (!unique) return;
+      if (!confirm('Unpair this device? You will need to claim it again to use it.')) return;
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/hardware/unpair/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+          credentials: 'same-origin',
+          body: JSON.stringify({ unique_key: unique })
+        });
+        const data = await (async () => { try { return await res.json(); } catch(_) { return null; } })();
+        if (!res.ok || !data || data.status !== 'ok') {
+          alert((data && (data.error || data.message)) || 'Failed to unpair');
+        } else {
+          // Reload list
+          window.location.reload();
+        }
+      } catch (e) {
+        alert('Network error while unpairing. Please try again.');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+});
+</script>
 {% endblock %}

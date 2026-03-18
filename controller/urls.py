@@ -62,6 +62,7 @@ urlpatterns = [
     path("api/hardware/validate-key/", views.validate_hardware_key, name="validate_hardware_key"),
     path("api/hardware/pair/", views.pair_hardware, name="pair_hardware"),
     path("api/hardware/my-devices/", views.my_devices, name="my_devices"),
+    path("api/hardware/unpair/", views.unpair_hardware, name="unpair_hardware"),
     path("api/controller/update-settings/", views.update_controller_settings, name="update_controller_settings"),
 
     # DRF API endpoints

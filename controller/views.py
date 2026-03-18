@@ -117,6 +117,39 @@ def my_devices_page(request):
     items = Hardware.objects.filter(paired_user=request.user).order_by("-updated_at")
     return render(request, "app/my_devices.html", {"devices": items})
 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def unpair_hardware(request):
+    try:
+        unique_key = request.data.get("unique_key")
+        device_id = request.data.get("device_id")
+        hw = None
+        if unique_key:
+            try:
+                import uuid as _uuid
+                k = _uuid.UUID(str(unique_key))
+            except Exception:
+                return Response({"error": "invalid_unique_key"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                hw = Hardware.objects.get(unique_key=k)
+            except Hardware.DoesNotExist:
+                return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+        elif device_id:
+            try:
+                hw = Hardware.objects.get(device_id=device_id)
+            except Hardware.DoesNotExist:
+                return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response({"error": "unique_key_or_device_id_required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not hw.paired_user_id or hw.paired_user_id != request.user.id:
+            return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
+        hw.is_paired = False
+        hw.paired_user = None
+        hw.api_key_hash = None
+        hw.save(update_fields=["is_paired", "paired_user", "api_key_hash", "updated_at"])
+        return Response({"status": "ok", "success": True})
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @login_required
 @require_http_methods(["GET", "POST"])
