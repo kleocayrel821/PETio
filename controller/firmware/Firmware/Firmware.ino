@@ -1302,6 +1302,7 @@ void loop() {
     if (network.isConnected()) {
       if (!g_pairRegistered) {
         bool ok = httpClient.pairRegister(g_pairPin, 300);
+        Serial.println(String("Pair register ") + (ok ? "ok" : "failed"));
         g_pairRegistered = ok;
         g_lastPairPoll = 0;
       } else {
@@ -1315,6 +1316,10 @@ void loop() {
             httpClient.setDeviceKey(k);
             g_pairingActive = false;
             ledController.showReady();
+            sendDeviceStatus();
+            Serial.println("Provisioned and exited pairing");
+          } else {
+            Serial.println("Waiting for claim...");
           }
         }
       }
@@ -1322,6 +1327,7 @@ void loop() {
         g_pairPin = genPin6();
         g_pairExpireMs = millis() + 300000UL;
         g_pairRegistered = false;
+        Serial.println("Pairing PIN rotated");
       }
     }
     delay(50);
