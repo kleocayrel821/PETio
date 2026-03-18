@@ -1024,21 +1024,35 @@ private:
     }
   }
   String createFeedingPayload(int portionSize, const String& feedType, const String& notes = "") {
-    DynamicJsonDocument doc(512); doc["timestamp"] = nowUtcIso(); doc["portion_dispensed"] = portionSize; doc["source"] = feedType; String payload; serializeJson(doc, payload); return payload;
+    DynamicJsonDocument doc(512); 
+    doc["timestamp"] = nowUtcIso(); 
+    doc["portion_dispensed"] = portionSize; 
+    doc["source"] = feedType; 
+    doc["device_id"] = deviceID;   // BUG FIX #1: Add device_id to payload
+    String payload; 
+    serializeJson(doc, payload); 
+    return payload;
   }
   String createScheduledFeedingPayload(int portionSize, const String& feedType, uint32_t /*scheduleId*/, const String& /*notes*/ = "") {
-    DynamicJsonDocument doc(256); doc["timestamp"] = nowUtcIso(); doc["portion_dispensed"] = portionSize; doc["source"] = "scheduled"; String payload; serializeJson(doc, payload); return payload;
+    DynamicJsonDocument doc(256); 
+    doc["timestamp"] = nowUtcIso(); 
+    doc["portion_dispensed"] = portionSize; 
+    doc["source"] = "scheduled"; 
+    doc["device_id"] = deviceID;   // BUG FIX #1: Add device_id to payload
+    String payload; 
+    serializeJson(doc, payload); 
+    return payload;
   }
 public:
   HTTPClientManager() : requestTimeout(HTTP_TIMEOUT_MS), maxRetries(HTTP_MAX_RETRIES), lastError("") {}
   void init(const String& serverUrl, const String& devID) { serverURL = canonicalize(serverUrl); deviceID = devID; if (!serverURL.endsWith("/api")) { if (!serverURL.endsWith("/")) serverURL += "/"; serverURL += "api"; } wifiClientTLS.setInsecure(); Serial.println("HTTP Client initialized:"); Serial.println("Server URL: " + serverURL); Serial.println("Device ID: " + deviceID); }
   void setApiKey(const String& key) { apiKey = key; Serial.println("API key configured (length): " + String(apiKey.length())); }
   void setDeviceKey(const String& key) { deviceKey = key; Serial.println("Device key configured (length): " + String(deviceKey.length())); }
-  bool sendFeedingLog(int portionSize, const String& feedType, const String& notes = "") { String payload = createFeedingPayload(portionSize, feedType, notes); String response; Serial.println("Sending feeding log to server..."); printPretty(payload); return makeRequest("/device/logs/", "POST", payload, response); }
+  bool sendFeedingLog(int portionSize, const String& feedType, const String& notes = "") { String payload = createFeedingPayload(portionSize, feedType, notes); String response; Serial.println("Sending feeding log to server..."); printPretty(payload); bool success = makeRequest("/device/logs/", "POST", payload, response); if (!success) { Serial.println("LOG FAILED: " + lastError); } return success; }
   bool sendDeviceStatus(const String& /*status*/, int /*batteryLevel*/ = 100, int wifiSignal = -50) { DynamicJsonDocument doc(512); doc["device_id"] = deviceID; doc["wifi_rssi"] = wifiSignal; doc["uptime"] = (int)(millis()/1000); doc["daily_feeds"] = dailyFeeds; if (lastFeedIso.length() > 0) doc["last_feed"] = lastFeedIso; doc["error_message"] = ""; String payload; serializeJson(doc, payload); String response; bool success = makeRequest("/device/status/", "POST", payload, response); if (success) { Serial.println("Device status sent successfully"); return true; } else { Serial.println("Failed to send device status: " + lastError); return false; } }
   bool getDeviceConfig(String& configResponse) { String endpoint = String("/device/config/?device_id=") + deviceID; Serial.println("Requesting device configuration..."); bool success = makeRequest(endpoint, "GET", "", configResponse); if (success) { Serial.println("Device configuration retrieved successfully"); return true; } else { Serial.println("Failed to get device configuration: " + lastError); return false; } }
   bool getNextSchedule(String& scheduleResponse) { String endpoint = String("/check-schedule/?device_id=") + deviceID; return makeRequest(endpoint, "GET", "", scheduleResponse); }
-  bool sendFeedingLogWithSchedule(int portionSize, const String& feedType, uint32_t scheduleId, const String& notes = "") { String payload = createScheduledFeedingPayload(portionSize, feedType, scheduleId, notes); String response; return makeRequest("/device/logs/", "POST", payload, response); }
+  bool sendFeedingLogWithSchedule(int portionSize, const String& feedType, uint32_t scheduleId, const String& notes = "") { String payload = createScheduledFeedingPayload(portionSize, feedType, scheduleId, notes); String response; bool success = makeRequest("/device/logs/", "POST", payload, response); if (!success) { Serial.println("LOG FAILED: " + lastError); } return success; }
   void setTimeout(unsigned long timeout) { requestTimeout = timeout; }
   void setMaxRetries(int retries) { maxRetries = retries; }
   bool isServerReachable() { String response; return makeRequest(String("/device/config/?device_id=") + deviceID, "GET", "", response); }
