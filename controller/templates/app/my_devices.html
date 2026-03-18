@@ -3,22 +3,42 @@
 <div class="container">
   <h2>My Devices</h2>
   <p><a href="{% url 'claim_device_page' %}">Claim a new device</a></p>
-  {% if devices %}
-  <table border="1" cellspacing="0" cellpadding="6">
+  {% if rows %}
+  <table border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse;">
     <thead>
       <tr>
+        <th>Device ID</th>
         <th>Unique Key</th>
+        <th>Device IP</th>
+        <th>Status</th>
+        <th>Last Seen</th>
         <th>Paired</th>
         <th>Updated</th>
       </tr>
     </thead>
     <tbody>
-    {% for d in devices %}
+    {% for row in rows %}
+      {% with d=row.device %}
+      {% with cfg=d.controllersettings.config if d.controllersettings and d.controllersettings.config else None %}
+      {% with ds=row.status %}
       <tr>
+        <td>{{ d.device_id|default:"-" }}</td>
         <td>{{ d.unique_key }}</td>
+        <td>
+          {% if cfg and cfg.device_ip %}{{ cfg.device_ip }}{% else %}-{% endif %}
+        </td>
+        <td>
+          {% if ds %}{{ ds.status }}{% else %}unknown{% endif %}
+        </td>
+        <td>
+          {% if ds and ds.last_seen %}{{ ds.last_seen }}{% else %}-{% endif %}
+        </td>
         <td>{{ d.is_paired|yesno:"Yes,No" }}</td>
         <td>{{ d.updated_at }}</td>
       </tr>
+      {% endwith %}
+      {% endwith %}
+      {% endwith %}
     {% endfor %}
     </tbody>
   </table>
