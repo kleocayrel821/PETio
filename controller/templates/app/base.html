@@ -1521,19 +1521,6 @@
   document.addEventListener('DOMContentLoaded', highlightActiveApp);
 })();
 </script>
-<script>
-// Ensure sidebar links always navigate even if other overlays are open
-(function() {
-  document.addEventListener('click', function(e) {
-    var a = e.target && e.target.closest ? e.target.closest('.sidebar .sidebar-item[href]') : null;
-    if (!a) return;
-    var href = a.getAttribute('href');
-    if (!href || href === '#') return;
-    if (e && typeof e.preventDefault === 'function') e.preventDefault();
-    try { window.location.assign(href); } catch (_) { window.location.href = href; }
-  });
-})();
-</script>
 
 <!-- Mobile Bottom Tab Bar (Option A) -->
 {% load static %}
