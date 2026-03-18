@@ -114,23 +114,8 @@ def _user_owns_device(user, device_id: str) -> bool:
 
 @login_required
 def my_devices_page(request):
-    items = (
-        Hardware.objects
-        .filter(paired_user=request.user)
-        .select_related("controllersettings")
-        .order_by("-updated_at")
-    )
-    rows = []
-    try:
-        ids = [d.device_id for d in items if d.device_id]
-        from .models import DeviceStatus
-        ds_map = {s.device_id: s for s in DeviceStatus.objects.filter(device_id__in=ids)}
-        for d in items:
-            rows.append({"device": d, "status": ds_map.get(d.device_id)})
-    except Exception:
-        for d in items:
-            rows.append({"device": d, "status": None})
-    return render(request, "app/my_devices.html", {"rows": rows})
+    items = Hardware.objects.filter(paired_user=request.user).order_by("-updated_at")
+    return render(request, "app/my_devices.html", {"devices": items})
 
 
 @login_required

@@ -1,60 +1,29 @@
 {% extends "base.html" %}
-{% block sidebar %}{% include "controller/sidebar.html" with view_name="my_devices_page" %}{% endblock %}
 {% block content %}
-<div class="container mx-auto max-w-6xl px-4 py-6 space-y-6">
-  <div class="enhanced-card">
-    <div class="section-title">
-      <i class="fas fa-microchip text-[#1f456e]"></i>
-      My Devices
-    </div>
-    {% if rows %}
-    <div class="overflow-x-auto">
-      <table class="table w-full">
-        <thead>
-          <tr>
-            <th>Device ID</th>
-            <th>Unique Key</th>
-            <th>Device IP</th>
-            <th>Status</th>
-            <th>Last Seen</th>
-            <th>Paired</th>
-            <th>Updated</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for row in rows %}
-          {% with d=row.device ds=row.status %}
-          <tr>
-            <td>{{ d.device_id|default:"-" }}</td>
-            <td>{{ d.unique_key }}</td>
-            <td>{{ d.controllersettings.config.device_ip|default:"-" }}</td>
-            <td>{{ ds.status|default:"unknown" }}</td>
-            <td>{% if ds.last_seen %}{{ ds.last_seen }}{% else %}-{% endif %}</td>
-            <td>{{ d.is_paired|yesno:"Yes,No" }}</td>
-            <td>{{ d.updated_at }}</td>
-          </tr>
-          {% endwith %}
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <div class="text-sm text-gray-600">No devices yet.</div>
-    {% endif %}
-  </div>
-
-  <div class="enhanced-card">
-    <div class="section-title">
-      <i class="fas fa-link text-[#1f456e]"></i>
-      Claim a new device
-    </div>
-    <div class="flex items-center justify-between">
-      <div class="text-sm text-gray-600">Pair your hardware to enable remote feeding and schedules.</div>
-      <a href="{% url 'claim_device_page' %}" class="btn btn-enhanced btn-accent-orange">
-        <i class="fas fa-plus-circle"></i>
-        Claim Device
-      </a>
-    </div>
-  </div>
+<div class="container">
+  <h2>My Devices</h2>
+  <p><a href="{% url 'claim_device_page' %}">Claim a new device</a></p>
+  {% if devices %}
+  <table border="1" cellspacing="0" cellpadding="6">
+    <thead>
+      <tr>
+        <th>Unique Key</th>
+        <th>Paired</th>
+        <th>Updated</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for d in devices %}
+      <tr>
+        <td>{{ d.unique_key }}</td>
+        <td>{{ d.is_paired|yesno:"Yes,No" }}</td>
+        <td>{{ d.updated_at }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No devices yet. <a href="{% url 'claim_device_page' %}">Pair one now</a>.</p>
+  {% endif %}
 </div>
 {% endblock %}
