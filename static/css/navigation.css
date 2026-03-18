@@ -35,7 +35,7 @@
 }
 .top-navbar .nav-left { display: flex; align-items: center; gap: 12px; justify-self: start; }
 .top-navbar .nav-center { display: flex; align-items: center; gap: 16px; justify-self: center; }
-.top-navbar .nav-right { display: flex; align-items: center; gap: 8px; justify-self: end; }
+.top-navbar .nav-right { display: flex; align-items: center; gap: 8px; justify-self: end; min-width: 0; }
 .top-navbar .logo {
   display: inline-flex;
   align-items: center;
@@ -159,6 +159,16 @@
 }
 @media (max-width: 768px) {
   .sidebar.sidebar--mobile-open { display: block; height: auto; max-height: calc(100vh - 64px); overflow-y: auto; }
+}
+/* Navbar responsiveness tweaks */
+@media (max-width: 640px) {
+  .top-navbar .logo img { height: 48px; }
+  .profile-name { max-width: 120px; }
+}
+@media (max-width: 480px) {
+  .top-navbar .logo img { height: 44px; }
+  .profile-name { display: none; }
+  .top-navbar { gap: 8px; padding: 0 12px; }
 }
 /* --- Profile dropdown & auth controls --- */
 .profile-menu { position: relative; }

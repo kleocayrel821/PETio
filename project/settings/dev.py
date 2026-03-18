@@ -67,7 +67,9 @@ CELERY_TASK_EAGER_PROPAGATES = True
 # -----------------------------
 # Device API key
 # -----------------------------
-PETIO_DEVICE_API_KEY = os.environ.get('51c1ebc55900af5273e5a43c2ba0c140')
+PETIO_DEVICE_API_KEY = os.environ.get('PETIO_DEVICE_API_KEY')
+# Keep legacy global key enabled in dev for smoother onboarding
+DEVICE_LEGACY_KEY_ENABLED = os.environ.get('DEVICE_LEGACY_KEY_ENABLED', 'true').lower() == 'true'
 
 # -----------------------------
 # Development-only settings

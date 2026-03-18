@@ -1235,6 +1235,8 @@
 
   const STATUS_ENDPOINT = '/api/device-status/';
   const DEVICE_ID = '{{ DEVICE_ID }}';
+  try { window.DEVICE_ID = DEVICE_ID; } catch (e) {}
+  try { window.DEVICE_IP = '{{ DEVICE_IP|default:"" }}'; } catch (e) {}
   const statusIcon = document.getElementById('device-status-icon');
   const statusText = document.getElementById('device-status-text');
   const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';

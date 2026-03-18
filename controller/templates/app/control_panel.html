@@ -873,7 +873,11 @@
                     'X-CSRFToken': getCSRFToken()
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({ portion_size: portionSize, device_id: deviceId })
+                body: JSON.stringify({ 
+                  portion_size: portionSize, 
+                  device_id: deviceId,
+                  device_ip: (window.DEVICE_IP || '{{ DEVICE_IP|default:"" }}')
+                })
             })
             .then(async (response) => {
                 let data = null;
