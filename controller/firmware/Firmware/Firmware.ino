@@ -55,6 +55,8 @@ extern unsigned long lastFeedCompletionTime;
 // Wi-Fi Configuration Settings
 #define WIFI_TIMEOUT_MS 30000
 #define CONFIG_TIMEOUT_MS 300000
+#define SOFTAP_PASSWORD "PetFeeder2025"  // Simple password for SoftAP mode
+#define SOFTAP_CHANNEL 6                 // Common WiFi channel, less congested
 
 // EEPROM Configuration
 #define EEPROM_SIZE 512
@@ -68,6 +70,13 @@ extern unsigned long lastFeedCompletionTime;
 #define API_KEY_FLAG_ADDR 80
 #define API_KEY_ADDR 81
 #define API_KEY_MAX_LEN 64
+#define SERVER_URL_FLAG_ADDR 150
+#define SERVER_URL_ADDR 151
+#define SERVER_URL_MAX_LEN 128
+
+// Forward declarations for server URL persistence helpers
+String loadServerURL();
+void saveServerURL(const String& url);
 
 // Wi-Fi Credential Limits
 #define MAX_SSID_LENGTH 32
@@ -699,17 +708,181 @@ private:
   ESP8266WebServer webServer; DNSServer dnsServer; String wifiSSID; String wifiPassword; String deviceID; bool configurationMode; bool wifiConnected; unsigned long lastConnectionAttempt; unsigned long configModeStartTime; LedController* ledController;
 public:
   NetworkingManager() : webServer(80), dnsServer(), wifiSSID(""), wifiPassword(""), deviceID(""), configurationMode(false), wifiConnected(false), lastConnectionAttempt(0), configModeStartTime(0), ledController(nullptr) {}
-  void init(LedController* ledCtrl) { Serial.println("Initializing Wi-Fi Configuration Manager..."); ledController = ledCtrl; EEPROM.begin(EEPROM_SIZE); generateDeviceID(); WiFi.mode(WIFI_STA); Serial.print("Device ID: "); Serial.println(deviceID); Serial.println("Wi-Fi Configuration Manager initialized"); }
+  void init(LedController* ledCtrl) { 
+    Serial.println("Initializing Wi-Fi Configuration Manager..."); 
+    ledController = ledCtrl; 
+    EEPROM.begin(EEPROM_SIZE); 
+    
+    // Disable persistent WiFi settings to prevent interference
+    WiFi.persistent(false);
+    WiFi.setAutoConnect(false);      // BUG FIX #3: Prevent auto-connect
+    WiFi.setAutoReconnect(false);    // BUG FIX #3: Prevent auto-reconnect
+    
+    // Initialize WiFi in NULL mode first to avoid conflicts
+    WiFi.mode(WIFI_OFF);
+    delay(100);
+    
+    generateDeviceID(); 
+    
+    Serial.print("Device ID: "); 
+    Serial.println(deviceID); 
+    Serial.println("Wi-Fi Configuration Manager initialized"); 
+  }
   void loadConfiguration() { Serial.println("Loading Wi-Fi configuration..."); byte configFlag = EEPROM.read(CONFIG_FLAG_ADDR); if (configFlag != 0xAA) { Serial.println("No saved configuration found"); return; } char ssidBuffer[MAX_SSID_LENGTH + 1]; for (int i = 0; i < MAX_SSID_LENGTH; i++) { ssidBuffer[i] = EEPROM.read(WIFI_SSID_ADDR + i); if (ssidBuffer[i] == 0) break; } ssidBuffer[MAX_SSID_LENGTH] = 0; wifiSSID = String(ssidBuffer); char passBuffer[MAX_PASS_LENGTH + 1]; for (int i = 0; i < MAX_PASS_LENGTH; i++) { passBuffer[i] = EEPROM.read(WIFI_PASS_ADDR + i); if (passBuffer[i] == 0) break; } passBuffer[MAX_PASS_LENGTH] = 0; wifiPassword = String(passBuffer); Serial.print("Loaded SSID: "); Serial.println(wifiSSID); }
   void saveConfiguration() { Serial.println("Saving Wi-Fi configuration..."); for (int i = 0; i < MAX_SSID_LENGTH; i++) { if (i < wifiSSID.length()) EEPROM.write(WIFI_SSID_ADDR + i, wifiSSID[i]); else EEPROM.write(WIFI_SSID_ADDR + i, 0); } for (int i = 0; i < MAX_PASS_LENGTH; i++) { if (i < wifiPassword.length()) EEPROM.write(WIFI_PASS_ADDR + i, wifiPassword[i]); else EEPROM.write(WIFI_PASS_ADDR + i, 0); } EEPROM.write(CONFIG_FLAG_ADDR, 0xAA); EEPROM.commit(); Serial.println("Configuration saved to EEPROM"); }
   bool isConfigured() { return (wifiSSID.length() > 0 && wifiPassword.length() > 0); }
-  void connectToWiFi() { Serial.print("Connecting to Wi-Fi: "); Serial.println(wifiSSID); WiFi.mode(WIFI_STA); WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str()); lastConnectionAttempt = millis(); wifiConnected = false; }
+  void connectToWiFi() { 
+    Serial.print("Connecting to Wi-Fi: "); 
+    Serial.println(wifiSSID); 
+    
+    WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_STA);
+    delay(100);
+    
+    WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str()); 
+    lastConnectionAttempt = millis(); 
+    wifiConnected = false; 
+  }
   void handleWiFiConnection() { if (WiFi.status() == WL_CONNECTED && !wifiConnected) { wifiConnected = true; Serial.println("Wi-Fi connected successfully!"); Serial.print("IP address: "); Serial.println(WiFi.localIP()); if (ledController) ledController->showReady(); } else if (WiFi.status() != WL_CONNECTED && wifiConnected) { wifiConnected = false; Serial.println("Wi-Fi connection lost"); if (ledController) ledController->showConnecting(); }
     if (!wifiConnected && (millis() - lastConnectionAttempt > WIFI_TIMEOUT_MS)) { Serial.println("Wi-Fi connection timeout, starting configuration mode"); startConfigMode(); }
   }
   bool isConnected() { return wifiConnected; }
-  void startConfigMode() { Serial.println("Starting Wi-Fi configuration mode..."); configurationMode = true; configModeStartTime = millis(); WiFi.disconnect(); String apName = String("ESP8266-Config-") + deviceID.substring(0, 6); WiFi.mode(WIFI_AP); WiFi.softAP(apName.c_str()); Serial.print("Configuration AP started: "); Serial.println(apName); Serial.print("AP IP address: "); Serial.println(WiFi.softAPIP()); setupConfigServer(); dnsServer.start(53, "*", WiFi.softAPIP()); Serial.println("Configuration portal ready"); if (ledController) ledController->showConfigMode(); }
-  void handleConfigMode() { dnsServer.processNextRequest(); webServer.handleClient(); if (millis() - configModeStartTime > CONFIG_TIMEOUT_MS) { Serial.println("Configuration mode timeout, restarting..."); ESP.restart(); } }
+  void startConfigMode() { 
+    Serial.println("\n=== STARTING SOFTAP CONFIGURATION MODE ==="); 
+    configurationMode = true; 
+    configModeStartTime = millis(); 
+    
+    // Enhanced debugging for SSID generation
+    Serial.print("Device ID: "); 
+    Serial.println(deviceID);
+    // BUG FIX #4: Use safe char array instead of String.c_str()
+    char apName[32];
+    String apSuffix = deviceID.substring(0, 6);
+    snprintf(apName, sizeof(apName), "ESP8266-Config-%s", apSuffix.c_str());
+    Serial.print("Generated AP Name: ");
+    Serial.println(apName);
+    Serial.print("AP Name Length: ");
+    Serial.println(strlen(apName));
+    
+    // Check current WiFi mode before changes
+    Serial.print("Current WiFi mode: ");
+    Serial.println(WiFi.getMode());
+    
+    // Safe WiFi mode transition - BUG FIX #2
+    Serial.println("Setting WiFi mode to AP...");
+    WiFi.mode(WIFI_OFF);       // Ensure clean state
+    delay(100);
+    WiFi.mode(WIFI_AP);        // Transition directly to AP
+    delay(200);                // Allow mode change to stabilize
+    
+    Serial.print("New WiFi mode: ");
+    Serial.println(WiFi.getMode());
+    
+    // Configure SoftAP with proper parameters
+    Serial.println("Starting SoftAP with parameters:");
+    Serial.print("  SSID: ");
+    Serial.println(apName);
+    Serial.print("  Password: ");
+    Serial.println(SOFTAP_PASSWORD);
+    Serial.print("  Channel: ");
+    Serial.println(SOFTAP_CHANNEL);
+    Serial.println("  Hidden: 0 (visible)");
+    Serial.println("  Max connections: 4");
+    
+    // Configure SoftAP with password and optimal settings - BUG FIX #4: Use safe char array
+    bool apResult = WiFi.softAP(apName, SOFTAP_PASSWORD, SOFTAP_CHANNEL, 0, 4); // SSID, password, channel, hidden, max connections
+    
+    Serial.print("SoftAP result: ");
+    Serial.println(apResult ? "SUCCESS" : "FAILED");
+    
+    if (apResult) {
+      Serial.print("Configuration AP started: ");
+      Serial.println(apName);
+      
+      // BUG FIX #5: Guarantee 192.168.4.1 IP address
+      IPAddress local_IP(192, 168, 4, 1);
+      IPAddress gateway(192, 168, 4, 1);
+      IPAddress subnet(255, 255, 255, 0);
+      WiFi.softAPConfig(local_IP, gateway, subnet);
+      delay(100); // Allow IP config to apply
+      
+      Serial.print("AP IP address: ");
+      Serial.println(WiFi.softAPIP());
+      
+      // Test AP visibility
+      Serial.println("Testing AP visibility...");
+      delay(300); // Give more time for beacon frames
+      
+      Serial.print("AP MAC address: ");
+      Serial.println(WiFi.softAPmacAddress());
+      
+      Serial.print("Number of connected stations: ");
+      Serial.println(WiFi.softAPgetStationNum());
+      
+      setupConfigServer();
+      dnsServer.start(53, "*", WiFi.softAPIP());
+      Serial.println("Configuration portal ready");
+      
+      // Run diagnostic test to verify AP is working
+      testSoftAPConfiguration();
+      
+      Serial.println("=== SOFTAP CONFIGURATION COMPLETE ===\n");
+    } else {
+      Serial.println("ERROR: Failed to start SoftAP!");
+      Serial.println("Attempting to restart WiFi module...");
+      
+      // Try to recover by reinitializing WiFi
+      WiFi.forceSleepBegin();
+      delay(1000);
+      WiFi.forceSleepWake();
+      delay(500);
+      
+      // Retry SoftAP setup
+      Serial.println("Retrying SoftAP setup...");
+      WiFi.mode(WIFI_AP);
+      delay(200);
+      bool retryResult = WiFi.softAP(apName, SOFTAP_PASSWORD, SOFTAP_CHANNEL, 0, 4); // BUG FIX #4: Use safe char array
+      
+      Serial.print("Retry result: ");
+      Serial.println(retryResult ? "SUCCESS" : "FAILED");
+      
+      if (retryResult) {
+        Serial.println("SoftAP started successfully on retry");
+        setupConfigServer();
+        dnsServer.start(53, "*", WiFi.softAPIP());
+        Serial.println("=== SOFTAP CONFIGURATION COMPLETE (RETRY) ===\n");
+      } else {
+        Serial.println("CRITICAL: SoftAP failed to start after retry");
+        Serial.println("=== SOFTAP CONFIGURATION FAILED ===\n");
+      }
+    }
+    
+    if (ledController) ledController->showConfigMode(); 
+  }
+  void handleConfigMode() { 
+    dnsServer.processNextRequest(); 
+    webServer.handleClient(); 
+    
+    // Add periodic status messages for debugging
+    static unsigned long lastStatusPrint = 0;
+    if (millis() - lastStatusPrint > 10000) { // Every 10 seconds
+      Serial.println("SoftAP Status: " + WiFi.softAPIP().toString() + " | Clients: " + String(WiFi.softAPgetStationNum()));
+      
+      // Verify AP is still active
+      if (WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA) {
+        Serial.println("ERROR: WiFi mode changed from AP! Restarting AP...");
+        startConfigMode();
+        return;
+      }
+      
+      lastStatusPrint = millis();
+    }
+    
+    if (millis() - configModeStartTime > CONFIG_TIMEOUT_MS) { 
+      Serial.println("Configuration mode timeout, restarting..."); 
+      ESP.restart(); 
+    } 
+  }
   bool isConfigMode() { return configurationMode; }
   String getDeviceID() { return deviceID; }
   String getSSID() { return wifiSSID; }
@@ -723,14 +896,21 @@ public:
 private:
   void setupConfigServer() { webServer.on("/", [this]() { handleConfigRoot(); }); webServer.on("/save", HTTP_POST, [this]() { handleConfigSave(); }); webServer.on("/ping", HTTP_GET, [this]() { webServer.send(200, "text/plain", "OK"); }); webServer.onNotFound([this]() { handleConfigRoot(); }); webServer.begin(); }
   void handleConfigRoot() { webServer.send(200, "text/html", getConfigPage()); }
-  void handleConfigSave() { if (webServer.hasArg("ssid") && webServer.hasArg("password")) { wifiSSID = webServer.arg("ssid"); wifiPassword = webServer.arg("password"); Serial.print("Received SSID: "); Serial.println(wifiSSID); saveConfiguration(); webServer.send(200, "text/html", "Configuration saved! Device will restart..."); delay(2000); ESP.restart(); } else { webServer.send(400, "text/plain", "Missing parameters"); } }
+  void handleConfigSave() { if (webServer.hasArg("ssid") && webServer.hasArg("password")) { wifiSSID = webServer.arg("ssid"); wifiPassword = webServer.arg("password"); String srv = webServer.hasArg("server_url") ? webServer.arg("server_url") : ""; if (srv.length() > 0) { saveServerURL(srv); } Serial.print("Received SSID: "); Serial.println(wifiSSID); saveConfiguration(); webServer.send(200, "text/html", "Configuration saved! Device will restart..."); switchToStationMode(); delay(2000); ESP.restart(); } else { webServer.send(400, "text/plain", "Missing parameters"); } }
+  void switchToStationMode() { WiFi.softAPdisconnect(true); WiFi.mode(WIFI_STA); delay(200); }
   String getConfigPage() {
     String page = "<html><head><title>ESP8266 Config</title></head><body>";
     page += "<h1>ESP8266 Pet Feeder Configuration</h1>";
+    page += "<p><strong>Device:</strong> " + deviceID + "<br>";
+    page += "<strong>AP Password:</strong> " + String(SOFTAP_PASSWORD) + "</p>";
     page += "<form method=\"POST\" action=\"/save\">";
-    page += "SSID: <input type=\"text\" name=\"ssid\"><br>";
-    page += "Password: <input type=\"password\" name=\"password\"><br>";
-    page += "<input type=\"submit\" value=\"Save\"></form>";
+    page += "WiFi Network Name (SSID): <input type=\"text\" name=\"ssid\" required><br>";
+    page += "WiFi Password: <input type=\"password\" name=\"password\" required><br>";
+    String curSrv = loadServerURL();
+    if (curSrv.length() == 0) curSrv = String(DEFAULT_SERVER_URL);
+    page += "Server URL: <input type=\"text\" name=\"server_url\" value=\"" + curSrv + "\" required><br>";
+    page += "<input type=\"submit\" value=\"Save and Connect\"></form>";
+    page += "<p><em>After saving, the device will restart and connect to your WiFi network.</em></p>";
     page += "</body></html>";
     return page;
   }
@@ -739,6 +919,64 @@ private:
     char id[16];
     sprintf(id, "%08X", chipId);
     deviceID = String(id);
+    
+    // Debug the chip ID and device ID generation
+    Serial.print("ESP8266 Chip ID: 0x");
+    Serial.println(chipId, HEX);
+    Serial.print("Generated Device ID: ");
+    Serial.println(deviceID);
+    
+    // Verify the device ID is valid
+    if (deviceID.length() < 6) {
+      Serial.println("WARNING: Device ID too short, using fallback");
+      deviceID = "12345678"; // Fallback ID
+    }
+  }
+  
+  void testSoftAPConfiguration() {
+    Serial.println("\n=== SOFTAP DIAGNOSTIC TEST ===");
+    
+    // Test 1: Check WiFi hardware status
+    Serial.print("WiFi Hardware Status: ");
+    Serial.println(WiFi.status() == WL_NO_SHIELD ? "NOT FOUND" : "OK");
+    
+    // Test 2: Check current mode
+    Serial.print("Current WiFi Mode: ");
+    switch(WiFi.getMode()) {
+      case WIFI_OFF: Serial.println("OFF"); break;
+      case WIFI_STA: Serial.println("STATION"); break;
+      case WIFI_AP: Serial.println("ACCESS POINT"); break;
+      case WIFI_AP_STA: Serial.println("AP + STATION"); break;
+      default: Serial.println("UNKNOWN"); break;
+    }
+    
+    // Test 3: Check AP configuration
+    if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
+      Serial.println("AP Configuration:");
+      Serial.print("  SSID: ");
+      Serial.println(WiFi.SSID());
+      Serial.print("  IP Address: ");
+      Serial.println(WiFi.softAPIP());
+      Serial.print("  MAC Address: ");
+      Serial.println(WiFi.softAPmacAddress());
+      Serial.print("  Channel: ");
+      Serial.println(WiFi.channel());
+      Serial.print("  Connected Clients: ");
+      Serial.println(WiFi.softAPgetStationNum());
+      
+      // Test 4: Check if AP is actually broadcasting
+      Serial.print("AP Broadcasting Test: ");
+      String testSSID = WiFi.softAPSSID();  // FIX: Use softAPSSID() instead of SSID()
+      if (testSSID.length() > 0 && testSSID.startsWith("ESP8266-Config-")) {
+        Serial.println("SSID VALID - AP should be visible");
+      } else {
+        Serial.println("SSID INVALID - AP may not be visible");
+      }
+    } else {
+      Serial.println("AP is NOT active!");
+    }
+    
+    Serial.println("=== END SOFTAP DIAGNOSTIC TEST ===\n");
   }
 };
 
@@ -884,6 +1122,26 @@ String g_pairPin = "";
 unsigned long g_pairExpireMs = 0;
 unsigned long g_lastPairPoll = 0;
 bool g_pairRegistered = false;
+String loadServerURL() {
+  if (EEPROM.read(SERVER_URL_FLAG_ADDR) != 0xBC) return "";
+  char buf[SERVER_URL_MAX_LEN + 1];
+  for (int i = 0; i < SERVER_URL_MAX_LEN; i++) {
+    buf[i] = (char)EEPROM.read(SERVER_URL_ADDR + i);
+  }
+  buf[SERVER_URL_MAX_LEN] = 0;
+  String s = String(buf);
+  s.trim();
+  return s;
+}
+void saveServerURL(const String& url) {
+  int n = min((int)url.length(), SERVER_URL_MAX_LEN - 1);
+  for (int i = 0; i < SERVER_URL_MAX_LEN; i++) {
+    char c = (i < n) ? url[i] : 0;
+    EEPROM.write(SERVER_URL_ADDR + i, c);
+  }
+  EEPROM.write(SERVER_URL_FLAG_ADDR, 0xBC);
+  EEPROM.commit();
+}
 
 String loadDeviceKey() {
   if (EEPROM.read(API_KEY_FLAG_ADDR) != 0xDA) return "";
@@ -959,7 +1217,9 @@ void setup() {
     if (!devId.startsWith("ESP-")) {
       devId = String("ESP-") + devId;
     }
-    httpClient.init(DEFAULT_SERVER_URL, devId);
+    String srv = loadServerURL();
+    if (srv.length() == 0) srv = String(DEFAULT_SERVER_URL);
+    httpClient.init(srv, devId);
   }
   httpClient.setApiKey(DEFAULT_API_KEY);
 

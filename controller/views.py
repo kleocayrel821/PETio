@@ -72,14 +72,22 @@ from .utils import check_device_connection
 # Web UI views
 def control_panel(request):
     if request.user.is_authenticated:
-        from .models import Hardware
-        qs = Hardware.objects.filter(paired_user=request.user, is_paired=True).values_list("device_id", flat=True)
+        from .models import Hardware, ControllerSettings
+        qs = Hardware.objects.filter(paired_user=request.user, is_paired=True)
         count = qs.count()
         if count == 0:
             return redirect('claim_device_page')
         ctx = {}
         if count == 1:
-            ctx["DEVICE_ID"] = qs.first()
+            hw = qs.select_related('controllersettings').first()
+            ctx["DEVICE_ID"] = hw.device_id
+            try:
+                cfg = (hw.controllersettings.config if getattr(hw, 'controllersettings', None) else {}) or {}
+                dev_ip = cfg.get('device_ip') or cfg.get('ip') or cfg.get('deviceIp')
+                if dev_ip:
+                    ctx["DEVICE_IP"] = dev_ip
+            except Exception:
+                pass
         return render(request, 'app/home.html', ctx)
     return render(request, 'app/home.html')
 

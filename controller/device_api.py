@@ -10,7 +10,7 @@ from django.views.decorators.cache import cache_page
 import logging
 logger = logging.getLogger(__name__)
 
-from .models import FeedingSchedule, PendingCommand, FeedingLog, DeviceStatus, Hardware, PairingSession
+from .models import FeedingSchedule, PendingCommand, FeedingLog, DeviceStatus, Hardware, PairingSession, ControllerSettings
 from .auth_utils import _device_api_key_valid, device_auth_or_legacy_valid
 from django.utils import timezone
 from django.utils.crypto import get_random_string
@@ -48,6 +48,17 @@ class PairClaimThrottle(SimpleRateThrottle):
 # ----------------------
 # Helpers
 # ----------------------
+
+def _client_ip(request):
+    try:
+        xff = request.META.get('HTTP_X_FORWARDED_FOR')
+        if xff:
+            parts = [p.strip() for p in xff.split(',') if p.strip()]
+            if parts:
+                return parts[0]
+        return request.META.get('REMOTE_ADDR') or ''
+    except Exception:
+        return ''
 
 def _resp_ok(message, extra=None):
     data = {"status": "ok", "message": message, "success": True}
@@ -291,6 +302,21 @@ def device_status_heartbeat(request):
         device_id = request.data.get("device_id") or getattr(settings, 'DEVICE_ID', 'feeder-1')
         if not device_id:
             return _resp_error("device_id is required")
+
+        # Auto-populate device_ip to ControllerSettings from client IP
+        try:
+            hw = Hardware.objects.filter(device_id__iexact=device_id).first()
+            if hw:
+                cfg_obj, _ = ControllerSettings.objects.get_or_create(hardware=hw)
+                cfg = dict(cfg_obj.config or {})
+                ip = _client_ip(request)
+                if ip and cfg.get('device_ip') != ip:
+                    cfg['device_ip'] = ip
+                    cfg_obj.config = cfg
+                    cfg_obj.save(update_fields=['config'])
+        except Exception:
+            # Non-fatal path; continue processing heartbeat
+            pass
 
         wifi_rssi = request.data.get("wifi_rssi")
         uptime = request.data.get("uptime")
