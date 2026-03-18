@@ -18,26 +18,16 @@
     </thead>
     <tbody>
     {% for row in rows %}
-      {% with d=row.device %}
-      {% with cfg=d.controllersettings.config if d.controllersettings and d.controllersettings.config else None %}
-      {% with ds=row.status %}
+      {% with d=row.device ds=row.status %}
       <tr>
         <td>{{ d.device_id|default:"-" }}</td>
         <td>{{ d.unique_key }}</td>
-        <td>
-          {% if cfg and cfg.device_ip %}{{ cfg.device_ip }}{% else %}-{% endif %}
-        </td>
-        <td>
-          {% if ds %}{{ ds.status }}{% else %}unknown{% endif %}
-        </td>
-        <td>
-          {% if ds and ds.last_seen %}{{ ds.last_seen }}{% else %}-{% endif %}
-        </td>
+        <td>{{ d.controllersettings.config.device_ip|default:"-" }}</td>
+        <td>{{ ds.status|default:"unknown" }}</td>
+        <td>{% if ds.last_seen %}{{ ds.last_seen }}{% else %}-{% endif %}</td>
         <td>{{ d.is_paired|yesno:"Yes,No" }}</td>
         <td>{{ d.updated_at }}</td>
       </tr>
-      {% endwith %}
-      {% endwith %}
       {% endwith %}
     {% endfor %}
     </tbody>
