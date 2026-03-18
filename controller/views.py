@@ -72,7 +72,15 @@ from .utils import check_device_connection
 # Web UI views
 def control_panel(request):
     if request.user.is_authenticated:
-        return redirect('my_devices_page')
+        from .models import Hardware
+        qs = Hardware.objects.filter(paired_user=request.user, is_paired=True).values_list("device_id", flat=True)
+        count = qs.count()
+        if count == 0:
+            return redirect('claim_device_page')
+        ctx = {}
+        if count == 1:
+            ctx["DEVICE_ID"] = qs.first()
+        return render(request, 'app/home.html', ctx)
     return render(request, 'app/home.html')
 
 # New Class-Based Views for split UI pages
@@ -108,10 +116,25 @@ def _user_owns_device(user, device_id: str) -> bool:
             return False
         if not device_id:
             return False
-        return Hardware.objects.filter(paired_user=user, device_id=device_id).exists()
+        dev = (device_id or "").strip()
+        if not dev:
+            return False
+        # Canonicalize: ensure "ESP-" prefix and uppercase chip id
+        dev_up = dev.upper()
+        if not dev_up.startswith("ESP-"):
+            dev_up = "ESP-" + dev_up
+        return Hardware.objects.filter(paired_user=user, device_id__iexact=dev_up).exists()
     except Exception:
         return False
 
+def _single_device_id_for_user(user) -> str:
+    try:
+        qs = Hardware.objects.filter(paired_user=user, is_paired=True).values_list("device_id", flat=True)
+        if qs.count() == 1:
+            return qs.first()
+    except Exception:
+        pass
+    return ""
 @login_required
 def my_devices_page(request):
     items = Hardware.objects.filter(paired_user=request.user).order_by("-updated_at")
@@ -143,23 +166,60 @@ def claim_device(request):
             if hw.is_paired and hw.paired_user_id == request.user.id:
                 messages.info(request, "Hardware already paired to your account")
                 return redirect("my_devices_page")
+            # Enforce 1:1 — user may only own one device
+            from .models import Hardware as _H
+            if _H.objects.filter(paired_user=request.user, is_paired=True).exclude(id=hw.id).exists():
+                messages.error(request, "You already have a paired device")
+                return redirect("home")
             hw.pair_to(request.user)
             ControllerSettings.objects.get_or_create(hardware=hw)
             messages.success(request, "Device paired successfully")
-            return redirect("my_devices_page")
+            return redirect("home")
         elif device_id and pin:
-            from .device_api import device_pair_claim as api_pair_claim
-            req = request
-            req.data = {"device_id": device_id, "pin": pin}
-            resp = api_pair_claim(req)
-            if getattr(resp, "status_code", 500) == 200:
-                messages.success(request, "Device claimed via PIN")
-                return redirect("my_devices_page")
+            did = (device_id or "").strip()
+            p = (pin or "").strip()
+            if len(p) != 6 or not p.isdigit():
+                messages.error(request, "PIN must be 6 digits")
+                return render(request, "app/claim_device.html")
+            from django.utils import timezone as _tz
+            from django.db import transaction as _tx
+            from .models import Hardware, PairingSession, ControllerSettings
+            from django.utils.crypto import get_random_string
             try:
-                messages.error(request, resp.data.get("message") or "Failed to claim device via PIN")
-            except Exception:
-                messages.error(request, "Failed to claim device via PIN")
-            return render(request, "app/claim_device.html")
+                with _tx.atomic():
+                    hw, _ = Hardware.objects.select_for_update().get_or_create(device_id=did, defaults={"is_paired": False})
+                    if hw.is_paired and hw.paired_user_id and hw.paired_user_id != request.user.id:
+                        messages.error(request, "Device already paired to another account")
+                        return render(request, "app/claim_device.html")
+                    # Enforce 1:1 — user may only own one device
+                    if Hardware.objects.filter(paired_user=request.user, is_paired=True).exclude(id=hw.id).exists():
+                        messages.error(request, "You already have a paired device")
+                        return redirect("home")
+                    now = _tz.now()
+                    ps = (
+                        PairingSession.objects
+                        .filter(hardware=hw, pin=p, expires_at__gte=now, claimed=False, served=False)
+                        .order_by("-created_at")
+                        .first()
+                    )
+                    if not ps:
+                        expires = now + _tz.timedelta(seconds=300)
+                        # Ensure only one active open session per device
+                        PairingSession.objects.filter(hardware=hw, claimed=False, served=False).delete()
+                        ps = PairingSession.objects.create(hardware=hw, pin=p, expires_at=expires)
+                    secret = get_random_string(48)
+                    hw.pair_to(request.user)
+                    hw.set_api_key(secret)
+                    ControllerSettings.objects.get_or_create(hardware=hw)
+                    ps.claimed = True
+                    ps.claimed_by = request.user
+                    ps.provision_key = secret
+                    ps.save(update_fields=["claimed", "claimed_by", "provision_key"])
+                messages.success(request, "Device claimed via PIN")
+                return redirect("home")
+            except Exception as e:
+                messages.error(request, f"Failed to claim device: {str(e)}")
+                return render(request, "app/claim_device.html")
         else:
             messages.error(request, "Provide a hardware key, or device ID and PIN")
     return render(request, "app/claim_device.html")
@@ -226,7 +286,15 @@ def feed_now(request):
         if portion_size <= 0 or portion_size > 100:
             return Response({"status": "error", "message": "Portion must be between 1 and 100 grams", "success": False, "error": "portion_out_of_range"}, status=status.HTTP_400_BAD_REQUEST)
 
-        device_id = request.data.get("device_id") or getattr(settings, "DEVICE_ID", "feeder-1")
+        device_id = request.data.get("device_id")
+        if not device_id:
+            device_id = _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
+        # Canonicalize device id consistently
+        if device_id:
+            dev_up = device_id.strip().upper()
+            if not dev_up.startswith("ESP-"):
+                dev_up = "ESP-" + dev_up
+            device_id = dev_up
         if not _user_owns_device(request.user, device_id):
             return Response({"status": "error", "message": "Forbidden: device not owned by user", "success": False, "error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         device_ip = request.data.get("device_ip") or getattr(settings, "PETIO_DEVICE_IP", os.getenv("PETIO_DEVICE_IP"))
@@ -698,7 +766,12 @@ def command_status(request):
 def stop_feeding(request):
     """Queue a stop feeding command for ESP8266"""
     try:
-        device_id = request.data.get("device_id") or getattr(settings, "DEVICE_ID", "feeder-1")
+        device_id = request.data.get("device_id") or _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
+        if device_id:
+            dev_up = device_id.strip().upper()
+            if not dev_up.startswith("ESP-"):
+                dev_up = "ESP-" + dev_up
+            device_id = dev_up
         if not _user_owns_device(request.user, device_id):
             return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         with transaction.atomic():
@@ -719,7 +792,12 @@ def stop_feeding(request):
 def calibrate(request):
     """Queue a calibrate command for ESP8266"""
     try:
-        device_id = request.data.get("device_id") or getattr(settings, "DEVICE_ID", "feeder-1")
+        device_id = request.data.get("device_id") or _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
+        if device_id:
+            dev_up = device_id.strip().upper()
+            if not dev_up.startswith("ESP-"):
+                dev_up = "ESP-" + dev_up
+            device_id = dev_up
         if not _user_owns_device(request.user, device_id):
             return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         with transaction.atomic():
@@ -851,13 +929,31 @@ class FeedingLogViewSet(viewsets.ModelViewSet):
     ordering = ["-timestamp"]
 
     def get_queryset(self):
-        """Filter logs by start_date/end_date, feed_type, and search.
+        """Filter logs by ownership and optional params.
+        Ownership:
+        - If authenticated, restrict logs to the user's paired hardware devices (by device_id).
+        - If unauthenticated or user has no devices, return an empty queryset.
+        
+        Additional filters:
         - start_date: include logs with timestamp >= start_date 00:00:00
         - end_date: include logs with timestamp <= end_date 23:59:59.999999
         - feed_type: maps UI values to source categories (manual->[manual_button,button,manual], automatic->[automatic_button,remote_command,web,esp,serial_command], scheduled->[schedule,scheduled]); legacy keys 'button','remote','esp' are also supported
         - search: case-insensitive contains on source
         """
-        qs = FeedingLog.objects.order_by("-timestamp")
+        # Determine device ownership
+        user = getattr(self.request, "user", None)
+        device_ids = []
+        if user and getattr(user, "is_authenticated", False):
+            device_ids = list(
+                Hardware.objects.filter(
+                    paired_user=user, is_paired=True
+                ).exclude(device_id__isnull=True).values_list("device_id", flat=True)
+            )
+        # If no owned devices or unauthenticated, return empty queryset
+        if not device_ids:
+            return FeedingLog.objects.none()
+
+        qs = FeedingLog.objects.filter(device_id__in=device_ids).order_by("-timestamp")
         params = getattr(self.request, 'query_params', {})
         start_date = params.get('start_date')
         end_date = params.get('end_date')
