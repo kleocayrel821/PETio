@@ -464,3 +464,31 @@ def device_pair_claimed(request):
         logger.exception("device_pair_claimed failed")
         return _resp_error(str(e), http_status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@authentication_classes([])
+@csrf_exempt
+def device_unpair_self(request):
+    """POST /api/device/unpair/
+    Device-initiated unpair. Requires valid Device-ID and X-Device-Key headers.
+    """
+    if not device_auth_or_legacy_valid(request):
+        return _resp_error("Invalid or missing API key.", http_status=status.HTTP_403_FORBIDDEN)
+    try:
+        dev_id = request.headers.get('Device-ID') or request.META.get('HTTP_DEVICE_ID') or request.data.get('device_id')
+        if not dev_id:
+            return _resp_error("device_id is required")
+        try:
+            hw = Hardware.objects.get(device_id__iexact=dev_id)
+        except Hardware.DoesNotExist:
+            return _resp_error("device not found", http_status=status.HTTP_404_NOT_FOUND)
+        # Unpair: clear owner and API key
+        hw.is_paired = False
+        hw.paired_user = None
+        hw.api_key_hash = None
+        hw.save(update_fields=["is_paired", "paired_user", "api_key_hash", "updated_at"])
+        logger.info("device_unpair_self", extra={"event": "device_unpair_self", "device_id": dev_id})
+        return _resp_ok("unpaired", {"unpaired": True, "device_id": hw.device_id})
+    except Exception as e:
+        logger.exception("device_unpair_self failed")
+        return _resp_error(str(e), http_status=status.HTTP_500_INTERNAL_SERVER_ERROR)

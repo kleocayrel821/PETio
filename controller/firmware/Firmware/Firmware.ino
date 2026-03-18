@@ -996,6 +996,13 @@ public:
   void init(const String& serverUrl, const String& devID) { serverURL = canonicalize(serverUrl); deviceID = devID; if (!serverURL.endsWith("/api")) { if (!serverURL.endsWith("/")) serverURL += "/"; serverURL += "api"; } wifiClientTLS.setInsecure(); Serial.println("HTTP Client initialized:"); Serial.println("Server URL: " + serverURL); Serial.println("Device ID: " + deviceID); }
   void setApiKey(const String& key) { apiKey = key; Serial.println("API key configured (length): " + String(apiKey.length())); }
   void setDeviceKey(const String& key) { deviceKey = key; Serial.println("Device key configured (length): " + String(deviceKey.length())); }
+  bool deviceUnpairSelf() {
+    DynamicJsonDocument doc(128);
+    doc["device_id"] = deviceID;
+    String payload; serializeJson(doc, payload);
+    String resp;
+    return makeRequest("/device/unpair/", "POST", payload, resp);
+  }
   bool sendFeedingLog(int portionSize, const String& feedType, const String& notes = "") { String payload = createFeedingPayload(portionSize, feedType, notes); String response; Serial.println("Sending feeding log to server..."); printPretty(payload); return makeRequest("/device/logs/", "POST", payload, response); }
   bool sendDeviceStatus(const String& /*status*/, int /*batteryLevel*/ = 100, int wifiSignal = -50) { DynamicJsonDocument doc(512); doc["device_id"] = deviceID; doc["wifi_rssi"] = wifiSignal; doc["uptime"] = (int)(millis()/1000); doc["daily_feeds"] = dailyFeeds; if (lastFeedIso.length() > 0) doc["last_feed"] = lastFeedIso; doc["error_message"] = ""; String payload; serializeJson(doc, payload); String response; bool success = makeRequest("/device/status/", "POST", payload, response); if (success) { Serial.println("Device status sent successfully"); return true; } else { Serial.println("Failed to send device status: " + lastError); return false; } }
   bool getDeviceConfig(String& configResponse) { String endpoint = String("/device/config/?device_id=") + deviceID; Serial.println("Requesting device configuration..."); bool success = makeRequest(endpoint, "GET", "", configResponse); if (success) { Serial.println("Device configuration retrieved successfully"); return true; } else { Serial.println("Failed to get device configuration: " + lastError); return false; } }
@@ -1296,6 +1303,12 @@ void loop() {
       if (held >= 5000 && !acted) {
         acted = true;
         Serial.println("=== BUTTON HOLD DETECTED - FORCING PAIRING MODE ===");
+        if (network.isConnected() && g_deviceKey.length() > 0) {
+          Serial.println("Attempting server-side unpair before local reset...");
+          bool up = httpClient.deviceUnpairSelf();
+          Serial.println(String("Unpair request result: ") + (up ? "OK" : "FAILED"));
+          delay(150);
+        }
         clearDeviceKey();
         g_deviceKey = "";
         httpClient.setDeviceKey("");
