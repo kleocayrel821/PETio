@@ -1016,7 +1016,8 @@ class FeedingLogViewSet(viewsets.ModelViewSet):
         today_feeds = qs.filter(timestamp__date=today).count()
         from datetime import timedelta
         start_30 = today - timedelta(days=30)
-        qs30 = FeedingLog.objects.filter(timestamp__date__gte=start_30, timestamp__date__lte=today)
+        # Scope 30-day window to the same device-owned queryset
+        qs30 = qs.filter(timestamp__date__gte=start_30, timestamp__date__lte=today)
         total30 = qs30.aggregate(total=Sum('portion_dispensed'))['total'] or 0
         days_with_data = qs30.values('timestamp__date').distinct().count() or 1
         avg_daily = total30 / days_with_data

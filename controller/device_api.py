@@ -258,7 +258,23 @@ def device_logs(request):
     try:
         from django.utils.dateparse import parse_datetime
         from django.utils import timezone
-        device_id = payload.get('device_id') or getattr(settings, 'DEVICE_ID', 'feeder-1')
+        # Resolve device_id: prefer Device-ID header, fall back to payload, else settings
+        raw_header_id = request.headers.get('Device-ID') or request.META.get('HTTP_DEVICE_ID')
+        device_id = payload.get('device_id') or raw_header_id or getattr(settings, 'DEVICE_ID', 'feeder-1')
+        # Canonicalize and align with stored Hardware.device_id (case-insensitive match)
+        try:
+            dev = (device_id or "").strip()
+            if dev:
+                dev_up = dev.upper()
+                if not dev_up.startswith("ESP-"):
+                    dev_up = "ESP-" + dev_up
+                hw_match = Hardware.objects.filter(device_id__iexact=dev_up).first()
+                if hw_match and hw_match.device_id:
+                    device_id = hw_match.device_id
+                else:
+                    device_id = dev_up
+        except Exception:
+            pass
         def save_one(item):
             nonlocal created
             ts = item.get('timestamp')
