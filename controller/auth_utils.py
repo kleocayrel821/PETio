@@ -25,11 +25,6 @@ def device_headers_valid(request):
 def device_auth_or_legacy_valid(request):
     if device_headers_valid(request):
         return True
-    # BUG FIX #3: Fallback to legacy key when device exists but not fully paired
-    dev_id = request.headers.get('Device-ID') or request.META.get('HTTP_DEVICE_ID')
-    if dev_id:
-        if Hardware.objects.filter(device_id=dev_id).exists():
-            return _device_api_key_valid(request)   # check X-API-Key header
     try:
         if getattr(settings, 'DEVICE_LEGACY_KEY_ENABLED', False):
             return _device_api_key_valid(request)
