@@ -1,79 +1,118 @@
 """
-Development settings.
-Extends base.py with development-friendly defaults.
+Production settings.
+Extends base.py and reads secrets from environment.
+
+Required environment variables (prod):
+- DJANGO_SECRET_KEY
+- DJANGO_ALLOWED_HOSTS (comma-separated)
+- DJANGO_CSRF_TRUSTED_ORIGINS (comma-separated)
+- POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT
+- EMAIL_HOST, EMAIL_PORT, EMAIL_USE_TLS, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, DEFAULT_FROM_EMAIL
 """
-import os
-from .base import *  # noqa
 import dj_database_url
+from .base import *  # noqa
+import os
+from os import environ
 
-# -----------------------------
-# Security settings
-# -----------------------------
-SECRET_KEY = os.environ.get(
-    'SECRET_KEY',
-    'django-insecure-^l*57=_zqohgr5s=z+o2$lwqvp-4-q!m%(m%a6$(*j2bg41onx'
-)
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
-# DEBUG mode controlled via environment variable
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+# SECRET KEY from environment
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError('DJANGO_SECRET_KEY environment variable is required in production')
 
-# ALLOWED_HOSTS from environment variable; fallback to localhost
-ALLOWED_HOSTS = os.environ.get(
-    'ALLOWED_HOSTS',
-    '127.0.0.1 localhost 192.168.18.9'
-).split()
+# Allowed hosts and CSRF trusted origins
+# Default to '*' for local preview; set DJANGO_ALLOWED_HOSTS in real deployments.
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
+    if h.strip()
+]
+
+#print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
+#print("CSRF_TRUSTED_ORIGINS:", CSRF_TRUSTED_ORIGINS)
 
 
-print("DEBUG:", DEBUG)
-print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
+CSRF_TRUSTED_ORIGINS = environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if environ.get('DJANGO_CSRF_TRUSTED_ORIGINS') else []
 
-# -----------------------------
-# Time zone
-# -----------------------------
-TIME_ZONE = 'Asia/Manila'
-
-# -----------------------------
-# Database configuration
-# -----------------------------
-# Default: SQLite for local development
+# Database: PostgreSQL via environment
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': environ.get('POSTGRES_DB', ''),
+        'USER': environ.get('POSTGRES_USER', ''),
+        'PASSWORD': environ.get('POSTGRES_PASSWORD', ''),
+        'HOST': environ.get('POSTGRES_HOST', 'localhost'),
+        'PORT': environ.get('POSTGRES_PORT', '5432'),
     }
 }
 
-# Override with DATABASE_URL if present (e.g., on Render)
-database_url = os.environ.get('DATABASE_URL')
+database_url = os.environ.get("DATABASE_URL")
 if database_url:
-    DATABASES['default'] = dj_database_url.parse(database_url)
+    DATABASES["default"] = dj_database_url.parse(database_url)
 
-# -----------------------------
-# Email backend for dev
-# -----------------------------
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Local fallback: if PostgreSQL env vars are missing, use SQLite to allow
+# production-style runs (Whitenoise, security headers) without a DB server.
+if not database_url and not environ.get('POSTGRES_DB'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
-# -----------------------------
-# Cache for dev
-# -----------------------------
-CACHES['default']['LOCATION'] = 'petio-dev-cache'
+# Email: SMTP
+_email_backend_env = environ.get("EMAIL_BACKEND")
+EMAIL_HOST = environ.get("EMAIL_HOST", "smtp-relay.brevo.com")
+EMAIL_PORT = int(environ.get("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = environ.get("EMAIL_USE_TLS", "true").lower() == "true"
+EMAIL_USE_SSL = environ.get("EMAIL_USE_SSL", "false").lower() == "true"
+EMAIL_HOST_USER = environ.get("EMAIL_HOST_USER", "apikey")
+EMAIL_HOST_PASSWORD = environ.get("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = environ.get("DEFAULT_FROM_EMAIL", "PETio <no-reply@petio.site>")
+SERVER_EMAIL = environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+EMAIL_TIMEOUT = int(environ.get("EMAIL_TIMEOUT", "10"))
+EMAIL_BACKEND = _email_backend_env or ('django.core.mail.backends.smtp.EmailBackend' if EMAIL_HOST_PASSWORD else 'django.core.mail.backends.console.EmailBackend')
 
-# -----------------------------
-# Celery dev mode
-# -----------------------------
-CELERY_TASK_ALWAYS_EAGER = True
-CELERY_TASK_EAGER_PROPAGATES = True
 
-# -----------------------------
-# Device API key
-# -----------------------------
-PETIO_DEVICE_API_KEY = os.environ.get('PETIO_DEVICE_API_KEY')
-# Keep legacy global key enabled in dev for smoother onboarding
-DEVICE_LEGACY_KEY_ENABLED = os.environ.get('DEVICE_LEGACY_KEY_ENABLED', 'true').lower() == 'true'
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+}
 
-# -----------------------------
-# Development-only settings
-# -----------------------------
-DEV_ALLOW_REQUEST_PREVIEW = True  # Only for dev/testing
-#MEDIA_URL = '/media/'
-#MEDIA_ROOT = BASE_DIR / 'media'
+
+# Security headers and cookies
+SECURE_SSL_REDIRECT = environ.get('SECURE_SSL_REDIRECT', 'true').lower() == 'true'
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+# Additional hardening
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+SECURE_REFERRER_POLICY = 'same-origin'
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_HSTS_SECONDS = int(environ.get('SECURE_HSTS_SECONDS', '3600'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'true').lower() == 'true'
+SECURE_HSTS_PRELOAD = environ.get('SECURE_HSTS_PRELOAD', 'true').lower() == 'true'
+
+# Static files: optionally use WhiteNoise in prod
+# Ensure WhiteNoise is present exactly once
+if 'whitenoise.middleware.WhiteNoiseMiddleware' not in MIDDLEWARE:
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Logging: more strict for Django, include request ID if using middleware later
+#LOGGING['loggers']['django']['level'] = 'ERROR'
+
+#MEDIA_URL = '/static/media/'
+#MEDIA_ROOT = BASE_DIR / 'static' / 'media'
+
+# Disable legacy global device key in production unless explicitly enabled
+DEVICE_LEGACY_KEY_ENABLED = environ.get('DEVICE_LEGACY_KEY_ENABLED', 'false').lower() == 'true'

@@ -51,6 +51,46 @@ extern unsigned long lastFeedCompletionTime;
 #define OLED_RESET -1
 #define OLED_UPDATE_INTERVAL_MS 500
 
+// ═══════════════════════════════════════════════════════════
+// DEV / PRODUCTION TOGGLE
+// Set DEV_MODE 1 for local development
+// Set DEV_MODE 0 before flashing to production device
+// ═══════════════════════════════════════════════════════════
+#define DEV_MODE 0
+// LOCAL DEV SETUP CHECKLIST:
+// 1. Set DEV_MODE 1
+// 2. Find your PC IP: ipconfig (Windows) / ifconfig (Mac/Linux)
+// 3. Update DEFAULT_SERVER_URL with your PC IP
+// 4. Run Django: python manage.py runserver 0.0.0.0:8000
+// 5. Add to your Django env:
+//      DEVICE_LEGACY_KEY_ENABLED=true
+//      PETIO_DEVICE_API_KEY=petio-local-dev
+// 6. Ensure PC firewall allows port 8000
+// 7. ESP8266 and PC must be on the same WiFi network
+//
+// PRODUCTION DEPLOYMENT STEPS:
+// 1. Set DEV_MODE 0 and flash to device
+// 2. Device boots → connects to saved WiFi automatically
+// 3. If no saved WiFi → connect to "PETio-Setup-XXXX" AP
+//    → open browser → 192.168.4.1 → enter home WiFi credentials
+// 4. Device restarts → connects to home WiFi
+// 5. OLED shows pairing screen with 6-digit PIN and Device ID
+// 6. Go to https://petio.site/devices/claim/
+// 7. Enter Device ID (ESP-0081CA63) and PIN from OLED
+// 8. Click Claim Device
+// 9. Device receives provisioned key → saves to EEPROM
+// 10. Device exits pairing → OLED shows normal screen
+// 11. All features active:
+//     - Feed button from UI works
+//     - Schedules execute
+//     - History records
+//     - Device shows online
+//
+// FUTURE REBOOTS: Device auto-connects and resumes — no re-pairing
+// NETWORK CHANGE: Hold FEED button 5s → clears credentials → re-setup
+// ACCOUNT CHANGE: Hold FEED button 5s → forces re-pairing
+// ═══════════════════════════════════════════════════════════
+
 // Wi-Fi Configuration Settings
 #define WIFI_TIMEOUT_MS 30000
 #define WIFI_SSID ""
@@ -132,16 +172,47 @@ extern unsigned long lastFeedCompletionTime;
 unsigned int g_feedPulse = SERVO_FEED_SPEED;
 
 // HTTP Communication Constants
-#define DEFAULT_SERVER_URL "https://petio.site"
+// ── Server URL (controlled by DEV_MODE) ──────────────────
+#if DEV_MODE
+  // TODO: Update this IP to match your PC's local IP address
+  // Run: ipconfig (Windows) or ifconfig (Mac/Linux) to find it
+  // Run Django with: python manage.py runserver 0.0.0.0:8000
+  #define DEFAULT_SERVER_URL "http://192.168.18.9:8000"
+#else
+  #define DEFAULT_SERVER_URL "https://petio.site"
+#endif
+// ─────────────────────────────────────────────────────────
 #define DEFAULT_DEVICE_ID "ESP-0081CA63"
-#define DEFAULT_API_KEY "51c1ebc55900af5273e5a43c2ba0c140"
+// ── API Key (controlled by DEV_MODE) ─────────────────────
+#if DEV_MODE
+  // Must match PETIO_DEVICE_API_KEY env var on local Django server
+  // In your shell: DEVICE_LEGACY_KEY_ENABLED=true
+  //                PETIO_DEVICE_API_KEY=petio-local-dev
+  #define DEFAULT_API_KEY "petio-local-dev"
+#else
+  #define DEFAULT_API_KEY "51c1ebc55900af5273e5a43c2ba0c140"
+#endif
+// ─────────────────────────────────────────────────────────
 #define HTTP_TIMEOUT_MS 3000
 #define HTTP_MAX_RETRIES 2
+// ── Legacy auth fallback (controlled by DEV_MODE) ────────
+// In DEV_MODE, allows polling without a provisioned device key
+// so you can test schedules and commands before pairing.
+// In production, device MUST be paired first — no fallback.
+#if DEV_MODE
+  #define DEV_ALLOW_LEGACY_FOR_POLL 1
+#else
+  #define DEV_ALLOW_LEGACY_FOR_POLL 0
+#endif
+// ─────────────────────────────────────────────────────────
 
 // NTP and Time Synchronization Constants
 #define NTP_SERVER "pool.ntp.org"
 #define NTP_TIMEZONE_OFFSET 0
 #define NTP_UPDATE_INTERVAL 3600000
+
+// Wi-Fi Fallback Portal Timing
+#define FALLBACK_AP_AFTER_MS 300000
 
 // Schedule Polling Constants
 #define SCHEDULE_POLL_INTERVAL 45000
@@ -686,6 +757,7 @@ private:
   String storedPass;
   ESP8266WebServer* configServer;
   String apSsid;
+  unsigned long offlineSince;
 
   void generateDeviceID() {
     uint32_t chipId = ESP.getChipId();
@@ -823,13 +895,13 @@ public:
   NetworkingManager()
     : deviceID(""), wifiConnected(false),
       lastConnectionAttempt(0), lastStatusPrint(0), lastStatusSeen(-1), ledController(nullptr),
-      configMode(false), hasCredentialsVal(false), storedSsid(""), storedPass(""), configServer(nullptr), apSsid("") {}
+      configMode(false), hasCredentialsVal(false), storedSsid(""), storedPass(""), configServer(nullptr), apSsid(""), offlineSince(0) {}
 
   void init(LedController* ledCtrl) {
     ledController = ledCtrl;
     WiFi.persistent(false);
     WiFi.setAutoConnect(false);
-    WiFi.setAutoReconnect(false);
+    WiFi.setAutoReconnect(true);
     WiFi.mode(WIFI_OFF);
     delay(100);
     generateDeviceID();
@@ -857,10 +929,12 @@ public:
       startConfigPortal();
       return;
     }
-    Serial.print("Connecting to WiFi...");
-    Serial.print(" SSID length=");
-    Serial.println(storedSsid.length());
-    WiFi.mode(WIFI_STA);
+    Serial.print("Connecting to saved WiFi: ");
+    Serial.println(storedSsid);
+    // Ensure any AP is fully shut down before switching to STA-only
+    WiFi.softAPdisconnect(true);
+    delay(100);
+    WiFi.mode(WIFI_STA);  // STA only — never AP/AP_STA here
     delay(100);
     WiFi.disconnect();
     delay(50);
@@ -891,6 +965,7 @@ public:
     }
     if (WiFi.status() == WL_CONNECTED && !wifiConnected) {
       wifiConnected = true;
+      offlineSince = 0;
       Serial.println("WiFi connected!");
       Serial.print("IP address: ");
       Serial.println(WiFi.localIP());
@@ -898,6 +973,7 @@ public:
       if (configMode) stopConfigPortal();
     } else if (WiFi.status() != WL_CONNECTED && wifiConnected) {
       wifiConnected = false;
+      offlineSince = millis();
       Serial.println("WiFi connection lost");
       if (ledController) ledController->showConnecting();
     } else if (WiFi.status() != WL_CONNECTED) {
@@ -908,7 +984,13 @@ public:
         lastStatusPrint = now;
         Serial.print("WiFi status: ");
         switch (s) {
-          case WL_CONNECT_FAILED: Serial.println("WRONG PASSWORD"); break;
+          case WL_CONNECT_FAILED:
+            Serial.println("WRONG PASSWORD");
+            if (!configMode && hasCredentialsVal) {
+              Serial.println("Starting configuration portal due to wrong WiFi password");
+              startConfigPortal();
+            }
+            break;
           case WL_NO_SSID_AVAIL: Serial.println("SSID NOT FOUND"); break;
           case WL_IDLE_STATUS: Serial.println("CONNECTING..."); break;
           case WL_DISCONNECTED: Serial.println("DISCONNECTED"); break;
@@ -917,6 +999,11 @@ public:
       }
       if (!configMode && hasCredentialsVal && (now - lastConnectionAttempt) > WIFI_TIMEOUT_MS) {
         reconnectNonBlocking();
+      }
+      if (!configMode && hasCredentialsVal && offlineSince != 0) {
+        if ((now - offlineSince) > FALLBACK_AP_AFTER_MS) {
+          startConfigPortal();
+        }
       }
     }
   }
@@ -996,6 +1083,7 @@ public:
   void init(const String& serverUrl, const String& devID) { serverURL = canonicalize(serverUrl); deviceID = devID; if (!serverURL.endsWith("/api")) { if (!serverURL.endsWith("/")) serverURL += "/"; serverURL += "api"; } wifiClientTLS.setInsecure(); Serial.println("HTTP Client initialized:"); Serial.println("Server URL: " + serverURL); Serial.println("Device ID: " + deviceID); }
   void setApiKey(const String& key) { apiKey = key; Serial.println("API key configured (length): " + String(apiKey.length())); }
   void setDeviceKey(const String& key) { deviceKey = key; Serial.println("Device key configured (length): " + String(deviceKey.length())); }
+  bool hasApiKey() const { return apiKey.length() > 0; }
   bool deviceUnpairSelf() {
     DynamicJsonDocument doc(128);
     doc["device_id"] = deviceID;
@@ -1101,6 +1189,20 @@ unsigned long g_pairExpireMs = 0;
 unsigned long g_lastPairPoll = 0;
 bool g_pairRegistered = false;
 
+static inline bool hasDeviceAuth() {
+  // Always accept provisioned device key (paired device)
+  if (g_deviceKey.length() > 0) return true;
+  // In DEV_MODE only: fall back to legacy API key so you can
+  // test polling endpoints without completing the pairing flow
+  #if DEV_ALLOW_LEGACY_FOR_POLL
+    if (httpClient.hasApiKey()) {
+      return true;
+    }
+  #endif
+  // Production: no device key = not authorized
+  return false;
+}
+
 String loadDeviceKey() {
   if (EEPROM.read(API_KEY_FLAG_ADDR) != 0xDA) return "";
   char buf[API_KEY_MAX_LEN + 1];
@@ -1180,6 +1282,16 @@ void clearWifiCredentials() {
 void setup() {
   Serial.begin(115200);
   Serial.println("ESP8266 Pet Feeder Starting with Step D Features...");
+  #if DEV_MODE
+    Serial.println("*** DEV MODE ACTIVE ***");
+    Serial.println("Server: " DEFAULT_SERVER_URL);
+    Serial.println("Legacy auth: ENABLED");
+    Serial.println("To switch to production: set DEV_MODE 0 and reflash");
+  #else
+    Serial.println("*** PRODUCTION MODE ***");
+    Serial.println("Server: " DEFAULT_SERVER_URL);
+    Serial.println("Auth: device key only");
+  #endif
 
   // Initialize EEPROM for schedule tracking
   EEPROM.begin(EEPROM_SIZE);
@@ -1291,6 +1403,10 @@ void setup() {
 void loop() {
   // Long-press FEED button (5s) to clear device key and force pairing mode
   {
+    if (millis() < BUTTON_BOOT_IGNORE_MS) {
+      // Ignore long-press logic during boot grace period to prevent accidental resets
+      goto after_long_press_block;
+    }
     static unsigned long holdStart = 0;
     static bool acted = false;
     bool down = (digitalRead(FEED_NOW_PIN) == LOW);
@@ -1328,6 +1444,7 @@ void loop() {
       acted = false;
     }
   }
+after_long_press_block:
   if (g_pairingActive) {
     int secsLeft = (g_pairExpireMs > millis()) ? (int)((g_pairExpireMs - millis()) / 1000UL) : 0;
     {
@@ -1393,6 +1510,35 @@ void loop() {
   if (network.isConnected() && !ntpSynced) {
     Serial.println("WiFi connected - performing initial NTP sync...");
     initializeNTP();
+  }
+  // Deferred post-connect initialization (if WiFi came up after boot)
+  {
+    static bool postConnectInitDone = false;
+    if (network.isConnected() && !postConnectInitDone && !g_pairingActive) {
+      postConnectInitDone = true;
+      if (!ntpSynced) {
+        Serial.println("WiFi connected - performing deferred NTP sync");
+        initializeNTP();
+        lastSchedulePoll = millis() - SCHEDULE_POLL_INTERVAL;
+        lastCommandPoll  = millis() - COMMAND_POLL_INTERVAL;
+        lastStatusUpdate = millis() - STATUS_UPDATE_INTERVAL;
+      }
+      g_deviceKey = loadDeviceKey();
+      if (g_deviceKey.length() > 0) {
+        httpClient.setDeviceKey(g_deviceKey);
+        Serial.println("Deferred device key loaded — skipping pairing");
+      } else {
+        Serial.println("Deferred pairing mode — no device key found");
+        g_pairingActive = true;
+        g_pairPin = genPin6();
+        g_pairExpireMs = millis() + 300000UL;
+        g_lastPairPoll = 0;
+        g_pairRegistered = false;
+      }
+    }
+    if (!network.isConnected()) {
+      postConnectInitDone = false;
+    }
   }
   if (network.isConfigured() && !network.isConnected() && !network.isConfigMode()) {
     ledController.showConnecting();
@@ -1546,6 +1692,11 @@ void pollAndExecuteSchedules() {
   unsigned long currentTime = millis();
   
   if (currentTime - lastSchedulePoll > SCHEDULE_POLL_INTERVAL) {
+    if (!hasDeviceAuth()) {
+      Serial.println("Skipping schedule poll: device not paired yet (no device key)");
+      lastSchedulePoll = currentTime;
+      return;
+    }
     if (millis() < networkBackoffUntil) {
       Serial.println("Network backoff active; skipping schedule poll");
       lastSchedulePoll = currentTime;
@@ -2178,7 +2329,7 @@ void sendDeviceStatus() {
   int wifiSignal = WiFi.RSSI();
   int batteryLevel = 100;  // Placeholder - implement actual battery reading if available
   
-  if (g_deviceKey.length() == 0) {
+  if (!hasDeviceAuth()) {
     Serial.println("Skipping status send: device not paired yet (no device key)");
     return;
   }
@@ -2215,7 +2366,7 @@ void syncDeviceConfiguration() {
 void pollAndExecuteRemoteCommands() {
   unsigned long currentTime = millis();
   if (currentTime - lastCommandPoll > COMMAND_POLL_INTERVAL) {
-    if (g_deviceKey.length() == 0) {
+    if (!hasDeviceAuth()) {
       // Avoid hammering auth-protected endpoints before pairing
       lastCommandPoll = currentTime;
       Serial.println("Skipping command poll: device not paired yet (no device key)");

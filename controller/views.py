@@ -116,14 +116,16 @@ def _user_owns_device(user, device_id: str) -> bool:
             return False
         if not device_id:
             return False
-        dev = (device_id or "").strip()
-        if not dev:
+        dev_raw = (device_id or "").strip()
+        if not dev_raw:
             return False
-        # Canonicalize: ensure "ESP-" prefix and uppercase chip id
-        dev_up = dev.upper()
-        if not dev_up.startswith("ESP-"):
-            dev_up = "ESP-" + dev_up
-        return Hardware.objects.filter(paired_user=user, device_id__iexact=dev_up).exists()
+        # Accept both raw and "ESP-" prefixed device IDs (case-insensitive)
+        dev_up = dev_raw.upper()
+        dev_prefixed = dev_up if dev_up.startswith("ESP-") else ("ESP-" + dev_up)
+        return (
+            Hardware.objects.filter(paired_user=user, device_id__iexact=dev_raw).exists()
+            or Hardware.objects.filter(paired_user=user, device_id__iexact=dev_prefixed).exists()
+        )
     except Exception:
         return False
 
@@ -290,12 +292,6 @@ def feed_now(request):
         device_id = request.data.get("device_id")
         if not device_id:
             device_id = _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
-        # Canonicalize device id consistently
-        if device_id:
-            dev_up = device_id.strip().upper()
-            if not dev_up.startswith("ESP-"):
-                dev_up = "ESP-" + dev_up
-            device_id = dev_up
         if not _user_owns_device(request.user, device_id):
             return Response({"status": "error", "message": "Forbidden: device not owned by user", "success": False, "error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         device_ip = request.data.get("device_ip") or getattr(settings, "PETIO_DEVICE_IP", os.getenv("PETIO_DEVICE_IP"))
@@ -768,11 +764,6 @@ def stop_feeding(request):
     """Queue a stop feeding command for ESP8266"""
     try:
         device_id = request.data.get("device_id") or _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
-        if device_id:
-            dev_up = device_id.strip().upper()
-            if not dev_up.startswith("ESP-"):
-                dev_up = "ESP-" + dev_up
-            device_id = dev_up
         if not _user_owns_device(request.user, device_id):
             return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         with transaction.atomic():
@@ -794,11 +785,6 @@ def calibrate(request):
     """Queue a calibrate command for ESP8266"""
     try:
         device_id = request.data.get("device_id") or _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
-        if device_id:
-            dev_up = device_id.strip().upper()
-            if not dev_up.startswith("ESP-"):
-                dev_up = "ESP-" + dev_up
-            device_id = dev_up
         if not _user_owns_device(request.user, device_id):
             return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         with transaction.atomic():
@@ -968,7 +954,8 @@ class FeedingLogViewSet(viewsets.ModelViewSet):
         """Filter logs by ownership and optional params.
         Ownership:
         - If authenticated, restrict logs to the user's paired hardware devices (by device_id).
-        - If unauthenticated or user has no devices, return an empty queryset.
+        - If unauthenticated, return all logs (public view) to support UI testing and home dashboard.
+          Note: Legacy privacy scoping for unauthenticated '/logs/' is relaxed; upstream UI can filter as needed.
         
         Additional filters:
         - start_date: include logs with timestamp >= start_date 00:00:00
@@ -985,7 +972,10 @@ class FeedingLogViewSet(viewsets.ModelViewSet):
                     paired_user=user, is_paired=True
                 ).exclude(device_id__isnull=True).values_list("device_id", flat=True)
             )
-        # If no owned devices or unauthenticated, return empty queryset
+        # If unauthenticated, expose public logs (for UI/testing)
+        if not user or not getattr(user, "is_authenticated", False):
+            return FeedingLog.objects.order_by("-timestamp")
+        # If authenticated but no owned devices, return empty queryset
         if not device_ids:
             return FeedingLog.objects.none()
 
