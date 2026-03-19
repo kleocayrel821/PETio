@@ -193,8 +193,25 @@ unsigned int g_feedPulse = SERVO_FEED_SPEED;
   #define DEFAULT_API_KEY "51c1ebc55900af5273e5a43c2ba0c140"
 #endif
 // ─────────────────────────────────────────────────────────
-#define HTTP_TIMEOUT_MS 3000
-#define HTTP_MAX_RETRIES 2
+// ── HTTP Timeout (controlled by DEV_MODE) ────────────────
+// Local HTTP needs only 3s — no TLS handshake overhead
+// Production HTTPS to petio.site needs more time due to
+// TLS handshake latency from Philippines to US servers
+#if DEV_MODE
+  #define HTTP_TIMEOUT_MS 3000
+#else
+  #define HTTP_TIMEOUT_MS 8000
+#endif
+// ─────────────────────────────────────────────────────────
+// ── HTTP Max Retries (controlled by DEV_MODE) ────────────
+// Local dev: 2 retries is enough — fast local network
+// Production: 3 retries handles transient mobile network drops
+#if DEV_MODE
+  #define HTTP_MAX_RETRIES 2
+#else
+  #define HTTP_MAX_RETRIES 3
+#endif
+// ─────────────────────────────────────────────────────────
 // ── Legacy auth fallback (controlled by DEV_MODE) ────────
 // In DEV_MODE, allows polling without a provisioned device key
 // so you can test schedules and commands before pairing.
