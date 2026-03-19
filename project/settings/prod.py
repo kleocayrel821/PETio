@@ -116,3 +116,5 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Disable legacy global device key in production unless explicitly enabled
 DEVICE_LEGACY_KEY_ENABLED = environ.get('DEVICE_LEGACY_KEY_ENABLED', 'false').lower() == 'true'
+
+TIME_ZONE = "Asia/Manila"
