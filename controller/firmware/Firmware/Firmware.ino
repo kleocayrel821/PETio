@@ -25,6 +25,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <ESP8266WebServer.h>
+#include <DNSServer.h>
 
 String nowUtcIso();
 extern unsigned long lastFeedCompletionTime;
@@ -245,7 +246,7 @@ unsigned int g_feedPulse = SERVO_FEED_SPEED;
 #define MAX_DISPENSE_TIME_MS 30000UL
 
 // EEPROM Addresses for Schedule Tracking
-#define LAST_SCHEDULE_ID_ADDR 65
+#define LAST_SCHEDULE_IxD_ADDR 65
 #define SCHEDULE_ID_SIZE 4
 
 // EEPROM Addresses for Calibration
@@ -754,6 +755,11 @@ public:
     }
     Serial.println("=== AGITATION CYCLE COMPLETE ===");
   }
+  bool isDispensePhaseActive() {
+    if (!feedingInProgress) return false;
+    unsigned long elapsed = millis() - feedingStartTime;
+    return elapsed < feedingDuration;
+  }
 };
 
 bool loadWifiCredentials(String& ssidOut, String& passOut);
@@ -775,6 +781,10 @@ private:
   ESP8266WebServer* configServer;
   String apSsid;
   unsigned long offlineSince;
+  DNSServer* dnsServer;
+  IPAddress apIp;
+  IPAddress apGw;
+  IPAddress apMask;
 
   void generateDeviceID() {
     uint32_t chipId = ESP.getChipId();
@@ -831,12 +841,20 @@ private:
   void startConfigPortal() {
     if (configServer) return;
     configMode = true;
-    WiFi.mode(WIFI_AP_STA);
+    WiFi.mode(WIFI_OFF);
     delay(100);
+    WiFi.mode(WIFI_AP);
+    delay(200);
+    // Explicit AP IP configuration for better client compatibility
+    WiFi.softAPConfig(apIp, apGw, apMask);
     String suffix = deviceID;
     if (suffix.length() > 4) suffix = suffix.substring(suffix.length() - 4);
     apSsid = String("PETio-Setup-") + suffix;
     WiFi.softAP(apSsid.c_str());
+    // Start DNS server to capture all hostnames and resolve to our AP IP
+    if (!dnsServer) dnsServer = new DNSServer();
+    dnsServer->setErrorReplyCode(DNSReplyCode::NoError);
+    dnsServer->start(53, "*", apIp);
     configServer = new ESP8266WebServer(80);
     configServer->on("/", [this]() {
       String ssidPref = "";
@@ -854,6 +872,28 @@ private:
         "<button type='submit'>Save</button></form>"
         "</body></html>";
       configServer->send(200, "text/html", html);
+    });
+    // Captive portal helpers for common OS probes
+    configServer->on("/generate_204", [this]() {
+      String loc = String("http://") + apIp.toString() + String("/");
+      configServer->sendHeader("Cache-Control", "no-cache");
+      configServer->sendHeader("Location", loc, true);
+      configServer->send(302, "text/plain", "");
+    });
+    configServer->on("/hotspot-detect.html", [this]() {
+      configServer->send(200, "text/html", "<html><head><meta http-equiv='refresh' content='0; url=/' /></head><body>OK</body></html>");
+    });
+    configServer->on("/ncsi.txt", [this]() {
+      configServer->send(200, "text/plain", "Microsoft NCSI");
+    });
+    configServer->on("/connecttest.txt", [this]() {
+      configServer->send(200, "text/plain", "OK");
+    });
+    configServer->onNotFound([this]() {
+      String loc = String("http://") + apIp.toString() + String("/");
+      configServer->sendHeader("Cache-Control", "no-cache");
+      configServer->sendHeader("Location", loc, true);
+      configServer->send(302, "text/plain", "");
     });
     configServer->on("/scan", [this]() {
       Serial.println("Scanning for networks...");
@@ -904,6 +944,11 @@ private:
       delete configServer;
       configServer = nullptr;
     }
+    if (dnsServer) {
+      dnsServer->stop();
+      delete dnsServer;
+      dnsServer = nullptr;
+    }
     WiFi.softAPdisconnect(true);
     configMode = false;
   }
@@ -912,7 +957,8 @@ public:
   NetworkingManager()
     : deviceID(""), wifiConnected(false),
       lastConnectionAttempt(0), lastStatusPrint(0), lastStatusSeen(-1), ledController(nullptr),
-      configMode(false), hasCredentialsVal(false), storedSsid(""), storedPass(""), configServer(nullptr), apSsid(""), offlineSince(0) {}
+      configMode(false), hasCredentialsVal(false), storedSsid(""), storedPass(""), configServer(nullptr), apSsid(""), offlineSince(0),
+      dnsServer(nullptr), apIp(192,168,4,1), apGw(192,168,4,1), apMask(255,255,255,0) {}
 
   void init(LedController* ledCtrl) {
     ledController = ledCtrl;
@@ -978,6 +1024,7 @@ public:
 
   void update() {
     if (configMode && configServer) {
+      if (dnsServer) dnsServer->processNextRequest();
       configServer->handleClient();
     }
     if (WiFi.status() == WL_CONNECTED && !wifiConnected) {
@@ -1490,9 +1537,17 @@ after_long_press_block:
           if (claimed && k.length() > 0) {
             g_deviceKey = k;
             saveDeviceKey(k);
-            httpClient.setDeviceKey(k);
-            g_pairingActive = false;
-            ledController.showReady();
+            String verify = loadDeviceKey();
+            if (verify == k) {
+              httpClient.setDeviceKey(g_deviceKey);
+              g_pairingActive = false;
+              ledController.showReady();
+              Serial.println("Device key saved and verified — pairing complete");
+              Serial.println("OLED switching to normal screen");
+            } else {
+              Serial.println("ERROR: EEPROM key write verification failed");
+              Serial.println("Will retry saving on next claim poll");
+            }
           }
         }
       }
@@ -1516,6 +1571,8 @@ after_long_press_block:
         g_pairRegistered = false;
       }
     }
+    // Ensure captive portal and DNS keep responding while pairing is active
+    network.update();
     delay(50);
     return;
   }
@@ -1531,7 +1588,7 @@ after_long_press_block:
   // Deferred post-connect initialization (if WiFi came up after boot)
   {
     static bool postConnectInitDone = false;
-    if (network.isConnected() && !postConnectInitDone && !g_pairingActive) {
+    if (network.isConnected() && !postConnectInitDone) {
       postConnectInitDone = true;
       if (!ntpSynced) {
         Serial.println("WiFi connected - performing deferred NTP sync");
@@ -1540,12 +1597,18 @@ after_long_press_block:
         lastCommandPoll  = millis() - COMMAND_POLL_INTERVAL;
         lastStatusUpdate = millis() - STATUS_UPDATE_INTERVAL;
       }
-      g_deviceKey = loadDeviceKey();
-      if (g_deviceKey.length() > 0) {
+      String freshKey = loadDeviceKey();
+      if (freshKey.length() > 0 && g_deviceKey != freshKey) {
+        g_deviceKey = freshKey;
         httpClient.setDeviceKey(g_deviceKey);
-        Serial.println("Deferred device key loaded — skipping pairing");
-      } else {
-        Serial.println("Deferred pairing mode — no device key found");
+        Serial.println("Device key loaded from EEPROM");
+        if (g_pairingActive) {
+          g_pairingActive = false;
+          ledController.showReady();
+          Serial.println("Pairing cancelled - valid key found in EEPROM");
+        }
+      } else if (freshKey.length() == 0 && !g_pairingActive) {
+        Serial.println("No device key — entering pairing mode");
         g_pairingActive = true;
         g_pairPin = genPin6();
         g_pairExpireMs = millis() + 300000UL;
@@ -1565,7 +1628,7 @@ after_long_press_block:
     activeFeedPortionGrams = 0.0f;
   }
   float displayPortion = activeFeedPortionGrams > 0.0f ? activeFeedPortionGrams : manualPortionGrams;
-  oledDisplay.update(network.isConnected(), network.getSSID(), displayPortion, motorController.isFeedingInProgress());
+  oledDisplay.update(network.isConnected(), network.getSSID(), displayPortion, motorController.isDispensePhaseActive());
   if (manualLogPending && !motorController.isFeedingInProgress()) {
     if (network.isConnected()) {
       bool success = httpClient.sendFeedingLog(manualLogPortion, "manual", "Button press feeding");
@@ -2108,7 +2171,7 @@ void executeScheduledFeeding(uint32_t scheduleId, float portionGrams) {
   while (motorController.isFeedingInProgress()) {
     motorController.update();
     ledController.update();
-    oledDisplay.update(network.isConnected(), network.getSSID(), activeFeedPortionGrams, true);
+    oledDisplay.update(network.isConnected(), network.getSSID(), activeFeedPortionGrams, motorController.isDispensePhaseActive());
     delay(100);
   }
   
@@ -2437,7 +2500,7 @@ void executeRemoteFeeding(uint32_t commandId, float portionGrams) {
   while (motorController.isFeedingInProgress()) {
     motorController.update();
     ledController.update();
-    oledDisplay.update(network.isConnected(), network.getSSID(), activeFeedPortionGrams, true);
+    oledDisplay.update(network.isConnected(), network.getSSID(), activeFeedPortionGrams, motorController.isDispensePhaseActive());
     delay(100);
   }
   
