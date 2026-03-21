@@ -215,13 +215,13 @@
                     </div>
                     <div class="col-md-6">
                         <div>
-                            <div class="portion-value" id="portionValue">100g</div>
+                            <div class="portion-value" id="portionValue">30g</div>
                             <div class="portion-control">
                                 <div class="portion-label">
                                     <span>0g</span>
                                     <span>100g</span>
                                 </div>
-                                <input type="range" class="form-range" id="portionSize" min="0" max="100" step="1" value="100">
+                                <input type="range" class="form-range" id="portionSize" min="30" max="240" step="30" value="30">
                             </div>
                         </div>
                     </div>
@@ -516,9 +516,15 @@
                 timeInput.setAttribute('aria-invalid', 'true');
                 hasError = true;
             }
-            const portionVal = parseFloat(portionRaw);
-            if (!timeRaw || !portionRaw || isNaN(portionVal) || portionVal < 25 || portionVal > 100 || days.length === 0) {
-                showToast('Please provide valid time, portion between 25-100g, and select at least one day.', 'warning');
+            const portionVal = Math.max(30, Math.min(240, 
+                Math.round(parseFloat(portionRaw) / 30) * 30 
+            ));
+            if (!timeRaw || !portionRaw || isNaN(portionVal) || portionVal < 30 || portionVal > 240 || days.length === 0) {
+                showToast(
+                    'Please provide valid time, portion between 30–240g (multiples of 30g), ' +
+                    'and select at least one day.',
+                    'warning'
+                );
                 return;
             }
             if (!days || days.length === 0) {
@@ -588,9 +594,15 @@
             row.querySelectorAll('.dow-checkbox').forEach(chk => { if (chk.checked) days.push(chk.value); });
         
             // Basic validation
-            const portionVal = parseFloat(portionRaw);
-            if (!timeRaw || !portionRaw || isNaN(portionVal) || portionVal < 25 || portionVal > 100 || days.length === 0) {
-                showToast('Please provide valid time, portion between 25-100g, and select at least one day.', 'warning');
+            const portionVal = Math.max(30, Math.min(240, 
+                Math.round(parseFloat(portionRaw) / 30) * 30 
+            ));
+            if (!timeRaw || !portionRaw || isNaN(portionVal) || portionVal < 30 || portionVal > 240 || days.length === 0) {
+                showToast(
+                    'Please provide valid time, portion between 30–240g (multiples of 30g), ' +
+                    'and select at least one day.',
+                    'warning'
+                );
                 return;
             }
         

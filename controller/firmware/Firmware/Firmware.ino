@@ -241,7 +241,6 @@ unsigned int g_feedPulse = SERVO_FEED_SPEED;
 
 // Calibrated dispensing constants
 #define STARTUP_DELAY_MS 100
-#define MS_PER_GRAM_CALIBRATED 24.5f
 #define MIN_DISPENSE_TIME_MS 50UL
 #define MAX_DISPENSE_TIME_MS 30000UL
 
@@ -254,9 +253,20 @@ unsigned int g_feedPulse = SERVO_FEED_SPEED;
 #define MS_PER_GRAM_ADDR 69
 #define STARTUP_DELAY_ADDR 73
 
-// Calibrated duration API
+// ── Wheel calibration (replaces ms/gram continuous model) ────
+// Wheel has 8 compartments × 45° each.
+// Calibrate by: filling all 8, weighing total, dividing by 8.
+#define WHEEL_COMPARTMENTS       8
+#define MS_PER_COMP_DEFAULT      800UL
+#define GRAMS_PER_COMP_DEFAULT   10.0f
+// Extra time after last compartment rotates to ensure food fully
+// clears the exit aperture before the servo stops.
+// Fixes inconsistent 2-compartment dispense on short feeds.
+#define POST_COMP_SETTLE_MS      200UL
+
+// Calibrated duration API (wheel-based)
 unsigned long calculateFeedingDuration(float targetGrams);
-void saveCalibration(float msPerGram, unsigned long startupDelay);
+void saveCalibration(float gramsPerComp, unsigned long msPerComp);
 void loadCalibration();
 void handleCalibrationCommands();
 
@@ -265,11 +275,11 @@ float manualPortionGrams = 25.0f;
 unsigned long manualFeedDurationMs = 0;
 const float PORTION_STEP_GRAMS = 5.0f;
 const float MANUAL_PORTION_MIN_GRAMS = 5.0f;
-const float MANUAL_PORTION_MAX_GRAMS = 100.0f;
+const float MANUAL_PORTION_MAX_GRAMS = 240.0f;
 
-// Calibration state
-float g_msPerGram = MS_PER_GRAM_CALIBRATED;
-unsigned long g_startupDelay = STARTUP_DELAY_MS;
+// Calibration state (wheel-based)
+unsigned long g_msPerComp    = MS_PER_COMP_DEFAULT;
+float         g_gramsPerComp = GRAMS_PER_COMP_DEFAULT;
 bool calibrationMode = false;
 float calibrationTestGrams = 0.0f;
 unsigned long calibrationStartTime = 0;
@@ -1360,9 +1370,9 @@ void setup() {
   // Initialize EEPROM for schedule tracking
   EEPROM.begin(EEPROM_SIZE);
   loadCalibration();
-  if (isnan(g_msPerGram) || g_msPerGram < 10.0f || g_msPerGram > 200.0f || g_startupDelay > 1000) {
+  if (g_msPerComp < 200 || g_msPerComp > 5000 || isnan(g_gramsPerComp) || g_gramsPerComp < 1.0f || g_gramsPerComp > 100.0f) {
     Serial.println("Auto-resetting calibration to defaults due to unreasonable values");
-    saveCalibration(MS_PER_GRAM_CALIBRATED, STARTUP_DELAY_MS);
+    saveCalibration(GRAMS_PER_COMP_DEFAULT, MS_PER_COMP_DEFAULT);
   }
   // Optional: direction test during development
   #define SERVO_DIRECTION_TEST 0
@@ -1377,7 +1387,15 @@ void setup() {
   // Initialize motor controller with LED reference
   motorController.init(&ledController);
   oledDisplay.init();
+  // Enforce minimum of exactly one compartment (runtime value)
+  float effectiveMin = max(MANUAL_PORTION_MIN_GRAMS, g_gramsPerComp);
+  manualPortionGrams = actualPortionGrams(manualPortionGrams);
+  manualPortionGrams = constrain(manualPortionGrams, 
+    effectiveMin, MANUAL_PORTION_MAX_GRAMS);
   manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
+  Serial.println("Boot portion: " + String(manualPortionGrams, 1) + "g"
+    + " (" + String(max(1,(int)((manualPortionGrams/g_gramsPerComp)+0.5f)))
+    + " comp) " + String(manualFeedDurationMs) + "ms");
   #if SERVO_DIRECTION_TEST
     motorController.runAgitationCycle(); // Light motion test; replace with dedicated direction test if needed
   #endif
@@ -1627,7 +1645,7 @@ after_long_press_block:
   if (activeFeedPortionGrams > 0.0f && !motorController.isFeedingInProgress()) {
     activeFeedPortionGrams = 0.0f;
   }
-  float displayPortion = activeFeedPortionGrams > 0.0f ? activeFeedPortionGrams : manualPortionGrams;
+  float displayPortion = activeFeedPortionGrams > 0.0f ? activeFeedPortionGrams : actualPortionGrams(manualPortionGrams);
   oledDisplay.update(network.isConnected(), network.getSSID(), displayPortion, motorController.isDispensePhaseActive());
   if (manualLogPending && !motorController.isFeedingInProgress()) {
     if (network.isConnected()) {
@@ -1966,55 +1984,60 @@ time_t parseISOTimestamp(const String& isoString) {
 }
 
 /**
- * Calibrated duration calculation accounting for startup delay
+ * Wheel-based duration calculation: whole compartments only
  */
 unsigned long calculateFeedingDuration(float targetGrams) {
-  if (targetGrams < 0.0f) targetGrams = 0.0f;
-  unsigned long duration = g_startupDelay + (unsigned long)(targetGrams * g_msPerGram);
-  duration = max(duration, MIN_DISPENSE_TIME_MS);
+  if (targetGrams <= 0.0f) return 0;
+  int comps = max(1, (int)((targetGrams / g_gramsPerComp) + 0.5f));
+  // Spin time for N compartments + fixed settle so the last
+  // compartment always clears the exit aperture before stopping.
+  // POST_COMP_SETTLE_MS fixes inconsistent short-feed dispense.
+  unsigned long duration = ((unsigned long)comps * g_msPerComp)
+                           + POST_COMP_SETTLE_MS;
   duration = min(duration, MAX_DISPENSE_TIME_MS);
   return duration;
 }
 
-/**
- * Persist calibration values (ms/gram and startup delay) to EEPROM
- */
-void saveCalibration(float msPerGram, unsigned long startupDelay) {
-  g_msPerGram = msPerGram;
-  g_startupDelay = startupDelay;
-  EEPROM.put(MS_PER_GRAM_ADDR, g_msPerGram);
-  EEPROM.put(STARTUP_DELAY_ADDR, g_startupDelay);
-  EEPROM.commit();
-  Serial.println("Calibration saved: ms_per_g=" + String(g_msPerGram, 4) + " startup_delay_ms=" + String(g_startupDelay));
+// Returns the true dispensed grams after snapping to nearest compartment.
+// Always use this for display — never show raw manualPortionGrams directly.
+float actualPortionGrams(float targetGrams) {
+  if (targetGrams <= 0.0f) return 0.0f;
+  int comps = max(1, (int)((targetGrams / g_gramsPerComp) + 0.5f));
+  return (float)comps * g_gramsPerComp;
 }
 
 /**
- * Load calibration values from EEPROM, with sane defaults if uninitialized
+ * Persist wheel calibration values to EEPROM
+ */
+void saveCalibration(float gramsPerComp, unsigned long msPerComp) {
+  g_gramsPerComp = gramsPerComp;
+  g_msPerComp    = msPerComp;
+  EEPROM.put(MS_PER_GRAM_ADDR,   g_msPerComp);
+  EEPROM.put(STARTUP_DELAY_ADDR, g_gramsPerComp);
+  EEPROM.write(CALIB_FLAG_ADDR, 0xCC);
+  EEPROM.commit();
+  Serial.println("Calibration saved: grams/comp=" + String(g_gramsPerComp, 2) + "  ms/comp=" + String(g_msPerComp));
+}
+
+/**
+ * Load wheel calibration values from EEPROM, with sane defaults if uninitialized
  */
 void loadCalibration() {
-  float ms;
-  unsigned long sd;
+  unsigned long ms;
+  float gpc;
   byte flag = EEPROM.read(CALIB_FLAG_ADDR);
-  EEPROM.get(MS_PER_GRAM_ADDR, ms);
-  EEPROM.get(STARTUP_DELAY_ADDR, sd);
-  if (flag != 0xCC) {
-    g_msPerGram = MS_PER_GRAM_CALIBRATED;
-    g_startupDelay = STARTUP_DELAY_MS;
-    EEPROM.put(MS_PER_GRAM_ADDR, g_msPerGram);
-    EEPROM.put(STARTUP_DELAY_ADDR, g_startupDelay);
-    EEPROM.write(CALIB_FLAG_ADDR, 0xCC);
-    EEPROM.commit();
-    Serial.println("Calibration initialized with defaults and saved to EEPROM");
+  EEPROM.get(MS_PER_GRAM_ADDR,   ms);
+  EEPROM.get(STARTUP_DELAY_ADDR, gpc);
+  if (flag != 0xCC || ms < 200 || ms > 5000 || isnan(gpc) || gpc < 1.0f || gpc > 100.0f) {
+    g_msPerComp    = MS_PER_COMP_DEFAULT;
+    g_gramsPerComp = GRAMS_PER_COMP_DEFAULT;
+    saveCalibration(g_gramsPerComp, g_msPerComp);
+    Serial.println("Calibration reset to defaults");
     return;
   }
-  if (isnan(ms) || ms < 10.0f || ms > 200.0f || sd > 1000) {
-    Serial.println("Calibration values unreasonable, resetting to defaults");
-    saveCalibration(MS_PER_GRAM_CALIBRATED, STARTUP_DELAY_MS);
-  } else {
-    g_msPerGram = ms;
-    g_startupDelay = sd;
-    Serial.println("Calibration loaded: ms_per_g=" + String(g_msPerGram, 4) + " startup_delay_ms=" + String(g_startupDelay));
-  }
+  g_msPerComp    = ms;
+  g_gramsPerComp = gpc;
+  Serial.println("Calibration loaded: grams/comp=" + String(g_gramsPerComp, 2) + "  ms/comp=" + String(g_msPerComp));
 }
 
 /**
@@ -2035,29 +2058,42 @@ void handleCalibrationCommands() {
       if (line.length() == 0) return;
       line.toUpperCase();
       if (line.startsWith("CAL HELP")) {
-        Serial.println("CAL Commands:");
-        Serial.println("  CAL START <grams>   - Start calibration feed for given grams");
-        Serial.println("  CAL RESULT <grams>  - Record actual grams; suggests ms_per_g");
-        Serial.println("  CAL SET <ms_per_g>  - Set ms_per_g and save");
-        Serial.println("  CAL STATUS          - Show calibration and sample durations");
+        Serial.println("=== WHEEL CAL COMMANDS ===");
+        Serial.println("  CAL STATUS          - Show current calibration + portion table");
+        Serial.println("  CAL FILL <g>        - Set grams per compartment");
+        Serial.println("                        Measure: fill all 8, weigh total, divide by 8");
+        Serial.println("  CAL COMP <ms>       - Set ms per compartment (one 45deg rotation)");
+        Serial.println("  CAL START           - Spin 1 compartment for timing check");
+        Serial.println("  CAL RESULT <g>      - Record actual grams from 1 compartment");
+        Serial.println("  CAL SPEED <us>      - Set servo pulse width (1400..1700 µs)");
+        Serial.println("  CAL RESET           - Reset all calibration to defaults");
+        Serial.println("==========================");
         return;
       }
       if (line.startsWith("CAL STATUS")) {
-        Serial.println("Calibration Status:");
-        Serial.println("  ms_per_g=" + String(g_msPerGram, 4) + " startup_delay_ms=" + String(g_startupDelay));
-        Serial.println("  feed_pulse_us=" + String(g_feedPulse));
-        for (int g = 5; g <= 500; g += 5) {
-          unsigned long d = calculateFeedingDuration((float)g);
-          Serial.println("  " + String(g) + "g -> " + String(d) + " ms");
+        Serial.println("=== WHEEL CALIBRATION STATUS ===");
+        Serial.println("  grams/comp = " + String(g_gramsPerComp, 2) + "g");
+        Serial.println("  ms/comp    = " + String(g_msPerComp) + "ms");
+        Serial.println("  feed pulse = " + String(g_feedPulse) + " µs");
+        Serial.println("  Portion table:");
+        for (int c = 1; c <= WHEEL_COMPARTMENTS; c++) {
+          unsigned long spinMs = c * g_msPerComp;
+          unsigned long totalMs = spinMs + POST_COMP_SETTLE_MS;
+          Serial.println("  " + String(c) + " comp → " 
+            + String((float)c * g_gramsPerComp, 1) + "g  " 
+            + String(spinMs) + "ms + " 
+            + String(POST_COMP_SETTLE_MS) + "ms settle = " 
+            + String(totalMs) + "ms total");
         }
+        Serial.println("================================");
         return;
       }
       if (line == "PORTION" || line == "PORTION STATUS") {
         Serial.println("\n=== MANUAL PORTION STATUS ===");
         Serial.print("Current portion: "); Serial.print(manualPortionGrams); Serial.println("g");
         Serial.print("Calculated duration: "); Serial.print(manualFeedDurationMs); Serial.println("ms");
-        Serial.print("Startup delay: "); Serial.print(g_startupDelay); Serial.println("ms");
-        Serial.print("MS per gram: "); Serial.println(g_msPerGram);
+        Serial.print("grams/comp: "); Serial.println(g_gramsPerComp, 2);
+        Serial.print("ms/comp: "); Serial.println(g_msPerComp);
         Serial.print("Expected duration: "); Serial.print(calculateFeedingDuration(manualPortionGrams)); Serial.println("ms");
         if (manualFeedDurationMs != calculateFeedingDuration(manualPortionGrams)) {
           Serial.println("WARNING: Stored duration doesn't match calculation!");
@@ -2077,23 +2113,49 @@ void handleCalibrationCommands() {
         motorController.testForwardMotion(2000);
         return;
       }
-  if (line.startsWith("CAL SET")) {
-    String rest = line.substring(8);  // Skip past "CAL SET "
-    rest.trim();
-    float val = rest.toFloat();
-    if (val > 0.0f && val < 500.0f) {
-      saveCalibration(val, g_startupDelay);
-    } else {
-      Serial.println("Invalid ms_per_g");
-    }
-    return;
-  }
-  if (line.startsWith("CAL RESET")) {
-    saveCalibration(MS_PER_GRAM_CALIBRATED, STARTUP_DELAY_MS);
-    g_feedPulse = SERVO_FEED_SPEED;
-    Serial.println("Calibration reset to defaults and feed pulse set to " + String(g_feedPulse) + " µs");
-    return;
-  }
+      if (line.startsWith("CAL COMP")) {
+        // Usage: CAL COMP 750   → sets ms per compartment
+        String rest = line.substring(8); rest.trim();
+        unsigned long ms = (unsigned long)rest.toInt();
+        if (ms >= 200 && ms <= 5000) {
+          saveCalibration(g_gramsPerComp, ms);
+          Serial.println("ms/comp set to " + String(ms));
+          manualPortionGrams = actualPortionGrams(manualPortionGrams);
+          manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
+          Serial.println("manualFeedDurationMs updated to " + String(manualFeedDurationMs) + "ms");
+        } else {
+          Serial.println("Invalid value — use 200..5000 ms");
+        }
+        return;
+      }
+      if (line.startsWith("CAL FILL")) {
+        // Usage: CAL FILL 10.5  → sets grams per compartment
+        String rest = line.substring(8); rest.trim();
+        float gpc = rest.toFloat();
+        if (gpc > 1.0f && gpc < 100.0f) {
+          saveCalibration(gpc, g_msPerComp);
+          Serial.println("grams/comp set to " + String(gpc, 2));
+          manualPortionGrams = actualPortionGrams(manualPortionGrams);
+          manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
+          Serial.println("manualPortionGrams snapped to " + String(manualPortionGrams, 1) + "g");
+          Serial.println("manualFeedDurationMs updated to " + String(manualFeedDurationMs) + "ms");
+        } else {
+          Serial.println("Invalid value — use 1..100 g");
+        }
+        return;
+      }
+      if (line.startsWith("CAL RESET")) {
+        saveCalibration(GRAMS_PER_COMP_DEFAULT, MS_PER_COMP_DEFAULT);
+        g_feedPulse = SERVO_FEED_SPEED;
+        manualPortionGrams = actualPortionGrams(manualPortionGrams);
+        manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
+        Serial.println("Calibration reset to defaults");
+        Serial.println("  grams/comp = " + String(GRAMS_PER_COMP_DEFAULT, 2));
+        Serial.println("  ms/comp    = " + String(MS_PER_COMP_DEFAULT));
+        Serial.println("  manualPortionGrams snapped to " + String(manualPortionGrams, 1) + "g");
+        Serial.println("  manualFeedDurationMs = " + String(manualFeedDurationMs) + "ms");
+        return;
+      }
       if (line.startsWith("CAL SPEED")) {
         String rest = line.substring(10);  // Skip past "CAL SPEED "
         rest.trim();
@@ -2107,14 +2169,12 @@ void handleCalibrationCommands() {
         return;
       }
       if (line.startsWith("CAL START")) {
-        String rest = line.substring(10);  // Skip past "CAL START "
-        rest.trim();
-        calibrationTestGrams = rest.toFloat();
-        calibrationLastDuration = calculateFeedingDuration(calibrationTestGrams);
+        Serial.println("Spinning 1 compartment for timing verification...");
+        calibrationLastDuration = g_msPerComp;
         calibrationStartTime = millis();
         calibrationMode = true;
-        Serial.println("Calibration START: grams=" + String(calibrationTestGrams) + " duration=" + String(calibrationLastDuration) + " ms");
-        if (!motorController.isFeedingInProgress()) motorController.startCalibrationFeed(calibrationLastDuration);
+        if (!motorController.isFeedingInProgress())
+          motorController.startCalibrationFeed(g_msPerComp);
         return;
       }
       if (line.startsWith("CAL RESULT")) {
@@ -2122,13 +2182,10 @@ void handleCalibrationCommands() {
         rest.trim();
         float actual = rest.toFloat();
         if (actual > 0.0f) {
-          float suggested = (float)(calibrationLastDuration > g_startupDelay ? (calibrationLastDuration - g_startupDelay) : 0UL) / actual;
-          float errorPct = calibrationTestGrams > 0.0f ? ((actual - calibrationTestGrams) / calibrationTestGrams) * 100.0f : 0.0f;
-          Serial.println("Calibration RESULT: actual=" + String(actual, 3) + "g error=" + String(errorPct, 2) + "%");
-          saveCalibration(suggested, g_startupDelay);
-          Serial.println("Applied ms_per_g=" + String(suggested, 4));
+          saveCalibration(actual, g_msPerComp);
+          Serial.println("grams/comp updated to " + String(actual, 2) + "g");
         } else {
-          Serial.println("Invalid actual grams");
+          Serial.println("Invalid grams");
         }
         calibrationMode = false;
         return;
@@ -2164,6 +2221,9 @@ void executeScheduledFeeding(uint32_t scheduleId, float portionGrams) {
     return;
   }
   activeFeedPortionGrams = portionGrams;
+  Serial.println("Scheduled feed: " + String(actualPortionGrams(portionGrams), 1)
+    + "g (" + String(max(1,(int)((portionGrams / g_gramsPerComp) + 0.5f)))
+    + " comp) " + String(feedingDuration) + "ms");
   motorController.startFeedingWithAntiClog(feedingDuration);
   ledController.showFeeding();  // Blue LED during feeding
   
@@ -2275,9 +2335,12 @@ void handleManualFeeding() {
     // CRITICAL FIX: Portion wheel → single continuous feed only
     // Replaced reverse-clear/chunked logic with simple anti-clog feed
     activeFeedPortionGrams = manualPortionGrams;
+    Serial.println("Manual feed: " + String(actualPortionGrams(manualPortionGrams), 1)
+      + "g (" + String(max(1,(int)((manualPortionGrams / g_gramsPerComp) + 0.5f)))
+      + " comp) " + String(manualFeedDurationMs) + "ms");
     motorController.startFeedingWithAntiClog(manualFeedDurationMs);
     manualLogPending = true;
-    manualLogPortion = (int)manualPortionGrams;
+    manualLogPortion = (int)actualPortionGrams(manualPortionGrams);
     dailyFeeds++;
     lastFeedIso = nowUtcIso();
     return;
@@ -2340,11 +2403,14 @@ void handleManualFeeding() {
       }
     // CRITICAL FIX: Portion wheel → single continuous feed only
     activeFeedPortionGrams = manualPortionGrams;
-    motorController.startFeedingWithAntiClog(manualFeedDurationMs);
+      Serial.println("Manual feed: " + String(actualPortionGrams(manualPortionGrams), 1)
+        + "g (" + String(max(1,(int)((manualPortionGrams / g_gramsPerComp) + 0.5f)))
+        + " comp) " + String(manualFeedDurationMs) + "ms");
+      motorController.startFeedingWithAntiClog(manualFeedDurationMs);
     manualSuppressUntil = millis() + 800;
     armed = false;
     manualLogPending = true;
-    manualLogPortion = (int)manualPortionGrams;
+      manualLogPortion = (int)actualPortionGrams(manualPortionGrams);
     dailyFeeds++;
     lastFeedIso = nowUtcIso();
   }
@@ -2364,16 +2430,23 @@ void handlePortionAdjustButtons() {
     addPressed = true;
     lastAddPress = millis();
     manualSuppressUntil = millis() + 800;
-    manualPortionGrams += PORTION_STEP_GRAMS;
+    // Step up by exactly one compartment
+    manualPortionGrams += g_gramsPerComp;
     if (manualPortionGrams > MANUAL_PORTION_MAX_GRAMS) manualPortionGrams = MANUAL_PORTION_MAX_GRAMS;
+    // Snap to clean compartment multiple
+    manualPortionGrams = actualPortionGrams(manualPortionGrams);
     manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
     Serial.println("\n╔═══════════════════════════╗");
     Serial.println("║   PORTION INCREASED      ║");
     Serial.println("╚═══════════════════════════╝");
-    Serial.print("Portion: "); Serial.print(manualPortionGrams); Serial.println("g");
-    Serial.print("Duration: "); Serial.print(manualFeedDurationMs); Serial.println("ms");
-    Serial.print("Formula: "); Serial.print(g_startupDelay); Serial.print("ms + (");
-    Serial.print(manualPortionGrams); Serial.print("g × "); Serial.print(g_msPerGram); Serial.println("ms/g)");
+    Serial.print("Portion target: "); Serial.print(manualPortionGrams, 1); Serial.println("g");
+    Serial.print("Actual output:  "); Serial.print(actualPortionGrams(manualPortionGrams), 1); Serial.println("g");
+    Serial.print("Compartments:   "); Serial.println(max(1,(int)((manualPortionGrams / g_gramsPerComp) + 0.5f)));
+    Serial.print("Duration:       "); Serial.print(manualFeedDurationMs); Serial.println("ms");
+    int compsInc = max(1, (int)((manualPortionGrams / g_gramsPerComp) + 0.5f));
+    Serial.print("Wheel: "); Serial.print(compsInc); Serial.print(" comp → ");
+    Serial.print((float)compsInc * g_gramsPerComp, 1); Serial.print("g  ");
+    Serial.print(compsInc * (unsigned long)g_msPerComp); Serial.println("ms");
     Serial.println();
     ledController.startFeedbackBlinkBlue(3, 80);
   } else if (!addStatePressed && addPressed) {
@@ -2384,16 +2457,22 @@ void handlePortionAdjustButtons() {
     reducePressed = true;
     lastReducePress = millis();
     manualSuppressUntil = millis() + 800;
-    manualPortionGrams -= PORTION_STEP_GRAMS;
-    if (manualPortionGrams < MANUAL_PORTION_MIN_GRAMS) manualPortionGrams = MANUAL_PORTION_MIN_GRAMS;
+    float effectiveMin = max(MANUAL_PORTION_MIN_GRAMS, g_gramsPerComp);
+    manualPortionGrams -= g_gramsPerComp;
+    if (manualPortionGrams < effectiveMin) manualPortionGrams = effectiveMin;
+    manualPortionGrams = actualPortionGrams(manualPortionGrams);
     manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
     Serial.println("\n╔═══════════════════════════╗");
     Serial.println("║   PORTION DECREASED      ║");
     Serial.println("╚═══════════════════════════╝");
-    Serial.print("Portion: "); Serial.print(manualPortionGrams); Serial.println("g");
-    Serial.print("Duration: "); Serial.print(manualFeedDurationMs); Serial.println("ms");
-    Serial.print("Formula: "); Serial.print(g_startupDelay); Serial.print("ms + (");
-    Serial.print(manualPortionGrams); Serial.print("g × "); Serial.print(g_msPerGram); Serial.println("ms/g)");
+    Serial.print("Portion target: "); Serial.print(manualPortionGrams, 1); Serial.println("g");
+    Serial.print("Actual output:  "); Serial.print(actualPortionGrams(manualPortionGrams), 1); Serial.println("g");
+    Serial.print("Compartments:   "); Serial.println(max(1,(int)((manualPortionGrams / g_gramsPerComp) + 0.5f)));
+    Serial.print("Duration:       "); Serial.print(manualFeedDurationMs); Serial.println("ms");
+    int compsDec = max(1, (int)((manualPortionGrams / g_gramsPerComp) + 0.5f));
+    Serial.print("Wheel: "); Serial.print(compsDec); Serial.print(" comp → ");
+    Serial.print((float)compsDec * g_gramsPerComp, 1); Serial.print("g  ");
+    Serial.print(compsDec * (unsigned long)g_msPerComp); Serial.println("ms");
     Serial.println();
     ledController.startFeedbackBlinkRed(3, 80);
   } else if (!reduceStatePressed && reducePressed) {
@@ -2494,6 +2573,9 @@ void executeRemoteFeeding(uint32_t commandId, float portionGrams) {
   if (lastFeedCompletionTime > 0 && (millis() - lastFeedCompletionTime) < COOLDOWN_PERIOD_MS) { httpClient.sendAcknowledge(commandId, "cooldown"); return; }
   unsigned long feedingDuration = calculateFeedingDuration(portionGrams);
   activeFeedPortionGrams = portionGrams;
+  Serial.println("Remote feed: " + String(actualPortionGrams(portionGrams), 1)
+    + "g (" + String(max(1,(int)((portionGrams / g_gramsPerComp) + 0.5f)))
+    + " comp) " + String(feedingDuration) + "ms");
   motorController.startFeedingWithAntiClog(feedingDuration);
   ledController.showFeeding();
   

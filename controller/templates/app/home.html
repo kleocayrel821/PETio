@@ -53,23 +53,24 @@
                 <div>
                     <label class="subsection-title flex items-center gap-2">
                         <i class="fas fa-balance-scale text-teal-400"></i>
-                        Portion Size: <span id="portionDisplay" class="text-[#1f456e] font-bold">25 grams</span>
+                        Portion Size: <span id="portionDisplay" class="text-[#1f456e] font-bold">30 grams</span>
                     </label>
                     <div class="range-wrap">
                         <input 
                             type="range" 
                             id="portionSlider" 
                             class="range-modern w-full" 
-                            min="5" 
-                            max="100" 
-                            value="25"
+                            min="30" 
+                            max="240" 
+                            step="30"
+                            value="30"
                             oninput="updatePortionDisplay(this.value)"
                         >
                         <span id="portionBubble" class="range-bubble">25g</span>
                         <div class="range-ticks">
-                            <span>5g</span>
-                            <span>50g</span>
-                            <span>100g</span>
+                            <span>30g</span>
+                            <span>120g</span>
+                            <span>240g</span>
                         </div>
                     </div>
                 </div>
@@ -123,9 +124,10 @@
                             type="number" 
                             id="scheduleAmount" 
                             class="form-control-enhanced w-full"
-                            min="5" 
-                            max="100" 
-                            value="25"
+                            min="30" 
+                            max="240" 
+                            step="30"
+                            value="30"
                             required
                         >
                     </div>
@@ -449,16 +451,25 @@ async function parseJsonSafe(response) {
 }
 // Portion size display update
 function updatePortionDisplay(value) {
-    document.getElementById('portionDisplay').textContent = `${value} grams`;
+    // Snap to nearest 30g multiple — wheel only dispenses whole compartments
+    const COMP = 30;
+    const MIN  = 30;
+    const MAX  = 240;
+    let snapped = Math.round(parseFloat(value) / COMP) * COMP;
+    snapped = Math.max(MIN, Math.min(MAX, snapped));
+
+    document.getElementById('portionDisplay').textContent = `${snapped} grams`;
+
     const slider = document.getElementById('portionSlider');
     const bubble = document.getElementById('portionBubble');
-    const min = parseFloat(slider.min);
-    const max = parseFloat(slider.max);
-    const val = parseFloat(value);
-    const pct = ((val - min) / (max - min)) * 100;
-    slider.style.background = `linear-gradient(to right, #1f456e 0%, #1f456e ${pct}%, var(--bg-secondary) ${pct}%, var(--bg-secondary) 100%)`;
+    const pct = ((snapped - MIN) / (MAX - MIN)) * 100;
+
+    slider.style.background = 
+        `linear-gradient(to right, #1f456e 0%, #1f456e ${pct}%, ` + 
+        `var(--bg-secondary) ${pct}%, var(--bg-secondary) 100%)`;
+
     if (bubble) {
-        bubble.textContent = `${value}g`;
+        bubble.textContent = `${snapped}g`;
         bubble.style.left = `calc(${pct}% - 12px)`;
     }
 }
@@ -522,9 +533,20 @@ document.getElementById('quickScheduleForm').addEventListener('submit', async fu
         return;
     }
     
+    const rawPortion = parseInt(
+        formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value 
+    );
+    // Snap to nearest 30g multiple — wheel only dispenses whole compartments
+    const snappedPortion = Math.max(30, Math.min(240, Math.round(rawPortion / 30) * 30));
+
+    if (!document.getElementById('scheduleTime').value) {
+        showToast('Please set a feeding time', 'warning');
+        return;
+    }
+
     const scheduleData = {
         time: formData.get('scheduleTime') || document.getElementById('scheduleTime').value,
-        portion_size: parseInt(formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value),
+        portion_size: snappedPortion,
         days_of_week: selectedDays,
         enabled: true
     };

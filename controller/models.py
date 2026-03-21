@@ -86,7 +86,7 @@ class PendingCommand(models.Model):
 class PetProfile(models.Model):
     name = models.CharField(max_length=100)
     weight = models.FloatField()
-    portion_size = models.FloatField(validators=[MinValueValidator(1), MaxValueValidator(100)])
+    portion_size = models.FloatField(validators=[MinValueValidator(30), MaxValueValidator(240)])
     
     def __str__(self):
         return f"{self.name} - {self.weight}kg - {self.portion_size}g"
@@ -107,8 +107,8 @@ class FeedingSchedule(models.Model):
     time = models.TimeField()
     # Portion stored in grams; enforce safe range 1-500g with default 25g.
     portion_size = models.FloatField(
-        default=25,
-        validators=[MinValueValidator(1), MaxValueValidator(100)]
+        default=30,
+        validators=[MinValueValidator(30), MaxValueValidator(240)]
     )
     enabled = models.BooleanField(default=True)
     # Optional user label, capped at 20 characters (per requirement)

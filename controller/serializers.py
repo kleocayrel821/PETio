@@ -77,13 +77,27 @@ class PendingCommandSerializer(serializers.ModelSerializer):
 
 class FeedingScheduleSerializer(serializers.ModelSerializer):
     def validate_portion_size(self, value):
+        COMP_SIZE   = 30    # grams per compartment (calibrated)
+        MAX_COMPS   = 8     # wheel has 8 compartments
+        PORTION_MIN = COMP_SIZE
+        PORTION_MAX = COMP_SIZE * MAX_COMPS  # 240g
+
         try:
             v = float(value)
         except Exception:
             raise serializers.ValidationError("Invalid portion size.")
-        if v < 1 or v > 100:
-            raise serializers.ValidationError("Portion must be between 1 and 100 grams.")
-        return v
+
+        if v < PORTION_MIN or v > PORTION_MAX:
+            raise serializers.ValidationError(
+                f"Portion must be between {PORTION_MIN}g and {PORTION_MAX}g "
+                f"(multiples of {COMP_SIZE}g: 30, 60, 90 ... 240)."
+            )
+
+        # Snap to nearest whole compartment multiple
+        import math
+        snapped = round(v / COMP_SIZE) * COMP_SIZE
+        snapped = max(PORTION_MIN, min(PORTION_MAX, snapped))
+        return float(snapped)
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         # Keep output time in 24-hour format for stability (HH:MM:SS)
@@ -152,10 +166,18 @@ class ControllerSettingsSerializer(serializers.ModelSerializer):
     def validate_portion_size(self, value):
         if value is None:
             return value
-        v = float(value)
-        if v < 1 or v > 100:
-            raise serializers.ValidationError("Portion must be between 1 and 100 grams.")
-        return v
+        try:
+            v = float(value)
+        except Exception:
+            raise serializers.ValidationError("Invalid portion size.")
+        if v < 30 or v > 240:
+            raise serializers.ValidationError(
+                "Portion must be between 30g and 240g (multiples of 30g)."
+            )
+        # Snap to nearest compartment multiple
+        snapped = round(v / 30) * 30
+        snapped = max(30, min(240, snapped))
+        return float(snapped)
 
 
 class HardwareSerializer(serializers.ModelSerializer):
