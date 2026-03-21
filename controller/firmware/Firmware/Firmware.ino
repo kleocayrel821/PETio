@@ -1645,7 +1645,11 @@ after_long_press_block:
   if (activeFeedPortionGrams > 0.0f && !motorController.isFeedingInProgress()) {
     activeFeedPortionGrams = 0.0f;
   }
+feature/controller
   float displayPortion = activeFeedPortionGrams > 0.0f ? activeFeedPortionGrams : actualPortionGrams(manualPortionGrams);
+
+  float displayPortion = activeFeedPortionGrams > 0.0f ? activeFeedPortionGrams : manualPortionGrams;
+ main
   oledDisplay.update(network.isConnected(), network.getSSID(), displayPortion, motorController.isDispensePhaseActive());
   if (manualLogPending && !motorController.isFeedingInProgress()) {
     if (network.isConnected()) {
