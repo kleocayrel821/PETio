@@ -152,8 +152,6 @@ extern unsigned long lastFeedCompletionTime;
   #define SERVO_ANTI_CLOG_REVERSE 1400
 #endif
 
-#define ANTI_JAM_INTERVAL_MS 2000
-#define ANTI_JAM_REVERSE_MS 200
 #define REVERSE_CLEAR_FORWARD_MS 800
 #define REVERSE_CLEAR_REVERSE_MS 300
 #define REVERSE_CLEAR_PAUSE_MS 200
@@ -259,10 +257,9 @@ unsigned int g_feedPulse = SERVO_FEED_SPEED;
 #define WHEEL_COMPARTMENTS       8
 #define MS_PER_COMP_DEFAULT      800UL
 #define GRAMS_PER_COMP_DEFAULT   10.0f
-// Extra time after last compartment rotates to ensure food fully
-// clears the exit aperture before the servo stops.
-// Fixes inconsistent 2-compartment dispense on short feeds.
-#define POST_COMP_SETTLE_MS      200UL
+// POST_COMP_SETTLE_MS removed — servo runs during settle time causing
+// over-dispense. With correct calibration (800ms/comp, 30g/comp) the
+// wheel stops cleanly at exactly N compartments with no bonus needed.
 
 // Calibrated duration API (wheel-based)
 unsigned long calculateFeedingDuration(float targetGrams);
@@ -627,14 +624,13 @@ public:
 // Inlined motorcontrol.h/.cpp
 class MotorController {
 private:
-  Servo feedingServo; bool servoAttached; bool feedingInProgress; unsigned long feedingStartTime; unsigned long feedingDuration; LedController* ledController; unsigned int lastPulse; unsigned int targetPulse; bool antiClogMode; bool clogDetected;
-  unsigned long lastAntiJamTs; bool antiJamActive; unsigned long antiJamStart; int retryAttempts;
+  Servo feedingServo; bool servoAttached; bool feedingInProgress; unsigned long feedingStartTime; unsigned long feedingDuration; LedController* ledController; unsigned int lastPulse; unsigned int targetPulse;
   void attachServo() { if (!servoAttached) { feedingServo.attach(SERVO_PIN); servoAttached = true; feedingServo.writeMicroseconds(SERVO_NEUTRAL); delay(100); } }
   void detachServo() { if (servoAttached) { feedingServo.detach(); servoAttached = false; Serial.println("Servo detached"); } }
   void startServo() { if (servoAttached) { lastPulse = SERVO_RAMP_START; feedingServo.writeMicroseconds(lastPulse); Serial.print("Servo started - Forward rotation ("); Serial.print(lastPulse); Serial.println(" µs)"); } }
   void stopServo() { if (servoAttached) { feedingServo.writeMicroseconds(SERVO_NEUTRAL); lastPulse = SERVO_NEUTRAL; Serial.print("Servo stopped - Neutral position ("); Serial.print(SERVO_NEUTRAL); Serial.println(" µs)"); } }
 public:
-  MotorController() : servoAttached(false), feedingInProgress(false), feedingStartTime(0), feedingDuration(0), ledController(nullptr), lastPulse(SERVO_NEUTRAL), targetPulse(SERVO_FORWARD), antiClogMode(false), clogDetected(false), lastAntiJamTs(0), antiJamActive(false), antiJamStart(0), retryAttempts(0) {}
+  MotorController() : servoAttached(false), feedingInProgress(false), feedingStartTime(0), feedingDuration(0), ledController(nullptr), lastPulse(SERVO_NEUTRAL), targetPulse(SERVO_FORWARD) {}
   void init(LedController* ledCtrl) { ledController = ledCtrl; attachServo(); }
   void waitWithLED(unsigned long duration_ms) {
     unsigned long start = millis();
@@ -644,89 +640,72 @@ public:
     }
   }
   void startFeeding(unsigned long duration_ms) {
-    if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring request"); return; }
-    Serial.print("Starting feeding for "); Serial.print(duration_ms); Serial.println(" ms");
-    antiClogMode = false;
-    feedingInProgress = true; feedingStartTime = millis(); feedingDuration = duration_ms; if (duration_ms < 2000UL) targetPulse = 1680; else targetPulse = SERVO_FORWARD; if (ledController) ledController->showFeeding(); startServo(); lastAntiJamTs = millis(); antiJamActive = false; retryAttempts = 0;
+    if (feedingInProgress) {
+      Serial.println("Feeding already in progress, ignoring request");
+      return;
+    }
+    Serial.print("Starting feeding for "); Serial.print(duration_ms); Serial.println("ms");
+    targetPulse       = g_feedPulse;
+    lastPulse         = g_feedPulse;
+    feedingInProgress = true;
+    feedingStartTime  = millis() - SERVO_RAMP_MS;
+    feedingDuration   = duration_ms + SERVO_RAMP_MS;
+    feedingServo.writeMicroseconds(g_feedPulse);
   }
   void startCalibrationFeed(unsigned long duration_ms) {
     if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring request"); return; }
     Serial.print("Starting calibration feeding for "); Serial.print(duration_ms); Serial.println(" ms");
-    antiClogMode = false;
     feedingInProgress = true; 
     feedingStartTime = millis() - SERVO_RAMP_MS; 
     feedingDuration = duration_ms + SERVO_RAMP_MS; 
     targetPulse = g_feedPulse;
     if (ledController) ledController->showFeeding(); 
     feedingServo.writeMicroseconds(targetPulse);
-    lastPulse = targetPulse; lastAntiJamTs = millis(); antiJamActive = false; retryAttempts = 0;
+    lastPulse = targetPulse;
     Serial.print("Calibration feed pulse: "); Serial.println(targetPulse);
   }
-  void stopFeeding() { if (!feedingInProgress) return; Serial.println("Stopping feeding operation"); stopServo(); feedingInProgress = false; feedingStartTime = 0; feedingDuration = 0; lastFeedCompletionTime = millis(); if (ledController) ledController->showReady(); }
+  void stopFeeding() {
+    if (!feedingInProgress) return;
+    Serial.println("Stopping feeding operation");
+
+    // Brake pulse — brief reverse counteracts inertia so the wheel
+    // stops at exactly the right position instead of coasting ~80ms.
+    // This is a STOP brake only — no food moves during it because
+    // the timed dispense is already complete.
+    feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
+    delay(100);
+    feedingServo.writeMicroseconds(SERVO_NEUTRAL);
+    lastPulse = SERVO_NEUTRAL;
+
+    feedingInProgress = false;
+    feedingStartTime = 0;
+    feedingDuration = 0;
+    lastFeedCompletionTime = millis();
+    if (ledController) ledController->showReady();
+  }
   bool isFeedingInProgress() { return feedingInProgress; }
   void update() { 
     if (feedingInProgress) { 
       unsigned long now = millis(); 
       unsigned long elapsed = now - feedingStartTime; 
-      unsigned long rampMs = antiClogMode ? SERVO_RAMP_FAST_MS : SERVO_RAMP_MS;
-      if (antiJamActive) {
-        if ((now - antiJamStart) >= ANTI_JAM_REVERSE_MS) {
-          feedingServo.writeMicroseconds(targetPulse); lastPulse = targetPulse; antiJamActive = false;
-        }
-      } else if (elapsed < rampMs) { 
+      unsigned long rampMs = SERVO_RAMP_MS;
+      if (elapsed < rampMs) { 
         unsigned int rampPulse = SERVO_RAMP_START + (unsigned int)((long)(targetPulse - SERVO_RAMP_START) * (long)elapsed / (long)rampMs); 
         if (rampPulse != lastPulse) { feedingServo.writeMicroseconds(rampPulse); lastPulse = rampPulse; } 
       } else if (lastPulse != targetPulse) { 
         feedingServo.writeMicroseconds(targetPulse); lastPulse = targetPulse; 
       } 
-      // Only apply anti-jam to feeds longer than the interval to avoid triggering on short feeds
-      if (!antiJamActive &&
-          feedingDuration > ANTI_JAM_INTERVAL_MS &&
-          (now - lastAntiJamTs) >= ANTI_JAM_INTERVAL_MS) {
-        performAntiJamPulse();
-        // Removed feedingStartTime += ANTI_JAM_REVERSE_MS; - This was causing the over-dispensing bug
-      }
-      if (!clogDetected && elapsed > (feedingDuration + 2000UL)) { 
-        clogDetected = true; Serial.println("WARNING: Possible clog detected - feeding taking too long"); 
-      }
       if (elapsed >= feedingDuration) { 
-        if (antiClogMode) { Serial.println("Feeding duration completed, starting clearing phase"); completeFeedingWithClear(); clogDetected = false; } 
-        else { Serial.println("Feeding duration completed"); stopFeeding(); } 
+        Serial.println("Feeding duration completed"); 
+        stopFeeding(); 
       } 
     } 
   }
   void emergencyStop() { Serial.println("EMERGENCY STOP activated"); stopFeeding(); detachServo(); }
   unsigned long getRemainingFeedTime() { if (!feedingInProgress) return 0; unsigned long elapsed = millis() - feedingStartTime; if (elapsed >= feedingDuration) return 0; return feedingDuration - elapsed; }
-  void startFeedingWithAntiClog(unsigned long duration_ms) {
-    if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring request"); return; }
-    Serial.print("Starting normal feeding for "); Serial.print(duration_ms); Serial.println(" ms");
-    antiClogMode = false;
-    feedingInProgress = true; 
-    feedingStartTime = millis() - SERVO_RAMP_MS; 
-    feedingDuration = duration_ms + SERVO_RAMP_MS; 
-    targetPulse = g_feedPulse;
-    if (ledController) ledController->showFeeding();
-    feedingServo.writeMicroseconds(targetPulse);
-    lastPulse = targetPulse; lastAntiJamTs = millis(); antiJamActive = false; retryAttempts = 0;
-    Serial.print("Normal feed pulse: "); Serial.println(targetPulse);
-  }
-  void runMiniAgitation() {
-    Serial.println("Mini-agitation disabled");
-  }
-  bool checkForClog() { return clogDetected; }
-  void performAntiJamPulse() {
-    Serial.print("Anti-jam pulse at "); Serial.print((float)ANTI_JAM_INTERVAL_MS / 1000.0f, 1); Serial.println("s...");
-    feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
-    antiJamActive = true;
-    antiJamStart = millis();
-    lastAntiJamTs = antiJamStart;
-  }
-  void startReverseClearFeeding(float totalGrams) {
-    if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring reverse-clear request"); return; }
-    unsigned long totalDuration = calculateFeedingDuration(totalGrams);
-    Serial.println("Reverse-clear disabled; performing single continuous feed");
-    startFeedingWithAntiClog(totalDuration);
-  }
+  // startFeedingWithAntiClog removed
+  // Anti-jam/anti-clog helpers removed
+  // Reverse-clear removed
   void testReverseMotion(unsigned long test_ms) {
     Serial.print("Testing reverse motion for "); Serial.print(test_ms); Serial.println(" ms...");
     feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
@@ -741,22 +720,8 @@ public:
     feedingServo.writeMicroseconds(SERVO_NEUTRAL);
     Serial.println("Forward test complete");
   }
-  void startChunkedFeeding(float totalGrams) {
-    if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring chunked request"); return; }
-    unsigned long totalDuration = calculateFeedingDuration(totalGrams);
-    Serial.println("Chunked feeding disabled; performing single continuous feed");
-    startFeedingWithAntiClog(totalDuration);
-  }
-  void completeFeedingWithClear() {
-    if (!feedingInProgress) return;
-    Serial.println("Phase 3: Post-dispense clearing");
-    if (servoAttached) { feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_SPEED); delay(ANTI_CLOG_POST_CLEAR_MS); }
-    stopServo(); feedingInProgress = false; feedingStartTime = 0; feedingDuration = 0; lastFeedCompletionTime = millis(); antiClogMode = false;
-    if (ledController) ledController->showReady();
-    Serial.println("╔════════════════════════════════════╗");
-    Serial.println("║   FEEDING COMPLETE                ║");
-    Serial.println("╚════════════════════════════════════╝\n");
-  }
+  // Chunked feeding removed
+  // Clearing phase removed
   void runAgitationCycle() {
     Serial.println("=== AGITATION CYCLE START (FORWARD ONLY) ===");
     for (int i = 0; i < 5; i++) {
@@ -1988,12 +1953,12 @@ time_t parseISOTimestamp(const String& isoString) {
  */
 unsigned long calculateFeedingDuration(float targetGrams) {
   if (targetGrams <= 0.0f) return 0;
+  // Round to nearest whole compartment — fractional rotations not possible
   int comps = max(1, (int)((targetGrams / g_gramsPerComp) + 0.5f));
-  // Spin time for N compartments + fixed settle so the last
-  // compartment always clears the exit aperture before stopping.
-  // POST_COMP_SETTLE_MS fixes inconsistent short-feed dispense.
-  unsigned long duration = ((unsigned long)comps * g_msPerComp)
-                           + POST_COMP_SETTLE_MS;
+  // Servo runs exactly N compartment rotations — no settle bonus.
+  // The settle bonus was causing over-dispense because the servo
+  // keeps spinning during the bonus time, pushing the next compartment.
+  unsigned long duration = (unsigned long)comps * g_msPerComp;
   duration = min(duration, MAX_DISPENSE_TIME_MS);
   return duration;
 }
@@ -2077,13 +2042,10 @@ void handleCalibrationCommands() {
         Serial.println("  feed pulse = " + String(g_feedPulse) + " µs");
         Serial.println("  Portion table:");
         for (int c = 1; c <= WHEEL_COMPARTMENTS; c++) {
-          unsigned long spinMs = c * g_msPerComp;
-          unsigned long totalMs = spinMs + POST_COMP_SETTLE_MS;
+          unsigned long totalMs = (unsigned long)c * g_msPerComp;
           Serial.println("  " + String(c) + " comp → " 
             + String((float)c * g_gramsPerComp, 1) + "g  " 
-            + String(spinMs) + "ms + " 
-            + String(POST_COMP_SETTLE_MS) + "ms settle = " 
-            + String(totalMs) + "ms total");
+            + String(totalMs) + "ms");
         }
         Serial.println("================================");
         return;
@@ -2224,7 +2186,7 @@ void executeScheduledFeeding(uint32_t scheduleId, float portionGrams) {
   Serial.println("Scheduled feed: " + String(actualPortionGrams(portionGrams), 1)
     + "g (" + String(max(1,(int)((portionGrams / g_gramsPerComp) + 0.5f)))
     + " comp) " + String(feedingDuration) + "ms");
-  motorController.startFeedingWithAntiClog(feedingDuration);
+  motorController.startFeeding(feedingDuration);
   ledController.showFeeding();  // Blue LED during feeding
   
   // Wait for feeding to complete
@@ -2338,7 +2300,7 @@ void handleManualFeeding() {
     Serial.println("Manual feed: " + String(actualPortionGrams(manualPortionGrams), 1)
       + "g (" + String(max(1,(int)((manualPortionGrams / g_gramsPerComp) + 0.5f)))
       + " comp) " + String(manualFeedDurationMs) + "ms");
-    motorController.startFeedingWithAntiClog(manualFeedDurationMs);
+    motorController.startFeeding(manualFeedDurationMs);
     manualLogPending = true;
     manualLogPortion = (int)actualPortionGrams(manualPortionGrams);
     dailyFeeds++;
@@ -2406,7 +2368,7 @@ void handleManualFeeding() {
       Serial.println("Manual feed: " + String(actualPortionGrams(manualPortionGrams), 1)
         + "g (" + String(max(1,(int)((manualPortionGrams / g_gramsPerComp) + 0.5f)))
         + " comp) " + String(manualFeedDurationMs) + "ms");
-      motorController.startFeedingWithAntiClog(manualFeedDurationMs);
+      motorController.startFeeding(manualFeedDurationMs);
     manualSuppressUntil = millis() + 800;
     armed = false;
     manualLogPending = true;
@@ -2576,7 +2538,7 @@ void executeRemoteFeeding(uint32_t commandId, float portionGrams) {
   Serial.println("Remote feed: " + String(actualPortionGrams(portionGrams), 1)
     + "g (" + String(max(1,(int)((portionGrams / g_gramsPerComp) + 0.5f)))
     + " comp) " + String(feedingDuration) + "ms");
-  motorController.startFeedingWithAntiClog(feedingDuration);
+  motorController.startFeeding(feedingDuration);
   ledController.showFeeding();
   
   while (motorController.isFeedingInProgress()) {
