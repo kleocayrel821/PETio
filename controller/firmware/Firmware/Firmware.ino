@@ -100,7 +100,7 @@ extern unsigned long lastFeedCompletionTime;
 
 // EEPROM Configuration
 #define EEPROM_SIZE 512
-#define LAST_SCHEDULE_ID_ADDR 65
+#define LAST_SCHEDULE_ID_ADDR 60
 #define CALIB_FLAG_ADDR 68
 #define MS_PER_GRAM_ADDR 69
 #define STARTUP_DELAY_ADDR 73
@@ -243,7 +243,7 @@ unsigned int g_feedPulse = SERVO_FEED_SPEED;
 #define MAX_DISPENSE_TIME_MS 30000UL
 
 // EEPROM Addresses for Schedule Tracking
-#define LAST_SCHEDULE_IxD_ADDR 65
+#define LAST_SCHEDULE_IxD_ADDR 60
 #define SCHEDULE_ID_SIZE 4
 
 // EEPROM Addresses for Calibration
@@ -1610,11 +1610,7 @@ after_long_press_block:
   if (activeFeedPortionGrams > 0.0f && !motorController.isFeedingInProgress()) {
     activeFeedPortionGrams = 0.0f;
   }
-feature/controller
   float displayPortion = activeFeedPortionGrams > 0.0f ? activeFeedPortionGrams : actualPortionGrams(manualPortionGrams);
-
-  float displayPortion = activeFeedPortionGrams > 0.0f ? activeFeedPortionGrams : manualPortionGrams;
- main
   oledDisplay.update(network.isConnected(), network.getSSID(), displayPortion, motorController.isDispensePhaseActive());
   if (manualLogPending && !motorController.isFeedingInProgress()) {
     if (network.isConnected()) {
