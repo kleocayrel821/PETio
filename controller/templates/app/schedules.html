@@ -449,7 +449,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 3000;
+    z-index: 1000;
     opacity: 0;
     transition: opacity var(--transition-normal);
     pointer-events: none; /* prevent overlay from blocking clicks when not shown */
@@ -527,16 +527,6 @@
 .action-btn-edit:hover {
     background: rgba(31, 69, 110, 0.25);
     transform: scale(1.05);
-}
-
-/* Hide nav UI below modal and improve responsiveness when modal is open */
-body.controller-modal-open .mobile-bottom-nav,
-body.controller-modal-open .top-navbar .nav-center { display: none !important; }
-
-/* Responsive Days grid inside edit modal */
-#editDaysContainer { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-@media (max-width: 768px) {
-  #editDaysContainer { grid-template-columns: repeat(4, 1fr); }
 }
 
 /* Ensure icon color for list and refresh in header */
@@ -928,7 +918,6 @@ function editSchedule(scheduleId) {
     if (!schedule) return;
 
     editingScheduleId = scheduleId;
-    try { document.body.classList.add('controller-modal-open'); } catch(_) {}
     document.getElementById('editScheduleId').value = scheduleId;
     // Ensure the time input receives HH:MM (strip seconds if present)
     document.getElementById('editScheduleTime').value = timeToInputValue(schedule.time);
@@ -976,7 +965,6 @@ function closeEditModal() {
     setTimeout(() => modal.classList.add('hidden'), 300);
     editingScheduleId = null;
     teardownModalA11y(modal);
-    try { document.body.classList.remove('controller-modal-open'); } catch(_) {}
 }
 
 // Update schedule
