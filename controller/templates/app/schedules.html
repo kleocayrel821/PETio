@@ -389,12 +389,13 @@
 }
 /* Column widths */
 .col-toggle { width: 56px; }
-.col-time { width: 18%; }
-.col-days { width: 16%; }
-.col-label { width: 32%; }
-.col-amount { width: 14%; }
-.col-status { width: 14%; }
 .col-actions { width: 88px; }
+/* Distribute remaining space equally among the 5 content columns */
+.col-time,
+.col-days,
+.col-label,
+.col-amount,
+.col-status { width: calc((100% - 144px) / 5); }
 
 /* Center pills and toggle for perfect vertical alignment */
 .days-pills { justify-content: center; }
