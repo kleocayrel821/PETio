@@ -126,6 +126,20 @@
                 Active Schedules
             </span>
             <div class="flex items-center gap-4">
+                <!-- Sort By -->
+                <label class="flex items-center gap-2 text-sm">
+                    <span class="text-gray-400">Sort</span>
+                    <select id="scheduleSort" class="select select-bordered select-sm">
+                        <option value="-id" selected>Newest</option>
+                        <option value="id">Oldest</option>
+                        <option value="time">Time: Earliest</option>
+                        <option value="-time">Time: Latest</option>
+                        <option value="portion_size">Amount: Low</option>
+                        <option value="-portion_size">Amount: High</option>
+                        <option value="-enabled">Status: Active first</option>
+                        <option value="enabled">Status: Disabled first</option>
+                    </select>
+                </label>
                 <!-- Filter Toggle -->
                 <label class="flex items-center gap-2 text-sm">
                     <input type="checkbox" id="showDisabledSchedules" class="checkbox-enhanced">
@@ -683,7 +697,8 @@ async function loadSchedules() {
     
     try {
         const showDisabled = document.getElementById('showDisabledSchedules')?.checked;
-        const baseUrl = '/api/schedules/?page_size=100&ordering=-id';
+        const sort = document.getElementById('scheduleSort')?.value || '-id';
+        const baseUrl = `/api/schedules/?page_size=100&ordering=${encodeURIComponent(sort)}`;
         const url = showDisabled ? baseUrl : `${baseUrl}&enabled=true`;
         const response = await fetch(url, {
             headers: { 'Accept': 'application/json' },
@@ -1191,6 +1206,10 @@ function teardownConfirmModalA11y(modal) {
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
+    const sortSel = document.getElementById('scheduleSort');
+    const showDis = document.getElementById('showDisabledSchedules');
+    if (sortSel) sortSel.addEventListener('change', () => loadSchedules());
+    if (showDis) showDis.addEventListener('change', () => loadSchedules());
     loadSchedules();
 });
 </script>
