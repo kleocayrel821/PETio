@@ -1,9 +1,9 @@
-{# Responsive, aligned action buttons: Buy Now and View Details share equal width; Message is compact #}
-<div class="card-actions mt-4 flex flex-row flex-wrap items-stretch gap-2">
+{# Responsive card action buttons: reuse across listing cards #}
+<div class="card-actions mt-4 flex flex-col sm:flex-row sm:flex-wrap items-stretch gap-2 sm:gap-3">
   {% if item.is_fixed_price and item.quantity|default:0 > 0 %}
     {% if request.user.is_authenticated and request.user.id != item.seller_id %}
     <button type="button"
-            class="btn btn-success btn-sm h-9 flex-1 min-w-[9rem] inline-flex items-center justify-center text-xs sm:text-sm whitespace-nowrap buy-now-trigger"
+            class="btn btn-success btn-sm h-9 w-full sm:flex-1 inline-flex items-center justify-center text-xs sm:text-sm whitespace-nowrap buy-now-trigger"
             data-listing-id="{{ item.pk }}"
             data-buy-url="{% url 'marketplace:api_listing_buy_now' item.pk %}"
             aria-label="Buy Now">
@@ -12,24 +12,24 @@
     </button>
     {% elif not request.user.is_authenticated %}
     <a href="{% url 'login' %}?next={% url 'marketplace:listing_detail' item.pk %}"
-       class="btn btn-success btn-sm h-9 flex-1 min-w-[9rem] inline-flex items-center justify-center text-xs sm:text-sm whitespace-nowrap"
+       class="btn btn-success btn-sm h-9 w-full sm:flex-1 inline-flex items-center justify-center text-xs sm:text-sm whitespace-nowrap"
        aria-label="Login to Buy">
       <i class="fas fa-bolt mr-1"></i>
       <span>Buy Now</span>
     </a>
     {% endif %}
   {% endif %}
-  <a href="{{ view_url }}" class="btn btn-primary view-details-btn btn-sm h-9 flex-1 min-w-[9rem] inline-flex items-center justify-center text-xs sm:text-sm whitespace-nowrap">
+  <a href="{{ view_url }}" class="btn btn-primary view-details-btn btn-sm h-9 w-full sm:flex-1 inline-flex items-center justify-center text-xs sm:text-sm whitespace-nowrap">
     <i class="fas fa-eye mr-1"></i>
     <span>View Details</span>
   </a>
   {% if request.user.is_authenticated %}
-  <a href="{{ message_url }}" class="btn btn-ghost btn-sm h-9 flex-none inline-flex items-center justify-center px-3" title="Message Seller" aria-label="Message Seller">
+  <a href="{{ message_url }}" class="btn btn-ghost btn-sm h-9 w-full sm:w-auto inline-flex items-center justify-center" title="Message Seller" aria-label="Message Seller">
     <i class="fas fa-envelope text-base align-middle"></i>
     <span class="sm:hidden ml-1">Message</span>
   </a>
   {% else %}
-  <a href="{% url 'login' %}?next={% url 'marketplace:messages' %}" class="btn btn-ghost btn-sm h-9 flex-none inline-flex items-center justify-center px-3" title="Login to message" aria-label="Login to message">
+  <a href="{% url 'login' %}?next={% url 'marketplace:messages' %}" class="btn btn-ghost btn-sm h-9 w-full sm:w-auto inline-flex items-center justify-center" title="Login to message" aria-label="Login to message">
     <i class="fas fa-envelope text-base align-middle"></i>
     <span class="sm:hidden ml-1">Message</span>
   </a>
