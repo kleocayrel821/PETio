@@ -120,14 +120,14 @@
 
     <!-- Schedules List Card -->
     <div class="enhanced-card">
-        <div class="section-title justify-between">
+        <div class="section-title schedules-header">
             <span>
                 <i class="fas fa-list text-[#1f456e]"></i>
                 Active Schedules
             </span>
-            <div class="flex items-center gap-4">
+            <div class="schedules-actions">
                 <!-- Sort By -->
-                <label class="flex items-center gap-2 text-sm">
+                <label class="flex items-center gap-2 text-sm schedules-sort">
                     <span class="text-gray-400">Sort</span>
                     <select id="scheduleSort" class="select select-bordered select-sm">
                         <option value="-id" selected>Newest</option>
@@ -141,14 +141,14 @@
                     </select>
                 </label>
                 <!-- Filter Toggle -->
-                <label class="flex items-center gap-2 text-sm">
+                <label class="flex items-center gap-2 text-sm schedules-filter">
                     <input type="checkbox" id="showDisabledSchedules" class="checkbox-enhanced">
                     <span class="text-gray-400">Show Disabled</span>
                 </label>
                 <!-- Refresh Button -->
                 <button 
                     id="refreshSchedules" 
-                    class="btn btn-enhanced btn-ghost btn-sm"
+                    class="btn btn-enhanced btn-ghost btn-sm schedules-refresh"
                     onclick="loadSchedules()"
                 >
                     <i class="fas fa-sync-alt text-[#1f456e]"></i>
@@ -436,6 +436,34 @@
   #schedulesContainer .enhanced-table th,
   #schedulesContainer .enhanced-table td { padding: 8px 8px; }
   .col-label { width: 200px; }
+}
+
+.schedules-header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    flex-wrap:wrap;
+}
+.schedules-actions {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+}
+.schedules-sort .select { min-width:160px; }
+@media (max-width: 768px){
+  .schedules-header { flex-direction: column; align-items: stretch; }
+  .schedules-actions { width:100%; justify-content: space-between; }
+  .schedules-sort { flex:1 1 200px; }
+  .schedules-sort .select { width:100%; }
+  .schedules-filter { flex:0 0 auto; }
+  .schedules-refresh { flex:0 0 auto; }
+}
+@media (max-width: 480px){
+  .schedules-actions { gap:6px; }
+  .schedules-sort { flex:1 1 100%; }
+  .schedules-sort .select { width:100%; }
 }
 
 .modal-overlay {
