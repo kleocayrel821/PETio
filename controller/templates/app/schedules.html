@@ -401,6 +401,29 @@
 .days-pills { justify-content: center; }
 .schedule-row td:first-child .schedule-toggle { margin-left: auto; margin-right: auto; }
 
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  #schedulesContainer .enhanced-table th,
+  #schedulesContainer .enhanced-table td { padding: 10px 12px; }
+}
+@media (max-width: 768px) {
+  .col-toggle { width: 48px; }
+  .col-actions { width: 72px; }
+  .col-time { width: 120px; }
+  .col-days { width: 120px; }
+  .col-label { width: 220px; }
+  .col-amount { width: 100px; }
+  .col-status { width: 120px; }
+  #schedulesContainer .enhanced-table th,
+  #schedulesContainer .enhanced-table td { padding: 8px 10px; }
+  .day-pill { padding: 0.1rem 0.4rem; font-size: 0.72rem; }
+}
+@media (max-width: 480px) {
+  #schedulesContainer .enhanced-table th,
+  #schedulesContainer .enhanced-table td { padding: 8px 8px; }
+  .col-label { width: 200px; }
+}
+
 .modal-overlay {
     position: fixed;
     top: 0;
