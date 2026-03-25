@@ -152,27 +152,36 @@
         <div id="schedulesContainer" class="hidden">
             <div class="overflow-x-auto">
                 <table class="enhanced-table w-full">
+                    <colgroup>
+                        <col class="col-toggle">
+                        <col class="col-time">
+                        <col class="col-days">
+                        <col class="col-label">
+                        <col class="col-amount">
+                        <col class="col-status">
+                        <col class="col-actions">
+                    </colgroup>
                     <thead>
                         <tr>
-                            <th class="w-12 sm:w-16">
+                            <th class="text-center">
                                 <i class="fas fa-toggle-on text-green-400"></i>
                             </th>
-                            <th>
+                            <th class="text-left">
                                 <i class="fas fa-clock mr-2"></i>Time
                             </th>
-                            <th>
+                            <th class="text-center">
                                 <i class="fas fa-calendar mr-2"></i>Days
                             </th>
-                            <th>
+                            <th class="text-left">
                                 <i class="fas fa-tag mr-2"></i>Label
                             </th>
-                            <th>
+                            <th class="text-center">
                                 <i class="fas fa-weight mr-2"></i>Amount
                             </th>
-                            <th>
+                            <th class="text-center">
                                 <i class="fas fa-info-circle mr-2"></i>Status
                             </th>
-                            <th class="w-12 sm:w-16">
+                            <th class="text-center">
                                 <i class="fas fa-cogs mr-2"></i>Actions
                             </th>
                         </tr>
@@ -368,6 +377,28 @@
 #schedulesContainer.hidden,
 #emptySchedules.hidden,
 #editScheduleModal.hidden { display: none !important; }
+
+/* Ensure headers and cells align consistently */
+#schedulesContainer .enhanced-table {
+    table-layout: fixed;
+    width: 100%;
+}
+#schedulesContainer .enhanced-table th,
+#schedulesContainer .enhanced-table td {
+    padding: 12px 16px;
+}
+/* Column widths */
+.col-toggle { width: 56px; }
+.col-time { width: 18%; }
+.col-days { width: 16%; }
+.col-label { width: 32%; }
+.col-amount { width: 14%; }
+.col-status { width: 14%; }
+.col-actions { width: 88px; }
+
+/* Center pills and toggle for perfect vertical alignment */
+.days-pills { justify-content: center; }
+.schedule-row td:first-child .schedule-toggle { margin-left: auto; margin-right: auto; }
 
 .modal-overlay {
     position: fixed;
@@ -686,39 +717,39 @@ function renderSchedules() {
     
     tbody.innerHTML = filteredSchedules.map(schedule => `
         <tr class="schedule-row sm:py-2" data-id="${schedule.id}">
-            <td>
+            <td class="text-center">
                 <div 
                     class="schedule-toggle ${schedule.enabled ? 'enabled' : ''}"
                     onclick="toggleSchedule(${schedule.id}, ${!schedule.enabled})"
                     title="${schedule.enabled ? 'Disable' : 'Enable'} schedule"
                 ></div>
             </td>
-            <td class="font-mono font-semibold text-[#1f456e] whitespace-nowrap">
+            <td class="font-mono font-semibold text-[#1f456e] whitespace-nowrap text-left">
                 ${formatTime(schedule.time)}
             </td>
-            <td>
+            <td class="text-center">
                 <div class="days-pills">
                     ${(schedule.days_of_week || []).map(day => `
                         <span class="day-pill">${String(day).substring(0, 3)}</span>
                     `).join('')}
                 </div>
             </td>
-            <td class="max-w-[8rem] sm:max-w-none truncate">
+            <td class="max-w-[8rem] sm:max-w-none truncate text-left">
                 <span class="font-medium">
                     ${schedule.label || `Schedule ${schedule.id}`}
                 </span>
             </td>
-            <td class="font-semibold text-orange-400 whitespace-nowrap">
+            <td class="font-semibold text-orange-400 whitespace-nowrap text-center">
                 ${schedule.portion_size}g
             </td>
-            <td>
+            <td class="text-center">
                 <span class="status-badge status-${schedule.enabled ? 'enabled' : 'disabled'}">
                     <i class="fas fa-${schedule.enabled ? 'check-circle' : 'pause-circle'}"></i>
                     ${schedule.enabled ? 'Active' : 'Disabled'}
                 </span>
             </td>
-            <td>
-                <div class="flex gap-1 sm:gap-2">
+            <td class="text-center">
+                <div class="flex justify-center gap-1 sm:gap-2">
                     <button 
                         class="action-btn action-btn-edit text-xs sm:text-sm"
                         onclick="editSchedule(${schedule.id})"
