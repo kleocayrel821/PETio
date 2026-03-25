@@ -40,15 +40,17 @@
                         <i class="fas fa-weight text-orange-400"></i>
                         Amount (grams)
                     </label>
-                    <input 
-                        type="number" 
+                    <select 
                         id="scheduleAmount" 
                         class="form-control-enhanced w-full"
-                        min="25" 
-                        max="100" 
-                        value="25"
                         required
                     >
+                        <option value="30">30</option>
+                        <option value="60">60</option>
+                        <option value="90">90</option>
+                        <option value="120">120</option>
+                        <option value="150">150</option>
+                    </select>
                 </div>
             </div>
 
@@ -871,8 +873,9 @@ document.getElementById('addScheduleForm').addEventListener('submit', async func
     }
 
     const portionVal = parseInt(formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value);
-    if (isNaN(portionVal) || portionVal < 25 || portionVal > 100) {
-        showToast('Portion must be between 25 and 100 grams', 'warning');
+    const allowed = [30,60,90,120,150];
+    if (isNaN(portionVal) || !allowed.includes(portionVal)) {
+        showToast('Select a valid amount: 30, 60, 90, 120, or 150 grams', 'warning');
         return;
     }
     
