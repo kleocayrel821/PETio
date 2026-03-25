@@ -376,7 +376,7 @@
         <a href="/" class="{% if request.path == '/' %}active{% endif %}">
           <i class="fas fa-home"></i><span>Home</span>
         </a>
-      {% elif path == '/' or '/schedules-ui/' in path or '/history/' in path or '/pending-commands/' in path or '/bmi/' in path or '/control/' in path or '/test-base/' in path %}
+      {% elif path == '/' or '/schedules-ui/' in path or '/history/' in path or '/pending-commands/' in path or '/bmi/' in path or '/control/' in path or '/test-base/' in path or '/devices/' in path %}
         <a href="/" class="{% if request.path == '/' %}active{% endif %}">
           <i class="fas fa-home"></i><span>Home</span>
         </a>
@@ -392,7 +392,7 @@
         <a href="/bmi/" class="{% if request.path == '/bmi/' %}active{% endif %}">
           <i class="fas fa-dog"></i><span>Pet BMI</span>
         </a>
-        <a href="/devices/" class="{% if request.path == '/devices/' %}active{% endif %}">
+        <a href="/devices/" class="{% if request.path == '/devices/' or request.path == '/devices/claim/' %}active{% endif %}">
           <i class="fas fa-microchip"></i><span>My Devices</span>
         </a>
       {% else %}
