@@ -201,6 +201,15 @@
                 >
                     <i class="fas fa-download text-[#1f456e]"></i>
                 </button>
+                <!-- Export PDF -->
+                <button 
+                    id="exportLogsPdf" 
+                    class="btn btn-enhanced btn-ghost btn-sm"
+                    onclick="exportLogsPDF()"
+                    title="Export to PDF"
+                >
+                    <i class="fas fa-file-pdf text-[#1f456e]"></i>
+                </button>
             </div>
         </div>
 
@@ -907,6 +916,113 @@ function exportLogs() {
     });
     
     window.open(`/api/logs/export/?${params}`, '_blank');
+}
+
+// Export logs to print-friendly PDF (browser print to PDF)
+async function exportLogsPDF() {
+    try {
+        const all = await fetchAllLogsForExport();
+        if (!all || all.length === 0) {
+            showToast ? showToast('No logs to export', 'info') : alert('No logs to export');
+            return;
+        }
+        const filterParts = [];
+        if (currentFilters.start_date || currentFilters.end_date) {
+            filterParts.push(`Date: ${currentFilters.start_date || '…'} to ${currentFilters.end_date || '…'}`);
+        }
+        if (currentFilters.feed_type) {
+            filterParts.push(`Type: ${getFeedTypeLabel(currentFilters.feed_type)}`);
+        }
+        if (currentFilters.search) {
+            filterParts.push(`Search: "${currentFilters.search}"`);
+        }
+        const filtersText = filterParts.join(' • ') || 'None';
+        const now = new Date();
+        const title = `Feeding Logs — ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+        const rows = all.map(l => `
+            <tr>
+                <td>${formatDate(l.timestamp)} ${formatTime(l.timestamp)}</td>
+                <td style="text-align:center">${l.amount}g</td>
+                <td>${getFeedTypeLabel(l.feed_type)}</td>
+                <td>${getStatusLabel(l.status)}</td>
+                <td>${(l.notes || '').toString().replace(/[<>]/g,'')}</td>
+            </tr>
+        `).join('');
+        const win = window.open('', '_blank');
+        if (!win) return;
+        win.document.write(`
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${title}</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 24px; color: #111827; }
+    h1 { margin: 0 0 6px 0; font-size: 20px; }
+    .meta { color: #6b7280; margin-bottom: 14px; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px 10px; vertical-align: top; }
+    th { background: #f3f4f6; text-align: left; }
+    @media print { 
+      @page { size: A4; margin: 16mm; }
+      body { padding: 0; }
+    }
+  </style>
+  </head>
+  <body>
+    <h1>PETio — Feeding Logs</h1>
+    <div class="meta">Filters: ${filtersText} • Exported ${now.toLocaleString()}</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 28%">Date & Time</th>
+          <th style="width: 12%; text-align:center">Amount</th>
+          <th style="width: 18%">Type</th>
+          <th style="width: 14%">Status</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <script>
+      window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 200); });
+      window.addEventListener('afterprint', function(){ setTimeout(function(){ window.close(); }, 200); });
+    </script>
+  </body>
+</html>
+        `);
+        win.document.close();
+    } catch (err) {
+        console.error(err);
+        showToast ? showToast('Failed to generate PDF', 'error') : alert('Failed to generate PDF');
+    }
+}
+
+// Fetch all logs matching current filters for PDF export
+async function fetchAllLogsForExport() {
+    const pageLimit = 500; // big page to reduce requests
+    const params = new URLSearchParams({
+        page: 1,
+        page_size: pageLimit,
+        ordering: currentSort.direction === 'desc' ? `-${currentSort.field}` : currentSort.field,
+        ...currentFilters
+    });
+    const first = await fetch(`/api/logs/?${params}`).then(r => r.json()).catch(() => ({}));
+    if (!first || !first.results) return [];
+    const results = [...first.results];
+    const total = first.count || results.length;
+    let fetched = results.length;
+    let page = 1;
+    while (fetched < total) {
+        page += 1;
+        params.set('page', page);
+        const next = await fetch(`/api/logs/?${params}`).then(r => r.json()).catch(() => ({}));
+        if (!next || !next.results || next.results.length === 0) break;
+        results.push(...next.results);
+        fetched += next.results.length;
+        if (page > 20) break; // safety cap
+    }
+    return results;
 }
 
 // Add event listeners
