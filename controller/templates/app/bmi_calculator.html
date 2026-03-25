@@ -270,6 +270,7 @@ function setBreeds(type) {
   popularGrp.innerHTML = '';
   const natives = type === 'dog' ? DOG_NATIVE : CAT_NATIVE;
   const list = type === 'dog' ? DOG_BREEDS : CAT_BREEDS;
+  const nativeCodes = new Set(natives.map(b => b.v));
   for (const b of natives) {
     const opt = document.createElement('option');
     opt.value = b.v;
@@ -279,6 +280,7 @@ function setBreeds(type) {
     nativeGrp.appendChild(opt);
   }
   for (const b of list) {
+    if (nativeCodes.has(b.v)) continue; // avoid duplicate entries between groups
     const opt = document.createElement('option');
     opt.value = b.v;
     opt.textContent = b.n;
