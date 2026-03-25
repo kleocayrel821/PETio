@@ -669,13 +669,15 @@ async function updateLastFedTime() {
             if (diffMinutes < 1) {
                 timeText = 'Just now';
             } else if (diffMinutes < 60) {
-                const hours = Math.floor(diffMinutes / 60);
-                timeText = `${hours} hour${hours > 1 ? 's' : ''} ago`;
+                timeText = `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
             } else if (diffMinutes < 1440) {
                 const hours = Math.floor(diffMinutes / 60);
-                timeText = `${hours} hour${hours > 1 ? 's' : ''} ago`;
+                timeText = `${hours} hour${hours !== 1 ? 's' : ''} ago`;
             } else {
-                timeText = lastFed.toLocaleDateString();
+                const days = Math.floor(diffMinutes / 1440);
+                timeText = days < 7
+                    ? `${days} day${days !== 1 ? 's' : ''} ago`
+                    : lastFed.toLocaleDateString();
             }
             
             document.getElementById('lastFedTime').textContent = timeText;
