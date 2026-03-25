@@ -87,6 +87,16 @@
     .marketplace-surface .table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .marketplace-surface .table thead, .marketplace-surface .table tbody, .marketplace-surface .table tr { width: max-content; }
   }
+  /* Card action buttons responsiveness */
+  @media (min-width: 640px) {
+    .card-actions { flex-wrap: wrap; }
+    .card-actions .buy-now-trigger,
+    .card-actions .view-details-btn {
+      flex: 1 1 12rem;            /* allow wrapping at ~12rem chunks */
+      min-width: 9.5rem;          /* prevent unreadable squish */
+    }
+    .card-actions .btn-ghost { flex: 0 0 auto; }
+  }
   @media (max-width: 480px) {
     .tabs .tab { font-size: .875rem; }
     .marketplace-surface .btn { font-size: .875rem; }
