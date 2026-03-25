@@ -903,12 +903,10 @@ async function updateStatistics() {
 function exportLogs() {
     const params = new URLSearchParams({
         format: 'csv',
-        ordering: currentSort && currentSort.field 
-            ? (currentSort.direction === 'desc' ? `-${currentSort.field}` : currentSort.field) 
-            : '-timestamp',
         ...currentFilters
     });
-    window.open(`/api/logs/export/?${params.toString()}`, '_blank');
+    
+    window.open(`/api/logs/export/?${params}`, '_blank');
 }
 
 // Add event listeners
