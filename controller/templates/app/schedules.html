@@ -2,7 +2,7 @@
 {% block title %}Schedules - PETio{% endblock %}
 {% block sidebar %}{% include 'controller/sidebar.html' with view_name='schedules_ui' %}{% endblock %}
 {% block content %}
-<div class="space-y-8 max-w-4xl mx-auto">
+<div class="space-y-8">
     <!-- Page Header -->
     <!-- <div class="text-center">
         <h1 class="section-title justify-center text-3xl mb-2">
@@ -549,6 +549,10 @@
     justify-content: center;
 }
 
+.modal-open .menu.menu-horizontal { display: none !important; }
+.modal-open .top-navbar .nav-center { display: none !important; }
+.modal-open .navbar .menu { display: none !important; }
+
 .action-btn-edit {
     background: rgba(31, 69, 110, 0.15);
     color: #1f456e;
@@ -980,6 +984,8 @@ function editSchedule(scheduleId) {
     // Show modal
     const modal = document.getElementById('editScheduleModal');
     modal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
+    document.body.style.overflow = 'hidden';
     setTimeout(() => {
         modal.classList.add('show');
         setupModalA11y(modal);
@@ -994,6 +1000,8 @@ function closeEditModal() {
     const modal = document.getElementById('editScheduleModal');
     modal.classList.remove('show');
     setTimeout(() => modal.classList.add('hidden'), 300);
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
     editingScheduleId = null;
     teardownModalA11y(modal);
 }
