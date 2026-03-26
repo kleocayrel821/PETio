@@ -239,6 +239,35 @@
     </div>
 </div>
 
+<!-- Confirm Modal -->
+<div id="confirmModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalDesc" tabindex="-1">
+    <div class="modal-content" role="document">
+        <div class="modal-header">
+            <div class="flex items-center gap-3">
+                <div class="rounded-lg bg-red-500/15 text-red-400 p-2">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <h3 id="confirmModalTitle" class="text-xl font-semibold tracking-tight">Confirm Action</h3>
+                    <p id="confirmModalDesc" class="text-sm text-gray-400">Please confirm this action.</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="closeConfirmModal(false)" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="px-6">
+            <p id="confirmModalMessage" class="text-sm text-gray-400"></p>
+        </div>
+        <div class="flex items-center justify-end gap-3 px-6 pb-6">
+            <button type="button" id="confirmModalCancel" class="btn btn-enhanced btn-ghost" onclick="closeConfirmModal(false)">Cancel</button>
+            <button type="button" id="confirmModalConfirm" class="btn btn-enhanced btn-primary-enhanced" onclick="closeConfirmModal(true)">
+                <i class="fas fa-check"></i>
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
         <form id="editScheduleForm" class="space-y-5">
             <input type="hidden" id="editScheduleId">
 
@@ -292,36 +321,6 @@
     </div>
     <!-- Focus sentinel for trapping tab navigation -->
     <span tabindex="0" id="editModalFocusEnd" class="sr-only"></span>
-</div>
-
-<!-- Confirm Modal -->
-<div id="confirmModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalDesc" tabindex="-1">
-    <div class="modal-content" role="document">
-        <div class="modal-header">
-            <div class="flex items-center gap-3">
-                <div class="rounded-lg bg-red-500/15 text-red-400 p-2">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div>
-                    <h3 id="confirmModalTitle" class="text-xl font-semibold tracking-tight">Confirm Action</h3>
-                    <p id="confirmModalDesc" class="text-sm text-gray-400">Please confirm this action.</p>
-                </div>
-            </div>
-            <button class="modal-close" onclick="closeConfirmModal(false)" aria-label="Close">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="px-6">
-            <p id="confirmModalMessage" class="text-sm text-gray-400"></p>
-        </div>
-        <div class="flex items-center justify-end gap-3 px-6 pb-6">
-            <button type="button" id="confirmModalCancel" class="btn btn-enhanced btn-ghost" onclick="closeConfirmModal(false)">Cancel</button>
-            <button type="button" id="confirmModalConfirm" class="btn btn-enhanced btn-primary-enhanced" onclick="closeConfirmModal(true)">
-                <i class="fas fa-check"></i>
-                Confirm
-            </button>
-        </div>
-    </div>
 </div>
 
 <style>
@@ -1091,8 +1090,6 @@ function openConfirmModal({ title = 'Confirm Action', message = '', confirmText 
             setupConfirmModalA11y(modal);
             confirmBtn?.focus();
         }, 10);
-        document.body.classList.add('modal-open');
-        document.body.style.overflow = 'hidden';
     });
 }
 
@@ -1104,11 +1101,6 @@ function closeConfirmModal(result = false) {
     modal.classList.remove('show');
     setTimeout(() => modal.classList.add('hidden'), 300);
     teardownConfirmModalA11y(modal);
-    const editIsOpen = document.getElementById('editScheduleModal')?.classList.contains('show');
-    if (!editIsOpen) {
-        document.body.classList.remove('modal-open');
-        document.body.style.overflow = '';
-    }
     if (confirmModalResolve) {
         const resolve = confirmModalResolve;
         confirmModalResolve = null;
