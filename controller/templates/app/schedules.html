@@ -474,12 +474,12 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 50;
+    z-index: 1000;
     opacity: 0;
     transition: opacity var(--transition-normal);
     pointer-events: none; /* prevent overlay from blocking clicks when not shown */
@@ -491,8 +491,6 @@
 }
 
 .modal-content {
-    position: relative;
-    z-index: 51;
     background: var(--bg-card);
     border-radius: 12px;
     border: 1px solid var(--border-color);
@@ -532,21 +530,6 @@
 .modal-close:hover {
     background: var(--bg-secondary);
     color: var(--text-primary);
-}
-
-/* Freeze and hide background UI when modal is open */
-body.modal-open .main-content,
-body.modal-open .sidebar,
-body.modal-open .top-navbar {
-    pointer-events: none !important;
-}
-body.modal-open .top-navbar { z-index: 0 !important; }
-body.modal-open { overflow: hidden; }
-body.modal-open .mobile-bottom-nav {
-    pointer-events: none !important;
-    opacity: 0;
-    visibility: hidden;
-    z-index: 0;
 }
 
 /* Controller schedules specific color overrides */
@@ -727,27 +710,6 @@ body.modal-open .mobile-bottom-nav {
  
      return '';
  }
- 
-// Freeze background when any modal is open
-const INERT_TARGET_SELECTORS = ['.main-content', '.sidebar'];
-function setBackgroundInteractivity(disabled) {
-    INERT_TARGET_SELECTORS.forEach(sel => {
-        const el = document.querySelector(sel);
-        if (!el) return;
-        try {
-            if (disabled) {
-                el.setAttribute('inert', '');
-            } else {
-                el.removeAttribute('inert');
-            }
-        } catch (_) {}
-    });
-}
-function syncBodyModalOpen() {
-    const anyOpen = !!document.querySelector('.modal-overlay.show');
-    document.body.classList.toggle('modal-open', anyOpen);
-    setBackgroundInteractivity(anyOpen);
-}
  
  let schedules = [];
  let editingScheduleId = null;
@@ -1020,7 +982,6 @@ function editSchedule(scheduleId) {
     modal.classList.remove('hidden');
     setTimeout(() => {
         modal.classList.add('show');
-        syncBodyModalOpen();
         setupModalA11y(modal);
         // Set initial focus to first input
         document.getElementById('editScheduleTime')?.focus();
@@ -1035,7 +996,6 @@ function closeEditModal() {
     setTimeout(() => modal.classList.add('hidden'), 300);
     editingScheduleId = null;
     teardownModalA11y(modal);
-    setTimeout(syncBodyModalOpen, 20);
 }
 
 // Update schedule
@@ -1119,7 +1079,6 @@ function openConfirmModal({ title = 'Confirm Action', message = '', confirmText 
         modal.classList.remove('hidden');
         setTimeout(() => {
             modal.classList.add('show');
-            syncBodyModalOpen();
             setupConfirmModalA11y(modal);
             confirmBtn?.focus();
         }, 10);
@@ -1134,7 +1093,6 @@ function closeConfirmModal(result = false) {
     modal.classList.remove('show');
     setTimeout(() => modal.classList.add('hidden'), 300);
     teardownConfirmModalA11y(modal);
-    setTimeout(syncBodyModalOpen, 20);
     if (confirmModalResolve) {
         const resolve = confirmModalResolve;
         confirmModalResolve = null;
