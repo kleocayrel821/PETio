@@ -2,7 +2,7 @@
 {% block title %}Schedules - PETio{% endblock %}
 {% block sidebar %}{% include 'controller/sidebar.html' with view_name='schedules_ui' %}{% endblock %}
 {% block content %}
-<div class="space-y-8">
+<div class="space-y-8 max-w-4xl mx-auto">
     <!-- Page Header -->
     <!-- <div class="text-center">
         <h1 class="section-title justify-center text-3xl mb-2">
@@ -1244,26 +1244,4 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSchedules();
 });
 </script>
-{% block app_nav %}
-<ul class="menu menu-horizontal px-1 gap-1 overflow-x-auto">
-  <li>
-    <a href="{% url 'home' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'home' %}active{% endif %}">
-      <i class="fas fa-home mr-2"></i>
-      <span>Home</span>
-    </a>
-  </li>
-  <li>
-    <a href="{% url 'schedules_ui' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'schedules_ui' %}active{% endif %}">
-      <i class="fas fa-calendar-alt mr-2"></i>
-      <span>Schedules</span>
-    </a>
-  </li>
-  <li>
-    <a href="{% url 'history' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'history' %}active{% endif %}">
-      <i class="fas fa-history mr-2"></i>
-      <span>History</span>
-    </a>
-  </li>
-</ul>
-{% endblock %}
 {% endblock %}
