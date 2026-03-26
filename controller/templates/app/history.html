@@ -192,26 +192,15 @@
                 <span id="resultsCount" class="text-sm text-gray-400">
                     Loading...
                 </span>
-                <!-- Export Button + Menu -->
-                <div class="relative" id="exportMenuWrap">
-                  <button 
-                      id="exportLogs" 
-                      class="btn btn-enhanced btn-ghost btn-sm"
-                      onclick="openExportMenu(event)"
-                      title="Export"
-                      aria-haspopup="true" aria-expanded="false"
-                  >
-                      <i class="fas fa-download text-[#1f456e]"></i>
-                  </button>
-                  <div id="exportMenu" class="hidden absolute right-0 mt-2 w-36 bg-white border border-gray-200 rounded shadow-lg z-50">
-                    <button class="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm" onclick="exportLogs('csv')">
-                      <i class="fas fa-file-arrow-down mr-2"></i> CSV
-                    </button>
-                    <button class="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm" onclick="exportLogs('pdf')">
-                      <i class="fas fa-file-pdf mr-2"></i> PDF
-                    </button>
-                  </div>
-                </div>
+                <!-- Export Button -->
+                <button 
+                    id="exportLogs" 
+                    class="btn btn-enhanced btn-ghost btn-sm"
+                    onclick="exportLogs()"
+                    title="Export to CSV"
+                >
+                    <i class="fas fa-download text-[#1f456e]"></i>
+                </button>
             </div>
         </div>
 
@@ -956,134 +945,14 @@ async function updateStatistics() {
     }
 }
 
-// Export menu toggle
-function openExportMenu(e){
-  e.stopPropagation();
-  const wrap = document.getElementById('exportMenuWrap');
-  const menu = document.getElementById('exportMenu');
-  const btn = document.getElementById('exportLogs');
-  if (!menu || !btn) return;
-  const show = menu.classList.contains('hidden');
-  document.querySelectorAll('#exportMenu').forEach(el => el.classList.add('hidden'));
-  if (show) {
-    menu.classList.remove('hidden');
-    btn.setAttribute('aria-expanded', 'true');
-  } else {
-    menu.classList.add('hidden');
-    btn.setAttribute('aria-expanded', 'false');
-  }
-}
-document.addEventListener('click', function(e){
-  const menu = document.getElementById('exportMenu');
-  const wrap = document.getElementById('exportMenuWrap');
-  if (!menu || !wrap) return;
-  if (!wrap.contains(e.target)) {
-    menu.classList.add('hidden');
-    document.getElementById('exportLogs')?.setAttribute('aria-expanded', 'false');
-  }
-});
-
-// Export logs: CSV or PDF
-async function exportLogs(format = 'csv') {
-    // Hide menu
-    document.getElementById('exportMenu')?.classList.add('hidden');
-    document.getElementById('exportLogs')?.setAttribute('aria-expanded', 'false');
-
-    if (format === 'csv') {
-        const params = new URLSearchParams({
-            format: 'csv',
-            ...currentFilters
-        });
-        window.open(`/api/logs/export/?${params}`, '_blank');
-        return;
-    }
-    if (format !== 'pdf') return;
-
-    try {
-        const params = new URLSearchParams({
-            page_size: 1000,
-            ordering: currentSort.direction === 'desc' ? `-${currentSort.field}` : currentSort.field,
-            ...currentFilters
-        });
-        const resp = await fetch(`/api/logs/?${params}`, { headers: { 'Accept': 'application/json' }});
-        const data = await resp.json();
-        const rows = (data.results || []).map(item => ({
-          ts: new Date(item.timestamp),
-          amount: item.amount,
-          type: getFeedTypeLabel(item.feed_type),
-          status: getStatusLabel(item.status),
-          notes: item.notes || ''
-        }));
-        const win = window.open('', '_blank');
-        if (!win) {
-          alert('Pop-up blocked. Please allow pop-ups to export.');
-          return;
-        }
-        const now = new Date();
-        const title = 'Feeding Logs';
-        const dateRange = (currentFilters.start_date || currentFilters.end_date)
-          ? `Range: ${currentFilters.start_date || '...'} to ${currentFilters.end_date || '...'}`
-          : '';
-        const typeLabel = currentFilters.feed_type ? `Type: ${getFeedTypeLabel(currentFilters.feed_type)}` : '';
-        const searchLabel = currentFilters.search ? `Search: "${currentFilters.search}"` : '';
-
-        const doc = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>${title}</title>
-  <style>
-    @page { size: A4; margin: 20mm; }
-    body { font-family: Arial, Helvetica, sans-serif; color: #1f2937; }
-    h1 { margin: 0 0 6px 0; font-size: 20px; }
-    .meta { color: #6b7280; font-size: 12px; margin-bottom: 12px; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    th, td { border: 1px solid #e5e7eb; padding: 6px 8px; }
-    th { background: #f3f4f6; text-align: left; }
-    .right { text-align: right; }
-  </style>
-</head>
-<body>
-  <h1>${title}</h1>
-  <div class="meta">
-    Generated: ${now.toLocaleString()}${dateRange ? ' • ' + dateRange : ''}${typeLabel ? ' • ' + typeLabel : ''}${searchLabel ? ' • ' + searchLabel : ''}
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Time</th>
-        <th class="right">Amount (g)</th>
-        <th>Type</th>
-        <th>Status</th>
-        <th>Notes</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${rows.map(r => `
-        <tr>
-          <td>${r.ts.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })}</td>
-          <td>${r.ts.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true })}</td>
-          <td class="right">${r.amount}</td>
-          <td>${r.type}</td>
-          <td>${r.status}</td>
-          <td>${r.notes.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>
-        </tr>`).join('')}
-    </tbody>
-  </table>
-  <script>
-    setTimeout(function(){ window.print(); }, 300);
-  </script>
-</body>
-</html>`;
-        win.document.open();
-        win.document.write(doc);
-        win.document.close();
-    } catch (err) {
-        console.error('Export PDF failed', err);
-        alert('Failed to prepare PDF export.');
-    }
+// Export logs
+function exportLogs() {
+    const params = new URLSearchParams({
+        format: 'csv',
+        ...currentFilters
+    });
+    
+    window.open(`/api/logs/export/?${params}`, '_blank');
 }
 
 // Add event listeners
