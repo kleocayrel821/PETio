@@ -77,6 +77,10 @@
                 </label>
                 <div class="grid grid-cols-4 sm:grid-cols-7 gap-2">
                     <label class="day-toggle-large">
+                        <input type="checkbox" name="days" value="sunday" class="hidden">
+                        <span class="day-label-large">Sun</span>
+                    </label>
+                    <label class="day-toggle-large">
                         <input type="checkbox" name="days" value="monday" class="hidden">
                         <span class="day-label-large">Mon</span>
                     </label>
@@ -99,10 +103,6 @@
                     <label class="day-toggle-large">
                         <input type="checkbox" name="days" value="saturday" class="hidden">
                         <span class="day-label-large">Sat</span>
-                    </label>
-                    <label class="day-toggle-large">
-                        <input type="checkbox" name="days" value="sunday" class="hidden">
-                        <span class="day-label-large">Sun</span>
                     </label>
                 </div>
             </div>
@@ -987,8 +987,8 @@ function editSchedule(scheduleId) {
 
     // Create days checkboxes
     const daysContainer = document.getElementById('editDaysContainer');
-    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const selectedAbbrs = schedule.days_of_week || [];
 
     daysContainer.innerHTML = dayNames.map((day, index) => `
