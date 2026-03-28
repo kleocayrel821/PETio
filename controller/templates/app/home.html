@@ -378,6 +378,20 @@
 .recent-activity-table .col-action { width: 25%; }
 .recent-activity-table .col-amount { width: 25%; }
 .recent-activity-table .col-status { width: 25%; }
+@media (max-width: 640px) {
+  .recent-activity-table colgroup { display: none; }
+  .recent-activity-table thead { display: none; }
+  .recent-activity-table { table-layout: auto; }
+  .recent-activity-table tr { display: block; background: var(--bg-card); border-radius: 12px; box-shadow: var(--shadow-card); margin-bottom: 12px; padding: 8px 10px; }
+  .recent-activity-table td { display: flex; align-items: center; justify-content: space-between; padding: 8px 6px; }
+  .recent-activity-table td:nth-child(1)::before { content: 'Time'; font-weight: 600; color: var(--text-muted); margin-right: 12px; }
+  .recent-activity-table td:nth-child(2)::before { content: 'Action'; font-weight: 600; color: var(--text-muted); margin-right: 12px; }
+  .recent-activity-table td:nth-child(3)::before { content: 'Amount'; font-weight: 600; color: var(--text-muted); margin-right: 12px; }
+  .recent-activity-table td:nth-child(4)::before { content: 'Status'; font-weight: 600; color: var(--text-muted); margin-right: 12px; }
+  .recent-activity-table td:nth-child(3), 
+  .recent-activity-table td:nth-child(4) { text-align: right; }
+  .recent-activity-table td .status-badge { margin-left: 12px; }
+}
 </style>
 
 <script>
