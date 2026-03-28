@@ -189,13 +189,19 @@
             Recent Activity
         </div>
         <div class="overflow-x-auto">
-            <table class="enhanced-table w-full">
+            <table class="enhanced-table w-full recent-activity-table">
+                <colgroup>
+                    <col class="col-time">
+                    <col class="col-action">
+                    <col class="col-amount">
+                    <col class="col-status">
+                </colgroup>
                 <thead>
                     <tr>
-                        <th><i class="fas fa-clock mr-2"></i>Time</th>
-                        <th><i class="fas fa-info-circle mr-2"></i>Action</th>
-                        <th><i class="fas fa-weight mr-2"></i>Amount</th>
-                        <th><i class="fas fa-check-circle mr-2"></i>Status</th>
+                        <th class="text-left"><i class="fas fa-clock mr-2"></i>Time</th>
+                        <th class="text-left"><i class="fas fa-info-circle mr-2"></i>Action</th>
+                        <th class="text-center"><i class="fas fa-weight mr-2"></i>Amount</th>
+                        <th class="text-center"><i class="fas fa-check-circle mr-2"></i>Status</th>
                     </tr>
                 </thead>
                 <tbody id="recentActivityTable">
@@ -359,6 +365,19 @@
     color: var(--error-red);
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
+
+.recent-activity-table {
+    table-layout: fixed;
+    width: 100%;
+}
+.recent-activity-table th,
+.recent-activity-table td {
+    padding: 0.75rem 1rem;
+}
+.recent-activity-table .col-time { width: 40%; }
+.recent-activity-table .col-action { width: 30%; }
+.recent-activity-table .col-amount { width: 15%; }
+.recent-activity-table .col-status { width: 15%; }
 </style>
 
 <script>
@@ -580,15 +599,15 @@ async function loadRecentActivity() {
         if (data && data.results && data.results.length > 0) {
             tbody.innerHTML = data.results.map(log => `
                 <tr>
-                    <td class="font-mono text-sm">${new Date(log.timestamp).toLocaleString()}</td>
-                    <td>
+                    <td class="font-mono text-sm text-left">${new Date(log.timestamp).toLocaleString()}</td>
+                    <td class="text-left">
                         <span class="flex items-center gap-2">
                             <i class="fas fa-${getFeedTypeIcon(log.feed_type)} text-[#1f456e]"></i>
                             ${getActionLabel(log.feed_type)}
                         </span>
                     </td>
-                    <td class="font-semibold">${log.amount}g</td>
-                    <td>
+                    <td class="font-semibold text-center">${log.amount}g</td>
+                    <td class="text-center">
                         <span class="status-badge status-${log.success ? 'success' : 'error'}">
                             <i class="fas fa-${log.success ? 'check' : 'times'}"></i>
                             ${log.success ? 'Success' : 'Failed'}
