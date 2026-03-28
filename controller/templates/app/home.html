@@ -584,8 +584,7 @@ async function loadRecentActivity() {
                     <td>
                         <span class="flex items-center gap-2">
                             <i class="fas fa-${getFeedTypeIcon(log.feed_type)} text-[#1f456e]"></i>
-                            ${getFeedTypeLabel(log.feed_type)}
-                            ${log.action === 'feed' ? 'Manual Feed' : 'Scheduled Feed'}
+                            ${getActionLabel(log.feed_type)}
                         </span>
                     </td>
                     <td class="font-semibold">${log.amount}g</td>
@@ -716,13 +715,13 @@ function getFeedTypeIcon(type) {
     };
     return icons[type] || 'utensils';
 }
-function getFeedTypeLabel(type) {
+function getActionLabel(type) {
     const labels = {
-        manual: 'Manual Button',
-        scheduled: 'Schedule',
-        automatic: 'Automatic Button'
+        manual: 'Manual Feed',
+        scheduled: 'Scheduled Feed',
+        automatic: 'Automatic Feed'
     };
-    return labels[type] || 'Manual Button';
+    return labels[type] || 'Manual Feed';
 }
 </script>
 {% endblock %}
