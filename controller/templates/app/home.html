@@ -138,7 +138,7 @@
                         <i class="fas fa-calendar text-green-400"></i>
                         Days
                     </label>
-                    <div class="grid grid-cols-4 sm:grid-cols-7 gap-1">
+                    <div id="quickDaysContainer" class="grid grid-cols-4 sm:grid-cols-7 gap-1">
                         <label class="day-toggle">
                             <input type="checkbox" name="days" value="sunday" class="hidden">
                             <span class="day-label">S</span>
@@ -378,6 +378,30 @@
 .recent-activity-table .col-action { width: 25%; }
 .recent-activity-table .col-amount { width: 25%; }
 .recent-activity-table .col-status { width: 25%; }
+</style>
+
+<style>
+@media (max-width: 480px) {
+  .recent-activity-table th,
+  .recent-activity-table td {
+    font-size: 12px;
+    padding: 6px 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .recent-activity-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  .recent-activity-table .col-time { width: 35%; }
+  .recent-activity-table .col-action { width: 35%; }
+  .recent-activity-table .col-amount { width: 30%; }
+  .recent-activity-table th:nth-child(4),
+  .recent-activity-table td:nth-child(4) { display: none; }
+  #quickDaysContainer { display: flex; flex-wrap: wrap; justify-content: center; }
+  #quickDaysContainer .day-label { min-width: 36px; }
+}
 </style>
 
 <script>

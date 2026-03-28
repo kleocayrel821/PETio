@@ -75,7 +75,7 @@
                     <i class="fas fa-calendar text-green-400"></i>
                     Days of Week
                 </label>
-                <div class="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                <div id="addDaysContainer" class="grid grid-cols-4 sm:grid-cols-7 gap-2">
                     <label class="day-toggle-large">
                         <input type="checkbox" name="days" value="sunday" class="hidden">
                         <span class="day-label-large">Sun</span>
@@ -586,6 +586,10 @@
     transform: scale(1.05);
 }
 
+@media (max-width: 480px) {
+  #addDaysContainer, #editDaysContainer { display: flex; flex-wrap: wrap; justify-content: center; }
+  #addDaysContainer .day-label-large, #editDaysContainer .day-label-large { min-width: 36px; }
+}
 .enhanced-table tbody tr:hover {
     background: var(--bg-card-hover);
     transform: translateX(4px);

@@ -313,3 +313,29 @@ body:has(#notifModal) .card .card-title::before { content: "\f0f3"; font-family:
     padding-bottom: 75px;
   }
 }
+
+@media (max-width: 480px) {
+  .main-content {
+    overflow-x: hidden;
+    padding-left: 12px;
+    padding-right: 12px;
+    box-sizing: border-box;
+  }
+  .main-content > * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .main-content .enhanced-card,
+  .main-content .card {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    overflow: hidden;
+  }
+}
