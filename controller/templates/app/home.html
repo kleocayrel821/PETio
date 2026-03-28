@@ -378,6 +378,29 @@
 .recent-activity-table .col-action { width: 25%; }
 .recent-activity-table .col-amount { width: 25%; }
 .recent-activity-table .col-status { width: 25%; }
+@media (max-width: 1024px){
+  .recent-activity-table .col-time { width: 40%; }
+  .recent-activity-table .col-action { width: 30%; }
+  .recent-activity-table .col-amount { width: 15%; }
+  .recent-activity-table .col-status { width: 15%; }
+}
+@media (max-width: 768px){
+  .recent-activity-table th,
+  .recent-activity-table td { padding: 0.5rem 0.75rem; font-size: 0.9rem; }
+  .recent-activity-table .col-time { width: 50%; }
+  .recent-activity-table .col-action { width: 30%; }
+  .recent-activity-table .col-amount { width: 10%; }
+  .recent-activity-table .col-status { width: 10%; }
+  .recent-activity-table td .status-badge { font-size: 0.8rem; padding: 0.25rem 0.7rem; }
+}
+@media (max-width: 480px){
+  .recent-activity-table th,
+  .recent-activity-table td { padding: 0.4rem 0.6rem; font-size: 0.85rem; }
+  .recent-activity-table .col-time { width: 54%; }
+  .recent-activity-table .col-action { width: 26%; }
+  .recent-activity-table .col-amount { width: 10%; }
+  .recent-activity-table .col-status { width: 10%; }
+}
 </style>
 
 <script>
