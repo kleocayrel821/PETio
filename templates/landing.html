@@ -29,6 +29,8 @@
     color: var(--text-secondary);
     max-width: 60ch;
   }
+  .hero-cta-group { gap: 16px; }
+  .hero-cta-group .btn { width: fit-content; padding: 14px 40px; min-width: auto; }
   .features-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -48,7 +50,6 @@
     font-size: 1.5rem;
     line-height: 1;
   }
-  .hero-cta-group .btn { min-width: 180px; }
 
   .landing-theme {
     --palette-1: #473472;
@@ -114,9 +115,20 @@
     background: rgba(83,98,158,0.12);
     border: 1px solid rgba(83,98,158,0.22);
   }
-  .landing-theme .feature-icon { width: 22px; height: 22px; color: #53629E; }
+  .landing-theme .feature-icon { width: 40px; height: 40px; color: #53629E; }
+  .feature-card .feature-title { font-weight: 700; font-size: 18px; }
+  .feature-card .feature-desc { font-size: 14px; color: #666; }
+  .features-grid > .feature-card:last-child { grid-column: 1 / -1; max-width: 100%; }
   .icon-scatter-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
-  .icon-scatter-item { position: absolute; opacity: 0.14; stroke: #53629E; filter: drop-shadow(0 1px 2px rgba(83,98,158,0.10)); }
+  .icon-scatter-item { position: absolute; opacity: 0.04; stroke: #53629E; filter: drop-shadow(0 1px 2px rgba(83,98,158,0.10)); }
+
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .hero-unified-card { animation: fadeSlideUp .5s ease-out both; animation-delay: .1s; }
+
+  .cta-section .btn-ghost { background: transparent !important; border: 2px solid currentColor; }
 </style>
 {% endblock %}
 
@@ -133,21 +145,21 @@
           Smart Pet Care Platform
         </span>
         <h1 class="hero-headline text-4xl md:text-5xl mt-4">
-          Feed Smarter. Connect Better. Care Together.
+          Feed Smarter · Connect Better · Care Together
         </h1>
         <p class="hero-subtitle mt-4">
           PETio unifies feeding schedules, activity tracking, and a friendly community in one clean interface that works across devices.
         </p>
-        <div class="hero-cta-group mt-6 flex flex-wrap gap-3">
+        <div class="hero-cta-group mt-6 flex flex-wrap">
           <a href="{% url 'accounts:signup' %}" class="btn btn-primary btn-enhanced">Get Started</a>
           <a href="#features" class="btn btn-ghost btn-enhanced">Explore Features</a>
         </div>
       </div>
-      <div class="feature-card enhanced-card p-6">
+      <div class="feature-card enhanced-card p-6 hero-unified-card">
         <div class="flex items-center gap-3">
           <span class="icon-badge"><i data-feather="grid" class="feature-icon"></i></span>
           <div>
-            <div class="font-semibold">Unified Dashboard</div>
+            <div class="font-semibold feature-title">Unified Dashboard</div>
             <div class="text-sm text-base-content/70">Status at a glance</div>
           </div>
         </div>
@@ -167,8 +179,8 @@
           <span class="status-badge">Scheduling</span>
           <span class="text-sm text-base-content/70">Automated routines</span>
         </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="clock" class="feature-icon"></i></span>Smart Feeding</div>
-        <p class="text-base-content/80">Plan and track meals with alerts and history.</p>
+        <div class="mt-2 flex items-center gap-2 feature-title"><span class="icon-badge"><i data-feather="clock" class="feature-icon"></i></span>Smart Feeding</div>
+        <p class="feature-desc">Plan and track meals with alerts and history.</p>
       </div>
 
       <div class="feature-card enhanced-card p-5">
@@ -176,8 +188,8 @@
           <span class="status-badge">Activity</span>
           <span class="text-sm text-base-content/70">Health insights</span>
         </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="activity" class="feature-icon"></i></span>Daily Tracking</div>
-        <p class="text-base-content/80">Log walks, playtime, and mood in one timeline.</p>
+        <div class="mt-2 flex items-center gap-2 feature-title"><span class="icon-badge"><i data-feather="activity" class="feature-icon"></i></span>Daily Tracking</div>
+        <p class="feature-desc">Log walks, playtime, and mood in one timeline.</p>
       </div>
 
       <div class="feature-card enhanced-card p-5">
@@ -185,8 +197,8 @@
           <span class="status-badge">Profiles</span>
           <span class="text-sm text-base-content/70">Per-pet history</span>
         </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="bar-chart-2" class="feature-icon"></i></span>Pet Profiles</div>
-        <p class="text-base-content/80">Track nutrition, habits, and feeding patterns.</p>
+        <div class="mt-2 flex items-center gap-2 feature-title"><span class="icon-badge"><i data-feather="bar-chart-2" class="feature-icon"></i></span>Pet Profiles</div>
+        <p class="feature-desc">Track nutrition, habits, and feeding patterns.</p>
       </div>
 
       <div class="feature-card enhanced-card p-5">
@@ -194,8 +206,8 @@
           <span class="status-badge">Community</span>
           <span class="text-sm text-base-content/70">Share moments</span>
         </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="users" class="feature-icon"></i></span>Social Feed</div>
-        <p class="text-base-content/80">Connect with other owners and share your pet's day.</p>
+        <div class="mt-2 flex items-center gap-2 feature-title"><span class="icon-badge"><i data-feather="users" class="feature-icon"></i></span>Social Feed</div>
+        <p class="feature-desc">Connect with other owners and share your pet's day.</p>
       </div>
 
       <div class="feature-card enhanced-card p-5">
@@ -203,8 +215,8 @@
           <span class="status-badge">Marketplace</span>
           <span class="text-sm text-base-content/70">Trusted listings</span>
         </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="shopping-cart" class="feature-icon"></i></span>Buy & Sell</div>
-        <p class="text-base-content/80">Find essentials for your pet in one place.</p>
+        <div class="mt-2 flex items-center gap-2 feature-title"><span class="icon-badge"><i data-feather="shopping-cart" class="feature-icon"></i></span>Buy & Sell</div>
+        <p class="feature-desc">Find essentials for your pet in one place.</p>
       </div>
     </div>
   </section>
