@@ -76,27 +76,22 @@ class PendingCommandSerializer(serializers.ModelSerializer):
 
 
 class FeedingScheduleSerializer(serializers.ModelSerializer):
-    def validate_portion_size(self, value):
-        COMP_SIZE   = 30    # grams per compartment (calibrated)
-        MAX_COMPS   = 8     # wheel has 8 compartments
-        PORTION_MIN = COMP_SIZE
-        PORTION_MAX = COMP_SIZE * MAX_COMPS  # 240g
+    portion_size = serializers.FloatField(required=False)
 
+    def validate_portion_size(self, value):
+        COMP = 30
+        MAX  = 240
         try:
             v = float(value)
         except Exception:
             raise serializers.ValidationError("Invalid portion size.")
-
-        if v < PORTION_MIN or v > PORTION_MAX:
+        if v < COMP or v > MAX:
             raise serializers.ValidationError(
-                f"Portion must be between {PORTION_MIN}g and {PORTION_MAX}g "
-                f"(multiples of {COMP_SIZE}g: 30, 60, 90 ... 240)."
+                f"Portion must be between {COMP}g and {MAX}g "
+                f"(multiples of {COMP}g: 30, 60, 90 … 240)."
             )
-
-        # Snap to nearest whole compartment multiple
-        import math
-        snapped = round(v / COMP_SIZE) * COMP_SIZE
-        snapped = max(PORTION_MIN, min(PORTION_MAX, snapped))
+        snapped = round(v / COMP) * COMP
+        snapped = max(COMP, min(MAX, snapped))
         return float(snapped)
     def to_representation(self, instance):
         rep = super().to_representation(instance)
@@ -174,7 +169,6 @@ class ControllerSettingsSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Portion must be between 30g and 240g (multiples of 30g)."
             )
-        # Snap to nearest compartment multiple
         snapped = round(v / 30) * 30
         snapped = max(30, min(240, snapped))
         return float(snapped)

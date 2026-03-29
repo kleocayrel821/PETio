@@ -62,11 +62,11 @@
                             class="range-modern w-full" 
                             min="30" 
                             max="240" 
-                            step="30"
-                            value="30"
+                            step="30" 
+                            value="30" 
                             oninput="updatePortionDisplay(this.value)"
                         >
-                        <span id="portionBubble" class="range-bubble">25g</span>
+                        <span id="portionBubble" class="range-bubble">30g</span>
                         <div class="range-ticks">
                             <span>30g</span>
                             <span>120g</span>
@@ -120,17 +120,21 @@
                         <i class="fas fa-weight text-orange-400"></i>
                         Amount (grams)
                     </label>
-                        <input 
-                            type="number" 
-                            id="scheduleAmount" 
-                            class="form-control-enhanced w-full"
-                            min="30" 
-                            max="240" 
-                            step="30"
-                            value="30"
-                            required
-                        >
-                    </div>
+                    <select 
+                        id="scheduleAmount" 
+                        class="form-control-enhanced w-full" 
+                        required 
+                    > 
+                        <option value="30">30g</option> 
+                        <option value="60">60g</option> 
+                        <option value="90">90g</option> 
+                        <option value="120">120g</option> 
+                        <option value="150">150g</option> 
+                        <option value="180">180g</option> 
+                        <option value="210">210g</option> 
+                        <option value="240">240g</option> 
+                    </select>
+                </div>
 
                 <!-- Days Selection -->
                 <div>
@@ -451,26 +455,21 @@ async function parseJsonSafe(response) {
 }
 // Portion size display update
 function updatePortionDisplay(value) {
-    // Snap to nearest 30g multiple — wheel only dispenses whole compartments
     const COMP = 30;
     const MIN  = 30;
     const MAX  = 240;
     let snapped = Math.round(parseFloat(value) / COMP) * COMP;
     snapped = Math.max(MIN, Math.min(MAX, snapped));
-
-    document.getElementById('portionDisplay').textContent = `${snapped} grams`;
-
+    document.getElementById('portionDisplay').textContent = snapped + ' grams';
     const slider = document.getElementById('portionSlider');
     const bubble = document.getElementById('portionBubble');
     const pct = ((snapped - MIN) / (MAX - MIN)) * 100;
-
-    slider.style.background = 
-        `linear-gradient(to right, #1f456e 0%, #1f456e ${pct}%, ` + 
-        `var(--bg-secondary) ${pct}%, var(--bg-secondary) 100%)`;
-
+    slider.style.background =
+        'linear-gradient(to right, #1f456e 0%, #1f456e ' + pct + '%, ' +
+        'var(--bg-secondary) ' + pct + '%, var(--bg-secondary) 100%)';
     if (bubble) {
-        bubble.textContent = `${snapped}g`;
-        bubble.style.left = `calc(${pct}% - 12px)`;
+        bubble.textContent = snapped + 'g';
+        bubble.style.left = 'calc(' + pct + '% - 12px)';
     }
 }
 
@@ -534,9 +533,8 @@ document.getElementById('quickScheduleForm').addEventListener('submit', async fu
     }
     
     const rawPortion = parseInt(
-        formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value 
+        formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value
     );
-    // Snap to nearest 30g multiple — wheel only dispenses whole compartments
     const snappedPortion = Math.max(30, Math.min(240, Math.round(rawPortion / 30) * 30));
 
     if (!document.getElementById('scheduleTime').value) {

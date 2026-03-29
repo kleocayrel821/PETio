@@ -218,8 +218,8 @@
                             <div class="portion-value" id="portionValue">30g</div>
                             <div class="portion-control">
                                 <div class="portion-label">
-                                    <span>0g</span>
-                                    <span>100g</span>
+                                    <span>30g</span>
+                                    <span>240g</span>
                                 </div>
                                 <input type="range" class="form-range" id="portionSize" min="30" max="240" step="30" value="30">
                             </div>
@@ -241,7 +241,7 @@
                     </div>
                     <div class="col-md-3">
                         <label for="schedulePortion" class="form-label">Portion (g)</label>
-                        <input type="number" class="form-control" id="schedulePortion" min="0" max="100" required aria-required="true" aria-invalid="false" aria-describedby="schedulePortionError">
+                        <input type="number" class="form-control" id="schedulePortion" min="30" max="240" step="30" required aria-required="true" aria-invalid="false" aria-describedby="schedulePortionError">
                         <div id="schedulePortionError" class="text-danger small" role="alert" aria-live="polite" style="display:none"></div>
                     </div>
                     <div class="col-md-3">
@@ -516,15 +516,10 @@
                 timeInput.setAttribute('aria-invalid', 'true');
                 hasError = true;
             }
-            const portionVal = Math.max(30, Math.min(240, 
-                Math.round(parseFloat(portionRaw) / 30) * 30 
-            ));
+            const rawPortion = parseFloat(portionRaw);
+            const portionVal = Math.max(30, Math.min(240, Math.round(rawPortion / 30) * 30));
             if (!timeRaw || !portionRaw || isNaN(portionVal) || portionVal < 30 || portionVal > 240 || days.length === 0) {
-                showToast(
-                    'Please provide valid time, portion between 30–240g (multiples of 30g), ' +
-                    'and select at least one day.',
-                    'warning'
-                );
+                showToast('Please provide valid time, portion between 30–240g (multiples of 30g), and select at least one day.', 'warning');
                 return;
             }
             if (!days || days.length === 0) {
@@ -594,15 +589,10 @@
             row.querySelectorAll('.dow-checkbox').forEach(chk => { if (chk.checked) days.push(chk.value); });
         
             // Basic validation
-            const portionVal = Math.max(30, Math.min(240, 
-                Math.round(parseFloat(portionRaw) / 30) * 30 
-            ));
+            const rawPortion2 = parseFloat(portionRaw);
+            const portionVal = Math.max(30, Math.min(240, Math.round(rawPortion2 / 30) * 30));
             if (!timeRaw || !portionRaw || isNaN(portionVal) || portionVal < 30 || portionVal > 240 || days.length === 0) {
-                showToast(
-                    'Please provide valid time, portion between 30–240g (multiples of 30g), ' +
-                    'and select at least one day.',
-                    'warning'
-                );
+                showToast('Please provide valid time, portion between 30–240g (multiples of 30g), and select at least one day.', 'warning');
                 return;
             }
         
@@ -683,7 +673,7 @@
                     const rowHtml = `
                         <tr data-id="${schedule.id}">
                             <td><input type="time" value="${displayTime}" class="form-control schedule-time" /></td>
-                            <td><input type="number" value="${schedule.portion_size}" min="25" max="100" class="form-control schedule-portion" /></td>
+                            <td><input type="number" value="${schedule.portion_size}" min="30" max="240" step="30" class="form-control schedule-portion" /></td>
                             <td><input type="text" value="${labelValue}" maxlength="20" class="form-control schedule-label" placeholder="Label (optional)" /></td>
                             <td>${renderDaysCheckboxes(days)}</td>
                             <td><input type="checkbox" ${schedule.enabled ? 'checked' : ''} class="form-check-input schedule-enabled" onchange="toggleSchedule(${schedule.id}, this.checked)" /></td>
@@ -768,7 +758,8 @@
 
         // Update portion size display as the slider moves
         portionSlider.addEventListener('input', () => {
-            portionValue.textContent = `${portionSlider.value}g`;
+            const snapped = Math.max(30, Math.min(240, Math.round(parseInt(portionSlider.value) / 30) * 30));
+            portionValue.textContent = snapped + 'g';
         });
 
         // Feeding Logs: pagination and rendering
