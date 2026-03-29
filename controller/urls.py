@@ -55,6 +55,7 @@ urlpatterns = [
     path("api/device/pair/register/", device_api.device_pair_register, name="device_pair_register"),
     path("api/device/pair/claim/", device_api.device_pair_claim, name="device_pair_claim"),
     path("api/device/pair/claimed/", device_api.device_pair_claimed, name="device_pair_claimed"),
+    path("api/device/unpair/", device_api.device_unpair_self, name="device_unpair_self"),
     path("api/health/", views.health, name="health"),
     path("api/client-errors/", views.client_error_log, name="client_error_log"),
 
@@ -62,6 +63,7 @@ urlpatterns = [
     path("api/hardware/validate-key/", views.validate_hardware_key, name="validate_hardware_key"),
     path("api/hardware/pair/", views.pair_hardware, name="pair_hardware"),
     path("api/hardware/my-devices/", views.my_devices, name="my_devices"),
+    path("api/hardware/unpair/", views.unpair_hardware, name="unpair_hardware"),
     path("api/controller/update-settings/", views.update_controller_settings, name="update_controller_settings"),
 
     # DRF API endpoints

@@ -42,7 +42,21 @@
                     </label>
                     <select 
                         id="scheduleAmount" 
-                        class="w-full form-control-enhanced"
+ feature/controller
+                        class="w-full form-control-enhanced" 
+                        required 
+                    > 
+                        <option value="30">30g</option> 
+                        <option value="60">60g</option> 
+                        <option value="90">90g</option> 
+                        <option value="120">120g</option> 
+                        <option value="150">150g</option> 
+                        <option value="180">180g</option> 
+                        <option value="210">210g</option> 
+                        <option value="240">240g</option> 
+
+                      
+                      class="w-full form-control-enhanced"
                         required
                     >
                         <option value="30">30</option>
@@ -50,6 +64,7 @@
                         <option value="90">90</option>
                         <option value="120">120</option>
                         <option value="150">150</option>
+ main
                     </select>
                 </div>
             </div>
@@ -258,6 +273,19 @@
                 </div>
                 <div>
                     <label class="subsection-title">Amount (grams)</label>
+ feature/controller
+                    <select id="editScheduleAmount" class="w-full form-control-enhanced" required aria-required="true" aria-describedby="editAmountHelp"> 
+                        <option value="30">30g</option> 
+                        <option value="60">60g</option> 
+                        <option value="90">90g</option> 
+                        <option value="120">120g</option> 
+                        <option value="150">150g</option> 
+                        <option value="180">180g</option> 
+                        <option value="210">210g</option> 
+                        <option value="240">240g</option> 
+                    </select> 
+                    <div id="editAmountHelp" class="mt-1 text-xs text-gray-500">Valid: 30, 60, 90, 120, 150, 180, 210, 240g (1–8 compartments × 30g).</div>
+
                     <select id="editScheduleAmount" class="w-full form-control-enhanced" required aria-required="true" aria-describedby="editAmountHelp">
                         <option value="30">30</option>
                         <option value="60">60</option>
@@ -266,6 +294,7 @@
                         <option value="150">150</option>
                     </select>
                     <div id="editAmountHelp" class="mt-1 text-xs text-gray-500">Select 30, 60, 90, 120, or 150g.</div>
+ main
                 </div>
             </div>
 
@@ -885,10 +914,19 @@ document.getElementById('addScheduleForm').addEventListener('submit', async func
         return;
     }
 
+ feature/controller
+    const portionVal = parseInt(
+        formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value
+    );
+    const allowed = [30, 60, 90, 120, 150, 180, 210, 240];
+    if (isNaN(portionVal) || !allowed.includes(portionVal)) {
+        showToast('Select a valid amount: 30–240g in multiples of 30g.', 'warning');
+
     const portionVal = parseInt(formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value);
     const allowed = [30,60,90,120,150];
     if (isNaN(portionVal) || !allowed.includes(portionVal)) {
         showToast('Select a valid amount: 30, 60, 90, 120, or 150 grams', 'warning');
+ main
         return;
     }
     
@@ -1038,9 +1076,15 @@ document.getElementById('editScheduleForm').addEventListener('submit', async fun
     }
 
     const portionVal = parseInt(document.getElementById('editScheduleAmount').value);
+ feature/controller
+    const allowed = [30, 60, 90, 120, 150, 180, 210, 240];
+    if (isNaN(portionVal) || !allowed.includes(portionVal)) {
+        showToast('Select a valid amount: 30–240g in multiples of 30g.', 'warning');
+
     const allowed = [30, 60, 90, 120, 150];
     if (isNaN(portionVal) || !allowed.includes(portionVal)) {
         showToast('Select a valid amount: 30, 60, 90, 120, or 150 grams', 'warning');
+ main
         return;
     }
     

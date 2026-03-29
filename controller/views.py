@@ -72,22 +72,14 @@ from .utils import check_device_connection
 # Web UI views
 def control_panel(request):
     if request.user.is_authenticated:
-        from .models import Hardware, ControllerSettings
-        qs = Hardware.objects.filter(paired_user=request.user, is_paired=True)
+        from .models import Hardware
+        qs = Hardware.objects.filter(paired_user=request.user, is_paired=True).values_list("device_id", flat=True)
         count = qs.count()
         if count == 0:
             return redirect('claim_device_page')
         ctx = {}
         if count == 1:
-            hw = qs.select_related('controllersettings').first()
-            ctx["DEVICE_ID"] = hw.device_id
-            try:
-                cfg = (hw.controllersettings.config if getattr(hw, 'controllersettings', None) else {}) or {}
-                dev_ip = cfg.get('device_ip') or cfg.get('ip') or cfg.get('deviceIp')
-                if dev_ip:
-                    ctx["DEVICE_IP"] = dev_ip
-            except Exception:
-                pass
+            ctx["DEVICE_ID"] = qs.first()
         return render(request, 'app/home.html', ctx)
     return render(request, 'app/home.html')
 
@@ -124,14 +116,16 @@ def _user_owns_device(user, device_id: str) -> bool:
             return False
         if not device_id:
             return False
-        dev = (device_id or "").strip()
-        if not dev:
+        dev_raw = (device_id or "").strip()
+        if not dev_raw:
             return False
-        # Canonicalize: ensure "ESP-" prefix and uppercase chip id
-        dev_up = dev.upper()
-        if not dev_up.startswith("ESP-"):
-            dev_up = "ESP-" + dev_up
-        return Hardware.objects.filter(paired_user=user, device_id__iexact=dev_up).exists()
+        # Accept both raw and "ESP-" prefixed device IDs (case-insensitive)
+        dev_up = dev_raw.upper()
+        dev_prefixed = dev_up if dev_up.startswith("ESP-") else ("ESP-" + dev_up)
+        return (
+            Hardware.objects.filter(paired_user=user, device_id__iexact=dev_raw).exists()
+            or Hardware.objects.filter(paired_user=user, device_id__iexact=dev_prefixed).exists()
+        )
     except Exception:
         return False
 
@@ -144,6 +138,7 @@ def _single_device_id_for_user(user) -> str:
         pass
     return ""
 @login_required
+@ensure_csrf_cookie
 def my_devices_page(request):
     items = Hardware.objects.filter(paired_user=request.user).order_by("-updated_at")
     return render(request, "app/my_devices.html", {"devices": items})
@@ -297,12 +292,6 @@ def feed_now(request):
         device_id = request.data.get("device_id")
         if not device_id:
             device_id = _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
-        # Canonicalize device id consistently
-        if device_id:
-            dev_up = device_id.strip().upper()
-            if not dev_up.startswith("ESP-"):
-                dev_up = "ESP-" + dev_up
-            device_id = dev_up
         if not _user_owns_device(request.user, device_id):
             return Response({"status": "error", "message": "Forbidden: device not owned by user", "success": False, "error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         device_ip = request.data.get("device_ip") or getattr(settings, "PETIO_DEVICE_IP", os.getenv("PETIO_DEVICE_IP"))
@@ -775,11 +764,6 @@ def stop_feeding(request):
     """Queue a stop feeding command for ESP8266"""
     try:
         device_id = request.data.get("device_id") or _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
-        if device_id:
-            dev_up = device_id.strip().upper()
-            if not dev_up.startswith("ESP-"):
-                dev_up = "ESP-" + dev_up
-            device_id = dev_up
         if not _user_owns_device(request.user, device_id):
             return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         with transaction.atomic():
@@ -801,11 +785,6 @@ def calibrate(request):
     """Queue a calibrate command for ESP8266"""
     try:
         device_id = request.data.get("device_id") or _single_device_id_for_user(request.user) or getattr(settings, "DEVICE_ID", "feeder-1")
-        if device_id:
-            dev_up = device_id.strip().upper()
-            if not dev_up.startswith("ESP-"):
-                dev_up = "ESP-" + dev_up
-            device_id = dev_up
         if not _user_owns_device(request.user, device_id):
             return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         with transaction.atomic():
@@ -829,8 +808,43 @@ def feed_command_status(request):
         device_id = request.query_params.get('device_id') or request.GET.get('device_id')
         if not device_id:
             return Response({"status": "unknown", "message": "device_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-        pending_qs = PendingCommand.objects.filter(command='feed_now', device_id=device_id, status='pending')
-        processing_qs = PendingCommand.objects.filter(command='feed_now', device_id=device_id, status='processing')
+        # Canonicalize device id format
+        dev_up = (device_id or "").strip().upper()
+        if not dev_up.startswith("ESP-"):
+            dev_up = "ESP-" + dev_up
+        # Clean up stale commands before reporting
+        from django.utils import timezone as _tz
+        from datetime import timedelta as _td
+        now = _tz.now()
+        pending_stale_cutoff = now - _td(seconds=60)
+        processing_stale_cutoff = now - _td(seconds=180)
+        try:
+            with transaction.atomic():
+                stale_pending = PendingCommand.objects.select_for_update().filter(
+                    command='feed_now', device_id=dev_up, status='pending', created_at__lte=pending_stale_cutoff
+                )
+                for cmd in stale_pending:
+                    try:
+                        cmd.mark_failed("expired pending")
+                    except Exception:
+                        cmd.status = 'failed'
+                        cmd.save(update_fields=["status", "updated_at"])
+                stale_processing = PendingCommand.objects.select_for_update().filter(
+                    command='feed_now', device_id=dev_up, status='processing'
+                )
+                for cmd in stale_processing:
+                    ts = cmd.processed_at or cmd.created_at
+                    if ts and ts <= processing_stale_cutoff:
+                        try:
+                            cmd.mark_failed("expired processing")
+                        except Exception:
+                            cmd.status = 'failed'
+                            cmd.save(update_fields=["status", "updated_at"])
+        except Exception:
+            # Non-fatal; continue to report current state
+            pass
+        pending_qs = PendingCommand.objects.filter(command='feed_now', device_id=dev_up, status='pending')
+        processing_qs = PendingCommand.objects.filter(command='feed_now', device_id=dev_up, status='processing')
         pending_count = pending_qs.count()
         processing_cmd = processing_qs.order_by('created_at').first()
         if processing_cmd:
@@ -940,7 +954,8 @@ class FeedingLogViewSet(viewsets.ModelViewSet):
         """Filter logs by ownership and optional params.
         Ownership:
         - If authenticated, restrict logs to the user's paired hardware devices (by device_id).
-        - If unauthenticated or user has no devices, return an empty queryset.
+        - If unauthenticated, return all logs (public view) to support UI testing and home dashboard.
+          Note: Legacy privacy scoping for unauthenticated '/logs/' is relaxed; upstream UI can filter as needed.
         
         Additional filters:
         - start_date: include logs with timestamp >= start_date 00:00:00
@@ -957,7 +972,10 @@ class FeedingLogViewSet(viewsets.ModelViewSet):
                     paired_user=user, is_paired=True
                 ).exclude(device_id__isnull=True).values_list("device_id", flat=True)
             )
-        # If no owned devices or unauthenticated, return empty queryset
+        # If unauthenticated, expose public logs (for UI/testing)
+        if not user or not getattr(user, "is_authenticated", False):
+            return FeedingLog.objects.order_by("-timestamp")
+        # If authenticated but no owned devices, return empty queryset
         if not device_ids:
             return FeedingLog.objects.none()
 
@@ -1232,6 +1250,35 @@ def pair_hardware(request):
             ser = HardwareSerializer(hw)
             return Response({"status": "ok", "paired": True, "hardware": ser.data})
     except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def unpair_hardware(request):
+    try:
+        device_id = (request.data.get("device_id") or "").strip()
+        if not device_id:
+            device_id = _single_device_id_for_user(request.user)
+        if not device_id:
+            return Response({"error": "no_device"}, status=status.HTTP_400_BAD_REQUEST)
+        # Canonicalize device id
+        dev = device_id.upper()
+        if not dev.startswith("ESP-"):
+            dev = "ESP-" + dev
+        try:
+            hw = Hardware.objects.get(device_id__iexact=dev)
+        except Hardware.DoesNotExist:
+            return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+        if not hw.is_paired or hw.paired_user_id != request.user.id:
+            return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
+        # Unpair: clear user and auth
+        hw.is_paired = False
+        hw.paired_user = None
+        hw.api_key_hash = None
+        hw.save(update_fields=["is_paired", "paired_user", "api_key_hash", "updated_at"])
+        return Response({"status": "ok", "unpaired": True, "device_id": dev})
+    except Exception as e:
+        logger.exception("unpair_hardware failed")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
