@@ -170,9 +170,9 @@
         <!-- Product Image -->
         <figure class="relative overflow-hidden rounded-t-xl h-40 sm:h-48 xl:h-56">
             {% if item.main_image %}
-            <img src="{{ item.main_image.url }}" alt="{{ item.title }}" class="absolute left-0 right-0 bottom-0 top-8 w-full h-full object-cover cursor-zoom-in z-0" loading="lazy" data-viewer data-group="catalog">
+            <img src="{{ item.main_image.url }}" alt="{{ item.title }}" class="block w-full h-full object-cover object-center cursor-zoom-in" loading="lazy" data-viewer data-group="catalog">
             {% else %}
-            <img src="{% static 'img/placeholder.svg' %}" alt="{{ item.title }}" class="absolute left-0 right-0 bottom-0 top-8 w-full h-full object-cover cursor-zoom-in z-0" loading="lazy" data-viewer data-group="catalog">
+            <img src="{% static 'img/placeholder.svg' %}" alt="{{ item.title }}" class="block w-full h-full object-cover object-center cursor-zoom-in" loading="lazy" data-viewer data-group="catalog">
             {% endif %}
             {% if item.is_fixed_price %}
             <div class="badge badge-info absolute top-2 left-2 z-10">Buy Now</div>

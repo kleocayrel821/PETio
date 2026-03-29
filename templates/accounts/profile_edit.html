@@ -52,79 +52,79 @@
 {% endblock %}
 {% block title %}Edit Profile - PETio{% endblock %}
 {% block content %}
-<div class="profile-edit-scope container mx-auto max-w-2xl py-10">
-  <h1 class="text-2xl font-bold mb-6">Edit Your Profile</h1>
+<div class="container py-10 mx-auto max-w-2xl profile-edit-scope">
+  <h1 class="mb-6 text-2xl font-bold">Edit Your Profile</h1>
 
   <!-- Removed local messages block to avoid duplicate alerts; rely on global messages in base.html -->
 
-  <div class="card bg-base-200 p-6">
+  <div class="p-6 card bg-base-200">
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
-      <div class="form-control mb-4">
+      <div class="mb-4 form-control">
         <label class="label"><span class="label-text">Display Name</span></label>
         {{ form.display_name }}
       </div>
-      <div class="form-control mb-4">
+      <div class="mb-4 form-control">
         <label class="label"><span class="label-text">Bio</span></label>
         {{ form.bio }}
       </div>
-      <div class="form-control mb-4">
+      <div class="mb-4 form-control">
         <label class="label"><span class="label-text">Location</span></label>
         {{ form.location }}
       </div>
-      <div class="form-control mb-4">
+      <div class="mb-4 form-control">
         <label class="label"><span class="label-text">Phone</span></label>
         {{ form.phone }}
       </div>
-      <div class="form-control mb-4">
+      <div class="mb-4 form-control">
         <label class="label"><span class="label-text">Avatar (optional)</span></label>
         {{ form.avatar }}
         {% if form.avatar.errors %}
-          <div class="text-error text-sm mt-1">{{ form.avatar.errors|striptags }}</div>
+          <div class="mt-1 text-sm text-error">{{ form.avatar.errors|striptags }}</div>
         {% endif %}
       </div>
 
-      <div class="divider my-6">In-app notifications</div>
-      <div class="form-control mb-2">
+      <div class="my-6 divider">In-app notifications</div>
+      <div class="mb-2 form-control">
         <label class="cursor-pointer label">
           <span class="label-text">Show marketplace notifications</span>
           <input type="checkbox" name="notify_marketplace_notifications" class="toggle toggle-primary" {% if request.user.notify_marketplace_notifications %}checked{% endif %} />
         </label>
       </div>
-      <div class="form-control mb-2">
+      <div class="mb-2 form-control">
         <label class="cursor-pointer label">
           <span class="label-text">Notify on request updates</span>
           <input type="checkbox" name="notify_on_request_updates" class="toggle toggle-primary" {% if request.user.notify_on_request_updates %}checked{% endif %} />
         </label>
       </div>
-      <div class="form-control mb-6">
+      <div class="mb-6 form-control">
         <label class="cursor-pointer label">
           <span class="label-text">Notify on new request messages</span>
           <input type="checkbox" name="notify_on_messages" class="toggle toggle-primary" {% if request.user.notify_on_messages %}checked{% endif %} />
         </label>
       </div>
 
-      <div class="divider my-6">Email notifications</div>
-      <div class="form-control mb-2">
+      <div class="my-6 divider">Email notifications</div>
+      <div class="mb-2 form-control">
         <label class="cursor-pointer label">
           <span class="label-text">Receive marketplace emails</span>
           <input type="checkbox" name="email_marketplace_notifications" class="toggle toggle-primary" {% if request.user.email_marketplace_notifications %}checked{% endif %} />
         </label>
       </div>
-      <div class="form-control mb-2">
+      <div class="mb-2 form-control">
         <label class="cursor-pointer label">
           <span class="label-text">Emails on request updates (create/accept/reject/meetup/cancel/complete)</span>
           <input type="checkbox" name="email_on_request_updates" class="toggle toggle-primary" {% if request.user.email_on_request_updates %}checked{% endif %} />
         </label>
       </div>
-      <div class="form-control mb-6">
+      <div class="mb-6 form-control">
         <label class="cursor-pointer label">
           <span class="label-text">Emails on new request messages</span>
           <input type="checkbox" name="email_on_messages" class="toggle toggle-primary" {% if request.user.email_on_messages %}checked{% endif %} />
         </label>
       </div>
 
-      <div class="mt-6 flex gap-2 justify-end">
+      <div class="flex gap-2 justify-end mt-6">
         <a href="{% url 'accounts:profile' %}" class="btn btn-cancel-edit">Cancel</a>
         <button type="submit" class="btn btn-edit">Save Changes</button>
       </div>

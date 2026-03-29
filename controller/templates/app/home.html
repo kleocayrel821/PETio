@@ -122,6 +122,7 @@
                     </label>
                     <select 
                         id="scheduleAmount" 
+ feature/controller
                         class="form-control-enhanced w-full" 
                         required 
                     > 
@@ -133,6 +134,16 @@
                         <option value="180">180g</option> 
                         <option value="210">210g</option> 
                         <option value="240">240g</option> 
+=======
+                        class="form-control-enhanced w-full"
+                        required
+                    >
+                        <option value="30">30</option>
+                        <option value="60">60</option>
+                        <option value="90">90</option>
+                        <option value="120">120</option>
+                        <option value="150">150</option>
+ main
                     </select>
                 </div>
 
@@ -143,6 +154,10 @@
                         Days
                     </label>
                     <div class="grid grid-cols-4 sm:grid-cols-7 gap-1">
+                        <label class="day-toggle">
+                            <input type="checkbox" name="days" value="sunday" class="hidden">
+                            <span class="day-label">S</span>
+                        </label>
                         <label class="day-toggle">
                             <input type="checkbox" name="days" value="monday" class="hidden">
                             <span class="day-label">M</span>
@@ -157,7 +172,7 @@
                         </label>
                         <label class="day-toggle">
                             <input type="checkbox" name="days" value="thursday" class="hidden">
-                            <span class="day-label">T</span>
+                            <span class="day-label">TH</span>
                         </label>
                         <label class="day-toggle">
                             <input type="checkbox" name="days" value="friday" class="hidden">
@@ -165,10 +180,6 @@
                         </label>
                         <label class="day-toggle">
                             <input type="checkbox" name="days" value="saturday" class="hidden">
-                            <span class="day-label">S</span>
-                        </label>
-                        <label class="day-toggle">
-                            <input type="checkbox" name="days" value="sunday" class="hidden">
                             <span class="day-label">S</span>
                         </label>
                     </div>
@@ -193,13 +204,19 @@
             Recent Activity
         </div>
         <div class="overflow-x-auto">
-            <table class="enhanced-table w-full">
+            <table class="enhanced-table w-full recent-activity-table">
+                <colgroup>
+                    <col class="col-time">
+                    <col class="col-action">
+                    <col class="col-amount">
+                    <col class="col-status">
+                </colgroup>
                 <thead>
                     <tr>
-                        <th><i class="fas fa-clock mr-2"></i>Time</th>
-                        <th><i class="fas fa-info-circle mr-2"></i>Action</th>
-                        <th><i class="fas fa-weight mr-2"></i>Amount</th>
-                        <th><i class="fas fa-check-circle mr-2"></i>Status</th>
+                        <th class="text-left"><i class="fas fa-clock mr-2"></i>Time</th>
+                        <th class="text-left"><i class="fas fa-info-circle mr-2"></i>Action</th>
+                        <th class="text-center"><i class="fas fa-weight mr-2"></i>Amount</th>
+                        <th class="text-center"><i class="fas fa-check-circle mr-2"></i>Status</th>
                     </tr>
                 </thead>
                 <tbody id="recentActivityTable">
@@ -362,6 +379,33 @@
     background: rgba(239, 68, 68, 0.2);
     color: var(--error-red);
     border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.recent-activity-table {
+    table-layout: fixed;
+    width: 100%;
+}
+.recent-activity-table th,
+.recent-activity-table td {
+    padding: 0.75rem 1rem;
+}
+.recent-activity-table .col-time { width: 25%; }
+.recent-activity-table .col-action { width: 25%; }
+.recent-activity-table .col-amount { width: 25%; }
+.recent-activity-table .col-status { width: 25%; }
+@media (max-width: 640px) {
+  .recent-activity-table colgroup { display: none; }
+  .recent-activity-table thead { display: none; }
+  .recent-activity-table { table-layout: auto; }
+  .recent-activity-table tr { display: block; background: var(--bg-card); border-radius: 12px; box-shadow: var(--shadow-card); margin-bottom: 12px; padding: 8px 10px; }
+  .recent-activity-table td { display: flex; align-items: center; justify-content: space-between; padding: 8px 6px; }
+  .recent-activity-table td:nth-child(1)::before { content: 'Time'; font-weight: 600; color: var(--text-muted); margin-right: 12px; }
+  .recent-activity-table td:nth-child(2)::before { content: 'Action'; font-weight: 600; color: var(--text-muted); margin-right: 12px; }
+  .recent-activity-table td:nth-child(3)::before { content: 'Amount'; font-weight: 600; color: var(--text-muted); margin-right: 12px; }
+  .recent-activity-table td:nth-child(4)::before { content: 'Status'; font-weight: 600; color: var(--text-muted); margin-right: 12px; }
+  .recent-activity-table td:nth-child(3), 
+  .recent-activity-table td:nth-child(4) { text-align: right; }
+  .recent-activity-table td .status-badge { margin-left: 12px; }
 }
 </style>
 
@@ -598,16 +642,15 @@ async function loadRecentActivity() {
         if (data && data.results && data.results.length > 0) {
             tbody.innerHTML = data.results.map(log => `
                 <tr>
-                    <td class="font-mono text-sm">${new Date(log.timestamp).toLocaleString()}</td>
-                    <td>
+                    <td class="font-mono text-sm text-left">${new Date(log.timestamp).toLocaleString()}</td>
+                    <td class="text-left">
                         <span class="flex items-center gap-2">
                             <i class="fas fa-${getFeedTypeIcon(log.feed_type)} text-[#1f456e]"></i>
-                            ${getFeedTypeLabel(log.feed_type)}
-                            ${log.action === 'feed' ? 'Manual Feed' : 'Scheduled Feed'}
+                            ${getActionLabel(log.feed_type)}
                         </span>
                     </td>
-                    <td class="font-semibold">${log.amount}g</td>
-                    <td>
+                    <td class="font-semibold text-center">${log.amount}g</td>
+                    <td class="text-center">
                         <span class="status-badge status-${log.success ? 'success' : 'error'}">
                             <i class="fas fa-${log.success ? 'check' : 'times'}"></i>
                             ${log.success ? 'Success' : 'Failed'}
@@ -687,13 +730,15 @@ async function updateLastFedTime() {
             if (diffMinutes < 1) {
                 timeText = 'Just now';
             } else if (diffMinutes < 60) {
-                const hours = Math.floor(diffMinutes / 60);
-                timeText = `${hours} hour${hours > 1 ? 's' : ''} ago`;
+                timeText = `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
             } else if (diffMinutes < 1440) {
                 const hours = Math.floor(diffMinutes / 60);
-                timeText = `${hours} hour${hours > 1 ? 's' : ''} ago`;
+                timeText = `${hours} hour${hours !== 1 ? 's' : ''} ago`;
             } else {
-                timeText = lastFed.toLocaleDateString();
+                const days = Math.floor(diffMinutes / 1440);
+                timeText = days < 7
+                    ? `${days} day${days !== 1 ? 's' : ''} ago`
+                    : lastFed.toLocaleDateString();
             }
             
             document.getElementById('lastFedTime').textContent = timeText;
@@ -732,13 +777,13 @@ function getFeedTypeIcon(type) {
     };
     return icons[type] || 'utensils';
 }
-function getFeedTypeLabel(type) {
+function getActionLabel(type) {
     const labels = {
-        manual: 'Manual Button',
-        scheduled: 'Schedule',
-        automatic: 'Automatic Button'
+        manual: 'Manual Feed',
+        scheduled: 'Scheduled Feed',
+        automatic: 'Automatic Feed'
     };
-    return labels[type] || 'Manual Button';
+    return labels[type] || 'Manual Feed';
 }
 </script>
 {% endblock %}

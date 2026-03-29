@@ -78,6 +78,7 @@
                     <select id="feedTypeFilter" class="form-control-enhanced w-full min-w-0">
                         <option value="">All Types</option>
                         <option value="manual">Manual Button</option>
+                        <option value="automatic">Automatic Button</option>
                         <option value="scheduled">Schedule</option>
                     </select>
                 </div>
@@ -213,26 +214,30 @@
         <!-- Logs Table -->
         <div id="logsContainer" class="hidden">
             <div class="overflow-x-auto -mx-2 sm:mx-0">
-                <table class="enhanced-table striped-table w-full">
+                <table class="enhanced-table striped-table w-full feeding-logs-table">
+                    <colgroup>
+                        <col class="col-date">
+                        <col class="col-amount">
+                        <col class="col-type">
+                        <col class="col-status">
+                        <col class="col-notes">
+                    </colgroup>
                     <thead>
                         <tr>
-                            <th class="sortable" data-sort="timestamp">
-                                <i class="fas fa-clock mr-2"></i>Date & Time
-                                <i class="fas fa-sort sort-icon"></i>
+                            <th class="th-left sortable" data-sort="timestamp">
+                                <span class="th-content"><i class="fas fa-clock mr-2"></i>Date & Time <i class="fas fa-sort sort-icon"></i></span>
                             </th>
-                            <th class="sortable" data-sort="amount">
-                                <i class="fas fa-weight mr-2"></i>Amount
-                                <i class="fas fa-sort sort-icon"></i>
+                            <th class="th-center sortable" data-sort="amount">
+                                <span class="th-content"><i class="fas fa-weight mr-2"></i>Amount <i class="fas fa-sort sort-icon"></i></span>
                             </th>
-                            <th class="sortable" data-sort="feed_type">
-                                <i class="fas fa-tag mr-2"></i>Type
-                                <i class="fas fa-sort sort-icon"></i>
+                            <th class="th-center sortable" data-sort="feed_type">
+                                <span class="th-content"><i class="fas fa-tag mr-2"></i>Type <i class="fas fa-sort sort-icon"></i></span>
                             </th>
-                            <th>
-                                <i class="fas fa-info-circle mr-2"></i>Status
+                            <th class="th-center">
+                                <span class="th-content"><i class="fas fa-info-circle mr-2"></i>Status</span>
                             </th>
-                            <th>
-                                <i class="fas fa-sticky-note mr-2"></i>Notes
+                            <th class="th-center">
+                                <span class="th-content"><i class="fas fa-sticky-note mr-2"></i>Notes</span>
                             </th>
                         </tr>
                     </thead>
@@ -423,6 +428,48 @@ input[type="date"].form-control-enhanced:focus { border-color: #1f456e; box-shad
     color: var(--primary-blue);
 }
 
+/* Feeding Logs table alignment and widths */
+.feeding-logs-table { table-layout: fixed; width: 100%; }
+.feeding-logs-table thead th,
+.feeding-logs-table tbody td { padding: 12px 16px; vertical-align: middle; }
+.feeding-logs-table .th-content { display: inline-flex; align-items: center; gap: .4rem; }
+.feeding-logs-table .th-left { text-align: left; }
+.feeding-logs-table .th-center { text-align: center; }
+.feeding-logs-table .col-date { width: 20%; }
+.feeding-logs-table .col-amount { width: 15%; }
+.feeding-logs-table .col-type { width: 25%; }
+.feeding-logs-table .col-status { width: 20%; }
+.feeding-logs-table .col-notes { width: 20%; }
+.feeding-logs-table tbody td.td-left { text-align: left; }
+.feeding-logs-table tbody td.td-center { text-align: center; }
+.feeding-logs-table tbody td .status-badge { display: inline-flex; align-items: center; justify-content: center; }
+.feeding-logs-table .status-badge { padding: 0.3rem 0.6rem; font-size: .82rem; line-height: 1; }
+
+/* Responsive widths for Feeding Logs */
+@media (max-width: 1024px) {
+  .feeding-logs-table thead th,
+  .feeding-logs-table tbody td { padding: 10px 12px; }
+}
+@media (max-width: 768px) {
+  .feeding-logs-table .col-date { width: 180px; }
+  .feeding-logs-table .col-amount { width: 90px; }
+  .feeding-logs-table .col-type { width: 180px; }
+  .feeding-logs-table .col-status { width: 150px; }
+  .feeding-logs-table .col-notes { width: 110px; }
+  .feeding-logs-table thead th,
+  .feeding-logs-table tbody td { padding: 8px 10px; white-space: nowrap; }
+  .feeding-logs-table .status-badge { font-size: .78rem; padding: 0.25rem 0.5rem; }
+}
+@media (max-width: 480px) {
+  .feeding-logs-table .col-date { width: 160px; }
+  .feeding-logs-table .col-amount { width: 80px; }
+  .feeding-logs-table .col-type { width: 170px; }
+  .feeding-logs-table .col-status { width: 130px; }
+  .feeding-logs-table .col-notes { width: 100px; }
+  .feeding-logs-table thead th,
+  .feeding-logs-table tbody td { padding: 8px 8px; }
+  .feeding-logs-table .status-badge { font-size: .72rem; padding: 0.22rem 0.45rem; }
+}
 /* Filter Chips */
 .filter-chip {
     background: #1f456e;
@@ -626,7 +673,7 @@ function renderLogs() {
     
     tbody.innerHTML = logs.map(log => `
         <tr class="log-row" data-id="${log.id}">
-            <td class="font-mono">
+            <td class="font-mono td-left">
                 <div class="font-semibold text-[#1f456e]">
                     ${formatDate(log.timestamp)}
                 </div>
@@ -634,22 +681,22 @@ function renderLogs() {
                     ${formatTime(log.timestamp)}
                 </div>
             </td>
-            <td class="font-semibold text-orange-400">
+            <td class="font-semibold text-orange-400 td-center">
                 ${log.amount}g
             </td>
-            <td>
+            <td class="td-center">
                 <span class="status-badge feed-type-${log.feed_type || 'manual'}">
                     <i class="fas fa-${getFeedTypeIcon(log.feed_type)}"></i>
                     ${getFeedTypeLabel(log.feed_type)}
                 </span>
             </td>
-            <td>
+            <td class="td-center">
                 <span class="status-badge status-${log.status || 'success'}">
                     <i class="fas fa-${getStatusIcon(log.status)}"></i>
                     ${getStatusLabel(log.status)}
                 </span>
             </td>
-            <td class="text-sm text-gray-300">
+            <td class="text-sm text-gray-300 td-center">
                 ${log.notes || '-'}
             </td>
         </tr>
