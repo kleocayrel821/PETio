@@ -38,10 +38,12 @@
   <div class="devices-wrap">
     <div class="devices-header">
       <h1 class="devices-title">My Devices</h1>
+      {% if not devices or devices|length == 0 %}
       <a href="{% url 'claim_device_page' %}" class="btn-claim">
         <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         <span>Claim a New Device</span>
       </a>
+      {% endif %}
     </div>
 
     {% if devices %}
@@ -57,9 +59,11 @@
             <div><strong>Key:</strong> {{ d.unique_key }}</div>
           </div>
           <div class="actions">
+            {% if not devices or devices|length == 0 %}
             <a class="dev-icon-btn" href="{% url 'claim_device_page' %}" title="Add another">
               <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
             </a>
+            {% endif %}
             <a class="dev-icon-btn" href="/" title="Open">
               <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </a>
