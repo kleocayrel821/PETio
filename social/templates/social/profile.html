@@ -638,22 +638,22 @@
         }
 
         .profile-header-content {
-            padding: 60px 16px 16px 140px;
+            padding: 60px 16px 16px;
         }
 
         .profile-name {
             font-size: 1.3rem;
         }
 
-        .profile-actions-header { position: static; margin-bottom: 8px; }
-
-        .profile-stats { gap: 12px; justify-content: flex-start; }
+        .profile-stats {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
 
         .stat-item {
-            padding: 12px;
-            flex: 1 1 calc(50% - 12px);
-            min-width: 0;
-            text-align: left;
+            padding: 10px;
+            flex-direction: column;
+            text-align: center;
         }
 
         .stat-number {
@@ -700,9 +700,6 @@
             height: 70px;
             font-size: 0.9rem;
         }
-        .composer { padding: 14px 16px; }
-        .composer-icon-btn { width: 32px; height: 32px; }
-        .engagement-buttons { gap: 16px; }
     }
 
     @media (max-width: 480px) {
@@ -734,8 +731,10 @@
             font-size: 0.9rem;
         }
 
-        .profile-stats { gap: 10px; }
-        .stat-item { flex: 1 1 100%; }
+        .profile-stats {
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
 
         .icon-grid {
             grid-template-columns: repeat(2, 1fr);
@@ -745,7 +744,6 @@
             padding: 6px 16px;
             font-size: 0.85rem;
         }
-        .post-image { max-height: 320px; }
     }
 </style>
 {% endblock %}
