@@ -224,6 +224,35 @@
                     Add First Schedule
                 </button>
             </div>
+            <!-- Pagination -->
+            <div id="schedulesPagination" class="hidden">
+                <div class="flex flex-col gap-4 justify-between items-center pt-6 border-t border-gray-700 sm:flex-row">
+                    <div class="text-sm text-gray-400">
+                        Showing <span id="schedPageStart">1</span> to <span id="schedPageEnd">10</span> of <span id="schedTotalResults">0</span> schedules
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <button id="schedFirst" class="pagination-btn" onclick="schedGoToPage(1)" title="First page">
+                            <i class="fas fa-angle-double-left"></i>
+                        </button>
+                        <button id="schedPrev" class="pagination-btn" onclick="schedGoToPage(currentSchedPage - 1)" title="Previous page">
+                            <i class="fas fa-angle-left"></i>
+                        </button>
+                        <div id="schedPageNumbers" class="flex gap-1"></div>
+                        <button id="schedNext" class="pagination-btn" onclick="schedGoToPage(currentSchedPage + 1)" title="Next page">
+                            <i class="fas fa-angle-right"></i>
+                        </button>
+                        <button id="schedLast" class="pagination-btn" onclick="schedGoToPage(totalSchedPages)" title="Last page">
+                            <i class="fas fa-angle-double-right"></i>
+                        </button>
+                        <span class="ml-2 text-sm text-gray-400">Show:</span>
+                        <select id="schedPageSize" class="select select-bordered select-sm" onchange="schedChangePageSize()">
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                        </select>
+                        <span class="text-sm text-gray-400">per page</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -626,6 +655,34 @@
         font-size: 0.8rem;
     }
 }
+/* Pagination (reuse history styles for consistency) */
+.pagination-btn {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+}
+.pagination-btn:hover:not(:disabled) {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+    border-color: var(--primary-blue);
+}
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.pagination-btn.active {
+    background: var(--primary-blue);
+    color: #fff;
+    border-color: var(--primary-blue);
+}
 </style>
 
 <script>
@@ -716,31 +773,45 @@
  
  let schedules = [];
  let editingScheduleId = null;
+let currentSchedPage = 1;
+let totalSchedPages = 1;
+let schedPageSize = 10;
 
 const dayToAbbr = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
 
 // Load schedules from API
-async function loadSchedules() {
+async function loadSchedules(page = 1) {
     const loading = document.getElementById('schedulesLoading');
     const container = document.getElementById('schedulesContainer');
     const emptyState = document.getElementById('emptySchedules');
+    const pagination = document.getElementById('schedulesPagination');
     
     loading.classList.remove('hidden');
     container.classList.add('hidden');
+    if (pagination) pagination.classList.add('hidden');
     
     try {
         const showDisabled = document.getElementById('showDisabledSchedules')?.checked;
         const sort = document.getElementById('scheduleSort')?.value || '-id';
-        const baseUrl = `/api/schedules/?page_size=100&ordering=${encodeURIComponent(sort)}`;
-        const url = showDisabled ? baseUrl : `${baseUrl}&enabled=true`;
-        const response = await fetch(url, {
+        const params = new URLSearchParams({
+            page: page,
+            page_size: schedPageSize,
+            ordering: sort
+        });
+        if (!showDisabled) params.append('enabled', 'true');
+        const response = await fetch(`/api/schedules/?${params}`, {
             headers: { 'Accept': 'application/json' },
             credentials: 'same-origin'
         });
         const data = await parseJsonSafe(response);
         
         schedules = data.results || [];
+        currentSchedPage = page;
+        totalSchedPages = Math.ceil((data.count || 0) / schedPageSize);
         renderSchedules();
+        if (typeof renderSchedulesPagination === 'function') {
+            renderSchedulesPagination(data.count || 0);
+        }
         
         loading.classList.add('hidden');
         
@@ -749,6 +820,7 @@ async function loadSchedules() {
         } else {
             container.classList.remove('hidden');
             emptyState.classList.add('hidden');
+            if (pagination) pagination.classList.remove('hidden');
         }
         
     } catch (error) {
@@ -840,6 +912,48 @@ function renderSchedules() {
             </td>
         </tr>
     `).join('');
+}
+
+function renderSchedulesPagination(totalResults) {
+    const startEl = document.getElementById('schedPageStart');
+    const endEl = document.getElementById('schedPageEnd');
+    const totalEl = document.getElementById('schedTotalResults');
+    const firstBtn = document.getElementById('schedFirst');
+    const prevBtn = document.getElementById('schedPrev');
+    const nextBtn = document.getElementById('schedNext');
+    const lastBtn = document.getElementById('schedLast');
+    if (startEl) startEl.textContent = totalResults > 0 ? ((currentSchedPage - 1) * schedPageSize + 1) : 0;
+    if (endEl) endEl.textContent = Math.min(currentSchedPage * schedPageSize, totalResults);
+    if (totalEl) totalEl.textContent = totalResults;
+    if (firstBtn) firstBtn.disabled = currentSchedPage === 1;
+    if (prevBtn) prevBtn.disabled = currentSchedPage === 1;
+    if (nextBtn) nextBtn.disabled = currentSchedPage === totalSchedPages;
+    if (lastBtn) lastBtn.disabled = currentSchedPage === totalSchedPages;
+    const pageNumbers = document.getElementById('schedPageNumbers');
+    if (pageNumbers) {
+        const pages = [];
+        if (totalSchedPages > 0) pages.push(1);
+        for (let i = Math.max(2, currentSchedPage - 1); i <= Math.min(totalSchedPages - 1, currentSchedPage + 1); i++) {
+            if (!pages.includes(i)) pages.push(i);
+        }
+        if (totalSchedPages > 1 && !pages.includes(totalSchedPages)) pages.push(totalSchedPages);
+        pageNumbers.innerHTML = pages.map(p => `
+            <button class="pagination-btn ${p === currentSchedPage ? 'active' : ''}" onclick="schedGoToPage(${p})">${p}</button>
+        `).join('');
+    }
+}
+
+function schedGoToPage(page) {
+    if (page < 1 || page > totalSchedPages || page === currentSchedPage) return;
+    loadSchedules(page);
+}
+
+function schedChangePageSize() {
+    const sel = document.getElementById('schedPageSize');
+    if (!sel) return;
+    schedPageSize = parseInt(sel.value, 10) || 10;
+    currentSchedPage = 1;
+    loadSchedules(1);
 }
 
 // Format time for display
@@ -1242,9 +1356,11 @@ function teardownConfirmModalA11y(modal) {
 document.addEventListener('DOMContentLoaded', function() {
     const sortSel = document.getElementById('scheduleSort');
     const showDis = document.getElementById('showDisabledSchedules');
-    if (sortSel) sortSel.addEventListener('change', () => loadSchedules());
-    if (showDis) showDis.addEventListener('change', () => loadSchedules());
-    loadSchedules();
+    if (sortSel) sortSel.addEventListener('change', () => loadSchedules(1));
+    if (showDis) showDis.addEventListener('change', () => loadSchedules(1));
+    const psSel = document.getElementById('schedPageSize');
+    if (psSel) schedPageSize = parseInt(psSel.value, 10) || 10;
+    loadSchedules(1);
 });
 </script>
 {% block app_nav %}
