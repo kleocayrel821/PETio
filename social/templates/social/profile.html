@@ -28,7 +28,7 @@
 
     /* Cover Photo & Header */
     .profile-cover {
-        height: 200px;
+        height: 220px;
         background: linear-gradient(135deg, #6d28d9 0%, #ec4899 100%);
         position: relative;
         overflow: hidden;
@@ -43,6 +43,13 @@
         bottom: 0;
         background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
     }
+    .profile-cover::after{
+        content:'';
+        position:absolute;
+        left:0; right:0; bottom:0; height:72px;
+        background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0.3));
+        pointer-events:none;
+    }
 
     .profile-info-container {
         max-width: 900px;
@@ -54,17 +61,17 @@
 
     .profile-avatar-container {
         position: absolute;
-        top: -75px;
-        left: 20px;
+        top: -55px;
+        left: 32px;
         z-index: 10;
     }
 
     /* Compact avatar size per spec */
     .profile-avatar {
-        width: 120px;
-        height: 120px;
+        width: 110px;
+        height: 110px;
         border-radius: 50%;
-        border: 5px solid white;
+        border: 4px solid #ffffff;
         background: white;
         box-shadow: 0 4px 20px rgba(0,0,0,0.15);
         object-fit: cover;
@@ -79,7 +86,7 @@
     .profile-header-content {
         background: rgba(255,255,255,0.85);
         border-radius: 12px;
-        padding: 8px 8px 4px 108px;
+        padding: 16px 16px 12px 172px;
         margin-top: -4px;
         box-shadow: 0 10px 24px rgba(124,58,237,0.08);
         border: none;
@@ -98,14 +105,10 @@
         opacity: 0.6;
     }
 
-    .profile-actions-header {
-        display: flex;
-        justify-content: flex-end;
-        margin-bottom: 10px;
-    }
+    .profile-actions-header { display:flex; justify-content:flex-end; margin-bottom:10px; position:absolute; top:12px; right:12px; }
 
     .profile-name {
-        font-size: 1.5rem;
+        font-size: 24px;
         font-weight: 700;
         color: var(--text-primary);
         margin: 0;
@@ -113,25 +116,27 @@
     }
 
     .profile-username {
-        color: var(--text-secondary);
-        font-size: 0.95rem;
+        color: #9ca3af;
+        font-size: 14px;
         margin: 0 0 6px;
     }
 
     .profile-bio {
-        color: var(--text-primary);
-        font-size: 1rem;
-        line-height: 1.5;
-        margin: 15px 0;
+        color: #374151;
+        font-size: 15px;
+        line-height: 1.6;
+        margin-top: 8px;
+        margin-bottom: 0;
+        max-width: 500px;
     }
 
     .profile-meta {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 20px;
         margin: 6px 0;
-        color: var(--text-secondary);
-        font-size: 0.9rem;
+        color: #6b7280;
+        font-size: 13px;
     }
 
     .profile-meta-item {
@@ -139,52 +144,49 @@
         align-items: center;
         gap: 5px;
     }
+    .profile-meta a:hover { text-decoration: underline; }
 
     /* More compact stats and grid layout */
     .profile-stats {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin: 8px 0;
-        align-items: center;
-        justify-content: center;
-        transform: translateX(-44px);
+        display:flex;
+        flex-wrap:wrap;
+        gap:12px;
+        margin:12px 0;
+        align-items:center;
+        justify-content:flex-start;
+        transform:none;
     }
 
     .stat-item {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        color: var(--text-primary);
-        text-decoration: none;
-        transition: all 0.2s ease;
-        background: transparent;
-        border: 1px solid var(--border-color);
-        border-radius: 9999px; /* pill */
-        padding: 6px 10px;
-        box-shadow: none;
-        min-height: auto;
-        justify-content: flex-start;
-        text-align: left;
+        display:inline-flex;
+        flex-direction:column;
+        align-items:flex-start;
+        gap:4px;
+        background:#f9fafb;
+        border:1px solid #e5e7eb;
+        border-radius:12px;
+        padding:12px 20px;
+        text-decoration:none;
+        transition: box-shadow .2s ease, transform .2s ease;
+        min-width:120px;
     }
 
-    .stat-item i { margin-right: 4px; }
+    .stat-item i { margin-right: 0; }
 
     .stat-item:hover {
-        color: var(--primary-color);
-        text-decoration: none;
-        transform: translateY(-1px);
-        box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 12px rgba(124,58,237,0.1);
+        transform: translateY(-2px);
     }
 
     .stat-number {
         font-weight: 700;
-        font-size: 0.9rem;
+        font-size: 22px;
+        color: #7c3aed;
     }
 
     .stat-label {
-        color: var(--text-secondary);
-        font-size: 0.8rem;
+        color: #9ca3af;
+        font-size: 12px;
     }
 
     /* Modern Buttons */
@@ -227,13 +229,15 @@
 
     .btn-edit {
         background: transparent;
-        color: var(--text-primary);
-        border-color: var(--border-color);
+        color: #7c3aed;
+        border-color: #7c3aed;
+        border-width: 1.5px;
     }
 
     .btn-edit:hover {
-        background: var(--hover-color);
-        color: var(--text-primary);
+        background: #7c3aed;
+        color: #ffffff;
+        transition: .2s ease;
     }
 
     /* Posts Grid */
@@ -268,11 +272,11 @@
     .post-item {
         background: var(--card-background);
         border: 1px solid var(--border-color);
-        border-radius: 22px;
-        padding: 16px;
+        border-radius: 16px;
+        padding: 20px;
         transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
         cursor: pointer;
-        box-shadow: 0 10px 24px rgba(17,24,39,0.06);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
         margin-bottom: 16px;
     }
 
@@ -303,23 +307,24 @@
     }
 
     .post-title {
-        font-size: 1.05rem;
-        font-weight: 600;
+        font-size: 17px;
+        font-weight: 700;
         color: var(--text-primary);
         margin: 0 0 6px;
         line-height: 1.3;
     }
 
     .post-content {
-        color: var(--text-primary);
-        line-height: 1.45;
+        color: #4b5563;
+        line-height: 1.6;
+        font-size: 14px;
         margin: 10px 0;
     }
 
     .post-image {
         border-radius: 12px;
         margin: 10px 0;
-        max-height: 360px;
+        max-height: 400px;
         width: 100%;
         object-fit: cover;
         box-shadow: 0 8px 16px rgba(0,0,0,0.06);
@@ -334,28 +339,26 @@
         border-top: 1px solid var(--border-color);
     }
 
-    .engagement-buttons {
-        display: flex;
-        gap: 20px;
-    }
+    .engagement-buttons { display:flex; gap:20px; }
 
     .engagement-btn {
-        background: none;
-        border: none;
+        background:none;
+        border:none;
         color: var(--text-secondary);
-        font-size: 0.9rem;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 10px;
-        border-radius: 20px;
-        transition: all 0.2s ease;
-        cursor: pointer;
+        font-size:.9rem;
+        display:flex;
+        align-items:center;
+        gap:6px;
+        padding:6px 12px;
+        border-radius:999px;
+        transition: all 0.15s ease;
+        cursor:pointer;
     }
 
-    .engagement-btn:hover {
-        background: var(--hover-color);
-    }
+    .engagement-btn:hover { background:#f3f4f6; }
+    .engagement-btn.like-btn:hover { color:#ef4444; }
+    .engagement-btn.comment-btn:hover { color:#7c3aed; }
+    .engagement-btn.share-btn:hover { color:#3b82f6; }
 
     .engagement-btn.liked {
         color: #e91e63;
@@ -380,6 +383,22 @@
     .read-more-btn:hover {
         background: #e8f5fe;
     }
+
+    /* Composer */
+    .composer{
+        display:flex; align-items:center; gap:12px;
+        background:#f9fafb; border:1px solid #e5e7eb; border-radius:16px; padding:16px 20px;
+    }
+    .composer-input{ flex:1; color:#6b7280; text-decoration:none; }
+    .composer-input:hover{ color:#374151; }
+    .composer-icon-btn{
+        width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center;
+        border-radius:999px; background:#fff; border:1px solid #e5e7eb; color:#6b7280; transition:.2s ease;
+    }
+    .composer-icon-btn:hover{ background:#f3f4f6; color:#7c3aed; }
+
+    /* Timestamp */
+    .post-timestamp{ font-size:12px; color:#9ca3af; font-style: italic; }
 
     /* Empty State */
     .empty-state {
@@ -837,9 +856,12 @@
                     </a>
                 </div>
             </div>
-            <div class="flex-1 bg-white rounded-full border border-gray-200 px-4 py-3 flex items-center gap-3 min-w-0 shadow-sm">
-                <a href="{% url 'social:create_post' %}" class="flex-1 text-gray-500 hover:text-gray-700 transition-colors duration-200 min-w-0 truncate">
+            <div class="composer flex-1 min-w-0">
+                <a href="{% url 'social:create_post' %}" class="composer-input min-w-0 truncate">
                     What's on your mind, {{ user.first_name|default:user.username }}?
+                </a>
+                <a href="{% url 'social:create_post' %}" class="composer-icon-btn" title="Attach photo">
+                    <i class="fas fa-camera"></i>
                 </a>
             </div>
         </div>
@@ -882,7 +904,7 @@
                                         {{ post.author.get_full_name|default:post.author.username }}
                                     </a>
                                 </h4>
-                                <span class="text-sm text-base-content/60">{{ post.created_at|timesince }} ago</span>
+                                <span class="post-timestamp">{{ post.created_at|timesince }} ago</span>
                             </div>
                         </div>
                     </div>
@@ -975,16 +997,16 @@
                 <!-- Post Engagement -->
                 <div class="post-engagement">
                     <div class="engagement-buttons">
-                        <button class="engagement-btn {% if post.id in viewer_liked_post_ids %}liked{% endif %}" 
+                        <button class="engagement-btn like-btn {% if post.id in viewer_liked_post_ids %}liked{% endif %}" 
                                 onclick="event.stopPropagation(); toggleLike({{ post.id }})">
                             <i class="fas fa-heart"></i>
                             <span>{{ post.likes.count }}</span>
                         </button>
-                        <button class="engagement-btn" onclick="event.stopPropagation()">
+                        <button class="engagement-btn comment-btn" onclick="event.stopPropagation()">
                             <i class="fas fa-comment"></i>
                             <span>{{ post.comments.count }}</span>
                         </button>
-                        <button class="engagement-btn" onclick="event.stopPropagation()">
+                        <button class="engagement-btn share-btn" onclick="event.stopPropagation()">
                             <i class="fas fa-share"></i>
                         </button>
                     </div>
