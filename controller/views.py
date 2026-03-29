@@ -104,6 +104,13 @@ class BMICalculatorView(TemplateView):
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class PendingCommandsView(TemplateView):
     template_name = 'app/pending_commands.html'
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        try:
+            ctx["DEVICE_ID"] = _single_device_id_for_user(self.request.user) or ""
+        except Exception:
+            ctx["DEVICE_ID"] = ""
+        return ctx
 
 
 # Test page to validate unified base and sidebar rendering in Controller
