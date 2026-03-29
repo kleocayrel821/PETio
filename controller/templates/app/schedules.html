@@ -5,11 +5,11 @@
 <div class="space-y-8">
     <!-- Page Header -->
     <!-- <div class="text-center">
-        <h1 class="section-title justify-center text-3xl mb-2">
-            <i class="fas fa-calendar-alt text-teal-400"></i>
+        <h1 class="justify-center mb-2 text-3xl section-title">
+            <i class="text-teal-400 fas fa-calendar-alt"></i>
             Feeding Schedules
         </h1>
-        <p class="text-gray-400 text-lg">Manage your pet's feeding schedule</p>
+        <p class="text-lg text-gray-400">Manage your pet's feeding schedule</p>
     </div> -->
 
     <!-- Add Schedule Card -->
@@ -29,7 +29,7 @@
                     <input 
                         type="time" 
                         id="scheduleTime" 
-                        class="form-control-enhanced w-full"
+                        class="w-full form-control-enhanced"
                         required
                     >
                 </div>
@@ -37,12 +37,12 @@
                 <!-- Amount Input -->
                 <div>
                     <label class="subsection-title">
-                        <i class="fas fa-weight text-orange-400"></i>
+                        <i class="text-orange-400 fas fa-weight"></i>
                         Amount (grams)
                     </label>
                     <select 
                         id="scheduleAmount" 
-                        class="form-control-enhanced w-full"
+                        class="w-full form-control-enhanced"
                         required
                     >
                         <option value="30">30</option>
@@ -57,13 +57,13 @@
             <!-- Label Input -->
             <div>
                 <label class="subsection-title">
-                    <i class="fas fa-tag text-blue-400"></i>
+                    <i class="text-blue-400 fas fa-tag"></i>
                     Schedule Label (Optional)
                 </label>
                 <input 
                     type="text" 
                     id="scheduleLabel" 
-                    class="form-control-enhanced w-full"
+                    class="w-full form-control-enhanced"
                     placeholder="e.g., Morning Breakfast, Evening Dinner"
                     maxlength="50"
                 >
@@ -72,10 +72,10 @@
             <!-- Days Selection -->
             <div>
                 <label class="subsection-title">
-                    <i class="fas fa-calendar text-green-400"></i>
+                    <i class="text-green-400 fas fa-calendar"></i>
                     Days of Week
                 </label>
-                <div class="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                <div class="grid grid-cols-4 gap-2 sm:grid-cols-7">
                     <label class="day-toggle-large">
                         <input type="checkbox" name="days" value="sunday" class="hidden">
                         <span class="day-label-large">Sun</span>
@@ -111,7 +111,7 @@
             <div class="flex justify-end">
                 <button 
                     type="submit" 
-                    class="btn btn-enhanced btn-primary-enhanced px-8"
+                    class="px-8 btn btn-enhanced btn-primary-enhanced"
                 >
                     <i class="fas fa-save"></i>
                     Save Schedule
@@ -129,7 +129,7 @@
             </span>
             <div class="schedules-actions">
                 <!-- Sort By -->
-                <label class="flex items-center gap-2 text-sm schedules-sort">
+                <label class="flex gap-2 items-center text-sm schedules-sort">
                     <span class="text-gray-400">Sort</span>
                     <select id="scheduleSort" class="select select-bordered select-sm">
                         <option value="-id" selected>Newest</option>
@@ -143,7 +143,7 @@
                     </select>
                 </label>
                 <!-- Filter Toggle -->
-                <label class="flex items-center gap-2 text-sm schedules-filter">
+                <label class="flex gap-2 items-center text-sm schedules-filter">
                     <input type="checkbox" id="showDisabledSchedules" class="checkbox-enhanced">
                     <span class="text-gray-400">Show Disabled</span>
                 </label>
@@ -159,7 +159,7 @@
         </div>
 
         <!-- Loading State -->
-        <div id="schedulesLoading" class="text-center py-8">
+        <div id="schedulesLoading" class="py-8 text-center">
             <i class="fas fa-spinner fa-spin text-[#1f456e] text-2xl mb-2"></i>
             <div class="text-gray-400">Loading schedules...</div>
         </div>
@@ -167,7 +167,7 @@
         <!-- Schedules Table -->
         <div id="schedulesContainer" class="hidden">
             <div class="overflow-x-auto">
-                <table class="enhanced-table w-full">
+                <table class="w-full enhanced-table">
                     <colgroup>
                         <col class="col-toggle">
                         <col class="col-time">
@@ -180,25 +180,25 @@
                     <thead>
                         <tr>
                             <th class="text-center">
-                                <i class="fas fa-toggle-on text-green-400"></i>
+                                <i class="text-green-400 fas fa-toggle-on"></i>
                             </th>
                             <th class="text-left">
-                                <i class="fas fa-clock mr-2"></i>Time
+                                <i class="mr-2 fas fa-clock"></i>Time
                             </th>
                             <th class="text-center">
-                                <i class="fas fa-calendar mr-2"></i>Days
+                                <i class="mr-2 fas fa-calendar"></i>Days
                             </th>
                             <th class="text-left">
-                                <i class="fas fa-tag mr-2"></i>Label
+                                <i class="mr-2 fas fa-tag"></i>Label
                             </th>
                             <th class="text-center">
-                                <i class="fas fa-weight mr-2"></i>Amount
+                                <i class="mr-2 fas fa-weight"></i>Amount
                             </th>
                             <th class="text-center">
-                                <i class="fas fa-info-circle mr-2"></i>Status
+                                <i class="mr-2 fas fa-info-circle"></i>Status
                             </th>
                             <th class="text-center">
-                                <i class="fas fa-cogs mr-2"></i>Actions
+                                <i class="mr-2 fas fa-cogs"></i>Actions
                             </th>
                         </tr>
                     </thead>
@@ -209,10 +209,10 @@
             </div>
 
             <!-- Empty State -->
-            <div id="emptySchedules" class="hidden text-center py-12">
-                <i class="fas fa-calendar-times text-gray-500 text-4xl mb-4"></i>
-                <h3 class="text-xl font-semibold text-gray-400 mb-2">No Schedules Found</h3>
-                <p class="text-gray-500 mb-4">Create your first feeding schedule to get started</p>
+            <div id="emptySchedules" class="hidden py-12 text-center">
+                <i class="mb-4 text-4xl text-gray-500 fas fa-calendar-times"></i>
+                <h3 class="mb-2 text-xl font-semibold text-gray-400">No Schedules Found</h3>
+                <p class="mb-4 text-gray-500">Create your first feeding schedule to get started</p>
                 <button 
                     class="btn btn-enhanced btn-primary-enhanced"
                     onclick="document.getElementById('scheduleTime').focus()"
@@ -226,11 +226,11 @@
 </div>
 
 <!-- Edit Schedule Modal -->
-<div id="editScheduleModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="editScheduleTitle" aria-describedby="editScheduleDesc" tabindex="-1">
+<div id="editScheduleModal" class="hidden modal-overlay" role="dialog" aria-modal="true" aria-labelledby="editScheduleTitle" aria-describedby="editScheduleDesc" tabindex="-1">
     <div class="modal-content" role="document">
         <div class="modal-header">
-            <div class="flex items-center gap-3">
-                <div class="rounded-lg bg-blue-500/15 text-blue-400 p-2">
+            <div class="flex gap-3 items-center">
+                <div class="p-2 text-blue-400 rounded-lg bg-blue-500/15">
                     <i class="fas fa-calendar-edit"></i>
                 </div>
                 <div>
@@ -250,28 +250,28 @@
                 <div id="editScheduleSummary" class="text-sm text-gray-400"></div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 px-6">
+            <div class="grid grid-cols-1 gap-4 px-6 md:grid-cols-2">
                 <div>
                     <label class="subsection-title">Time</label>
-                    <input type="time" id="editScheduleTime" class="form-control-enhanced w-full" required aria-required="true">
-                    <div class="text-xs text-gray-500 mt-1">Use 24-hour time (e.g., 07:30 or 19:45).</div>
+                    <input type="time" id="editScheduleTime" class="w-full form-control-enhanced" required aria-required="true">
+                    <div class="mt-1 text-xs text-gray-500">Use 24-hour time (e.g., 07:30 or 19:45).</div>
                 </div>
                 <div>
                     <label class="subsection-title">Amount (grams)</label>
-                    <select id="editScheduleAmount" class="form-control-enhanced w-full" required aria-required="true" aria-describedby="editAmountHelp">
+                    <select id="editScheduleAmount" class="w-full form-control-enhanced" required aria-required="true" aria-describedby="editAmountHelp">
                         <option value="30">30</option>
                         <option value="60">60</option>
                         <option value="90">90</option>
                         <option value="120">120</option>
                         <option value="150">150</option>
                     </select>
-                    <div id="editAmountHelp" class="text-xs text-gray-500 mt-1">Select 30, 60, 90, 120, or 150g.</div>
+                    <div id="editAmountHelp" class="mt-1 text-xs text-gray-500">Select 30, 60, 90, 120, or 150g.</div>
                 </div>
             </div>
 
             <div class="px-6">
                 <label class="subsection-title">Label</label>
-                <input type="text" id="editScheduleLabel" class="form-control-enhanced w-full" maxlength="50" placeholder="e.g., Breakfast or Evening Feed">
+                <input type="text" id="editScheduleLabel" class="w-full form-control-enhanced" maxlength="50" placeholder="e.g., Breakfast or Evening Feed">
             </div>
 
             <div class="px-6">
@@ -279,11 +279,11 @@
                 <div class="grid grid-cols-7 gap-1" id="editDaysContainer" aria-label="Select days of week">
                     <!-- Dynamic content -->
                 </div>
-                <div class="text-xs text-gray-500 mt-1">Pick at least one day.</div>
+                <div class="mt-1 text-xs text-gray-500">Pick at least one day.</div>
             </div>
 
-            <div class="flex items-center justify-between gap-3 px-6 pb-6">
-                <button type="button" class="btn btn-enhanced btn-ghost text-red-400" onclick="if(editingScheduleId){ deleteSchedule(editingScheduleId); }" aria-label="Delete schedule">
+            <div class="flex gap-3 justify-between items-center px-6 pb-6">
+                <button type="button" class="text-red-400 btn btn-enhanced btn-ghost" onclick="if(editingScheduleId){ deleteSchedule(editingScheduleId); }" aria-label="Delete schedule">
                     <i class="fas fa-trash"></i>
                     Delete
                 </button>
@@ -303,11 +303,11 @@
 </div>
 
 <!-- Confirm Modal -->
-<div id="confirmModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalDesc" tabindex="-1">
+<div id="confirmModal" class="hidden modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalDesc" tabindex="-1">
     <div class="modal-content" role="document">
         <div class="modal-header">
-            <div class="flex items-center gap-3">
-                <div class="rounded-lg bg-red-500/15 text-red-400 p-2">
+            <div class="flex gap-3 items-center">
+                <div class="p-2 text-red-400 rounded-lg bg-red-500/15">
                     <i class="fas fa-exclamation-triangle"></i>
                 </div>
                 <div>
@@ -322,7 +322,7 @@
         <div class="px-6">
             <p id="confirmModalMessage" class="text-sm text-gray-400"></p>
         </div>
-        <div class="flex items-center justify-end gap-3 px-6 pb-6">
+        <div class="flex gap-3 justify-end items-center px-6 pb-6">
             <button type="button" id="confirmModalCancel" class="btn btn-enhanced btn-ghost" onclick="closeConfirmModal(false)">Cancel</button>
             <button type="button" id="confirmModalConfirm" class="btn btn-enhanced btn-primary-enhanced" onclick="closeConfirmModal(true)">
                 <i class="fas fa-check"></i>
@@ -764,10 +764,10 @@ async function loadSchedules() {
     } catch (error) {
         console.error('Failed to load schedules:', error);
         loading.innerHTML = `
-            <div class="text-center py-8">
-                <i class="fas fa-exclamation-triangle text-red-400 text-2xl mb-2"></i>
+            <div class="py-8 text-center">
+                <i class="mb-2 text-2xl text-red-400 fas fa-exclamation-triangle"></i>
                 <div class="text-red-400">Failed to load schedules</div>
-                <button class="btn btn-enhanced btn-ghost btn-sm mt-2" onclick="loadSchedules()">
+                <button class="mt-2 btn btn-enhanced btn-ghost btn-sm" onclick="loadSchedules()">
                     <i class="fas fa-retry"></i>
                     Retry
                 </button>
@@ -788,8 +788,8 @@ function renderSchedules() {
     if (filteredSchedules.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="text-center py-8 text-gray-400">
-                    <i class="fas fa-filter mr-2"></i>
+                <td colspan="7" class="py-8 text-center text-gray-400">
+                    <i class="mr-2 fas fa-filter"></i>
                     No schedules match the current filter
                 </td>
             </tr>
@@ -821,7 +821,7 @@ function renderSchedules() {
                     ${schedule.label || `Schedule ${schedule.id}`}
                 </span>
             </td>
-            <td class="font-semibold text-orange-400 whitespace-nowrap text-center">
+            <td class="font-semibold text-center text-orange-400 whitespace-nowrap">
                 ${schedule.portion_size}g
             </td>
             <td class="text-center">
@@ -831,16 +831,16 @@ function renderSchedules() {
                 </span>
             </td>
             <td class="text-center">
-                <div class="flex justify-center gap-1 sm:gap-2">
+                <div class="flex gap-1 justify-center sm:gap-2">
                     <button 
-                        class="action-btn action-btn-edit text-xs sm:text-sm"
+                        class="text-xs action-btn action-btn-edit sm:text-sm"
                         onclick="editSchedule(${schedule.id})"
                         title="Edit schedule"
                     >
                         <i class="fas fa-edit"></i>
                     </button>
                     <button 
-                        class="action-btn action-btn-delete text-xs sm:text-sm"
+                        class="text-xs action-btn action-btn-delete sm:text-sm"
                         onclick="deleteSchedule(${schedule.id})"
                         title="Delete schedule"
                     >
