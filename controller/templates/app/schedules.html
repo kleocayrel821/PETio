@@ -1076,15 +1076,9 @@ document.getElementById('editScheduleForm').addEventListener('submit', async fun
     }
 
     const portionVal = parseInt(document.getElementById('editScheduleAmount').value);
- feature/controller
     const allowed = [30, 60, 90, 120, 150, 180, 210, 240];
     if (isNaN(portionVal) || !allowed.includes(portionVal)) {
         showToast('Select a valid amount: 30–240g in multiples of 30g.', 'warning');
-
-    const allowed = [30, 60, 90, 120, 150];
-    if (isNaN(portionVal) || !allowed.includes(portionVal)) {
-        showToast('Select a valid amount: 30, 60, 90, 120, or 150 grams', 'warning');
- main
         return;
     }
     
