@@ -42,21 +42,7 @@
                     </label>
                     <select 
                         id="scheduleAmount" 
- feature/controller
-                        class="w-full form-control-enhanced" 
-                        required 
-                    > 
-                        <option value="30">30g</option> 
-                        <option value="60">60g</option> 
-                        <option value="90">90g</option> 
-                        <option value="120">120g</option> 
-                        <option value="150">150g</option> 
-                        <option value="180">180g</option> 
-                        <option value="210">210g</option> 
-                        <option value="240">240g</option> 
-
-                      
-                      class="w-full form-control-enhanced"
+                        class="w-full form-control-enhanced"
                         required
                     >
                         <option value="30">30</option>
@@ -64,7 +50,6 @@
                         <option value="90">90</option>
                         <option value="120">120</option>
                         <option value="150">150</option>
- main
                     </select>
                 </div>
             </div>
@@ -92,10 +77,6 @@
                 </label>
                 <div class="grid grid-cols-4 gap-2 sm:grid-cols-7">
                     <label class="day-toggle-large">
-                        <input type="checkbox" name="days" value="sunday" class="hidden">
-                        <span class="day-label-large">Sun</span>
-                    </label>
-                    <label class="day-toggle-large">
                         <input type="checkbox" name="days" value="monday" class="hidden">
                         <span class="day-label-large">Mon</span>
                     </label>
@@ -118,6 +99,10 @@
                     <label class="day-toggle-large">
                         <input type="checkbox" name="days" value="saturday" class="hidden">
                         <span class="day-label-large">Sat</span>
+                    </label>
+                    <label class="day-toggle-large">
+                        <input type="checkbox" name="days" value="sunday" class="hidden">
+                        <span class="day-label-large">Sun</span>
                     </label>
                 </div>
             </div>
@@ -251,12 +236,38 @@
                 <div>
                     <h3 id="editScheduleTitle" class="text-xl font-semibold tracking-tight">Edit Schedule</h3>
                     <p id="editScheduleDesc" class="text-sm text-gray-400">Adjust time, portion, label, and days.</p>
+    </div>
+</div>
+
+<!-- Confirm Modal -->
+<div id="confirmModal" class="hidden modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalDesc" tabindex="-1">
+    <div class="modal-content" role="document">
+        <div class="modal-header">
+            <div class="flex gap-3 items-center">
+                <div class="p-2 text-red-400 rounded-lg bg-red-500/15">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <h3 id="confirmModalTitle" class="text-xl font-semibold tracking-tight">Confirm Action</h3>
+                    <p id="confirmModalDesc" class="text-sm text-gray-400">Please confirm this action.</p>
                 </div>
             </div>
-            <button class="modal-close" onclick="closeEditModal()" aria-label="Close">
+            <button class="modal-close" onclick="closeConfirmModal(false)" aria-label="Close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
+        <div class="px-6">
+            <p id="confirmModalMessage" class="text-sm text-gray-400"></p>
+        </div>
+        <div class="flex gap-3 justify-end items-center px-6 pb-6">
+            <button type="button" id="confirmModalCancel" class="btn btn-enhanced btn-ghost" onclick="closeConfirmModal(false)">Cancel</button>
+            <button type="button" id="confirmModalConfirm" class="btn btn-enhanced btn-primary-enhanced" onclick="closeConfirmModal(true)">
+                <i class="fas fa-check"></i>
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
         <form id="editScheduleForm" class="space-y-5">
             <input type="hidden" id="editScheduleId">
 
@@ -273,28 +284,8 @@
                 </div>
                 <div>
                     <label class="subsection-title">Amount (grams)</label>
- feature/controller
-                    <select id="editScheduleAmount" class="w-full form-control-enhanced" required aria-required="true" aria-describedby="editAmountHelp"> 
-                        <option value="30">30g</option> 
-                        <option value="60">60g</option> 
-                        <option value="90">90g</option> 
-                        <option value="120">120g</option> 
-                        <option value="150">150g</option> 
-                        <option value="180">180g</option> 
-                        <option value="210">210g</option> 
-                        <option value="240">240g</option> 
-                    </select> 
-                    <div id="editAmountHelp" class="mt-1 text-xs text-gray-500">Valid: 30, 60, 90, 120, 150, 180, 210, 240g (1–8 compartments × 30g).</div>
-
-                    <select id="editScheduleAmount" class="w-full form-control-enhanced" required aria-required="true" aria-describedby="editAmountHelp">
-                        <option value="30">30</option>
-                        <option value="60">60</option>
-                        <option value="90">90</option>
-                        <option value="120">120</option>
-                        <option value="150">150</option>
-                    </select>
-                    <div id="editAmountHelp" class="mt-1 text-xs text-gray-500">Select 30, 60, 90, 120, or 150g.</div>
- main
+                    <input type="number" id="editScheduleAmount" class="w-full form-control-enhanced" min="25" max="100" required aria-required="true" aria-describedby="editAmountHelp">
+                    <div id="editAmountHelp" class="mt-1 text-xs text-gray-500">Recommended: 25–100g. Adjust for your pet.</div>
                 </div>
             </div>
 
@@ -328,37 +319,8 @@
             </div>
         </form>
     </div>
+    <!-- Focus sentinel for trapping tab navigation -->
     <span tabindex="0" id="editModalFocusEnd" class="sr-only"></span>
-</div>
-
-<!-- Confirm Modal -->
-<div id="confirmModal" class="hidden modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalDesc" tabindex="-1">
-    <div class="modal-content" role="document">
-        <div class="modal-header">
-            <div class="flex gap-3 items-center">
-                <div class="p-2 text-red-400 rounded-lg bg-red-500/15">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div>
-                    <h3 id="confirmModalTitle" class="text-xl font-semibold tracking-tight">Confirm Action</h3>
-                    <p id="confirmModalDesc" class="text-sm text-gray-400">Please confirm this action.</p>
-                </div>
-            </div>
-            <button class="modal-close" onclick="closeConfirmModal(false)" aria-label="Close">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="px-6">
-            <p id="confirmModalMessage" class="text-sm text-gray-400"></p>
-        </div>
-        <div class="flex gap-3 justify-end items-center px-6 pb-6">
-            <button type="button" id="confirmModalCancel" class="btn btn-enhanced btn-ghost" onclick="closeConfirmModal(false)">Cancel</button>
-            <button type="button" id="confirmModalConfirm" class="btn btn-enhanced btn-primary-enhanced" onclick="closeConfirmModal(true)">
-                <i class="fas fa-check"></i>
-                Confirm
-            </button>
-        </div>
-    </div>
 </div>
 
 <style>
@@ -586,10 +548,6 @@
     align-items: center;
     justify-content: center;
 }
-
-.modal-open .menu.menu-horizontal { display: none !important; }
-.modal-open .top-navbar .nav-center { display: none !important; }
-.modal-open .navbar .menu { display: none !important; }
 
 .action-btn-edit {
     background: rgba(31, 69, 110, 0.15);
@@ -914,19 +872,10 @@ document.getElementById('addScheduleForm').addEventListener('submit', async func
         return;
     }
 
- feature/controller
-    const portionVal = parseInt(
-        formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value
-    );
-    const allowed = [30, 60, 90, 120, 150, 180, 210, 240];
-    if (isNaN(portionVal) || !allowed.includes(portionVal)) {
-        showToast('Select a valid amount: 30–240g in multiples of 30g.', 'warning');
-
     const portionVal = parseInt(formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value);
     const allowed = [30,60,90,120,150];
     if (isNaN(portionVal) || !allowed.includes(portionVal)) {
         showToast('Select a valid amount: 30, 60, 90, 120, or 150 grams', 'warning');
- main
         return;
     }
     
@@ -1003,15 +952,7 @@ function editSchedule(scheduleId) {
     document.getElementById('editScheduleId').value = scheduleId;
     // Ensure the time input receives HH:MM (strip seconds if present)
     document.getElementById('editScheduleTime').value = timeToInputValue(schedule.time);
-    const amtSel = document.getElementById('editScheduleAmount');
-    amtSel.value = String(schedule.portion_size);
-    if (amtSel.value !== String(schedule.portion_size)) {
-        const opt = document.createElement('option');
-        opt.value = String(schedule.portion_size);
-        opt.textContent = String(schedule.portion_size);
-        amtSel.insertBefore(opt, amtSel.firstChild);
-        amtSel.value = String(schedule.portion_size);
-    }
+    document.getElementById('editScheduleAmount').value = schedule.portion_size;
     document.getElementById('editScheduleLabel').value = schedule.label || '';
 
     // Populate summary (e.g., "Runs 7:30 AM on Mon, Wed, Fri")
@@ -1025,8 +966,8 @@ function editSchedule(scheduleId) {
 
     // Create days checkboxes
     const daysContainer = document.getElementById('editDaysContainer');
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const selectedAbbrs = schedule.days_of_week || [];
 
     daysContainer.innerHTML = dayNames.map((day, index) => `
@@ -1039,8 +980,6 @@ function editSchedule(scheduleId) {
     // Show modal
     const modal = document.getElementById('editScheduleModal');
     modal.classList.remove('hidden');
-    document.body.classList.add('modal-open');
-    document.body.style.overflow = 'hidden';
     setTimeout(() => {
         modal.classList.add('show');
         setupModalA11y(modal);
@@ -1055,8 +994,6 @@ function closeEditModal() {
     const modal = document.getElementById('editScheduleModal');
     modal.classList.remove('show');
     setTimeout(() => modal.classList.add('hidden'), 300);
-    document.body.classList.remove('modal-open');
-    document.body.style.overflow = '';
     editingScheduleId = null;
     teardownModalA11y(modal);
 }
@@ -1076,15 +1013,8 @@ document.getElementById('editScheduleForm').addEventListener('submit', async fun
     }
 
     const portionVal = parseInt(document.getElementById('editScheduleAmount').value);
- feature/controller
-    const allowed = [30, 60, 90, 120, 150, 180, 210, 240];
-    if (isNaN(portionVal) || !allowed.includes(portionVal)) {
-        showToast('Select a valid amount: 30–240g in multiples of 30g.', 'warning');
-
-    const allowed = [30, 60, 90, 120, 150];
-    if (isNaN(portionVal) || !allowed.includes(portionVal)) {
-        showToast('Select a valid amount: 30, 60, 90, 120, or 150 grams', 'warning');
- main
+    if (isNaN(portionVal) || portionVal < 25 || portionVal > 100) {
+        showToast('Portion must be between 25 and 100 grams', 'warning');
         return;
     }
     
@@ -1147,8 +1077,6 @@ function openConfirmModal({ title = 'Confirm Action', message = '', confirmText 
     return new Promise((resolve) => {
         confirmModalResolve = resolve;
         modal.classList.remove('hidden');
-        document.body.classList.add('modal-open');
-        document.body.style.overflow = 'hidden';
         setTimeout(() => {
             modal.classList.add('show');
             setupConfirmModalA11y(modal);
@@ -1165,11 +1093,6 @@ function closeConfirmModal(result = false) {
     modal.classList.remove('show');
     setTimeout(() => modal.classList.add('hidden'), 300);
     teardownConfirmModalA11y(modal);
-    const editOpen = !!document.getElementById('editScheduleModal')?.classList.contains('show');
-    if (!editOpen) {
-        document.body.classList.remove('modal-open');
-        document.body.style.overflow = '';
-    }
     if (confirmModalResolve) {
         const resolve = confirmModalResolve;
         confirmModalResolve = null;
@@ -1321,4 +1244,26 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSchedules();
 });
 </script>
+{% block app_nav %}
+<ul class="overflow-x-auto gap-1 px-1 menu menu-horizontal">
+  <li>
+    <a href="{% url 'home' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'home' %}active{% endif %}">
+      <i class="mr-2 fas fa-home"></i>
+      <span>Home</span>
+    </a>
+  </li>
+  <li>
+    <a href="{% url 'schedules_ui' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'schedules_ui' %}active{% endif %}">
+      <i class="mr-2 fas fa-calendar-alt"></i>
+      <span>Schedules</span>
+    </a>
+  </li>
+  <li>
+    <a href="{% url 'history' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'history' %}active{% endif %}">
+      <i class="mr-2 fas fa-history"></i>
+      <span>History</span>
+    </a>
+  </li>
+</ul>
+{% endblock %}
 {% endblock %}

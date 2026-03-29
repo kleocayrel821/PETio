@@ -31,8 +31,6 @@
   .actions{display:flex;gap:10px}
   .dev-icon-btn{width:36px;height:36px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;display:grid;place-items:center;cursor:pointer;transition:transform var(--t), box-shadow var(--t)}
   .dev-icon-btn:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(16,24,40,.08)}
-  .toast{position:fixed;right:24px;bottom:24px;background:linear-gradient(135deg,var(--p),var(--p400));color:#fff;border-radius:var(--pill);padding:12px 16px;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);transition:opacity .2s,transform .2s;z-index:9999}
-  .toast.show{opacity:1;transform:translateY(0)}
 </style>
 {% endblock %}
 {% block content %}
@@ -40,17 +38,10 @@
   <div class="devices-wrap">
     <div class="devices-header">
       <h1 class="devices-title">My Devices</h1>
-feature/controller
-      {% if devices|length == 0 %}
-      <a href="{% url 'claim_device_page' %}" class="btn-claim"><svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg><span>Claim a New Device</span></a>
-
-      {% if not devices or devices|length == 0 %}
       <a href="{% url 'claim_device_page' %}" class="btn-claim">
         <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         <span>Claim a New Device</span>
       </a>
- main
-      {% endif %}
     </div>
 
     {% if devices %}
@@ -66,23 +57,12 @@ feature/controller
             <div><strong>Key:</strong> {{ d.unique_key }}</div>
           </div>
           <div class="actions">
- feature/controller
-            {% if devices|length == 0 %}
-
-            {% if not devices or devices|length == 0 %}
- main
             <a class="dev-icon-btn" href="{% url 'claim_device_page' %}" title="Add another">
               <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
             </a>
-            {% endif %}
             <a class="dev-icon-btn" href="/" title="Open">
               <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </a>
-            <button class="dev-icon-btn" title="Unpair" data-action="unpair" data-id="{{ d.device_id|default:'' }}">
-              <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2">
-                <path d="M6 6l12 12M6 18L18 6" stroke-linecap="round" />
-              </svg>
-            </button>
           </div>
         </div>
         {% endfor %}
@@ -148,65 +128,6 @@ feature/controller
   document.addEventListener('DOMContentLoaded', function(){
     applySidebarFilter();
     toggleDevicesUI();
-    function showToast(msg){
-      var t=document.getElementById('toast');
-      if(!t){
-        t=document.createElement('div');
-        t.id='toast';
-        t.className='toast';
-        document.body.appendChild(t);
-      }
-      t.textContent=msg||'';
-      t.classList.add('show');
-      clearTimeout(t._to);
-      t._to=setTimeout(function(){ t.classList.remove('show'); }, 2500);
-    }
-    function getCookie(name){
-      var match=document.cookie.match(new RegExp('(^| )'+name+'=([^;]+)'));
-      if(match) return match[2];
-      return null;
-    }
-    document.querySelectorAll('button[data-action="unpair"]').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        var id=(btn.getAttribute('data-id')||'').trim();
-        if(!id) return;
-        if(!confirm('Unpair device '+id+' from this account?')) return;
-        fetch('/api/hardware/unpair/', {
-          method:'POST',
-          headers:{
-            'Content-Type':'application/json',
-            'X-CSRFToken': getCookie('csrftoken')||''
-          },
-          body: JSON.stringify({device_id:id})
-        })
-        .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
-        .then(function(res){
-          if(res.ok && res.j && res.j.unpaired){
-            var card=btn.closest('.card');
-            if(card) card.remove();
-            var remaining=document.querySelectorAll('.card[data-device-id]').length;
-            showToast('Device unpaired');
-            if(remaining===0){
-              var grid=document.getElementById('devicesGrid');
-              var empty=document.querySelector('.empty-card');
-              if(grid) grid.style.display='none';
-              if(empty) empty.style.display='';
-              var header=document.querySelector('.devices-header');
-              if(header && !header.querySelector('.btn-claim')){
-                var a=document.createElement('a');
-                a.href='{% url "claim_device_page" %}';
-                a.className='btn-claim';
-                a.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg><span>Claim a New Device</span>';
-                header.appendChild(a);
-              }
-            }
-          } else {
-            alert('Failed to unpair: '+(res.j && (res.j.error||res.j.message) || 'unknown'));
-          }
-        })
-        .catch(function(){ alert('Network error while unpairing'); });
-      });
-    });
   });
 </script>
 {% endblock %}
