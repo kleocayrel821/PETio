@@ -105,7 +105,9 @@
     return '';
   }
   function loadPending() {
-    fetch(`/api/commands/?status=pending&device_id=${encodeURIComponent(deviceId)}`)
+    const qs = new URLSearchParams({ status: 'pending' });
+    if (deviceId) qs.append('device_id', deviceId);
+    fetch(`/api/commands/?${qs.toString()}`)
       .then(r => r.json())
       .then(data => {
         const results = Array.isArray(data) ? data : (data.results || []);
@@ -129,7 +131,9 @@
       .catch(() => {});
   }
   function loadProcessing() {
-    fetch(`/api/commands/?status=processing&device_id=${encodeURIComponent(deviceId)}`)
+    const qs = new URLSearchParams({ status: 'processing' });
+    if (deviceId) qs.append('device_id', deviceId);
+    fetch(`/api/commands/?${qs.toString()}`)
       .then(r => r.json())
       .then(data => {
         const results = Array.isArray(data) ? data : (data.results || []);
