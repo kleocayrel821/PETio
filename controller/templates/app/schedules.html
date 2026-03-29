@@ -45,11 +45,14 @@
                         class="w-full form-control-enhanced"
                         required
                     >
-                        <option value="30">30</option>
-                        <option value="60">60</option>
-                        <option value="90">90</option>
-                        <option value="120">120</option>
-                        <option value="150">150</option>
+                        <option value="30">30g</option>
+                        <option value="60">60g</option>
+                        <option value="90">90g</option>
+                        <option value="120">120g</option>
+                        <option value="150">150g</option>
+                        <option value="180">180g</option>
+                        <option value="210">210g</option>
+                        <option value="240">240g</option>
                     </select>
                 </div>
             </div>
@@ -873,9 +876,9 @@ document.getElementById('addScheduleForm').addEventListener('submit', async func
     }
 
     const portionVal = parseInt(formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value);
-    const allowed = [30,60,90,120,150];
+    const allowed = [30,60,90,120,150,180,210,240];
     if (isNaN(portionVal) || !allowed.includes(portionVal)) {
-        showToast('Select a valid amount: 30, 60, 90, 120, or 150 grams', 'warning');
+        showToast('Select a valid amount: 30g, 60g, 90g, 120g, 150g, 180g, 210g, or 240g', 'warning');
         return;
     }
     
