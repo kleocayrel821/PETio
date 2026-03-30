@@ -501,7 +501,7 @@ document.addEventListener('click', (e) => {
       }
       if (window.toastManager) toastManager.success('Order created. Awaiting payment.'); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast('Order created. Awaiting payment.', 'success');
       if (modal && typeof modal.close === 'function') modal.close();
-      window.location.href = '{% url "marketplace:transactions" %}?status=proposed';
+      window.location.href = '{% url "marketplace:transactions" %}?status=confirmed';
     } catch(err) {
       if (window.toastManager) toastManager.error('Network error'); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast('Network error', 'error');
     }
