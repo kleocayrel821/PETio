@@ -120,6 +120,12 @@
               {% endif %}
             {% endif %}
           </div>
+          {% if user.id == txn.seller_id and txn.status == 'awaiting_payment' and txn.payment_method == 'cod' %}
+            <form method="post" action="{% url 'marketplace:transaction_record_payment' txn.id %}" onsubmit="return submitSellerAction(this, 'mark_paid');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-warning">Mark COD Paid</button>
+            </form>
+          {% endif %}
             {% if user.id == txn.seller_id and txn.status == 'awaiting_payment' and txn.payment_method %}
               <form method="post" action="{% url 'marketplace:seller_approve_transaction' txn.id %}" onsubmit="return submitSellerAction(this, 'approve');">
                 {% csrf_token %}
@@ -130,6 +136,14 @@
                 <button type="submit" class="btn btn-sm btn-outline btn-error">Reject</button>
               </form>
             {% endif %}
+          {% if txn.status == 'paid' and not txn.purchase_request %}
+            {% if user.id == txn.buyer_id or user.id == txn.seller_id or user.is_staff or user.is_superuser %}
+              <form method="post" action="{% url 'marketplace:api_listing_complete' txn.listing.id %}" onsubmit="return submitSellerAction(this, 'complete');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-primary">Complete Transaction</button>
+              </form>
+            {% endif %}
+          {% endif %}
         </li>
       {% endfor %}
     </ul>
