@@ -2310,13 +2310,9 @@ def transactions(request):
 
     # Group transactions by major states for rendering
     grouped = {
-        "proposed": base_qs.filter(status=TransactionStatus.PROPOSED),
-        # Treat awaiting_payment and paid as part of the confirmed bucket
-        "confirmed": base_qs.filter(status__in=[
-            TransactionStatus.CONFIRMED,
-            TransactionStatus.AWAITING_PAYMENT,
-            TransactionStatus.PAID,
-        ]),
+        # Consider 'awaiting_payment' as a pre-confirmation step to improve security
+        "proposed": base_qs.filter(status__in=[TransactionStatus.PROPOSED, TransactionStatus.AWAITING_PAYMENT]),
+        "confirmed": base_qs.filter(status__in=[TransactionStatus.CONFIRMED, TransactionStatus.PAID]),
         "completed": base_qs.filter(status=TransactionStatus.COMPLETED),
         "canceled": base_qs.filter(status=TransactionStatus.CANCELED),
     }
@@ -2994,11 +2990,10 @@ def api_listing_buy_now(request, listing_id):
         updates.append("payment_method")
     txn.save(update_fields=updates)
 
-    # Decrement stock to reserve one unit
+    # Decrement stock to reserve one unit and mark as reserved/pending until payment or seller confirmation
     listing.quantity = max(0, listing.quantity - 1)
-    # Keep listing visible when stock remains; mark sold when stock hits zero
     if listing.quantity > 0:
-        listing.status = ListingStatus.ACTIVE
+        listing.status = ListingStatus.PENDING  # reserve state for security (temporarily hidden from catalog)
     else:
         listing.status = ListingStatus.SOLD
     listing.save(update_fields=["quantity", "status"])
