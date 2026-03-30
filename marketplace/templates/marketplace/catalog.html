@@ -328,21 +328,6 @@
   </div>
   <form method="dialog" class="modal-backdrop"><button>close</button></form>
 </dialog>
-<!-- GCash payment instructions and proof upload -->
-<dialog id="gcashProofModal" class="modal">
-  <div class="modal-box">
-    <h3 class="font-bold text-lg mb-4">GCash Payment</h3>
-    <p class="text-sm text-base-content/70 mb-3">Send the exact amount to the seller via GCash, then upload your payment screenshot below.</p>
-    <form id="gcashProofForm" class="space-y-3" enctype="multipart/form-data">
-      <input type="file" name="payment_proof" accept="image/*" class="file-input file-input-bordered w-full" required>
-      <div class="modal-action">
-        <button type="button" class="btn btn-ghost" id="gcashProofCancel">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="gcashProofSubmit">Submit Payment Proof</button>
-      </div>
-    </form>
-  </div>
-  <form method="dialog" class="modal-backdrop"><button>close</button></form>
-</dialog>
 <script>
 /**
  * Marketplace Catalog JavaScript (server-driven)
@@ -514,53 +499,15 @@ document.addEventListener('click', (e) => {
         if (window.toastManager) toastManager.error(msg); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast(msg, 'error');
         return;
       }
-      const data = await resp.json().catch(() => ({}));
+      if (window.toastManager) toastManager.success('Order created. Awaiting payment.'); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast('Order created. Awaiting payment.', 'success');
       if (modal && typeof modal.close === 'function') modal.close();
-      if (paymentMethod === 'gcash' && data && data.transaction && data.transaction.id) {
-        const proofModal = document.getElementById('gcashProofModal');
-        proofModal.dataset.txnId = String(data.transaction.id);
-        proofModal.showModal();
-      } else {
-        if (window.toastManager) toastManager.success('Order confirmed. Pending COD.'); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast('Order confirmed. Pending COD.', 'success');
-        window.location.href = '{% url "marketplace:transactions" %}?status=confirmed';
-      }
+      window.location.href = '{% url "marketplace:transactions" %}?status=confirmed';
     } catch(err) {
       if (window.toastManager) toastManager.error('Network error'); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast('Network error', 'error');
     }
   });
 })();
 
-(function(){
-  const proofModal = document.getElementById('gcashProofModal');
-  const form = document.getElementById('gcashProofForm');
-  const cancelBtn = document.getElementById('gcashProofCancel');
-  function csrf(){ const m = document.querySelector('meta[name="csrf-token"]'); return m ? m.content : ''; }
-  if (cancelBtn) cancelBtn.addEventListener('click', () => { if (proofModal) proofModal.close(); });
-  if (form) form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!proofModal) return;
-    const txnId = proofModal.dataset.txnId;
-    if (!txnId) return;
-    const fd = new FormData(form);
-    try {
-      const resp = await fetch(`/marketplace/transactions/${txnId}/upload-proof/`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'X-CSRFToken': csrf() },
-        body: fd
-      });
-      if (!resp.ok) {
-        if (window.toastManager) toastManager.error('Upload failed'); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast('Upload failed', 'error');
-        return;
-      }
-      if (window.toastManager) toastManager.success('Payment proof submitted'); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast('Payment proof submitted', 'success');
-      proofModal.close();
-      window.location.href = '{% url "marketplace:transactions" %}?status=confirmed';
-    } catch(_) {
-      if (window.toastManager) toastManager.error('Network error'); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast('Network error', 'error');
-    }
-  });
-})();
 (function(){
   function fitSellerRows(){
     const rows = document.querySelectorAll('.seller-row');

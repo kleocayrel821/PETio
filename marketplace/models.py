@@ -184,8 +184,6 @@ class TransactionStatus(models.TextChoices):
     PROPOSED = "proposed", "Proposed"
     CONFIRMED = "confirmed", "Confirmed"
     AWAITING_PAYMENT = "awaiting_payment", "Awaiting Payment"
-    TO_SHIP = "to_ship", "To Ship"
-    DELIVERED = "delivered", "Delivered"
     PAID = "paid", "Paid"
     COMPLETED = "completed", "Completed"
     CANCELED = "canceled", "Canceled"
@@ -219,16 +217,8 @@ class Transaction(TimeStampedModel):
     payment_method = models.CharField(
         max_length=20, choices=PaymentMethod.choices, null=True, blank=True
     )
-    class PaymentStatus(models.TextChoices):
-        AWAITING_PAYMENT = "awaiting_payment", "Awaiting Payment"
-        PROOF_SUBMITTED = "proof_submitted", "Proof Submitted"
-        PROOF_REJECTED = "proof_rejected", "Proof Rejected"
-        PAID = "paid", "Paid"
-        PENDING_COD = "pending_cod", "Pending (COD)"
-    payment_status = models.CharField(max_length=32, choices=PaymentStatus.choices, null=True, blank=True, db_index=True)
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     payment_proof = models.FileField(upload_to="payments/%Y/%m/", null=True, blank=True)
-    payment_proof_image = models.FileField(upload_to="payments/images/%Y/%m/", null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
