@@ -8,6 +8,7 @@ Marketplace unit tests covering core logic:
 
 Authentication-dependent behaviors now require login; tests log in users accordingly.
 """
+import json
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth import get_user_model
@@ -1787,6 +1788,42 @@ class TestNotificationsTemplateInteractions(TestCase):
         self.n1 = make_notification(user=self.user, title="Alert 1", unread=True)
         self.n2 = make_notification(user=self.user, title="Alert 2", unread=True)
         self.n3 = make_notification(user=self.user, title="Alert 3", unread=False)
+
+class TestBuyNowPaymentMethodBehavior(TestCase):
+    def setUp(self):
+        from .test_factories import make_user, make_category, make_listing
+        from .models import ListingStatus
+        self.client = Client(enforce_csrf_checks=True)
+        self.seller = make_user("seller1")
+        self.buyer = make_user("buyer1")
+        self.cat = make_category("BuyNow")
+        # Create an active fixed-price listing with stock
+        self.listing = make_listing(seller=self.seller, category=self.cat, title="BN Item", status=ListingStatus.ACTIVE, quantity=2)
+        from .models import Listing
+        Listing.objects.filter(pk=self.listing.pk).update(is_fixed_price=True)
+        self.assertTrue(self.client.login(username="buyer1", password="pass"))
+
+    def test_buy_now_cod_sets_confirmed(self):
+        from django.urls import reverse
+        from .models import Transaction, TransactionStatus
+        url = reverse("marketplace:api_listing_buy_now", kwargs={"listing_id": self.listing.id})
+        resp = self.client.post(url, data=json.dumps({"payment_method": "cod"}), content_type="application/json")
+        self.assertEqual(resp.status_code, 200)
+        txn = Transaction.objects.filter(listing_id=self.listing.id, buyer_id=self.buyer.id).order_by("-created_at").first()
+        self.assertIsNotNone(txn)
+        self.assertEqual(txn.status, TransactionStatus.CONFIRMED)
+        self.assertEqual(txn.payment_method, "cod")
+
+    def test_buy_now_gcash_sets_awaiting_payment(self):
+        from django.urls import reverse
+        from .models import Transaction, TransactionStatus
+        url = reverse("marketplace:api_listing_buy_now", kwargs={"listing_id": self.listing.id})
+        resp = self.client.post(url, data=json.dumps({"payment_method": "gcash"}), content_type="application/json")
+        self.assertEqual(resp.status_code, 200)
+        txn = Transaction.objects.filter(listing_id=self.listing.id, buyer_id=self.buyer.id).order_by("-created_at").first()
+        self.assertIsNotNone(txn)
+        self.assertEqual(txn.status, TransactionStatus.AWAITING_PAYMENT)
+        self.assertEqual(txn.payment_method, "gcash")
 
 
 class TestMarketplaceAdminAnalyticsDataEndpoint(TestCase):
