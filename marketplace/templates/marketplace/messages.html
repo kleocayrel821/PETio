@@ -579,6 +579,7 @@ function renderConversations(threads) {
       if (el) el.textContent = title;
     } catch (_) {}
   });
+  try { if (!currentThreadId && threads.length > 0) { openThreadFromList(threads[0].id); } } catch (_) {}
 }
 
 /**
