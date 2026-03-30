@@ -65,23 +65,11 @@
               {% endif %}
             </div>
             <span class="badge
-              {% if txn.payment_status == 'awaiting_payment' %}badge-info
-              {% elif txn.payment_status == 'proof_submitted' %}badge-warning
-              {% elif txn.payment_status == 'proof_rejected' %}badge-error
-              {% elif txn.payment_status == 'pending_cod' %}badge-info
-              {% elif txn.payment_status == 'paid' %}badge-success
-              {% elif txn.status == 'to_ship' %}badge-primary
-              {% elif txn.status == 'delivered' %}badge-primary
+              {% if txn.status == 'awaiting_payment' %}badge-info
+              {% elif txn.status == 'paid' %}badge-success
               {% elif txn.status == 'confirmed' %}badge-primary
               {% else %}badge-neutral{% endif %}">
-              {% if txn.payment_status == 'awaiting_payment' %}Awaiting Payment
-              {% elif txn.payment_status == 'proof_submitted' %}Proof Submitted
-              {% elif txn.payment_status == 'proof_rejected' %}Proof Rejected
-              {% elif txn.payment_status == 'pending_cod' %}Pending (COD)
-              {% elif txn.payment_status == 'paid' %}Paid
-              {% elif txn.status == 'to_ship' %}To Ship
-              {% elif txn.status == 'delivered' %}Delivered
-              {% else %}Confirmed{% endif %}
+              {% if txn.status == 'awaiting_payment' %}Awaiting Payment{% elif txn.status == 'paid' %}Paid{% else %}Confirmed{% endif %}
             </span>
           </div>
           <div class="text-xs opacity-70 mt-1">You are {% if txn.buyer_id == user.id %}the buyer{% else %}the seller{% endif %} · Created {{ txn.created_at|date:"M j, Y g:i a" }}</div>
@@ -90,18 +78,6 @@
           {% endif %}
           {% if txn.amount_paid %}
             <div class="text-xs mt-1">Paid: {{ txn.amount_paid }} {% if txn.payment_method %}via {% if txn.payment_method == 'cod' %}COD (Cash on Delivery){% elif txn.payment_method == 'gcash' %}GCash{% else %}{{ txn.payment_method }}{% endif %}{% endif %}</div>
-          {% endif %}
-          {% if txn.payment_method == 'gcash' and txn.payment_status == 'proof_submitted' and user.id == txn.seller_id %}
-            <div class="mt-2 flex gap-2">
-              <form method="post" action="{% url 'marketplace:approve_payment_proof' txn.id %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-xs btn-success">Approve Payment</button>
-              </form>
-              <form method="post" action="{% url 'marketplace:reject_payment_proof' txn.id %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-xs btn-error">Reject Proof</button>
-              </form>
-            </div>
           {% endif %}
           {% if txn.purchase_request %}
             <div class="mt-2"><a href="{% url 'marketplace:request_detail' txn.purchase_request.id %}" class="btn btn-xs btn-outline">View Request</a></div>

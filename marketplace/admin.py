@@ -84,7 +84,6 @@ class TransactionAdmin(admin.ModelAdmin):
         "buyer",
         "seller",
         "status",
-        "payment_status",
         "payment_method",
         "amount_paid",
         "meetup_time",

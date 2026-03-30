@@ -2315,8 +2315,6 @@ def transactions(request):
         "confirmed": base_qs.filter(status__in=[
             TransactionStatus.CONFIRMED,
             TransactionStatus.AWAITING_PAYMENT,
-            TransactionStatus.TO_SHIP,
-            TransactionStatus.DELIVERED,
             TransactionStatus.PAID,
         ]),
         "completed": base_qs.filter(status=TransactionStatus.COMPLETED),
@@ -2979,6 +2977,7 @@ def api_listing_buy_now(request, listing_id):
     else:
         payment_method = (request.POST.get("payment_method") or "").strip() or None
 
+    # Create or update transaction as AWAITING_PAYMENT (two-step checkout semantics)
     txn, _ = Transaction.objects.get_or_create(
         listing=listing,
         buyer=buyer,
@@ -2986,22 +2985,13 @@ def api_listing_buy_now(request, listing_id):
         defaults={"status": TransactionStatus.AWAITING_PAYMENT}
     )
     updates = ["status"]
+    if txn.status != TransactionStatus.AWAITING_PAYMENT:
+        txn.status = TransactionStatus.AWAITING_PAYMENT
+    # Persist valid payment method if supplied
     valid_methods = {m.value for m in Transaction.PaymentMethod}
     if payment_method and payment_method in valid_methods:
         txn.payment_method = payment_method
         updates.append("payment_method")
-    if txn.payment_method == "gcash":
-        txn.status = TransactionStatus.AWAITING_PAYMENT
-        txn.payment_status = Transaction.PaymentStatus.AWAITING_PAYMENT
-        updates.append("payment_status")
-    elif txn.payment_method == "cod":
-        txn.status = TransactionStatus.CONFIRMED
-        txn.payment_status = Transaction.PaymentStatus.PENDING_COD
-        updates.append("payment_status")
-    else:
-        txn.status = TransactionStatus.AWAITING_PAYMENT
-        txn.payment_status = Transaction.PaymentStatus.AWAITING_PAYMENT
-        updates.append("payment_status")
     txn.save(update_fields=updates)
 
     # Decrement stock to reserve one unit
@@ -3043,7 +3033,6 @@ def api_listing_buy_now(request, listing_id):
         "transaction": {
             "id": txn.id,
             "status": txn.status,
-            "payment_status": getattr(txn, "payment_status", None),
             "buyer_id": buyer.id,
             "seller_id": seller.id,
             "amount_paid": str(txn.amount_paid) if txn.amount_paid is not None else None,
@@ -3092,61 +3081,6 @@ def api_listing_complete(request, listing_id):
             "seller_id": seller.id,
         }
     })
-
-# Payment proof endpoints
-@login_required
-@require_http_methods(["POST"])
-@csrf_protect
-def upload_payment_proof(request, txn_id):
-    txn = get_object_or_404(Transaction, pk=txn_id)
-    if request.user.id != txn.buyer_id:
-        return JsonResponse({"error": "Only the buyer can upload payment proof"}, status=403)
-    proof = request.FILES.get("payment_proof") or request.FILES.get("file") or request.FILES.get("image")
-    if not proof:
-        return JsonResponse({"error": "Payment proof file is required"}, status=400)
-    txn.payment_proof_image = proof
-    txn.payment_status = Transaction.PaymentStatus.PROOF_SUBMITTED
-    if txn.status != TransactionStatus.AWAITING_PAYMENT:
-        txn.status = TransactionStatus.AWAITING_PAYMENT
-    txn.save(update_fields=["payment_proof_image", "payment_status", "status"])
-    try:
-        _notify(txn.seller, NotificationType.STATUS_CHANGED, listing=txn.listing, message_text="payment proof submitted", thread=txn.thread)
-    except Exception:
-        pass
-    return JsonResponse({"transaction_id": txn.id, "payment_status": txn.payment_status, "status": txn.status})
-
-@login_required
-@require_http_methods(["PATCH", "POST"])
-@csrf_protect
-def approve_payment_proof(request, txn_id):
-    txn = get_object_or_404(Transaction, pk=txn_id)
-    if request.user.id != txn.seller_id:
-        return JsonResponse({"error": "Only the seller can approve payment proof"}, status=403)
-    txn.payment_status = Transaction.PaymentStatus.PAID
-    txn.status = TransactionStatus.TO_SHIP
-    txn.save(update_fields=["payment_status", "status"])
-    try:
-        _notify(txn.buyer, NotificationType.STATUS_CHANGED, listing=txn.listing, message_text="payment approved", thread=txn.thread)
-    except Exception:
-        pass
-    return JsonResponse({"transaction_id": txn.id, "payment_status": txn.payment_status, "status": txn.status})
-
-@login_required
-@require_http_methods(["PATCH", "POST"])
-@csrf_protect
-def reject_payment_proof(request, txn_id):
-    txn = get_object_or_404(Transaction, pk=txn_id)
-    if request.user.id != txn.seller_id:
-        return JsonResponse({"error": "Only the seller can reject payment proof"}, status=403)
-    txn.payment_status = Transaction.PaymentStatus.PROOF_REJECTED
-    if txn.status != TransactionStatus.AWAITING_PAYMENT:
-        txn.status = TransactionStatus.AWAITING_PAYMENT
-    txn.save(update_fields=["payment_status", "status"])
-    try:
-        _notify(txn.buyer, NotificationType.STATUS_CHANGED, listing=txn.listing, message_text="payment proof rejected", thread=txn.thread)
-    except Exception:
-        pass
-    return JsonResponse({"transaction_id": txn.id, "payment_status": txn.payment_status, "status": txn.status})
 
 # -----------------------------
 # Reporting Endpoint
