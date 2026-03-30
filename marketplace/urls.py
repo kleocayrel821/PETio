@@ -136,6 +136,12 @@ else:
         path("api/requests/<int:request_id>/complete/", views.api_request_complete, name="api_request_complete"),
         # Request-level messages polling
         path("api/requests/<int:request_id>/messages/", views.api_request_messages, name="api_request_messages"),
+        
+        # Checkout flows for Buy Now
+        path("checkout/cod/<int:txn_id>/", views.checkout_cod, name="checkout_cod"),
+        path("checkout/gcash/<int:txn_id>/", views.checkout_gcash, name="checkout_gcash"),
+        path("transaction/<int:txn_id>/approve/", views.seller_approve_transaction, name="seller_approve_transaction"),
+        path("transaction/<int:txn_id>/reject/", views.seller_reject_transaction, name="seller_reject_transaction"),
 
         # Include DRF router for RESTful endpoints
         path("api/", include(router.urls)),

@@ -499,9 +499,17 @@ document.addEventListener('click', (e) => {
         if (window.toastManager) toastManager.error(msg); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast(msg, 'error');
         return;
       }
-      if (window.toastManager) toastManager.success('Order created. Awaiting payment.'); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast('Order created. Awaiting payment.', 'success');
+      const data = await resp.json().catch(() => ({}));
       if (modal && typeof modal.close === 'function') modal.close();
-      window.location.href = '{% url "marketplace:transactions" %}?status=confirmed';
+      const txnId = data && data.transaction ? data.transaction.id : null;
+      if (paymentMethod === 'cod' && txnId) {
+        window.location.href = `{% url "marketplace:checkout_cod" 0 %}`.replace('/0/', `/${txnId}/`);
+      } else if (paymentMethod === 'gcash' && txnId) {
+        window.location.href = `{% url "marketplace:checkout_gcash" 0 %}`.replace('/0/', `/${txnId}/`);
+      } else {
+        if (window.toastManager) toastManager.success('Order created. Awaiting payment.'); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast('Order created. Awaiting payment.', 'success');
+        window.location.href = '{% url "marketplace:transactions" %}?status=confirmed';
+      }
     } catch(err) {
       if (window.toastManager) toastManager.error('Network error'); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast('Network error', 'error');
     }

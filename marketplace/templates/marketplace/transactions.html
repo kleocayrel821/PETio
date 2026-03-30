@@ -120,6 +120,16 @@
               {% endif %}
             {% endif %}
           </div>
+            {% if user.id == txn.seller_id and txn.status == 'awaiting_payment' and txn.payment_method %}
+              <form method="post" action="{% url 'marketplace:seller_approve_transaction' txn.id %}" onsubmit="return submitSellerAction(this, 'approve');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+              </form>
+              <form method="post" action="{% url 'marketplace:seller_reject_transaction' txn.id %}" onsubmit="return submitSellerAction(this, 'reject');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline btn-error">Reject</button>
+              </form>
+            {% endif %}
         </li>
       {% endfor %}
     </ul>
@@ -128,6 +138,7 @@
     {% endif %}
   </div>
   {% endif %}
+
 
   {# Completed group #}
   {% if not active_status or active_status == 'completed' %}
@@ -187,4 +198,18 @@
   </div>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block marketplace_scripts %}
+<script>
+function submitSellerAction(form, act) {
+  const btn = form.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.classList.add('loading'); }
+  fetch(form.action, { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': (document.querySelector('meta[name="csrf-token"])||{}).content || '' } })
+    .then(r => r.json())
+    .then(() => { location.reload(); })
+    .catch(() => { location.reload(); });
+  return false;
+}
+</script>
 {% endblock %}

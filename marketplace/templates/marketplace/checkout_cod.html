@@ -1,0 +1,32 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% block marketplace_title %}Checkout: COD{% endblock %}
+{% block marketplace_content %}
+<div class="max-w-2xl mx-auto">
+  <div class="card bg-base-100 shadow-md p-6 rounded-xl">
+    <div class="section-title"><i class="fas fa-truck text-green-500"></i> Cash on Delivery Details</div>
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-control mb-3">
+        <label class="label"><span class="label-text">Full Name</span></label>
+        <input name="name" type="text" class="input input-bordered" value="{{ txn.cod_name }}" required />
+      </div>
+      <div class="form-control mb-3">
+        <label class="label"><span class="label-text">Contact Number</span></label>
+        <input name="contact" type="text" class="input input-bordered" value="{{ txn.cod_contact }}" required />
+      </div>
+      <div class="form-control mb-3">
+        <label class="label"><span class="label-text">Delivery Address</span></label>
+        <textarea name="address" class="textarea textarea-bordered" rows="3" required>{{ txn.cod_address }}</textarea>
+      </div>
+      <div class="form-control mb-4">
+        <label class="label"><span class="label-text">Message to Seller (optional)</span></label>
+        <textarea name="note" class="textarea textarea-bordered" rows="2">{{ txn.cod_note }}</textarea>
+      </div>
+      <div class="flex gap-2">
+        <button type="submit" class="btn btn-primary">Submit COD Details</button>
+        <a href="{% url 'marketplace:transactions' %}" class="btn btn-ghost">Back to Transactions</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
