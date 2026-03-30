@@ -219,6 +219,11 @@ class Transaction(TimeStampedModel):
     )
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     payment_proof = models.FileField(upload_to="payments/%Y/%m/", null=True, blank=True)
+    cod_name = models.CharField(max_length=100, blank=True)
+    cod_contact = models.CharField(max_length=32, blank=True)
+    cod_address = models.TextField(blank=True)
+    cod_note = models.TextField(blank=True)
+    gcash_ref = models.CharField(max_length=64, blank=True)
 
     class Meta:
         ordering = ["-created_at"]

@@ -1,0 +1,25 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% block marketplace_title %}Checkout: GCash{% endblock %}
+{% block marketplace_content %}
+<div class="max-w-2xl mx-auto">
+  <div class="card bg-base-100 shadow-md p-6 rounded-xl">
+    <div class="section-title"><i class="fas fa-receipt text-blue-500"></i> GCash Payment</div>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="form-control mb-3">
+        <label class="label"><span class="label-text">Reference Number</span></label>
+        <input name="gcash_ref" type="text" class="input input-bordered" value="{{ txn.gcash_ref }}" required />
+      </div>
+      <div class="form-control mb-4">
+        <label class="label"><span class="label-text">Proof of Payment</span></label>
+        <input name="payment_proof" type="file" class="file-input file-input-bordered" accept="image/*,.pdf" required />
+      </div>
+      <div class="text-xs opacity-70 mb-4">Amount: {{ txn.listing.price }}</div>
+      <div class="flex gap-2">
+        <button type="submit" class="btn btn-primary">Submit Payment</button>
+        <a href="{% url 'marketplace:transactions' %}" class="btn btn-ghost">Back to Transactions</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
