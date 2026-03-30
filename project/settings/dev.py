@@ -17,9 +17,7 @@ from os import environ
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 # SECRET KEY from environment
-SECRET_KEY = os.environ.get("SECRET_KEY")
-if not SECRET_KEY:
-    raise RuntimeError('DJANGO_SECRET_KEY environment variable is required in production')
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-dev-key")
 
 # Allowed hosts and CSRF trusted origins
 # Default to '*' for local preview; set DJANGO_ALLOWED_HOSTS in real deployments.

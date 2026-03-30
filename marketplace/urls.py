@@ -137,6 +137,11 @@ else:
         # Request-level messages polling
         path("api/requests/<int:request_id>/messages/", views.api_request_messages, name="api_request_messages"),
 
+        # Transaction payment proof endpoints
+        path("transactions/<int:txn_id>/upload-proof/", views.upload_payment_proof, name="upload_payment_proof"),
+        path("transactions/<int:txn_id>/approve-proof/", views.approve_payment_proof, name="approve_payment_proof"),
+        path("transactions/<int:txn_id>/reject-proof/", views.reject_payment_proof, name="reject_payment_proof"),
+
         # Include DRF router for RESTful endpoints
         path("api/", include(router.urls)),
     ]
