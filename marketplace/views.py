@@ -2996,9 +2996,9 @@ def api_listing_buy_now(request, listing_id):
 
     # Decrement stock to reserve one unit
     listing.quantity = max(0, listing.quantity - 1)
-    # Keep listing visible when stock remains; mark sold when stock hits zero
+    # Move listing to reserved state while awaiting payment; mark SOLD when stock hits zero
     if listing.quantity > 0:
-        listing.status = ListingStatus.ACTIVE
+        listing.status = ListingStatus.PENDING
     else:
         listing.status = ListingStatus.SOLD
     listing.save(update_fields=["quantity", "status"])
@@ -3011,11 +3011,14 @@ def api_listing_buy_now(request, listing_id):
         thread, _ = MessageThread.objects.get_or_create(listing=listing, buyer=buyer, seller=seller)
         txn.thread = thread
         txn.save(update_fields=["thread"])
-        Message.objects.create(
-            thread=thread,
-            sender=buyer,
-            text=f"Buy Now initiated. Transaction #{txn.id} awaiting payment.",
-        )
+        try:
+            Message.objects.create(
+                thread=thread,
+                sender=buyer,
+                content=f"Buy Now initiated. Transaction #{txn.id} awaiting payment."
+            )
+        except Exception:
+            pass
         # Notify parties; keep body concise
         _notify(seller, NotificationType.STATUS_CHANGED, listing=listing, message_text="Buy Now initiated", thread=thread)
         _notify(buyer, NotificationType.STATUS_CHANGED, listing=listing, message_text="Buy Now initiated", thread=thread)
