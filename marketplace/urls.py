@@ -142,7 +142,6 @@ else:
         path("checkout/gcash/<int:txn_id>/", views.checkout_gcash, name="checkout_gcash"),
         path("transaction/<int:txn_id>/approve/", views.seller_approve_transaction, name="seller_approve_transaction"),
         path("transaction/<int:txn_id>/reject/", views.seller_reject_transaction, name="seller_reject_transaction"),
-        path("transaction/<int:txn_id>/mark-paid/", views.seller_mark_paid_transaction, name="seller_mark_paid_transaction"),
 
         # Include DRF router for RESTful endpoints
         path("api/", include(router.urls)),

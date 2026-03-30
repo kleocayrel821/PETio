@@ -120,8 +120,7 @@
               {% endif %}
             {% endif %}
           </div>
-            {% if user.id == txn.seller_id and txn.payment_method %}
-              {% if txn.status == 'awaiting_payment' %}
+            {% if user.id == txn.seller_id and txn.status == 'awaiting_payment' and txn.payment_method %}
               <form method="post" action="{% url 'marketplace:seller_approve_transaction' txn.id %}" onsubmit="return submitSellerAction(this, 'approve');">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-sm btn-success">Approve</button>
@@ -130,13 +129,6 @@
                 {% csrf_token %}
                 <button type="submit" class="btn btn-sm btn-outline btn-error">Reject</button>
               </form>
-              {% endif %}
-              {% if txn.payment_method == 'cod' and (txn.status == 'confirmed' or txn.status == 'awaiting_payment') %}
-              <form method="post" action="{% url 'marketplace:seller_mark_paid_transaction' txn.id %}" onsubmit="return submitSellerAction(this, 'mark-paid');">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-primary">Mark Paid</button>
-              </form>
-              {% endif %}
             {% endif %}
         </li>
       {% endfor %}

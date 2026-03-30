@@ -3149,8 +3149,6 @@ def seller_approve_transaction(request, txn_id):
         return json_error("Only the seller can approve", status=403)
     if txn.payment_method == Transaction.PaymentMethod.GCASH:
         txn.status = TransactionStatus.PAID
-        if txn.amount_paid is None and txn.listing and txn.listing.price is not None:
-            txn.amount_paid = txn.listing.price
     else:
         txn.status = TransactionStatus.CONFIRMED
     txn.save(update_fields=["status"])
@@ -3178,27 +3176,6 @@ def seller_reject_transaction(request, txn_id):
     except Exception:
         pass
     return json_ok("Rejected", data={"txn_id": txn.id, "status": txn.status, "listing_qty": listing.quantity})
-
-@login_required
-@require_POST
-@csrf_protect
-def seller_mark_paid_transaction(request, txn_id):
-    txn = get_object_or_404(Transaction, pk=txn_id)
-    if request.user.id != txn.seller_id:
-        return json_error("Only the seller can mark paid", status=403)
-    if txn.payment_method != Transaction.PaymentMethod.COD:
-        return json_error("Mark Paid only applies to COD transactions", status=400)
-    if txn.status not in (TransactionStatus.CONFIRMED, TransactionStatus.AWAITING_PAYMENT):
-        return json_error("Transaction not in a payable state", status=400)
-    txn.status = TransactionStatus.PAID
-    if txn.amount_paid is None and txn.listing and txn.listing.price is not None:
-        txn.amount_paid = txn.listing.price
-    txn.save(update_fields=["status", "amount_paid"])
-    try:
-        _notify(txn.buyer, NotificationType.STATUS_CHANGED, listing=txn.listing, message_text="Payment recorded (COD)", thread=txn.thread)
-    except Exception:
-        pass
-    return json_ok("Marked as paid", data={"txn_id": txn.id, "status": txn.status})
 # -----------------------------
 # Reporting Endpoint
 # -----------------------------
