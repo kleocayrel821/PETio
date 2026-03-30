@@ -499,7 +499,8 @@ document.addEventListener('click', (e) => {
         if (window.toastManager) toastManager.error(msg); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast(msg, 'error');
         return;
       }
-      if (window.toastManager) toastManager.success('Order created. Awaiting payment.'); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast('Order created. Awaiting payment.', 'success');
+      const msg = (paymentMethod === 'cod') ? 'Order confirmed (COD). Arrange meetup to pay on delivery.' : 'Order created. Awaiting payment.';
+      if (window.toastManager) toastManager.success(msg); else if (typeof showMarketplaceToast === 'function') showMarketplaceToast(msg, 'success');
       if (modal && typeof modal.close === 'function') modal.close();
       window.location.href = '{% url "marketplace:transactions" %}?status=confirmed';
     } catch(err) {

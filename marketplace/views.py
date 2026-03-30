@@ -2794,16 +2794,16 @@ def api_listing_sell(request, listing_id):
 
     seller = listing.seller
 
-    # Branch on listing status
-    if listing.status == ListingStatus.PENDING:
-        # Payment recording by seller for a reserved listing
+    # Branch on transaction intent:
+    # If there is an awaiting-payment or confirmed (COD) transaction, allow seller to record payment
+    txn = Transaction.objects.filter(
+        listing=listing,
+        status__in=[TransactionStatus.AWAITING_PAYMENT, TransactionStatus.CONFIRMED]
+    ).order_by("-created_at").first()
+    if txn:
+        # Payment recording by seller against an existing reservation/confirmation
         if request.user.id != seller.id:
             return JsonResponse({"error": "Only the seller can record payment"}, status=403)
-
-        # Use the latest awaiting-payment transaction for this listing
-        txn = Transaction.objects.filter(listing=listing, status=TransactionStatus.AWAITING_PAYMENT).order_by("-created_at").first()
-        if not txn:
-            return JsonResponse({"error": "No awaiting-payment transaction found for this listing"}, status=400)
 
         # Capture payment details (JSON or form-data)
         payment_method = None
@@ -2849,19 +2849,17 @@ def api_listing_sell(request, listing_id):
         if field_errors:
             return JsonResponse({"error": "Validation failed", "field_errors": field_errors}, status=400)
 
+        # Mark transaction paid; listing quantity already reserved by Buy Now flow
         if txn.status != TransactionStatus.PAID:
             txn.status = TransactionStatus.PAID
         txn.save(update_fields=["status", "payment_method", "amount_paid", "payment_proof"])
 
-        # Reservation already consumed stock; ensure status reflects final outcome
-        listing.quantity = max(0, listing.quantity - 1)
-        if listing.quantity == 0:
+        # Keep listing quantity and status consistent; if stock was decremented earlier,
+        # only update 'sold' when it reaches zero, otherwise remain active.
+        listing.refresh_from_db(fields=["quantity", "status"])
+        if listing.quantity == 0 and listing.status != ListingStatus.SOLD:
             listing.status = ListingStatus.SOLD
-            listing.save(update_fields=["quantity", "status"])
-            _cascade_close_open_requests_for_listing(listing, reason="sold out")
-        else:
-            listing.status = ListingStatus.ACTIVE
-            listing.save(update_fields=["quantity", "status"])
+            listing.save(update_fields=["status"])
 
         return JsonResponse({
             "listing": {
@@ -2977,7 +2975,7 @@ def api_listing_buy_now(request, listing_id):
     else:
         payment_method = (request.POST.get("payment_method") or "").strip() or None
 
-    # Create or update transaction as AWAITING_PAYMENT (two-step checkout semantics)
+    # Create or update transaction with status derived from payment method
     txn, _ = Transaction.objects.get_or_create(
         listing=listing,
         buyer=buyer,
@@ -2985,13 +2983,23 @@ def api_listing_buy_now(request, listing_id):
         defaults={"status": TransactionStatus.AWAITING_PAYMENT}
     )
     updates = ["status"]
-    if txn.status != TransactionStatus.AWAITING_PAYMENT:
-        txn.status = TransactionStatus.AWAITING_PAYMENT
     # Persist valid payment method if supplied
     valid_methods = {m.value for m in Transaction.PaymentMethod}
     if payment_method and payment_method in valid_methods:
         txn.payment_method = payment_method
         updates.append("payment_method")
+        # Status mapping:
+        # - COD: order is confirmed (payment collected later at meetup)
+        # - GCash: awaiting payment until seller records receipt
+        if payment_method == Transaction.PaymentMethod.COD:
+            txn.status = TransactionStatus.CONFIRMED
+        elif payment_method == Transaction.PaymentMethod.GCASH:
+            txn.status = TransactionStatus.AWAITING_PAYMENT
+    else:
+        # Default fallback keeps two-step checkout semantics
+        txn.status = TransactionStatus.AWAITING_PAYMENT
+    if TransactionStatus(txn.status) != TransactionStatus.CONFIRMED and TransactionStatus(txn.status) != TransactionStatus.AWAITING_PAYMENT:
+        txn.status = TransactionStatus.AWAITING_PAYMENT
     txn.save(update_fields=updates)
 
     # Decrement stock to reserve one unit
@@ -3011,11 +3019,16 @@ def api_listing_buy_now(request, listing_id):
         thread, _ = MessageThread.objects.get_or_create(listing=listing, buyer=buyer, seller=seller)
         txn.thread = thread
         txn.save(update_fields=["thread"])
-        Message.objects.create(
-            thread=thread,
-            sender=buyer,
-            text=f"Buy Now initiated. Transaction #{txn.id} awaiting payment.",
-        )
+        try:
+            if txn.payment_method == Transaction.PaymentMethod.COD:
+                initial_text = f"Buy Now (COD) initiated. Transaction #{txn.id} confirmed. Arrange meetup to pay on delivery."
+            elif txn.payment_method == Transaction.PaymentMethod.GCASH:
+                initial_text = f"Buy Now (GCash) initiated. Transaction #{txn.id} awaiting payment."
+            else:
+                initial_text = f"Buy Now initiated. Transaction #{txn.id} awaiting payment."
+        except Exception:
+            initial_text = f"Buy Now initiated. Transaction #{txn.id} awaiting payment."
+        Message.objects.create(thread=thread, sender=buyer, text=initial_text)
         # Notify parties; keep body concise
         _notify(seller, NotificationType.STATUS_CHANGED, listing=listing, message_text="Buy Now initiated", thread=thread)
         _notify(buyer, NotificationType.STATUS_CHANGED, listing=listing, message_text="Buy Now initiated", thread=thread)
@@ -3035,6 +3048,7 @@ def api_listing_buy_now(request, listing_id):
             "status": txn.status,
             "buyer_id": buyer.id,
             "seller_id": seller.id,
+            "payment_method": txn.payment_method,
             "amount_paid": str(txn.amount_paid) if txn.amount_paid is not None else None,
         },
     })

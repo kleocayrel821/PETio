@@ -578,7 +578,11 @@ function toggleWishlist() {
                     return;
                 }
                 const data = await res.json();
-                showMarketplaceToast('Order created. Awaiting payment.', 'success');
+                if (paymentMethod === 'cod') {
+                    showMarketplaceToast('Order confirmed (COD). Arrange meetup to pay on delivery.', 'success');
+                } else {
+                    showMarketplaceToast('Order created. Awaiting payment.', 'success');
+                }
                 // Reflect quantity change immediately if present
                 const qtyEl = document.querySelector('.text-lg.font-semibold');
                 if (qtyEl && data.listing && typeof data.listing.quantity !== 'undefined') {
