@@ -141,6 +141,7 @@ let currentRequestId = null;
 let conversations = [];
 let listingTitleCache = {};
 let conversationFilterDebounced = null;
+let isSending = false;
 
 /**
  * Get CSRF token from cookie for safe POST requests.
@@ -211,7 +212,7 @@ function renderMessageBubble(msg) {
   const pendingSpinner = msg.pending ? '<span class="loading loading-spinner loading-xs ml-2" aria-label="Sending"></span>' : '';
   const avatarChar = (msg.sender_username || 'U')[0].toUpperCase();
   return `
-    <div class="chat ${sideClass}" data-temp-id="${msg.tempId || ''}">
+    <div class="chat ${sideClass}" data-temp-id="${msg.tempId || ''}" data-message-id="${msg.id || ''}">
       <div class="chat-image avatar">
         <div class="w-8 rounded-full ${avatarBg} flex items-center justify-center">
           <span class="text-xs">${avatarChar}</span>
@@ -235,6 +236,7 @@ function renderMessages(messages, {append = false} = {}) {
   const startIndex = Math.max(0, messages.length - 200);
   const windowed = messages.slice(startIndex);
   for (const m of windowed) {
+    if (m.id && area.querySelector(`[data-message-id="${m.id}"]`)) continue;
     html += renderMessageBubble(m);
     if (m.id && m.id > lastMessageId) lastMessageId = m.id;
   }
@@ -343,6 +345,8 @@ async function sendMessage() {
   const content = (messageInput.value || '').trim();
   if (!content) return;
   if (!currentThreadId) { showMarketplaceToast('No active conversation.', 'error'); return; }
+  if (isSending) return;
+  isSending = true;
   sendButton.disabled = true;
   sendButton.setAttribute('aria-disabled', 'true');
 
@@ -359,8 +363,17 @@ async function sendMessage() {
       showMarketplaceToast('Failed to send message.', 'error');
       return;
     }
+    const data = await resp.json().catch(() => ({}));
     showMarketplaceToast('Message sent', 'success');
-    try { await fetchMessages(lastMessageId); } catch (_) {}
+    try {
+      if (data && data.message && data.message.id) {
+        if (!document.getElementById('messagesArea').querySelector(`[data-message-id="${data.message.id}"]`)) {
+          appendIncomingMessageBubble(data.message, currentUserId);
+        }
+      } else {
+        await fetchMessages(lastMessageId);
+      }
+    } catch (_) {}
     removePendingMessage(tempId);
     messageInput.value = '';
     messageInput.style.height = 'auto';
@@ -374,6 +387,7 @@ async function sendMessage() {
   } finally {
     sendButton.disabled = !messageInput.value.trim();
     sendButton.setAttribute('aria-disabled', (!messageInput.value.trim()) ? 'true' : 'false');
+    isSending = false;
   }
 }
 
@@ -640,6 +654,7 @@ function connectThreadSocket(threadId) {
   const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
   const url = `${scheme}://${location.host}/ws/marketplace/thread/${threadId}/`;
   wsThread = new WebSocket(url);
+  wsThread.onopen = () => { try { updatePoller(15000); } catch (_) {} };
   wsThread.onmessage = (ev) => {
     let data; try { data = JSON.parse(ev.data); } catch (_) { return; }
     const t = data && data.type;
@@ -650,6 +665,7 @@ function connectThreadSocket(threadId) {
       updateIntegrationBanner();
     }
   };
+  wsThread.onclose = () => { try { updatePoller(3000); } catch (_) {} };
 }
 function connectUserEventsSocket() {
   try { if (wsUser) { wsUser.close(); wsUser = null; } } catch (_) {}
