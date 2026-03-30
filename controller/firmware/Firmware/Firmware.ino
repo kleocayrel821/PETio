@@ -417,9 +417,13 @@ private:
 
     time_t nowTs = time(nullptr);
     struct tm* t = localtime(&nowTs);
-    char timeBuf[9];
-    snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d",
-             t->tm_hour, t->tm_min, t->tm_sec);
+    int hour24 = t ? t->tm_hour : 0;
+    int hour12 = hour24 % 12;
+    if (hour12 == 0) hour12 = 12;
+    const char* meridiem = hour24 >= 12 ? "PM" : "AM";
+    char timeBuf[12];
+    snprintf(timeBuf, sizeof(timeBuf), "%d:%02d:%02d %s",
+             hour12, t ? t->tm_min : 0, t ? t->tm_sec : 0, meridiem);
 
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
@@ -668,12 +672,21 @@ public:
     if (!feedingInProgress) return;
     Serial.println("Stopping feeding operation");
 
-    // Brake pulse — brief reverse counteracts inertia so the wheel
-    // stops at exactly the right position instead of coasting ~80ms.
-    // This is a STOP brake only — no food moves during it because
-    // the timed dispense is already complete.
+    // Brake pulse: 40ms at SERVO_ANTI_CLOG_REVERSE (1400µs) kills
+    // forward inertia without pulling food back into the wheel.
+    //
+    // Why 40ms:
+    //   Forward pulse  = 1550µs (+50µs from neutral)
+    //   Brake pulse    = 1400µs (-100µs from neutral) → 2× stronger
+    //   At 30g/720ms wheel speed ≈ 0.042g/ms
+    //   40ms brake at 2× strength ≈ 3g reverse travel → within ±3g tolerance
+    //
+    // Previous 100ms was pulling back ~8g every stop, causing:
+    //   30g target → 22–24g actual
+    //   60g target → 52–54g actual
+    //   90g target → 76–80g actual
     feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
-    delay(100);
+    delay(50);
     feedingServo.writeMicroseconds(SERVO_NEUTRAL);
     lastPulse = SERVO_NEUTRAL;
 
