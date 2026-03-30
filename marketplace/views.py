@@ -3039,9 +3039,7 @@ def api_listing_buy_now(request, listing_id):
 @require_http_methods(["POST"])  # Mark latest transaction as completed (without changing stock)
 def api_listing_complete(request, listing_id):
     """Finalize a transaction for a listing by setting transaction status to 'completed'.
-
-    Requires authentication. Listing must be 'sold'. Returns 403 JSON if unauthenticated.
-    """
+    Requires authentication. Allows completion for any PAID transaction on the listing."""
     if not request.user.is_authenticated:
         return JsonResponse({"error": "Authentication required"}, status=403)
     try:
@@ -3060,8 +3058,8 @@ def api_listing_complete(request, listing_id):
         txn.status = TransactionStatus.COMPLETED
         txn.save(update_fields=["status"])
 
-    # Listing remains 'sold'
-    listing.refresh_from_db(fields=["status", "quantity"])  # Keep current status
+    # Listing status stays as-is; quantity already adjusted during Buy Now/payment recording
+    listing.refresh_from_db(fields=["status", "quantity"])
 
     return JsonResponse({
         "listing": {
@@ -3176,6 +3174,36 @@ def seller_reject_transaction(request, txn_id):
     except Exception:
         pass
     return json_ok("Rejected", data={"txn_id": txn.id, "status": txn.status, "listing_qty": listing.quantity})
+
+@login_required
+@require_POST
+@csrf_protect
+def transaction_record_payment(request, txn_id):
+    """
+    Record payment for a direct Buy Now transaction (no PurchaseRequest).
+    - Only the seller can mark as paid.
+    - Accepts optional amount_paid and payment_method (defaults to existing or COD).
+    """
+    txn = get_object_or_404(Transaction, pk=txn_id)
+    if request.user.id != txn.seller_id:
+        return json_error("Only the seller can record payment", status=403)
+    payment_method = (request.POST.get("payment_method") or "").strip() or txn.payment_method or Transaction.PaymentMethod.COD
+    amount_paid = request.POST.get("amount_paid")
+    try:
+        amount_paid = Decimal(str(amount_paid)) if amount_paid is not None else txn.amount_paid
+    except Exception:
+        amount_paid = txn.amount_paid
+    if amount_paid is None and txn.listing and txn.listing.price is not None:
+        amount_paid = txn.listing.price
+    txn.payment_method = payment_method
+    txn.amount_paid = amount_paid
+    txn.status = TransactionStatus.PAID
+    txn.save(update_fields=["status", "payment_method", "amount_paid", "updated_at"])
+    try:
+        _notify(txn.buyer, NotificationType.STATUS_CHANGED, listing=txn.listing, message_text="Payment recorded", thread=txn.thread)
+    except Exception:
+        pass
+    return json_ok("Payment recorded", data={"txn_id": txn.id, "status": txn.status, "amount_paid": str(txn.amount_paid) if txn.amount_paid is not None else None})
 # -----------------------------
 # Reporting Endpoint
 # -----------------------------
