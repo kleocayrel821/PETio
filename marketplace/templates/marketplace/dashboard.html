@@ -115,7 +115,7 @@
             <i class="fas fa-handshake"></i>
             Reserve
           </button>
-          <button class="btn btn-sm" data-action="sell" data-listing-id="{{ listing.id }}" {% if not listing.latest_txn or (listing.latest_txn.status != 'awaiting_payment' and listing.latest_txn.status != 'confirmed') %}disabled{% endif %}>
+          <button class="btn btn-sm" data-action="sell" data-listing-id="{{ listing.id }}" {% if listing.status != 'pending' or not listing.latest_txn or listing.latest_txn.status != 'awaiting_payment' %}disabled{% endif %}>
             <i class="fas fa-money-bill-wave"></i>
             Mark Sold
           </button>
