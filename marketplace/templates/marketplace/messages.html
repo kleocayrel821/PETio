@@ -147,6 +147,8 @@ let conversationFilterDebounced = null;
  * Returns an empty string if not found; callers must set header conditionally.
  */
 function getCSRFToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  if (meta && meta.content) return meta.content;
   const name = 'csrftoken=';
   const cookies = document.cookie.split(';');
   for (let c of cookies) {
@@ -278,6 +280,7 @@ function removePendingMessage(tempId) {
 async function startOrGetThread(listingId) {
   const resp = await fetch('/marketplace/api/messages/thread/start/', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
     body: JSON.stringify({listing_id: parseInt(listingId, 10)})
   });
@@ -312,7 +315,7 @@ async function fetchMessages(afterId = 0) {
   const url = `/marketplace/api/messages/thread/${currentThreadId}/messages/?after_id=${afterId}&limit=50`;
   const area = document.getElementById('messagesArea');
   area?.setAttribute('aria-busy', 'true');
-  const resp = await fetch(url, {method: 'GET'});
+  const resp = await fetch(url, {method: 'GET', credentials: 'same-origin'});
   area?.setAttribute('aria-busy', 'false');
   if (!resp.ok) return;
   const data = await resp.json();
@@ -348,7 +351,7 @@ async function sendMessage() {
 
   try {
     const resp = await fetch(`/marketplace/api/messages/thread/${currentThreadId}/post/`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
       body: JSON.stringify({content})
     });
     if (!resp.ok) {
@@ -439,7 +442,7 @@ function updateIntegrationBanner(listingId = null) {
  * @param {number} threadId
  */
 async function fetchThreadSummary(threadId) {
-  const resp = await fetch(`/marketplace/api/threads/${threadId}/`, { method: 'GET' });
+  const resp = await fetch(`/marketplace/api/threads/${threadId}/`, { method: 'GET', credentials: 'same-origin' });
   if (!resp.ok) throw new Error('Failed to fetch thread');
   const data = await resp.json();
   return data;
@@ -452,7 +455,7 @@ async function fetchThreadSummary(threadId) {
 async function getListingTitle(listingId) {
   const key = String(listingId);
   if (listingTitleCache[key]) return listingTitleCache[key];
-  const resp = await fetch(`/marketplace/api/listings/${listingId}/`, { method: 'GET' });
+  const resp = await fetch(`/marketplace/api/listings/${listingId}/`, { method: 'GET', credentials: 'same-origin' });
   if (!resp.ok) throw new Error('Listing not found');
   const data = await resp.json();
   listingTitleCache[key] = data.title || `Listing #${listingId}`;
@@ -520,7 +523,7 @@ async function refreshConversations() {
   listEl.setAttribute('aria-busy', 'true');
   renderSkeletonConversations(listEl);
   try {
-    const resp = await fetch('/marketplace/api/threads/?ordering=-last_message_at', { method: 'GET' });
+    const resp = await fetch('/marketplace/api/threads/?ordering=-last_message_at', { method: 'GET', credentials: 'same-origin' });
     if (!resp.ok) { throw new Error('Failed to load conversations'); }
     const data = await resp.json();
     conversations = Array.isArray(data) ? data : (Array.isArray(data.results) ? data.results : []);
