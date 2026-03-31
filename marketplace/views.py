@@ -1017,11 +1017,14 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
             except Exception:
                 step_raw = "request"
         ctx["page_step"] = step_raw
-        thread_messages = (
-            RequestMessage.objects.filter(request=pr)
-            .select_related("author")
-            .order_by("created_at")
-        )
+        try:
+            thread_messages = (
+                RequestMessage.objects.filter(request=pr)
+                .select_related("author")
+                .order_by("created_at")
+            )
+        except Exception:
+            thread_messages = []
         ctx["thread_messages"] = thread_messages
         # Capture unread count before marking as read for display purposes
         try:
