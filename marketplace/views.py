@@ -1593,12 +1593,6 @@ def confirm_meetup(request, request_id):
         action=LogAction.MEETUP_CONFIRMED,
         note=f"{pr.transaction.meetup_place} @ {pr.transaction.meetup_time} (TZ: {getattr(pr.transaction, 'meetup_timezone', timezone.get_current_timezone_name())})",
     )
-    try:
-        if pr.transaction.status not in (TransactionStatus.PAID, TransactionStatus.COMPLETED):
-            pr.transaction.status = TransactionStatus.AWAITING_PAYMENT
-            pr.transaction.save(update_fields=["status", "updated_at"])
-    except Exception:
-        pass
     other = pr.seller if request.user.id == pr.buyer_id else pr.buyer
     _notify(other, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="meetup confirmed")
     try:
@@ -1610,7 +1604,7 @@ def confirm_meetup(request, request_id):
     if wants_json(request):
         return json_ok("Meetup confirmed.", data={"request_id": pr.pk})
     django_messages.success(request, "Meetup confirmed.")
-    return redirect("marketplace:request_step_payment", pk=pr.pk)
+    return redirect("marketplace:request_detail", pk=pr.pk)
 
 
 @login_required
@@ -3300,119 +3294,6 @@ def transaction_send_message(request, txn_id):
     django_messages.success(request, "Message sent.")
     url = f"{reverse('marketplace:messages')}?{urlencode({'thread_id': thread.id})}"
     return redirect(url)
-
-@login_required
-def request_step_negotiation(request, pk):
-    pr = get_object_or_404(PurchaseRequest.objects.select_related("listing", "buyer", "seller"), pk=pk)
-    if request.user.id not in (pr.buyer_id, pr.seller_id) and not _is_moderator(request.user):
-        return redirect_to_login(next=reverse("marketplace:request_step_negotiation", args=[pk]))
-    if pr.status == PurchaseRequestStatus.ACCEPTED:
-        return redirect("marketplace:request_step_meetup", pk=pk)
-    return render(request, "marketplace/steps/negotiation.html", {"pr": pr})
-
-@login_required
-def request_step_confirm(request, pk):
-    pr = get_object_or_404(PurchaseRequest.objects.select_related("listing", "buyer", "seller"), pk=pk)
-    if request.user.id not in (pr.buyer_id, pr.seller_id) and not _is_moderator(request.user):
-        return redirect_to_login(next=reverse("marketplace:request_step_confirm", args=[pk]))
-    if pr.status != PurchaseRequestStatus.ACCEPTED:
-        return render(request, "marketplace/steps/confirm.html", {"pr": pr})
-    return redirect("marketplace:request_step_meetup", pk=pk)
-
-@login_required
-def request_step_meetup(request, pk):
-    pr = get_object_or_404(PurchaseRequest.objects.select_related("listing", "buyer", "seller", "transaction"), pk=pk)
-    if request.user.id not in (pr.buyer_id, pr.seller_id) and not _is_moderator(request.user):
-        return redirect_to_login(next=reverse("marketplace:request_step_meetup", args=[pk]))
-    if pr.status != PurchaseRequestStatus.ACCEPTED:
-        return redirect("marketplace:request_step_confirm", pk=pk)
-    txn = getattr(pr, "transaction", None)
-    if request.method == "POST":
-        form = MeetupProposalForm(request.POST)
-        if form.is_valid():
-            pr.transaction.meetup_time = form.cleaned_data["meetup_time"]
-            pr.transaction.meetup_place = sanitize_text(form.cleaned_data["meetup_place"], max_len=200)
-            pr.transaction.meetup_timezone = (form.cleaned_data.get("meetup_timezone") or "").strip() or timezone.get_current_timezone_name()
-            pr.transaction.save(update_fields=["meetup_time", "meetup_place", "meetup_timezone", "updated_at"])
-            TransactionLog.objects.create(request=pr, actor=request.user, action=LogAction.MEETUP_PROPOSED, note=f"{pr.transaction.meetup_place} @ {pr.transaction.meetup_time} (TZ: {pr.transaction.meetup_timezone})")
-            other = pr.seller if request.user.id == pr.buyer_id else pr.buyer
-            _notify(other, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="meetup proposed", send_email=True)
-            return redirect("marketplace:request_step_meetup_confirm", pk=pk)
-    return render(request, "marketplace/steps/meetup_propose.html", {"pr": pr, "txn": txn})
-
-@login_required
-def request_step_meetup_confirm(request, pk):
-    pr = get_object_or_404(PurchaseRequest.objects.select_related("transaction", "buyer", "seller", "listing"), pk=pk)
-    if request.user.id not in (pr.buyer_id, pr.seller_id) and not _is_moderator(request.user):
-        return redirect_to_login(next=reverse("marketplace:request_step_meetup_confirm", args=[pk]))
-    txn = getattr(pr, "transaction", None)
-    if not txn or not txn.meetup_time or not txn.meetup_place:
-        return redirect("marketplace:request_step_meetup", pk=pk)
-    if request.method == "POST":
-        act = (request.POST.get("action") or "").strip().lower()
-        if act == "accept":
-            mt = txn.meetup_time
-            if timezone.is_naive(mt):
-                mt = timezone.make_aware(mt, timezone.get_default_timezone())
-            if mt <= timezone.now():
-                return render(request, "marketplace/steps/meetup_confirm.html", {"pr": pr, "txn": txn, "error": "Meetup time must be in the future"})
-            TransactionLog.objects.create(request=pr, actor=request.user, action=LogAction.MEETUP_CONFIRMED, note=f"{txn.meetup_place} @ {txn.meetup_time}")
-            try:
-                if txn.status not in (TransactionStatus.PAID, TransactionStatus.COMPLETED):
-                    txn.status = TransactionStatus.AWAITING_PAYMENT
-                    txn.save(update_fields=["status", "updated_at"])
-            except Exception:
-                pass
-            other = pr.seller if request.user.id == pr.buyer_id else pr.buyer
-            _notify(other, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="meetup confirmed")
-            return redirect("marketplace:request_step_payment", pk=pk)
-        else:
-            return redirect("marketplace:request_step_meetup", pk=pk)
-    return render(request, "marketplace/steps/meetup_confirm.html", {"pr": pr, "txn": txn})
-
-@login_required
-def request_step_payment(request, pk):
-    pr = get_object_or_404(PurchaseRequest.objects.select_related("transaction", "buyer", "seller", "listing"), pk=pk)
-    if request.user.id not in (pr.buyer_id, pr.seller_id) and not _is_moderator(request.user):
-        return redirect_to_login(next=reverse("marketplace:request_step_payment", args=[pk]))
-    txn = getattr(pr, "transaction", None)
-    if not txn or not txn.meetup_time or not txn.meetup_place:
-        return redirect("marketplace:request_step_meetup_confirm", pk=pk)
-    confirmed = TransactionLog.objects.filter(request=pr, action=LogAction.MEETUP_CONFIRMED).exists()
-    if not confirmed:
-        return redirect("marketplace:request_step_meetup_confirm", pk=pk)
-    if request.method == "POST":
-        method = (request.POST.get("payment_method") or "").strip().lower()
-        gcash_ref = (request.POST.get("gcash_ref") or "").strip()
-        proof = request.FILES.get("payment_proof")
-        try:
-            valid = {m.value for m in Transaction.PaymentMethod}
-        except Exception:
-            valid = {"cod", "gcash"}
-        if method not in valid:
-            return render(request, "marketplace/steps/payment.html", {"pr": pr, "txn": txn, "error": "Invalid payment method"})
-        txn.payment_method = method
-        if method == "gcash":
-            txn.gcash_ref = gcash_ref
-            if proof is not None:
-                txn.payment_proof = proof
-            txn.status = TransactionStatus.PAID
-        else:
-            if txn.status not in (TransactionStatus.PAID, TransactionStatus.COMPLETED):
-                txn.status = TransactionStatus.PENDING
-        txn.save(update_fields=["payment_method", "gcash_ref", "payment_proof", "status", "updated_at"])
-        return redirect("marketplace:request_step_complete", pk=pk)
-    return render(request, "marketplace/steps/payment.html", {"pr": pr, "txn": txn})
-
-@login_required
-def request_step_complete(request, pk):
-    pr = get_object_or_404(PurchaseRequest.objects.select_related("transaction", "buyer", "seller", "listing"), pk=pk)
-    if request.user.id not in (pr.buyer_id, pr.seller_id) and not _is_moderator(request.user):
-        return redirect_to_login(next=reverse("marketplace:request_step_complete", args=[pk]))
-    txn = getattr(pr, "transaction", None)
-    if not txn or txn.status not in (TransactionStatus.PAID, TransactionStatus.COMPLETED):
-        return redirect("marketplace:request_step_payment", pk=pk)
-    return render(request, "marketplace/steps/complete.html", {"pr": pr, "txn": txn})
 
 @login_required
 @require_POST
