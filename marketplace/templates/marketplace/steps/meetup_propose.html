@@ -1,0 +1,28 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% block marketplace_title %}Request #{{ pr.id }} · Meetup Proposal{% endblock %}
+{% block marketplace_content %}
+<div class="max-w-3xl mx-auto space-y-6">
+  <div class="card bg-base-100 p-6">
+    <div class="text-xl font-semibold">Propose Meetup</div>
+    <form method="post" class="mt-4 grid gap-3">
+      {% csrf_token %}
+      <div>
+        <label class="label"><span class="label-text">Meetup time</span></label>
+        <input type="datetime-local" name="meetup_time" class="input input-bordered w-full" required>
+      </div>
+      <div>
+        <label class="label"><span class="label-text">Place</span></label>
+        <input type="text" name="meetup_place" class="input input-bordered w-full" required>
+      </div>
+      <div>
+        <label class="label"><span class="label-text">Timezone</span></label>
+        <input type="text" name="meetup_timezone" class="input input-bordered w-full" placeholder="e.g., Asia/Manila">
+      </div>
+      <button class="btn btn-primary">Submit Proposal</button>
+    </form>
+  </div>
+  <div class="card bg-base-100 p-6">
+    <a href="{% url 'marketplace:messages' %}?thread_id={{ pr.transaction.thread_id|default:'' }}" class="btn btn-ghost btn-sm">Open Messages</a>
+  </div>
+</div>
+{% endblock %}

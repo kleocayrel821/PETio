@@ -1,0 +1,31 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% block marketplace_title %}Request #{{ pr.id }} · Confirmed{% endblock %}
+{% block marketplace_content %}
+<div class="max-w-3xl mx-auto space-y-6">
+  <div class="card bg-base-100 p-6">
+    <div class="flex items-center justify-between">
+      <div class="text-xl font-semibold">Request #{{ pr.id }}</div>
+      <span class="badge badge-success">{% if pr.status == 'accepted' %}Accepted{% else %}Awaiting Acceptance{% endif %}</span>
+    </div>
+    <div class="mt-2 text-sm opacity-70">Listing</div>
+    <div class="font-medium">{{ pr.listing.title }}</div>
+    {% if pr.status != 'accepted' and request.user.id == pr.seller_id %}
+    <div class="mt-4">
+      <form method="post" action="{% url 'marketplace:seller_accept_request' pr.id %}">
+        {% csrf_token %}
+        <button class="btn btn-primary btn-sm">Accept</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% if pr.status == 'accepted' %}
+  <div class="card bg-base-100 p-6">
+    <div class="section-title">Next</div>
+    <a class="btn btn-primary btn-sm" href="{% url 'marketplace:request_step_meetup' pr.id %}">Proceed to Meetup</a>
+  </div>
+  {% endif %}
+  <div class="card bg-base-100 p-6">
+    <a href="{% url 'marketplace:messages' %}?thread_id={{ pr.transaction.thread_id|default:'' }}" class="btn btn-ghost btn-sm">Open Messages</a>
+  </div>
+</div>
+{% endblock %}

@@ -137,6 +137,14 @@ else:
         # Request-level messages polling
         path("api/requests/<int:request_id>/messages/", views.api_request_messages, name="api_request_messages"),
         
+        # Step-by-step transaction flow pages
+        path("request/<int:pk>/flow/negotiation/", views.request_step_negotiation, name="request_step_negotiation"),
+        path("request/<int:pk>/flow/confirm/", views.request_step_confirm, name="request_step_confirm"),
+        path("request/<int:pk>/flow/meetup/", views.request_step_meetup, name="request_step_meetup"),
+        path("request/<int:pk>/flow/meetup/confirm/", views.request_step_meetup_confirm, name="request_step_meetup_confirm"),
+        path("request/<int:pk>/flow/payment/", views.request_step_payment, name="request_step_payment"),
+        path("request/<int:pk>/flow/complete/", views.request_step_complete, name="request_step_complete"),
+        
         # Checkout flows for Buy Now
         path("checkout/cod/<int:txn_id>/", views.checkout_cod, name="checkout_cod"),
         path("checkout/gcash/<int:txn_id>/", views.checkout_gcash, name="checkout_gcash"),

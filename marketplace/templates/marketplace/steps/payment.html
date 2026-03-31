@@ -1,0 +1,35 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% block marketplace_title %}Request #{{ pr.id }} · Payment{% endblock %}
+{% block marketplace_content %}
+<div class="max-w-3xl mx-auto space-y-6">
+  <div class="card bg-base-100 p-6">
+    <div class="text-xl font-semibold">Payment</div>
+    {% if error %}<div class="alert alert-error mt-3 text-sm">{{ error }}</div>{% endif %}
+    <form method="post" enctype="multipart/form-data" class="mt-4 grid gap-3">
+      {% csrf_token %}
+      <div class="flex gap-4 items-center">
+        <label class="label cursor-pointer">
+          <span class="label-text mr-2">COD</span>
+          <input type="radio" name="payment_method" value="cod" class="radio" {% if txn.payment_method == 'cod' %}checked{% endif %}>
+        </label>
+        <label class="label cursor-pointer">
+          <span class="label-text mr-2">GCash</span>
+          <input type="radio" name="payment_method" value="gcash" class="radio" {% if txn.payment_method == 'gcash' %}checked{% endif %}>
+        </label>
+      </div>
+      <div class="grid gap-2">
+        <label class="label"><span class="label-text">GCash reference #</span></label>
+        <input type="text" name="gcash_ref" class="input input-bordered w-full" placeholder="Optional unless using GCash">
+      </div>
+      <div class="grid gap-2">
+        <label class="label"><span class="label-text">Payment proof</span></label>
+        <input type="file" name="payment_proof" class="file-input file-input-bordered w-full">
+      </div>
+      <button class="btn btn-primary">Submit Payment</button>
+    </form>
+  </div>
+  <div class="card bg-base-100 p-6">
+    <a href="{% url 'marketplace:messages' %}?thread_id={{ pr.transaction.thread_id|default:'' }}" class="btn btn-ghost btn-sm">Open Messages</a>
+  </div>
+</div>
+{% endblock %}

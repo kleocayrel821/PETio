@@ -1,0 +1,27 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% block marketplace_title %}Request #{{ pr.id }} · Negotiation{% endblock %}
+{% block marketplace_content %}
+<div class="max-w-3xl mx-auto space-y-6">
+  <div class="card bg-base-100 p-6">
+    <div class="flex items-center justify-between">
+      <div class="text-xl font-semibold">Request #{{ pr.id }}</div>
+      <span class="badge badge-warning">Negotiating</span>
+    </div>
+    <div class="mt-2 text-sm opacity-70">Listing</div>
+    <div class="font-medium">{{ pr.listing.title }}</div>
+    <div class="mt-4 flex gap-2">
+      <a href="{% url 'marketplace:messages' %}?thread_id={{ pr.transaction.thread_id|default:'' }}" class="btn btn-sm">Open Messages</a>
+      {% if request.user.id == pr.seller_id and pr.status in 'pending,negotiating' %}
+      <form method="post" action="{% url 'marketplace:seller_accept_request' pr.id %}">
+        {% csrf_token %}
+        <button class="btn btn-primary btn-sm">Accept</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card bg-base-100 p-6">
+    <div class="section-title">Next</div>
+    <p class="text-sm opacity-80">Once accepted, proceed to Meetup.</p>
+  </div>
+</div>
+{% endblock %}
