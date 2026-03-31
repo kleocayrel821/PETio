@@ -1077,13 +1077,21 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
                 .order_by("created_at")
             )
             ctx["meetup_logs"] = meetup_logs
-            ctx["meetup_confirmed"] = TransactionLog.objects.filter(request=pr, action=LogAction.MEETUP_CONFIRMED).exists()
-            # Show completion CTA only for buyer/moderator after meetup confirmed and payment recorded
+            # Confirmation flags per party and combined
+            try:
+                confirmed_actors = set(
+                    TransactionLog.objects.filter(request=pr, action=LogAction.MEETUP_CONFIRMED).values_list("actor_id", flat=True)
+                )
+            except Exception:
+                confirmed_actors = set()
+            buyer_confirmed = pr.buyer_id in confirmed_actors
+            seller_confirmed = pr.seller_id in confirmed_actors
+            both_confirmed = bool(buyer_confirmed and seller_confirmed)
+            ctx["meetup_confirmed"] = both_confirmed
+            # Show completion CTA only for buyer/moderator after both confirm and payment recorded
             is_buyer_or_mod = self.request.user.id == pr.buyer_id or _is_moderator(self.request.user)
             txn_paid = has_txn and getattr(txn, "status", None) == TransactionStatus.PAID
-            ctx["can_mark_completed"] = bool(
-                is_buyer_or_mod and is_active and txn_paid and ctx.get("meetup_confirmed", False) and pr.status == PurchaseRequestStatus.ACCEPTED
-            )
+            ctx["can_mark_completed"] = bool(is_buyer_or_mod and is_active and txn_paid and both_confirmed and pr.status == PurchaseRequestStatus.ACCEPTED)
             # Payment context: seller can record payment when accepted and transaction exists
             try:
                 is_seller_or_mod = self.request.user.id == pr.seller_id or _is_moderator(self.request.user)
@@ -1102,16 +1110,27 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
                     methods = [m.value for m in Transaction.PaymentMethod]
                 except Exception:
                     methods = ["cod", "gcash"]
+                # Gate payment visibility behind both confirmations
                 can_record_payment = bool(
-                    is_seller_or_mod and is_active and has_txn and pr.status == PurchaseRequestStatus.ACCEPTED and getattr(txn, "status", None) in (TransactionStatus.CONFIRMED, TransactionStatus.AWAITING_PAYMENT)
+                    is_seller_or_mod
+                    and is_active
+                    and has_txn
+                    and pr.status == PurchaseRequestStatus.ACCEPTED
+                    and getattr(txn, "status", None) in (TransactionStatus.CONFIRMED, TransactionStatus.AWAITING_PAYMENT)
+                    and both_confirmed
                 )
                 ctx["can_record_payment"] = can_record_payment
                 ctx["payment_methods"] = methods
                 ctx["payment_prefill_amount"] = agreed_total
+                # Expose display flag to show payment step/badge to both parties
+                ctx["show_payment_step"] = bool(both_confirmed or txn_paid)
+                ctx["buyer_confirmed_meetup"] = buyer_confirmed
+                ctx["seller_confirmed_meetup"] = seller_confirmed
             except Exception:
                 ctx["can_record_payment"] = False
                 ctx["payment_methods"] = ["cod", "gcash"]
                 ctx["payment_prefill_amount"] = None
+                ctx["show_payment_step"] = False
         except Exception:
             ctx["meetup_details"] = None
             ctx["can_propose_meetup"] = False
@@ -1602,7 +1621,12 @@ def confirm_meetup(request, request_id):
     except Exception:
         pass
     if wants_json(request):
-        return json_ok("Meetup confirmed.", data={"request_id": pr.pk})
+        try:
+            actors = set(TransactionLog.objects.filter(request=pr, action=LogAction.MEETUP_CONFIRMED).values_list("actor_id", flat=True))
+        except Exception:
+            actors = set()
+        both_confirmed = (pr.buyer_id in actors) and (pr.seller_id in actors)
+        return json_ok("Meetup confirmed.", data={"request_id": pr.pk, "both_confirmed": both_confirmed, "next": ("payment" if both_confirmed else None)})
     django_messages.success(request, "Meetup confirmed.")
     return redirect("marketplace:request_detail", pk=pr.pk)
 
@@ -4187,13 +4211,21 @@ def api_request_meetup_confirm(request, request_id):
     )
     other = pr.seller if request.user.id == pr.buyer_id else pr.buyer
     _notify(other, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="meetup confirmed")
+    # Compute both-confirmed state
+    try:
+        actors = set(TransactionLog.objects.filter(request=pr, action=LogAction.MEETUP_CONFIRMED).values_list("actor_id", flat=True))
+    except Exception:
+        actors = set()
+    both_confirmed = (pr.buyer_id in actors) and (pr.seller_id in actors)
     return json_ok({
         "request": {"id": pr.id, "status": pr.status},
         "transaction": {
             "id": pr.transaction.id,
             "meetup_place": pr.transaction.meetup_place,
             "meetup_time": pr.transaction.meetup_time.isoformat() if pr.transaction.meetup_time else None,
-        }
+        },
+        "both_confirmed": both_confirmed,
+        "next": "payment" if both_confirmed else None,
     })
 
 @csrf_protect
@@ -4330,6 +4362,13 @@ def api_request_record_payment(request, request_id):
     if field_errors:
         return json_error("Validation failed", status=400, field_errors=field_errors)
 
+    # Enforce both-party meetup confirmation before recording payment
+    try:
+        actors = set(TransactionLog.objects.filter(request=pr, action=LogAction.MEETUP_CONFIRMED).values_list("actor_id", flat=True))
+    except Exception:
+        actors = set()
+    if not ((pr.buyer_id in actors) and (pr.seller_id in actors)):
+        return json_error("Both buyer and seller must confirm the meetup before recording payment", status=400)
     # Update transaction
     txn.payment_method = payment_method
     txn.amount_paid = amount_paid
