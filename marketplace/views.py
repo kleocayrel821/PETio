@@ -4351,8 +4351,8 @@ def api_request_record_payment(request, request_id):
         agreed_total = None
 
     # Validate amount
-    if amount_paid is None:
-        field_errors["amount_paid"] = "Amount is required"
+    if payment_method == "cod" and amount_paid is None:
+        pass
     else:
         if amount_paid <= Decimal("0"):
             field_errors["amount_paid"] = "Amount must be positive"
@@ -4371,7 +4371,13 @@ def api_request_record_payment(request, request_id):
         return json_error("Both buyer and seller must confirm the meetup before recording payment", status=400)
     # Update transaction
     txn.payment_method = payment_method
-    txn.amount_paid = amount_paid
+    if payment_method == "cod" and amount_paid is None:
+        try:
+            txn.amount_paid = agreed_total
+        except Exception:
+            txn.amount_paid = None
+    else:
+        txn.amount_paid = amount_paid
     txn.status = TransactionStatus.PAID
     if proof_file is not None:
         txn.payment_proof = proof_file
