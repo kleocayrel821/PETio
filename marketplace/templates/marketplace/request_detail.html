@@ -166,12 +166,6 @@
                   <input type="hidden" name="action" value="reject" />
                   <button class="btn btn-error btn-sm" aria-label="Decline offer">Decline</button>
                 </form>
-                <form method="post" action="{% url 'marketplace:respond_offer' request_obj.id %}">
-                  {% csrf_token %}
-                  <input type="hidden" name="action" value="counter" />
-                  <input type="hidden" name="counter_offer" value="{{ current_counter_offer|default:current_offer_price }}">
-                  <button class="btn btn-outline btn-sm" aria-label="Finish response">Finish</button>
-                </form>
               </div>
               {% else %}
               <form method="post" action="{% url 'marketplace:respond_offer' request_obj.id %}" class="flex flex-col sm:flex-row flex-wrap gap-2 mt-2" aria-label="Respond to offer form (seller)">
