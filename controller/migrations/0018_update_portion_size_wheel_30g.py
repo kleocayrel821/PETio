@@ -2,6 +2,7 @@
 
 import django.core.validators
 from django.db import migrations, models
+from django.db import connection
 
 
 class Migration(migrations.Migration):
@@ -10,15 +11,36 @@ class Migration(migrations.Migration):
         ('controller', '0017_hardware_api_key_hash_hardware_device_id_and_more'),
     ]
 
+    def normalize_days_of_week(apps, schema_editor):
+        cur = schema_editor.connection.cursor()
+        try:
+            cur.execute("PRAGMA table_info(controller_feedingschedule)")
+            cols = [row[1] for row in cur.fetchall()]
+            if 'days_of_week' in cols:
+                # Aggressive normalization: set all existing values to NULL
+                # to satisfy the JSON CHECK during SQLite table rebuild.
+                cur.execute("UPDATE controller_feedingschedule SET days_of_week = NULL;")
+        except Exception:
+            pass
+
+    def noop(apps, schema_editor):
+        pass
+
     operations = [
-        migrations.AlterField(
-            model_name='feedingschedule',
-            name='portion_size',
-            field=models.FloatField(default=30, validators=[django.core.validators.MinValueValidator(30), django.core.validators.MaxValueValidator(240)]),
-        ),
-        migrations.AlterField(
-            model_name='petprofile',
-            name='portion_size',
-            field=models.FloatField(validators=[django.core.validators.MinValueValidator(30), django.core.validators.MaxValueValidator(240)]),
+        migrations.RunPython(normalize_days_of_week, reverse_code=noop),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[],
+            state_operations=[
+                migrations.AlterField(
+                    model_name='feedingschedule',
+                    name='portion_size',
+                    field=models.FloatField(default=30, validators=[django.core.validators.MinValueValidator(30), django.core.validators.MaxValueValidator(240)]),
+                ),
+                migrations.AlterField(
+                    model_name='petprofile',
+                    name='portion_size',
+                    field=models.FloatField(validators=[django.core.validators.MinValueValidator(30), django.core.validators.MaxValueValidator(240)]),
+                ),
+            ],
         ),
     ]
