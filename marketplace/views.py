@@ -4378,7 +4378,10 @@ def api_request_record_payment(request, request_id):
             txn.amount_paid = None
     else:
         txn.amount_paid = amount_paid
-    txn.status = TransactionStatus.PAID
+    if payment_method == "gcash":
+        txn.status = TransactionStatus.AWAITING_PAYMENT
+    else:
+        txn.status = TransactionStatus.PAID
     if proof_file is not None:
         txn.payment_proof = proof_file
     txn.save(update_fields=["status", "payment_method", "amount_paid", "payment_proof", "updated_at"])
@@ -4411,6 +4414,34 @@ def api_request_record_payment(request, request_id):
             "listing": {"id": listing.id, "status": listing.status, "quantity": listing.quantity},
         }
     )
+@login_required
+@require_POST
+@csrf_protect
+def buyer_submit_gcash_payment(request, request_id):
+    pr = get_object_or_404(PurchaseRequest, pk=request_id)
+    if request.user.id != pr.buyer_id and not _is_moderator(request.user):
+        return json_error("Only the buyer can submit GCash reference", status=403)
+    if pr.status != PurchaseRequestStatus.ACCEPTED:
+        return json_error("Request is not in accepted status", status=400)
+    if not pr.transaction:
+        return json_error("No transaction associated with this request", status=400)
+    txn = pr.transaction
+    if getattr(txn, "payment_method", None) != "gcash":
+        return json_error("Payment method is not GCash", status=400)
+    ref = sanitize_text((request.POST.get("gcash_ref") or "").strip(), max_len=64)
+    receipt = request.FILES.get("payment_receipt")
+    if not ref:
+        return json_error("Reference number is required", status=400, field_errors={"gcash_ref": ["Reference number is required"]})
+    txn.gcash_ref = ref
+    if receipt is not None:
+        txn.payment_proof = receipt
+    txn.status = TransactionStatus.PAID
+    txn.save(update_fields=["gcash_ref", "payment_proof", "status", "updated_at"])
+    try:
+        _notify(pr.seller, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="payment recorded", send_email=True)
+    except Exception:
+        pass
+    return json_ok("Payment submitted", data={"transaction": {"id": txn.id, "status": txn.status, "gcash_ref": txn.gcash_ref}})
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import TemplateView
 from django.db.models import Sum, Count

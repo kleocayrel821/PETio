@@ -315,16 +315,38 @@
             <h3 class="card-title"><span class="mr-2">💰</span> Step 3 — Payment</h3>
             {% if request_obj.transaction and request_obj.transaction.status == 'paid' %}
             <div class="p-3 rounded-xl bg-base-100 text-sm">
-              <div><span class="font-semibold">Paid:</span> {{ request_obj.transaction.amount_paid }} {% if request_obj.transaction.payment_method %}via {% if request_obj.transaction.payment_method == 'gcash' %}GCash{% elif request_obj.transaction.payment_method == 'cod' %}COD{% else %}{{ request_obj.transaction.payment_method|capfirst }}{% endif %}{% endif %}</div>
+              <div><span class="font-semibold">Price:</span> {{ request_obj.transaction.amount_paid }} {% if request_obj.transaction.payment_method %}via {% if request_obj.transaction.payment_method == 'gcash' %}GCash{% elif request_obj.transaction.payment_method == 'cod' %}COD{% else %}{{ request_obj.transaction.payment_method|capfirst }}{% endif %}{% endif %}</div>
               {% if request_obj.transaction.payment_method == 'gcash' and request_obj.transaction.payment_proof %}
               <div class="mt-2">
-                <div class="text-xs opacity-70 mb-1">GCash QR</div>
-                <a class="link link-primary" href="{{ request_obj.transaction.payment_proof.url }}" target="_blank">View QR</a>
+                <div class="text-xs opacity-70 mb-1">GCash Receipt</div>
+                <img src="{{ request_obj.transaction.payment_proof.url }}" alt="GCash receipt" class="max-h-64 rounded-lg border" />
               </div>
               {% endif %}
             </div>
             {% else %}
-            <div class="alert alert-info text-sm">Waiting for the seller to record payment. Once recorded, the buyer can mark this complete.</div>
+            <div class="p-3 rounded-xl bg-base-100 text-sm">
+              {% if request_obj.transaction and request_obj.transaction.payment_method == 'gcash' and request_obj.transaction.payment_proof %}
+              <div class="mb-2"><span class="font-semibold">Price:</span> {{ request_obj.transaction.amount_paid }} via GCash</div>
+              <div class="text-xs opacity-70">GCash QR</div>
+              <img src="{{ request_obj.transaction.payment_proof.url }}" alt="GCash QR" class="max-h-64 rounded-lg border mb-3" />
+              {% else %}
+              <div class="alert alert-info text-sm">Waiting for the seller to record payment. Once recorded, the buyer can mark this complete.</div>
+              {% endif %}
+              {% if request.user.id == request_obj.buyer.id and request_obj.transaction and request_obj.transaction.payment_method == 'gcash' and request_obj.transaction.status != 'paid' %}
+              <form id="buyerGcashForm" method="post" action="{% url 'marketplace:buyer_submit_gcash_payment' request_obj.id %}" enctype="multipart/form-data" class="mt-2 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+                {% csrf_token %}
+                <div class="form-control">
+                  <label class="label"><span class="label-text">Reference ID</span></label>
+                  <input type="text" name="gcash_ref" class="input input-bordered w-full" placeholder="GCash reference number" required />
+                </div>
+                <div class="form-control">
+                  <label class="label"><span class="label-text">Receipt Image</span></label>
+                  <input type="file" name="payment_receipt" class="file-input file-input-bordered w-full sm:w-64" accept="image/*,application/pdf" />
+                </div>
+                <button class="btn btn-primary btn-sm">Submit Payment</button>
+              </form>
+              {% endif %}
+            </div>
             {% endif %}
           </div>
         </div>
