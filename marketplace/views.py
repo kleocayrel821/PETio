@@ -4441,7 +4441,14 @@ def buyer_submit_gcash_payment(request, request_id):
         _notify(pr.seller, NotificationType.STATUS_CHANGED, request_obj=pr, listing=pr.listing, message_text="payment recorded", send_email=True)
     except Exception:
         pass
-    return json_ok("Payment submitted", data={"transaction": {"id": txn.id, "status": txn.status, "gcash_ref": txn.gcash_ref}})
+    if wants_json(request):
+        return json_ok("Payment submitted", data={"transaction": {"id": txn.id, "status": txn.status, "gcash_ref": txn.gcash_ref}})
+    django_messages.success(request, "Payment submitted.")
+    try:
+        url = reverse("marketplace:request_detail", kwargs={"pk": pr.id}) + "#payment-actions"
+    except Exception:
+        url = reverse("marketplace:request_detail", kwargs={"pk": pr.id})
+    return redirect(url)
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import TemplateView
 from django.db.models import Sum, Count
