@@ -22,6 +22,7 @@
       <label class="label"><span class="label-text">Status</span></label>
       <select name="status" class="select select-bordered select-sm">
         <option value="" {% if not active_status %}selected{% endif %}>All</option>
+        <option value="pending" {% if active_status == 'pending' %}selected{% endif %}>Pending</option>
         <option value="confirmed" {% if active_status == 'confirmed' %}selected{% endif %}>Confirmed</option>
         <option value="completed" {% if active_status == 'completed' %}selected{% endif %}>Completed</option>
         <option value="canceled" {% if active_status == 'canceled' %}selected{% endif %}>Cancelled</option>
@@ -42,8 +43,53 @@
       <button type="submit" class="btn btn-sm btn-primary">Apply</button>
       <a href="{% url 'marketplace:transactions' %}" class="btn btn-sm btn-ghost">Clear</a>
     </div>
-    <div class="text-xs opacity-70">Results: Confirmed {{ counts.confirmed }} · Completed {{ counts.completed }} · Cancelled {{ counts.canceled }}</div>
+    <div class="text-xs opacity-70">Results: Pending {{ counts.pending }} · Confirmed {{ counts.confirmed }} · Completed {{ counts.completed }} · Cancelled {{ counts.canceled }}</div>
   </form>
+
+  {# Pending group #}
+  {% if not active_status or active_status == 'pending' %}
+  <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
+    <div class="section-title"><i class="fas fa-hourglass-half text-yellow-400"></i> Pending</div>
+    {% if grouped.pending %}
+    <ul class="space-y-2">
+      {% for txn in grouped.pending %}
+        <li class="card p-3">
+          <div class="flex justify-between items-center">
+            <div class="font-medium">
+              {{ txn.listing.title }}
+              <span class="opacity-70">with</span>
+              {% if txn.buyer_id == user.id %}
+                {{ txn.seller.username }}
+              {% else %}
+                {{ txn.buyer.username }}
+              {% endif %}
+            </div>
+            <span class="badge badge-warning">Pending</span>
+          </div>
+          <div class="text-xs opacity-70 mt-1">You are {% if txn.buyer_id == user.id %}the buyer{% else %}the seller{% endif %} · Created {{ txn.created_at|date:"M j, Y g:i a" }}</div>
+          {% if txn.payment_method == 'cod' and user.id == txn.seller_id %}
+            <div class="mt-2 flex gap-2">
+              <form method="post" action="{% url 'marketplace:seller_approve_transaction' txn.id %}" onsubmit="return submitSellerAction(this, 'approve');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+              </form>
+              <form method="post" action="{% url 'marketplace:seller_reject_transaction' txn.id %}" onsubmit="return submitSellerAction(this, 'reject');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline btn-error">Reject</button>
+              </form>
+            </div>
+          {% endif %}
+          <div class="mt-2">
+            <a href="{% url 'marketplace:transaction_detail' txn.id %}" class="btn btn-xs btn-outline">View Details</a>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      <div class="opacity-60">No pending transactions.</div>
+    {% endif %}
+  </div>
+  {% endif %}
 
 
   {# Confirmed group (includes awaiting_payment and paid) #}
