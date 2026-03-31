@@ -2978,22 +2978,19 @@ def api_listing_buy_now(request, listing_id):
     else:
         payment_method = (request.POST.get("payment_method") or "").strip() or None
 
-    # Create or update transaction as AWAITING_PAYMENT (two-step checkout semantics)
-    txn, _ = Transaction.objects.get_or_create(
+    # Always create a fresh transaction so repeated orders on the same listing
+    # appear as separate, most-recent items for both buyer and seller.
+    valid_methods = {m.value for m in Transaction.PaymentMethod}
+    initial_status = TransactionStatus.AWAITING_PAYMENT
+    if payment_method in valid_methods and payment_method == "cod":
+        initial_status = TransactionStatus.PENDING
+    txn = Transaction.objects.create(
         listing=listing,
         buyer=buyer,
         seller=seller,
-        defaults={"status": TransactionStatus.AWAITING_PAYMENT}
+        status=initial_status,
+        payment_method=payment_method if (payment_method in valid_methods) else None,
     )
-    updates = ["status"]
-    if txn.status != TransactionStatus.AWAITING_PAYMENT:
-        txn.status = TransactionStatus.AWAITING_PAYMENT
-    # Persist valid payment method if supplied
-    valid_methods = {m.value for m in Transaction.PaymentMethod}
-    if payment_method and payment_method in valid_methods:
-        txn.payment_method = payment_method
-        updates.append("payment_method")
-    txn.save(update_fields=updates)
 
     # Decrement stock to reserve one unit
     listing.quantity = max(0, listing.quantity - 1)
