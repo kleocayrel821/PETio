@@ -142,6 +142,11 @@ else:
         path("checkout/gcash/<int:txn_id>/", views.checkout_gcash, name="checkout_gcash"),
         path("transaction/<int:txn_id>/approve/", views.seller_approve_transaction, name="seller_approve_transaction"),
         path("transaction/<int:txn_id>/reject/", views.seller_reject_transaction, name="seller_reject_transaction"),
+        path("transaction/<int:txn_id>/verify-payment/", views.seller_verify_payment, name="seller_verify_payment"),
+        path("transaction/<int:txn_id>/ship/", views.mark_as_shipped, name="mark_as_shipped"),
+        path("transaction/<int:txn_id>/complete/", views.complete_transaction, name="complete_transaction"),
+        path("transaction/<int:txn_id>/", views.transaction_detail, name="transaction_detail"),
+        path("transaction/create/<int:listing_id>/", views.create_transaction, name="create_transaction"),
 
         # Include DRF router for RESTful endpoints
         path("api/", include(router.urls)),

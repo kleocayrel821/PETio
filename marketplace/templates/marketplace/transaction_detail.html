@@ -1,0 +1,133 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% block marketplace_title %}Transaction #{{ txn.id }}{% endblock %}
+{% block marketplace_content %}
+<div class="max-w-3xl mx-auto">
+  <div class="card bg-base-100 shadow-md p-6 rounded-xl mb-6">
+    <div class="flex items-center justify-between">
+      <div class="text-xl font-semibold">Order #{{ txn.id }}</div>
+      <div>
+        <span class="badge {% if txn.status in 'completed,shipped,confirmed,paid,awaiting_payment,pending,proposed' %}badge-primary{% else %}badge-ghost{% endif %}">
+          {{ txn.get_status_display }}
+        </span>
+      </div>
+    </div>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div>
+        <div class="text-sm opacity-70">Listing</div>
+        <div class="font-medium">{{ txn.listing.title }}</div>
+      </div>
+      <div>
+        <div class="text-sm opacity-70">Payment Method</div>
+        <div class="font-medium text-capitalize">{{ txn.get_payment_method_display }}</div>
+      </div>
+      <div>
+        <div class="text-sm opacity-70">Buyer</div>
+        <div class="font-medium">{{ txn.buyer.username }}</div>
+      </div>
+      <div>
+        <div class="text-sm opacity-70">Seller</div>
+        <div class="font-medium">{{ txn.seller.username }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-md p-6 rounded-xl mb-6">
+    <div class="section-title">Timeline</div>
+    {% with s=txn.status %}
+    <ul class="timeline timeline-vertical">
+      <li class="timeline-item {% if s %}timeline-middle{% endif %}">
+        <div class="timeline-start font-medium">Order Created</div>
+        <div class="timeline-end">{% if s %}✔{% endif %}</div>
+      </li>
+      <li class="timeline-item {% if s in 'awaiting_payment,paid,confirmed,shipped,completed' %}timeline-middle{% endif %}">
+        <div class="timeline-start font-medium">Payment Submitted</div>
+        <div class="timeline-end">{% if s in 'awaiting_payment,paid,confirmed,shipped,completed' %}✔{% endif %}</div>
+      </li>
+      <li class="timeline-item {% if s in 'pending,awaiting_payment,paid,confirmed,shipped,completed' %}timeline-middle{% endif %}">
+        <div class="timeline-start font-medium">Waiting for Seller</div>
+        <div class="timeline-end">{% if s in 'confirmed,shipped,completed' %}✔{% else %}⏳{% endif %}</div>
+      </li>
+      <li class="timeline-item {% if s in 'shipped,completed' %}timeline-middle{% endif %}">
+        <div class="timeline-start font-medium">Shipped</div>
+        <div class="timeline-end">{% if s in 'shipped,completed' %}✔{% endif %}</div>
+      </li>
+      <li class="timeline-item {% if s == 'completed' %}timeline-middle{% endif %}">
+        <div class="timeline-start font-medium">Completed</div>
+        <div class="timeline-end">{% if s == 'completed' %}✔{% endif %}</div>
+      </li>
+    </ul>
+    {% endwith %}
+  </div>
+
+  <div class="card bg-base-100 shadow-md p-6 rounded-xl">
+    <div class="section-title">Buyer Details</div>
+    <div class="grid gap-3 sm:grid-cols-2">
+      <div>
+        <div class="text-sm opacity-70">Name</div>
+        <div class="font-medium">{{ txn.cod_name }}</div>
+      </div>
+      <div>
+        <div class="text-sm opacity-70">Contact</div>
+        <div class="font-medium">{{ txn.cod_contact }}</div>
+      </div>
+      <div class="sm:col-span-2">
+        <div class="text-sm opacity-70">Address</div>
+        <div class="font-medium break-words">{{ txn.cod_address }}</div>
+      </div>
+      <div class="sm:col-span-2">
+        <div class="text-sm opacity-70">Note</div>
+        <div class="font-medium break-words">{{ txn.cod_note }}</div>
+      </div>
+      {% if txn.payment_method == 'gcash' %}
+      <div>
+        <div class="text-sm opacity-70">Reference #</div>
+        <div class="font-medium">{{ txn.gcash_ref }}</div>
+      </div>
+      <div>
+        <div class="text-sm opacity-70">Proof</div>
+        {% if txn.payment_proof %}
+        <a class="link link-primary" href="{{ txn.payment_proof.url }}" target="_blank">View</a>
+        {% else %}
+        <span class="opacity-60">None</span>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="mt-6 flex flex-wrap gap-2">
+      {% if request.user.id == txn.seller_id %}
+        {% if txn.payment_method == 'gcash' and txn.status == 'awaiting_payment' %}
+        <form method="post" action="{% url 'marketplace:seller_verify_payment' txn.id %}">
+          {% csrf_token %}
+          <button class="btn btn-primary btn-sm">Verify Payment</button>
+        </form>
+        {% endif %}
+        {% if txn.status in 'paid,awaiting_payment,pending' %}
+        <form method="post" action="{% url 'marketplace:seller_approve_transaction' txn.id %}">
+          {% csrf_token %}
+          <button class="btn btn-success btn-sm">Confirm Order</button>
+        </form>
+        <form method="post" action="{% url 'marketplace:seller_reject_transaction' txn.id %}">
+          {% csrf_token %}
+          <button class="btn btn-error btn-sm">Reject</button>
+        </form>
+        {% endif %}
+        {% if txn.status in 'confirmed,paid' %}
+        <form method="post" action="{% url 'marketplace:mark_as_shipped' txn.id %}">
+          {% csrf_token %}
+          <button class="btn btn-info btn-sm">Mark Shipped</button>
+        </form>
+        {% endif %}
+      {% endif %}
+      {% if request.user.id == txn.seller_id or request.user.id == txn.buyer_id %}
+        {% if txn.status in 'shipped,confirmed,paid' %}
+        <form method="post" action="{% url 'marketplace:complete_transaction' txn.id %}">
+          {% csrf_token %}
+          <button class="btn btn-primary btn-sm">Mark Completed</button>
+        </form>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
