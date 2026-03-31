@@ -652,6 +652,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (methodSel) { methodSel.addEventListener('change', updatePaymentVisibility); updatePaymentVisibility(); }
   }
+  const buyerForm = document.getElementById('buyerGcashForm');
+  const buyerBtn = buyerForm ? buyerForm.querySelector('button[type="submit"]') : null;
+  if (buyerForm && buyerBtn) {
+    buyerForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      buyerBtn.disabled = true;
+      try {
+        const fd = new FormData(buyerForm);
+        const url = buyerForm.getAttribute('action');
+        const resp = await fetch(url + '?format=json', { method: 'POST', headers: { 'X-CSRFToken': getCSRFToken() }, body: fd });
+        let data = {}; try { data = await resp.json(); } catch (_) {}
+        if (!resp.ok || data.status === 'error') { showMarketplaceToast(data.message || 'Action failed', 'error'); return; }
+        showMarketplaceToast(data.message || 'Success', 'success');
+        try { const done = document.querySelector('#completion-actions'); if (done) done.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+        location.reload();
+      } catch (err) { showMarketplaceToast('Network error. Please try again.', 'error'); }
+      finally { buyerBtn.disabled = false; }
+    });
+  }
 
   // Suggest time shortcuts
   document.querySelectorAll('[data-suggest-time]').forEach(btn => {
