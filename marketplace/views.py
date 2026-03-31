@@ -2310,6 +2310,7 @@ def transactions(request):
 
     # Group transactions by major states for rendering
     grouped = {
+        "pending": base_qs.filter(status=TransactionStatus.PENDING),
         "proposed": base_qs.filter(status=TransactionStatus.PROPOSED),
         # Treat awaiting_payment and paid as part of the confirmed bucket
         "confirmed": base_qs.filter(status__in=[
@@ -2318,7 +2319,7 @@ def transactions(request):
             TransactionStatus.PAID,
         ]),
         "completed": base_qs.filter(status=TransactionStatus.COMPLETED),
-        "canceled": base_qs.filter(status=TransactionStatus.CANCELED),
+        "canceled": base_qs.filter(status__in=[TransactionStatus.CANCELED, TransactionStatus.CANCELLED, TransactionStatus.REJECTED]),
     }
 
     counts = {k: grouped[k].count() for k in grouped}
