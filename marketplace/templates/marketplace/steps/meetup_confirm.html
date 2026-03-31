@@ -1,0 +1,25 @@
+{% extends "marketplace/base_marketplace.html" %}
+{% block marketplace_title %}Request #{{ pr.id }} · Confirm Meetup{% endblock %}
+{% block marketplace_content %}
+<div class="max-w-3xl mx-auto space-y-6">
+  <div class="card bg-base-100 p-6">
+    <div class="text-xl font-semibold">Confirm Meetup</div>
+    {% if error %}<div class="alert alert-error mt-3 text-sm">{{ error }}</div>{% endif %}
+    <div class="mt-4">
+      <div class="text-sm opacity-70">When</div>
+      <div class="font-medium">{{ txn.meetup_time|date:"M j, Y g:i a" }}</div>
+    </div>
+    <div class="mt-2">
+      <div class="text-sm opacity-70">Where</div>
+      <div class="font-medium">{{ txn.meetup_place }}</div>
+    </div>
+    <form method="post" class="mt-6 flex gap-2">
+      {% csrf_token %}
+      <button name="action" value="accept" class="btn btn-primary btn-sm">Accept</button>
+      <button name="action" value="reject" class="btn btn-outline btn-sm">Reject</button>
+    </form>
+  </div>
+  <div class="card bg-base-100 p-6">
+    <a href="{% url 'marketplace:messages' %}?thread_id={{ pr.transaction.thread_id|default:'' }}" class="btn btn-ghost btn-sm">Open Messages</a>
+  </div>
+{% endblock %}
