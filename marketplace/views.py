@@ -3260,6 +3260,44 @@ def transaction_detail(request, txn_id):
 @login_required
 @require_POST
 @csrf_protect
+def transaction_send_message(request, txn_id):
+    txn = get_object_or_404(Transaction.objects.select_related("listing", "buyer", "seller", "thread"), pk=txn_id)
+    if request.user.id != txn.seller_id:
+        return HttpResponseForbidden("Only the seller can send a message from this page")
+    content = sanitize_text((request.POST.get("message") or request.POST.get("content") or "").strip(), max_len=1000)
+    if not content:
+        django_messages.error(request, "Message cannot be empty.")
+        return redirect("marketplace:transaction_detail", txn_id=txn.id)
+    thread = getattr(txn, "thread", None)
+    if thread is None:
+        try:
+            thread, _ = MessageThread.objects.get_or_create(listing=txn.listing, buyer=txn.buyer, seller=txn.seller)
+            txn.thread = thread
+            txn.save(update_fields=["thread"])
+        except Exception:
+            thread = None
+    if thread is None:
+        django_messages.error(request, "Unable to start a conversation.")
+        return redirect("marketplace:transaction_detail", txn_id=txn.id)
+    try:
+        msg = Message.objects.create(thread=thread, sender=request.user, content=content)
+        MessageThread.objects.filter(pk=thread.pk).update(last_message_at=timezone.now())
+    except Exception:
+        django_messages.error(request, "Failed to send message.")
+        return redirect("marketplace:transaction_detail", txn_id=txn.id)
+    try:
+        _broadcast_thread_message(thread.id, {"id": msg.id, "sender_id": msg.sender_id, "sender_username": getattr(request.user, "username", ""), "content": msg.content, "created_at": msg.created_at.isoformat()})
+        _broadcast_counts_for_user(txn.buyer)
+        _broadcast_counts_for_user(txn.seller)
+    except Exception:
+        pass
+    django_messages.success(request, "Message sent.")
+    url = f"{reverse('marketplace:messages')}?{urlencode({'thread_id': thread.id})}"
+    return redirect(url)
+
+@login_required
+@require_POST
+@csrf_protect
 def create_transaction(request, listing_id):
     if not request.user.is_authenticated:
         return json_error("Authentication required", status=403)

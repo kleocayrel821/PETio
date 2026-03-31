@@ -145,6 +145,7 @@ else:
         path("transaction/<int:txn_id>/verify-payment/", views.seller_verify_payment, name="seller_verify_payment"),
         path("transaction/<int:txn_id>/ship/", views.mark_as_shipped, name="mark_as_shipped"),
         path("transaction/<int:txn_id>/complete/", views.complete_transaction, name="complete_transaction"),
+        path("transaction/<int:txn_id>/message/", views.transaction_send_message, name="transaction_send_message"),
         path("transaction/<int:txn_id>/", views.transaction_detail, name="transaction_detail"),
         path("transaction/create/<int:listing_id>/", views.create_transaction, name="create_transaction"),
 
