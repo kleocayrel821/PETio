@@ -96,14 +96,14 @@
 
     <div class="mt-6 flex flex-col gap-3">
       {% if request.user.id == txn.seller_id %}
-      <form method="post" action="{% url 'marketplace:transaction_send_message' txn.id %}" class="flex flex-wrap gap-2 items-end">
-        {% csrf_token %}
-        <label class="form-control w-full md:w-auto">
-          <div class="label"><span class="label-text">Send a message to buyer</span></div>
-          <input type="text" name="message" placeholder="e.g. Your order will ship today." class="input input-bordered input-sm w-full md:w-96" />
-        </label>
-        <button type="submit" class="btn btn-sm btn-primary">Send Message</button>
-      </form>
+      <div>
+        <div class="text-sm opacity-70 mb-1">Send a message to buyer</div>
+        <form method="post" action="{% url 'marketplace:transaction_send_message' txn.id %}" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-stretch">
+          {% csrf_token %}
+          <textarea name="message" rows="2" class="textarea textarea-bordered textarea-md w-full h-16 resize-none" placeholder="Type a short message..."></textarea>
+          <button type="submit" class="btn btn-primary btn-sm sm:btn-md px-4 sm:px-5 h-10 sm:h-12 shrink-0">Send</button>
+        </form>
+      </div>
       {% endif %}
       <div class="flex flex-wrap gap-2">
       {% if request.user.id == txn.seller_id %}
