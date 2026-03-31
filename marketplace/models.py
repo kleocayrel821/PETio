@@ -182,11 +182,15 @@ class Message(TimeStampedModel):
 
 class TransactionStatus(models.TextChoices):
     PROPOSED = "proposed", "Proposed"
-    CONFIRMED = "confirmed", "Confirmed"
+    PENDING = "pending", "Pending"
     AWAITING_PAYMENT = "awaiting_payment", "Awaiting Payment"
     PAID = "paid", "Paid"
+    CONFIRMED = "confirmed", "Confirmed"
+    SHIPPED = "shipped", "Shipped"
     COMPLETED = "completed", "Completed"
+    REJECTED = "rejected", "Rejected"
     CANCELED = "canceled", "Canceled"
+    CANCELLED = "cancelled", "Cancelled"
 
 
 class Transaction(TimeStampedModel):
@@ -238,6 +242,54 @@ class Transaction(TimeStampedModel):
 
     def __str__(self) -> str:  # pragma: no cover - trivial
         return f"Txn #{self.id} for {self.listing.title} ({self.get_status_display()})"
+
+    @property
+    def proof_of_payment(self):
+        return self.payment_proof
+
+    @proof_of_payment.setter
+    def proof_of_payment(self, value):
+        self.payment_proof = value
+
+    @property
+    def reference_number(self):
+        return self.gcash_ref
+
+    @reference_number.setter
+    def reference_number(self, value):
+        self.gcash_ref = value
+
+    @property
+    def buyer_name(self):
+        return self.cod_name
+
+    @buyer_name.setter
+    def buyer_name(self, v):
+        self.cod_name = v
+
+    @property
+    def buyer_contact(self):
+        return self.cod_contact
+
+    @buyer_contact.setter
+    def buyer_contact(self, v):
+        self.cod_contact = v
+
+    @property
+    def buyer_address(self):
+        return self.cod_address
+
+    @buyer_address.setter
+    def buyer_address(self, v):
+        self.cod_address = v
+
+    @property
+    def buyer_note(self):
+        return self.cod_note
+
+    @buyer_note.setter
+    def buyer_note(self, v):
+        self.cod_note = v
 
 
 class PurchaseRequestStatus(models.TextChoices):

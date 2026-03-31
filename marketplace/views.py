@@ -3098,7 +3098,7 @@ def checkout_cod(request, txn_id):
         txn.cod_note = note
         if not txn.payment_method:
             txn.payment_method = Transaction.PaymentMethod.COD
-        txn.status = TransactionStatus.AWAITING_PAYMENT
+        txn.status = TransactionStatus.PENDING
         txn.save(update_fields=["cod_name", "cod_contact", "cod_address", "cod_note", "payment_method", "status"])
         try:
             if txn.thread_id:
@@ -3108,7 +3108,7 @@ def checkout_cod(request, txn_id):
             pass
         if wants_json(request):
             return json_ok("COD details saved", data={"txn_id": txn.id})
-        return redirect("marketplace:transactions")
+        return redirect("marketplace:transaction_detail", txn_id=txn.id)
     return render(request, "marketplace/checkout_cod.html", {"txn": txn})
 
 @login_required
@@ -3137,7 +3137,7 @@ def checkout_gcash(request, txn_id):
             pass
         if wants_json(request):
             return json_ok("GCash payment submitted", data={"txn_id": txn.id})
-        return redirect("marketplace:transactions")
+        return redirect("marketplace:transaction_detail", txn_id=txn.id)
     return render(request, "marketplace/checkout_gcash.html", {"txn": txn})
 
 @login_required
@@ -3147,16 +3147,15 @@ def seller_approve_transaction(request, txn_id):
     txn = get_object_or_404(Transaction, pk=txn_id)
     if request.user.id != txn.seller_id:
         return json_error("Only the seller can approve", status=403)
-    if txn.payment_method == Transaction.PaymentMethod.GCASH:
-        txn.status = TransactionStatus.PAID
-    else:
-        txn.status = TransactionStatus.CONFIRMED
+    txn.status = TransactionStatus.CONFIRMED
     txn.save(update_fields=["status"])
     try:
         _notify(txn.buyer, NotificationType.STATUS_CHANGED, listing=txn.listing, message_text="Transaction approved", thread=txn.thread)
     except Exception:
         pass
-    return json_ok("Approved", data={"txn_id": txn.id, "status": txn.status})
+    if wants_json(request):
+        return json_ok("Approved", data={"txn_id": txn.id, "status": txn.status})
+    return redirect("marketplace:transaction_detail", txn_id=txn.id)
 
 @login_required
 @require_POST
@@ -3165,7 +3164,7 @@ def seller_reject_transaction(request, txn_id):
     txn = get_object_or_404(Transaction, pk=txn_id)
     if request.user.id != txn.seller_id:
         return json_error("Only the seller can reject", status=403)
-    txn.status = TransactionStatus.CANCELED
+    txn.status = TransactionStatus.REJECTED
     txn.save(update_fields=["status"])
     listing = txn.listing
     listing.quantity = (listing.quantity or 0) + 1
@@ -3175,7 +3174,112 @@ def seller_reject_transaction(request, txn_id):
         _notify(txn.buyer, NotificationType.STATUS_CHANGED, listing=listing, message_text="Transaction rejected", thread=txn.thread)
     except Exception:
         pass
-    return json_ok("Rejected", data={"txn_id": txn.id, "status": txn.status, "listing_qty": listing.quantity})
+    if wants_json(request):
+        return json_ok("Rejected", data={"txn_id": txn.id, "status": txn.status, "listing_qty": listing.quantity})
+    return redirect("marketplace:transaction_detail", txn_id=txn.id)
+
+@login_required
+@require_POST
+@csrf_protect
+def seller_verify_payment(request, txn_id):
+    txn = get_object_or_404(Transaction, pk=txn_id)
+    if request.user.id != txn.seller_id:
+        return json_error("Only the seller can verify", status=403)
+    if txn.payment_method != Transaction.PaymentMethod.GCASH:
+        return json_error("Verification applies to GCash payments", status=400)
+    txn.status = TransactionStatus.PAID
+    txn.save(update_fields=["status"])
+    try:
+        _notify(txn.buyer, NotificationType.STATUS_CHANGED, listing=txn.listing, message_text="Payment verified", thread=txn.thread)
+    except Exception:
+        pass
+    if wants_json(request):
+        return json_ok("Payment verified", data={"txn_id": txn.id, "status": txn.status})
+    return redirect("marketplace:transaction_detail", txn_id=txn.id)
+
+@login_required
+@require_POST
+@csrf_protect
+def mark_as_shipped(request, txn_id):
+    txn = get_object_or_404(Transaction, pk=txn_id)
+    if request.user.id != txn.seller_id:
+        return json_error("Only the seller can mark shipped", status=403)
+    if txn.status not in {TransactionStatus.CONFIRMED, TransactionStatus.PAID}:
+        return json_error("Order must be confirmed or paid", status=400)
+    txn.status = TransactionStatus.SHIPPED
+    txn.save(update_fields=["status"])
+    try:
+        _notify(txn.buyer, NotificationType.STATUS_CHANGED, listing=txn.listing, message_text="Order shipped", thread=txn.thread)
+    except Exception:
+        pass
+    if wants_json(request):
+        return json_ok("Marked as shipped", data={"txn_id": txn.id, "status": txn.status})
+    return redirect("marketplace:transaction_detail", txn_id=txn.id)
+
+@login_required
+@require_POST
+@csrf_protect
+def complete_transaction(request, txn_id):
+    txn = get_object_or_404(Transaction, pk=txn_id)
+    if request.user.id not in {txn.buyer_id, txn.seller_id}:
+        return json_error("Not authorized to complete", status=403)
+    txn.status = TransactionStatus.COMPLETED
+    txn.save(update_fields=["status"])
+    try:
+        _notify(txn.seller if request.user.id == txn.buyer_id else txn.buyer, NotificationType.STATUS_CHANGED, listing=txn.listing, message_text="Transaction completed", thread=txn.thread)
+    except Exception:
+        pass
+    if wants_json(request):
+        return json_ok("Completed", data={"txn_id": txn.id, "status": txn.status})
+    return redirect("marketplace:transaction_detail", txn_id=txn.id)
+
+@login_required
+def transaction_detail(request, txn_id):
+    txn = get_object_or_404(Transaction.objects.select_related("listing", "buyer", "seller"), pk=txn_id)
+    allowed = request.user.id in {txn.buyer_id, txn.seller_id}
+    if not allowed:
+        return redirect_to_login(next=reverse("marketplace:transaction_detail", args=[txn_id]))
+    return render(request, "marketplace/transaction_detail.html", {"txn": txn})
+
+@login_required
+@require_POST
+@csrf_protect
+def create_transaction(request, listing_id):
+    if not request.user.is_authenticated:
+        return json_error("Authentication required", status=403)
+    try:
+        listing = Listing.objects.select_related("seller").get(pk=listing_id, status=ListingStatus.ACTIVE)
+    except Listing.DoesNotExist:
+        return json_error("Listing not available", status=400)
+    if not getattr(listing, "is_fixed_price", False) or listing.quantity <= 0 or listing.price is None:
+        return json_error("Buy Now unavailable", status=400)
+    buyer = request.user
+    if buyer.id == listing.seller_id:
+        return json_error("Cannot buy own listing", status=400)
+    method = (request.POST.get("payment_method") or "").lower()
+    valid_methods = {m.value for m in Transaction.PaymentMethod}
+    if method not in valid_methods:
+        return json_error("Invalid payment method", status=400)
+    txn = Transaction.objects.create(
+        listing=listing,
+        buyer=buyer,
+        seller=listing.seller,
+        status=TransactionStatus.PENDING if method == "cod" else TransactionStatus.AWAITING_PAYMENT,
+        payment_method=method,
+    )
+    try:
+        thread, _ = MessageThread.objects.get_or_create(listing=listing, buyer=buyer, seller=listing.seller)
+        txn.thread = thread
+        txn.save(update_fields=["thread"])
+        Message.objects.create(thread=thread, sender=buyer, content=f"Transaction #{txn.id} created")
+    except Exception:
+        pass
+    listing.quantity = max(0, listing.quantity - 1)
+    listing.status = ListingStatus.SOLD if listing.quantity <= 0 else ListingStatus.ACTIVE
+    listing.save(update_fields=["quantity", "status"])
+    if method == "cod":
+        return redirect("marketplace:checkout_cod", txn_id=txn.id)
+    return redirect("marketplace:checkout_gcash", txn_id=txn.id)
 # -----------------------------
 # Reporting Endpoint
 # -----------------------------
