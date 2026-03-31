@@ -251,17 +251,13 @@ unsigned int g_feedPulse = SERVO_FEED_SPEED;
 #define MS_PER_GRAM_ADDR 69
 #define STARTUP_DELAY_ADDR 73
 
-// ── Wheel calibration (replaces ms/gram continuous model) ────
-// Wheel has 8 compartments × 45° each.
-// Calibrate by: filling all 8, weighing total, dividing by 8.
+
 #define WHEEL_COMPARTMENTS       8
 #define MS_PER_COMP_DEFAULT      800UL
 #define GRAMS_PER_COMP_DEFAULT   10.0f
-// POST_COMP_SETTLE_MS removed — servo runs during settle time causing
-// over-dispense. With correct calibration (800ms/comp, 30g/comp) the
-// wheel stops cleanly at exactly N compartments with no bonus needed.
 
-// Calibrated duration API (wheel-based)
+
+
 unsigned long calculateFeedingDuration(float targetGrams);
 void saveCalibration(float gramsPerComp, unsigned long msPerComp);
 void loadCalibration();
@@ -672,19 +668,6 @@ public:
     if (!feedingInProgress) return;
     Serial.println("Stopping feeding operation");
 
-    // Brake pulse: 40ms at SERVO_ANTI_CLOG_REVERSE (1400µs) kills
-    // forward inertia without pulling food back into the wheel.
-    //
-    // Why 40ms:
-    //   Forward pulse  = 1550µs (+50µs from neutral)
-    //   Brake pulse    = 1400µs (-100µs from neutral) → 2× stronger
-    //   At 30g/720ms wheel speed ≈ 0.042g/ms
-    //   40ms brake at 2× strength ≈ 3g reverse travel → within ±3g tolerance
-    //
-    // Previous 100ms was pulling back ~8g every stop, causing:
-    //   30g target → 22–24g actual
-    //   60g target → 52–54g actual
-    //   90g target → 76–80g actual
     feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
     delay(50);
     feedingServo.writeMicroseconds(SERVO_NEUTRAL);
@@ -694,6 +677,15 @@ public:
     feedingStartTime = 0;
     feedingDuration = 0;
     lastFeedCompletionTime = millis();
+
+    delay(200);
+    feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
+    delay(120);
+    feedingServo.writeMicroseconds(SERVO_NEUTRAL);
+    lastPulse = SERVO_NEUTRAL;
+    Serial.println("Pinch-point clear complete");
+    
+
     if (ledController) ledController->showReady();
   }
   bool isFeedingInProgress() { return feedingInProgress; }
