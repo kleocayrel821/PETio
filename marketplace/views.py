@@ -1965,8 +1965,18 @@ def mark_request_completed(request, request_id):
     # Update transaction and listing
     pr.transaction.status = TransactionStatus.COMPLETED
     pr.transaction.save(update_fields=["status", "updated_at"])
-    pr.listing.status = ListingStatus.SOLD
-    pr.listing.save(update_fields=["status", "updated_at"])
+    try:
+        qty = int(pr.quantity) if pr.quantity else 1
+    except Exception:
+        qty = 1
+    pr.listing.quantity = max(0, (pr.listing.quantity or 0) - qty)
+    if pr.listing.quantity <= 0:
+        pr.listing.status = ListingStatus.SOLD
+        pr.listing.save(update_fields=["quantity", "status", "updated_at"])
+        _cascade_close_open_requests_for_listing(pr.listing, reason="sold out")
+    else:
+        pr.listing.status = ListingStatus.ACTIVE
+        pr.listing.save(update_fields=["quantity", "status", "updated_at"])
     TransactionLog.objects.create(
         request=pr,
         actor=request.user,
@@ -3870,7 +3880,18 @@ def api_request_accept(request, request_id):
     )
     pr.transaction = txn
     pr.save(update_fields=["status", "accepted_at", "transaction", "updated_at"])
-    pr.listing.status = ListingStatus.RESERVED
+    try:
+        reserve_qty = int(pr.quantity) if pr.quantity else 1
+    except Exception:
+        reserve_qty = 1
+    try:
+        current_qty = int(pr.listing.quantity or 0)
+    except Exception:
+        current_qty = 0
+    if current_qty - reserve_qty <= 0:
+        pr.listing.status = ListingStatus.RESERVED
+    else:
+        pr.listing.status = ListingStatus.ACTIVE
     pr.listing.save(update_fields=["status", "updated_at"])
     # Capture optional note from JSON or form
     ct = (request.content_type or "").lower()
@@ -4153,8 +4174,18 @@ def api_request_complete(request, request_id):
     pr.save(update_fields=["status", "completed_at", "updated_at"])
     pr.transaction.status = TransactionStatus.COMPLETED
     pr.transaction.save(update_fields=["status", "updated_at"])
-    pr.listing.status = ListingStatus.SOLD
-    pr.listing.save(update_fields=["status", "updated_at"])
+    try:
+        qty = int(pr.quantity) if pr.quantity else 1
+    except Exception:
+        qty = 1
+    pr.listing.quantity = max(0, (pr.listing.quantity or 0) - qty)
+    if pr.listing.quantity <= 0:
+        pr.listing.status = ListingStatus.SOLD
+        pr.listing.save(update_fields=["quantity", "status", "updated_at"])
+        _cascade_close_open_requests_for_listing(pr.listing, reason="sold out")
+    else:
+        pr.listing.status = ListingStatus.ACTIVE
+        pr.listing.save(update_fields=["quantity", "status", "updated_at"])
     # Optional note from JSON or form
     ct = (request.content_type or "").lower()
     if ct.startswith("application/json"):
