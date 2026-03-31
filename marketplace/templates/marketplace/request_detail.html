@@ -130,7 +130,7 @@
         </div>
 
         {# Step 1 — Offer & Respond #}
-        {% if not page_step or page_step == 'request' %}
+        {% if page_step == 'request' %}
         <div class="overflow-hidden card bg-base-200" id="negotiation-actions">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">📊</span> Step 1 — Offer & Respond</h3>
@@ -221,7 +221,7 @@
         {% endif %}
 
         {# Meetup Details Card #}
-        {% if (meetup_details and (not page_step or page_step == 'meetup')) %}
+        {% if meetup_details and page_step == 'meetup' %}
         <div class="overflow-hidden card bg-base-300">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">📍</span> Step 2 — Meetup Details</h3>
@@ -250,7 +250,7 @@
         {% endif %}
 
         {# Propose/Update Meetup #}
-        {% if (can_propose_meetup or can_update_meetup) and (not page_step or page_step == 'meetup') %}
+        {% if (can_propose_meetup or can_update_meetup) and page_step == 'meetup' %}
         <div class="overflow-hidden card bg-base-200" id="meetup-actions">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">📍</span> Step 2 — {% if can_propose_meetup %}Propose Meetup{% else %}Update Meetup{% endif %}</h3>
@@ -282,7 +282,7 @@
         {% endif %}
 
         {# Record Payment #}
-        {% if can_record_payment and (not page_step or page_step == 'payment') %}
+        {% if can_record_payment and page_step == 'payment' %}
         <div class="overflow-hidden card bg-base-200" id="payment-actions">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">💰</span> Step 3 — Record Payment</h3>
@@ -346,7 +346,7 @@
         </div>
         {% endif %}
 
-        {% if can_mark_completed and (not page_step or page_step == 'complete') %}
+        {% if can_mark_completed and page_step == 'complete' %}
         <div class="overflow-hidden card bg-base-200" id="completion-actions">
           <div class="card-body">
             <div class="mb-2 alert alert-success">
