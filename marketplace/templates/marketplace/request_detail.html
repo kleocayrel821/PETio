@@ -543,6 +543,14 @@ async function submitFormJSON(formEl, submitBtn) {
     if (!resp.ok || data.status === 'error') { injectInlineErrors(formEl, data.field_errors || {}); showMarketplaceToast(data.message || 'Action failed', 'error'); return; }
     showMarketplaceToast(data.message || 'Success', 'success');
     const tx = data.data && data.data.transaction ? data.data.transaction : null; if (tx) ensureMeetupDetailsContainer(tx.meetup_place, tx.meetup_time, tx.meetup_timezone);
+    try {
+      const u = (url || '').toLowerCase();
+      if (u.includes('/meetup/propose') || u.includes('/meetup/update') || u.includes('/meetup/confirm')) {
+        const pay = document.querySelector('#payment-actions'); if (pay) { pay.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      } else if (u.includes('/payment/record')) {
+        const done = document.querySelector('#completion-actions'); if (done) { done.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      }
+    } catch (_) {}
   } catch (err) { console.error(err); showMarketplaceToast('Network error. Please try again.', 'error'); }
   finally { submitBtn.disabled = false; }
 }
