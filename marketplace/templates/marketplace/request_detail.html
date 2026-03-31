@@ -164,6 +164,20 @@
               <input id="counter-price" type="number" step="0.01" min="0.01" name="counter_offer" class="input input-bordered w-full sm:w-32" placeholder="Counter price (if counter)" aria-label="Counter price" />
               <button class="btn btn-outline btn-sm" aria-label="Submit response">Respond</button>
             </form>
+            {% if request.user.id == request_obj.buyer.id %}
+            <div class="flex flex-wrap gap-2 mt-2" aria-label="Quick buyer actions">
+              <form method="post" action="{% url 'marketplace:respond_offer' request_obj.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="accept" />
+                <button class="btn btn-success btn-sm" aria-label="Accept offer">Accept</button>
+              </form>
+              <form method="post" action="{% url 'marketplace:respond_offer' request_obj.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reject" />
+                <button class="btn btn-error btn-sm" aria-label="Decline offer">Decline</button>
+              </form>
+            </div>
+            {% endif %}
             {% endif %}
 
             <details class="mt-3">

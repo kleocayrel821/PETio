@@ -1134,9 +1134,13 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
                 (is_buyer or is_moderator) and active and pr.listing.status == ListingStatus.ACTIVE and
                 pr.status in (PurchaseRequestStatus.PENDING, PurchaseRequestStatus.NEGOTIATING)
             )
+            # Allow both parties to respond during negotiation.
+            # Buyer can accept/reject/counter a seller counter-offer; seller can respond to buyer offer.
             can_respond_offer = (
-                (is_seller or is_moderator) and active and pr.status == PurchaseRequestStatus.NEGOTIATING and
-                (pr.offer_price is not None or pr.counter_offer is not None)
+                (is_buyer or is_seller or is_moderator)
+                and active
+                and pr.status == PurchaseRequestStatus.NEGOTIATING
+                and (pr.offer_price is not None or pr.counter_offer is not None)
             )
             ctx["negotiation_enabled"] = True
             ctx["current_offer_price"] = pr.offer_price
@@ -1224,12 +1228,16 @@ def submit_offer(request, request_id):
 @login_required
 @require_POST
 def respond_offer(request, request_id):
-    """Seller responds to an existing offer: accept / reject / counter.
+    """Respond to an existing offer: accept / reject / counter.
 
+    Both buyer and seller may respond while negotiating:
+    - Seller may accept/reject/counter a buyer offer
+    - Buyer may accept/reject/counter a seller counter-offer
     Accept mirrors seller_accept_request behavior; counter leaves status negotiating.
     """
     pr = get_object_or_404(PurchaseRequest, pk=request_id)
-    if not _ensure_request_owner(pr, request.user) and not _is_moderator(request.user):
+    is_party = request.user.id in (pr.buyer_id, pr.seller_id)
+    if not is_party and not _is_moderator(request.user):
         return HttpResponseForbidden("Not authorized")
     if pr.status != PurchaseRequestStatus.NEGOTIATING:
         return HttpResponseBadRequest("Cannot respond in current status")
