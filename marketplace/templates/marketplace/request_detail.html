@@ -285,9 +285,9 @@
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">💰</span> Step 3 — Record Payment</h3>
             <div class="mb-2 text-xs text-base-content/70">Agreed total (prefill): {% if payment_prefill_amount %}{{ payment_prefill_amount }}{% else %}N/A{% endif %}</div>
-            <form id="paymentForm" method="post" action="{% url 'marketplace:api_request_record_payment' request_obj.id %}" class="flex flex-col flex-wrap gap-2 sm:flex-row" enctype="multipart/form-data" aria-label="Payment form">
+            <form id="paymentForm" method="post" action="{% url 'marketplace:api_request_record_payment' request_obj.id %}" class="flex flex-col flex-wrap gap-2 sm:flex-row items-end" enctype="multipart/form-data" aria-label="Payment form">
               {% csrf_token %}
-              <select name="payment_method" class="w-full select select-bordered sm:w-48" aria-label="Payment method">
+              <select id="paymentMethod" name="payment_method" class="w-full select select-bordered sm:w-48" aria-label="Payment method">
                 {% for m in payment_methods %}
                   {% if m == 'cod' %}
                     <option value="cod">COD (Cash on Delivery)</option>
@@ -298,8 +298,13 @@
                   {% endif %}
                 {% endfor %}
               </select>
-              <input type="number" step="0.01" min="0.01" name="amount_paid" class="w-full input input-bordered sm:w-32" placeholder="Amount paid" value="{% if payment_prefill_amount %}{{ payment_prefill_amount }}{% endif %}" aria-label="Amount paid" />
-              <input type="file" name="payment_proof" class="w-full file-input file-input-bordered sm:w-64" accept="image/*,application/pdf" aria-label="Payment proof" />
+              <div id="amountGroup" class="w-full sm:w-auto">
+                <input id="amountPaid" type="number" step="0.01" min="0.01" name="amount_paid" class="w-full input input-bordered sm:w-32" placeholder="Amount paid" value="{% if payment_prefill_amount %}{{ payment_prefill_amount }}{% endif %}" aria-label="Amount paid" />
+              </div>
+              <div id="qrGroup" class="w-full sm:w-auto">
+                <label for="paymentProof" class="label pt-0 pb-1"><span class="label-text text-xs">GCash QR:</span></label>
+                <input id="paymentProof" type="file" name="payment_proof" class="w-full file-input file-input-bordered sm:w-64" accept="image/*,application/pdf" aria-label="GCash QR" />
+              </div>
               <button id="paymentSubmit" class="btn btn-primary btn-sm record-payment-btn" aria-label="Record payment">Record Payment</button>
             </form>
           </div>
@@ -308,7 +313,19 @@
         <div class="overflow-hidden card bg-base-200" id="payment-actions">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">💰</span> Step 3 — Payment</h3>
+            {% if request_obj.transaction and request_obj.transaction.status == 'paid' %}
+            <div class="p-3 rounded-xl bg-base-100 text-sm">
+              <div><span class="font-semibold">Paid:</span> {{ request_obj.transaction.amount_paid }} {% if request_obj.transaction.payment_method %}via {% if request_obj.transaction.payment_method == 'gcash' %}GCash{% elif request_obj.transaction.payment_method == 'cod' %}COD{% else %}{{ request_obj.transaction.payment_method|capfirst }}{% endif %}{% endif %}</div>
+              {% if request_obj.transaction.payment_method == 'gcash' and request_obj.transaction.payment_proof %}
+              <div class="mt-2">
+                <div class="text-xs opacity-70 mb-1">GCash QR</div>
+                <a class="link link-primary" href="{{ request_obj.transaction.payment_proof.url }}" target="_blank">View QR</a>
+              </div>
+              {% endif %}
+            </div>
+            {% else %}
             <div class="alert alert-info text-sm">Waiting for the seller to record payment. Once recorded, the buyer can mark this complete.</div>
+            {% endif %}
           </div>
         </div>
         {% endif %}
@@ -585,7 +602,23 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) { console.error(err); showMarketplaceToast('Network error. Please try again.', 'error'); }
     finally { confirmBtn.disabled = false; }
   });
-  if (paymentForm && paymentBtn) paymentForm.addEventListener('submit', e => { e.preventDefault(); submitFormJSON(paymentForm, paymentBtn); });
+  if (paymentForm && paymentBtn) {
+    paymentForm.addEventListener('submit', e => { e.preventDefault(); submitFormJSON(paymentForm, paymentBtn); });
+    const methodSel = document.getElementById('paymentMethod');
+    const amountGroup = document.getElementById('amountGroup');
+    const qrGroup = document.getElementById('qrGroup');
+    const amountInput = document.getElementById('amountPaid');
+    const proofInput = document.getElementById('paymentProof');
+    function updatePaymentVisibility() {
+      const v = (methodSel.value || '').toLowerCase();
+      const isCOD = v === 'cod';
+      if (amountGroup) amountGroup.style.display = isCOD ? 'none' : '';
+      if (qrGroup) qrGroup.style.display = isCOD ? 'none' : '';
+      if (amountInput) amountInput.disabled = isCOD;
+      if (proofInput) proofInput.disabled = isCOD;
+    }
+    if (methodSel) { methodSel.addEventListener('change', updatePaymentVisibility); updatePaymentVisibility(); }
+  }
 
   // Suggest time shortcuts
   document.querySelectorAll('[data-suggest-time]').forEach(btn => {
