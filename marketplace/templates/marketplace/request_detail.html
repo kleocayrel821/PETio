@@ -252,14 +252,14 @@
         <div class="overflow-hidden card bg-base-200" id="meetup-actions">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">📍</span> Step 2 — {% if can_propose_meetup %}Propose Meetup{% else %}Update Meetup{% endif %}</h3>
-            <form id="meetupForm" method="post" action="{% if can_propose_meetup %}{% url 'marketplace:propose_meetup' request_obj.id %}{% else %}{% url 'marketplace:update_meetup' request_obj.id %}{% endif %}" class="flex flex-col flex-wrap gap-2 sm:flex-row" aria-label="Meetup form">
+            <form id="meetupForm" method="post" action="{% if can_propose_meetup %}{% url 'marketplace:propose_meetup' request_obj.id %}{% else %}{% url 'marketplace:update_meetup' request_obj.id %}{% endif %}" class="flex flex-col flex-wrap gap-2 items-center sm:flex-row" aria-label="Meetup form">
               {% csrf_token %}
               <input type="datetime-local" name="meetup_time" class="w-full input input-bordered sm:w-56" value="{% if meetup_form.initial.meetup_time %}{{ meetup_form.initial.meetup_time|date:'Y-m-d\\TH:i' }}{% endif %}" aria-label="Meetup time" />
               <input type="text" name="meetup_place" class="w-full input input-bordered sm:w-64" placeholder="Place (e.g., cafe, park)" value="{{ meetup_form.initial.meetup_place }}" aria-label="Meetup place" />
+              <button id="meetupSubmit" class="w-auto btn btn-primary btn-sm sm:ml-2 confirm-meetup-btn" aria-label="Submit meetup">{% if can_propose_meetup %}Propose{% else %}Update{% endif %}</button>
               {% if can_update_meetup %}
               <input type="text" name="reschedule_reason" class="w-full input input-bordered sm:w-64" placeholder="Reschedule reason (optional)" value="{{ meetup_form.initial.reschedule_reason }}" aria-label="Reschedule reason" />
               {% endif %}
-              <button id="meetupSubmit" class="btn btn-primary btn-sm confirm-meetup-btn" aria-label="Submit meetup">{% if can_propose_meetup %}Propose{% else %}Update{% endif %}</button>
             </form>
             {% if can_confirm_meetup %}
             <div class="mt-2">
