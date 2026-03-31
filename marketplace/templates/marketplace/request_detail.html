@@ -46,7 +46,7 @@
       <li class="step step-primary" aria-current="step" title="Request">Request</li>
       <li class="step {% if request_obj.status == 'accepted' %}step-primary{% else %}{% if request_obj.status == 'negotiating' or request_obj.status == 'pending' %}step{% else %}step-primary{% endif %}{% endif %}" title="Confirmed">Confirmed</li>
       <li class="step {% if meetup_details %}step-primary{% else %}step{% endif %}" title="Meetup">Meetup</li>
-      <li class="step {% if can_mark_completed %}step-primary{% else %}step{% endif %}" title="Payment">Payment</li>
+      <li class="step {% if show_payment_step %}step-primary{% else %}step{% endif %}" title="Payment">Payment</li>
       <li class="step {% if request_obj.status == 'completed' %}step-primary{% else %}step{% endif %}" title="Complete">Complete</li>
     </ul>
     {# Primary action buttons #}
@@ -302,6 +302,13 @@
               <input type="file" name="payment_proof" class="w-full file-input file-input-bordered sm:w-64" accept="image/*,application/pdf" aria-label="Payment proof" />
               <button id="paymentSubmit" class="btn btn-primary btn-sm record-payment-btn" aria-label="Record payment">Record Payment</button>
             </form>
+          </div>
+        </div>
+        {% elif show_payment_step %}
+        <div class="overflow-hidden card bg-base-200" id="payment-actions">
+          <div class="card-body">
+            <h3 class="card-title"><span class="mr-2">💰</span> Step 3 — Payment</h3>
+            <div class="alert alert-info text-sm">Waiting for the seller to record payment. Once recorded, the buyer can mark this complete.</div>
           </div>
         </div>
         {% endif %}
@@ -561,7 +568,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const confirmForm = document.getElementById('confirmForm'); const confirmBtn = document.getElementById('confirmSubmit');
   const paymentForm = document.getElementById('paymentForm'); const paymentBtn = document.getElementById('paymentSubmit');
   if (meetupForm && meetupBtn) meetupForm.addEventListener('submit', e => { e.preventDefault(); submitFormJSON(meetupForm, meetupBtn); });
-  if (confirmForm && confirmBtn) confirmForm.addEventListener('submit', e => { e.preventDefault(); submitFormJSON(confirmForm, confirmBtn); });
+  if (confirmForm && confirmBtn) confirmForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    confirmBtn.disabled = true;
+    try {
+      clearInlineErrors(confirmForm);
+      const fd = new FormData(confirmForm);
+      const url = confirmForm.getAttribute('action');
+      const resp = await fetch(url + '?format=json', { method: 'POST', headers: { 'X-CSRFToken': getCSRFToken() }, body: fd });
+      let data = {}; try { data = await resp.json(); } catch (_) {}
+      if (!resp.ok || data.status === 'error') { injectInlineErrors(confirmForm, data.field_errors || {}); showMarketplaceToast(data.message || 'Action failed', 'error'); return; }
+      showMarketplaceToast(data.message || 'Success', 'success');
+      if (data.data && data.data.both_confirmed) {
+        const pay = document.querySelector('#payment-actions'); if (pay) { pay.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      }
+    } catch (err) { console.error(err); showMarketplaceToast('Network error. Please try again.', 'error'); }
+    finally { confirmBtn.disabled = false; }
+  });
   if (paymentForm && paymentBtn) paymentForm.addEventListener('submit', e => { e.preventDefault(); submitFormJSON(paymentForm, paymentBtn); });
 
   // Suggest time shortcuts
