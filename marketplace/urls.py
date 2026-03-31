@@ -133,6 +133,7 @@ else:
         path("api/requests/<int:request_id>/meetup/set/", views.api_request_meetup_set, name="api_request_meetup_set"),
         path("api/requests/<int:request_id>/meetup/confirm/", views.api_request_meetup_confirm, name="api_request_meetup_confirm"),
         path("api/requests/<int:request_id>/payment/record/", views.api_request_record_payment, name="api_request_record_payment"),
+        path("request/<int:request_id>/payment/submit/", views.buyer_submit_gcash_payment, name="buyer_submit_gcash_payment"),
         path("api/requests/<int:request_id>/complete/", views.api_request_complete, name="api_request_complete"),
         # Request-level messages polling
         path("api/requests/<int:request_id>/messages/", views.api_request_messages, name="api_request_messages"),
