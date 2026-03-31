@@ -4156,7 +4156,8 @@ def api_request_meetup_set(request, request_id):
             "meetup_time": pr.transaction.meetup_time.isoformat() if pr.transaction.meetup_time else None,
             "meetup_timezone": pr.transaction.meetup_timezone,
             "reschedule_reason": pr.transaction.reschedule_reason,
-        }
+        },
+        "next": "payment",
     })
 
 @csrf_protect
