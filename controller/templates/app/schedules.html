@@ -19,6 +19,7 @@
             Add New Schedule
         </div>
         <form id="addScheduleForm" class="space-y-6">
+            {% csrf_token %}
             <div class="responsive-grid">
                 <!-- Time Input -->
                 <div>
@@ -268,39 +269,14 @@
                 <div>
                     <h3 id="editScheduleTitle" class="text-xl font-semibold tracking-tight">Edit Schedule</h3>
                     <p id="editScheduleDesc" class="text-sm text-gray-400">Adjust time, portion, label, and days.</p>
-    </div>
-</div>
-
-<!-- Confirm Modal -->
-<div id="confirmModal" class="hidden modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalDesc" tabindex="-1">
-    <div class="modal-content" role="document">
-        <div class="modal-header">
-            <div class="flex gap-3 items-center">
-                <div class="p-2 text-red-400 rounded-lg bg-red-500/15">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div>
-                    <h3 id="confirmModalTitle" class="text-xl font-semibold tracking-tight">Confirm Action</h3>
-                    <p id="confirmModalDesc" class="text-sm text-gray-400">Please confirm this action.</p>
                 </div>
             </div>
-            <button class="modal-close" onclick="closeConfirmModal(false)" aria-label="Close">
+            <button class="modal-close" onclick="closeEditModal()" aria-label="Close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div class="px-6">
-            <p id="confirmModalMessage" class="text-sm text-gray-400"></p>
-        </div>
-        <div class="flex gap-3 justify-end items-center px-6 pb-6">
-            <button type="button" id="confirmModalCancel" class="btn btn-enhanced btn-ghost" onclick="closeConfirmModal(false)">Cancel</button>
-            <button type="button" id="confirmModalConfirm" class="btn btn-enhanced btn-primary-enhanced" onclick="closeConfirmModal(true)">
-                <i class="fas fa-check"></i>
-                Confirm
-            </button>
-        </div>
-    </div>
-</div>
         <form id="editScheduleForm" class="space-y-5">
+            {% csrf_token %}
             <input type="hidden" id="editScheduleId">
 
             <!-- Summary row -->
@@ -353,6 +329,36 @@
     </div>
     <!-- Focus sentinel for trapping tab navigation -->
     <span tabindex="0" id="editModalFocusEnd" class="sr-only"></span>
+</div>
+
+<!-- Confirm Modal -->
+<div id="confirmModal" class="hidden modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalDesc" tabindex="-1">
+    <div class="modal-content" role="document">
+        <div class="modal-header">
+            <div class="flex gap-3 items-center">
+                <div class="p-2 text-red-400 rounded-lg bg-red-500/15">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <h3 id="confirmModalTitle" class="text-xl font-semibold tracking-tight">Confirm Action</h3>
+                    <p id="confirmModalDesc" class="text-sm text-gray-400">Please confirm this action.</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="closeConfirmModal(false)" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="px-6">
+            <p id="confirmModalMessage" class="text-sm text-gray-400"></p>
+        </div>
+        <div class="flex gap-3 justify-end items-center px-6 pb-6">
+            <button type="button" id="confirmModalCancel" class="btn btn-enhanced btn-ghost" onclick="closeConfirmModal(false)">Cancel</button>
+            <button type="button" id="confirmModalConfirm" class="btn btn-enhanced btn-primary-enhanced" onclick="closeConfirmModal(true)">
+                <i class="fas fa-check"></i>
+                Confirm
+            </button>
+        </div>
+    </div>
 </div>
 
 <style>
