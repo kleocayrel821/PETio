@@ -32,10 +32,10 @@
 
 {% block marketplace_content %}
 {# Sticky hero: status + progress + primary actions #}
-<div class="sticky top-0 z-40 bg-base-100/80 backdrop-blur border-b" role="region" aria-label="Transaction status and actions">
-  <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-    <div class="flex items-center gap-3">
-      <h1 class="text-xl md:text-2xl font-bold">Request #{{ request_obj.id }}</h1>
+<div class="sticky top-0 z-40 border-b backdrop-blur bg-base-100/80" role="region" aria-label="Transaction status and actions">
+  <div class="flex flex-col gap-3 px-4 py-3 mx-auto max-w-7xl lg:flex-row lg:items-center lg:justify-between">
+    <div class="flex gap-3 items-center">
+      <h1 class="text-xl font-bold md:text-2xl">Request #{{ request_obj.id }}</h1>
       {# Color-coded status badge #}
       {% with s=request_obj.status %}
       <span class="badge {% if s == 'pending' %}badge-info{% elif s == 'negotiating' %}badge-warning{% elif s == 'accepted' %}badge-success{% elif s == 'completed' %}badge-success{% elif s == 'canceled' %}badge-error{% else %}badge-neutral{% endif %}" aria-live="polite" aria-label="Request status">{{ request_obj.get_status_display }}</span>
@@ -68,15 +68,15 @@
           <i class="fas fa-ellipsis-h"></i>
           <span class="sr-only">More actions</span>
         </label>
-        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-56" role="menu" aria-label="Secondary actions">
-          <li><a href="#manage-actions" role="menuitem"><i class="fas fa-ban mr-2"></i>Cancel Request</a></li>
-          <li><a href="{% url 'marketplace:messages' %}" role="menuitem"><i class="fas fa-comments mr-2"></i>Open Inbox</a></li>
-          <li><a href="#summary-card" role="menuitem"><i class="fas fa-receipt mr-2"></i>View Summary</a></li>
+        <ul tabindex="0" class="p-2 w-56 shadow dropdown-content menu bg-base-100 rounded-box" role="menu" aria-label="Secondary actions">
+          <li><a href="#manage-actions" role="menuitem"><i class="mr-2 fas fa-ban"></i>Cancel Request</a></li>
+          <li><a href="{% url 'marketplace:messages' %}" role="menuitem"><i class="mr-2 fas fa-comments"></i>Open Inbox</a></li>
+          <li><a href="#summary-card" role="menuitem"><i class="mr-2 fas fa-receipt"></i>View Summary</a></li>
           {% if request_obj.transaction %}
-          <li><a href="#summary-card" id="copyTxId" role="menuitem"><i class="fas fa-copy mr-2"></i>Copy Transaction ID</a></li>
+          <li><a href="#summary-card" id="copyTxId" role="menuitem"><i class="mr-2 fas fa-copy"></i>Copy Transaction ID</a></li>
           {% endif %}
-          <li><a href="{% url 'marketplace:report_listing' request_obj.listing.id %}" role="menuitem"><i class="fas fa-exclamation-triangle mr-2"></i>Report Issue</a></li>
-          <li><button type="button" class="btn btn-ghost" id="printReceiptBtn" role="menuitem"><i class="fas fa-print mr-2"></i>Print Receipt</button></li>
+          <li><a href="{% url 'marketplace:report_listing' request_obj.listing.id %}" role="menuitem"><i class="mr-2 fas fa-exclamation-triangle"></i>Report Issue</a></li>
+          <li><button type="button" class="btn btn-ghost" id="printReceiptBtn" role="menuitem"><i class="mr-2 fas fa-print"></i>Print Receipt</button></li>
         </ul>
       </div>
       </div>
@@ -84,32 +84,32 @@
   </div>
 
   {# Main content layout: Messages primary, Details secondary #}
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4" role="main">
+  <div class="grid grid-cols-1 gap-6 mt-4 lg:grid-cols-3" role="main">
     {# LEFT: Transaction Details & Negotiation History #}
-    <div class="card bg-base-100 shadow col-span-3" id="detailsPanel" data-panel>
-      <div class="card-body space-y-5">
+    <div class="col-span-3 shadow card bg-base-100" id="detailsPanel" data-panel>
+      <div class="space-y-5 card-body">
         {# Hero Transaction Summary #}
         <div id="summary-card" class="space-y-4">
-          <div class="card bg-base-200 overflow-hidden">
+          <div class="overflow-hidden card bg-base-200">
             <div class="card-body">
               <h2 class="card-title"><span class="mr-2">🎯</span> Transaction Status</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2" role="list">
-              <div class="bg-base-100 rounded-xl p-3" role="listitem" aria-label="Item">
-                <div class="flex items-center gap-2">
+            <div class="grid grid-cols-1 gap-3 mt-2 sm:grid-cols-3" role="list">
+              <div class="p-3 rounded-xl bg-base-100" role="listitem" aria-label="Item">
+                <div class="flex gap-2 items-center">
                   <i class="fas fa-box"></i>
                   <span class="font-semibold">Item</span>
                 </div>
                 <div class="mt-1"><a href="{% url 'marketplace:listing_detail' request_obj.listing.id %}" class="link">{{ request_obj.listing.title }}</a></div>
               </div>
-              <div class="bg-base-100 rounded-xl p-3" role="listitem" aria-label="Buyer">
-                <div class="flex items-center gap-2">
+              <div class="p-3 rounded-xl bg-base-100" role="listitem" aria-label="Buyer">
+                <div class="flex gap-2 items-center">
                   <i class="fas fa-user"></i>
                   <span class="font-semibold">Buyer</span>
                 </div>
                 <div class="mt-1">{{ request_obj.buyer.username }}</div>
               </div>
-              <div class="bg-base-100 rounded-xl p-3" role="listitem" aria-label="Seller">
-                <div class="flex items-center gap-2">
+              <div class="p-3 rounded-xl bg-base-100" role="listitem" aria-label="Seller">
+                <div class="flex gap-2 items-center">
                   <i class="fas fa-user-tag"></i>
                   <span class="font-semibold">Seller</span>
                 </div>
@@ -120,7 +120,7 @@
             <div class="mt-2 text-xs opacity-70"><span class="font-semibold">Initial note:</span> {{ request_obj.message }}</div>
             {% endif %}
             {% if request_obj.transaction %}
-            <div class="mt-2 flex items-center gap-2">
+            <div class="flex gap-2 items-center mt-2">
               <i class="fas fa-receipt"></i>
               <span class="font-semibold">Transaction</span>
               <span>#{{ request_obj.transaction.id }} ({{ request_obj.transaction.get_status_display }})</span>
@@ -130,11 +130,11 @@
         </div>
 
         {# Step 1 — Offer & Respond #}
-        <div class="card bg-base-200 overflow-hidden" id="negotiation-actions">
+        <div class="overflow-hidden card bg-base-200" id="negotiation-actions">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">📊</span> Step 1 — Offer & Respond</h3>
             {% if current_offer_price or current_counter_offer %}
-            <div class="text-sm bg-base-100 rounded-xl p-3 mt-2">
+            <div class="p-3 mt-2 text-sm rounded-xl bg-base-100">
               {% if current_offer_price %}
               <div><span class="font-semibold">Buyer offer:</span> {{ current_quantity }} × {{ current_offer_price }}</div>
               {% endif %}
@@ -145,17 +145,17 @@
             {% endif %}
 
             {% if can_submit_offer %}
-            <form method="post" action="{% url 'marketplace:submit_offer' request_obj.id %}" class="flex flex-col sm:flex-row flex-wrap items-center gap-2 mt-2" aria-label="Submit offer form">
+            <form method="post" action="{% url 'marketplace:submit_offer' request_obj.id %}" class="flex flex-col flex-wrap gap-2 items-center mt-2 sm:flex-row" aria-label="Submit offer form">
               {% csrf_token %}
-              <input type="number" step="0.01" min="0.01" name="offer_price" class="input input-bordered w-full sm:w-32" placeholder="Offer price" aria-label="Offer price" />
-              <input type="number" step="1" min="1" name="quantity" class="input input-bordered w-full sm:w-24" placeholder="Qty" aria-label="Quantity" />
-              <button class="btn btn-primary btn-xs sm:btn-sm w-auto" aria-label="Submit offer">Submit Offer</button>
+              <input type="number" step="0.01" min="0.01" name="offer_price" class="w-full input input-bordered sm:w-32" placeholder="Offer price" aria-label="Offer price" />
+              <input type="number" step="1" min="1" name="quantity" class="w-full input input-bordered sm:w-24" placeholder="Qty" aria-label="Quantity" />
+              <button class="w-auto btn btn-primary btn-xs sm:btn-sm" aria-label="Submit offer">Submit Offer</button>
             </form>
             {% endif %}
 
             {% if can_respond_offer %}
               {% if request.user.id == request_obj.buyer.id %}
-              <div class="flex flex-wrap items-center gap-2 mt-2" aria-label="Respond actions (buyer)">
+              <div class="flex flex-wrap gap-2 items-center mt-2" aria-label="Respond actions (buyer)">
                 <form method="post" action="{% url 'marketplace:respond_offer' request_obj.id %}">
                   {% csrf_token %}
                   <input type="hidden" name="action" value="accept" />
@@ -168,21 +168,21 @@
                 </form>
               </div>
               {% else %}
-              <form method="post" action="{% url 'marketplace:respond_offer' request_obj.id %}" class="flex flex-col sm:flex-row flex-wrap gap-2 mt-2" aria-label="Respond to offer form (seller)">
+              <form method="post" action="{% url 'marketplace:respond_offer' request_obj.id %}" class="flex flex-col flex-wrap gap-2 mt-2 sm:flex-row" aria-label="Respond to offer form (seller)">
                 {% csrf_token %}
-                <select id="respond-action" name="action" class="select select-bordered w-full sm:w-40" aria-label="Response action">
+                <select id="respond-action" name="action" class="w-full select select-bordered sm:w-40" aria-label="Response action">
                   <option value="accept">Accept</option>
                   <option value="reject">Reject</option>
                   <option value="counter">Counter</option>
                 </select>
-                <input id="counter-price" type="number" step="0.01" min="0.01" name="counter_offer" class="input input-bordered w-full sm:w-32" placeholder="Counter price (if counter)" aria-label="Counter price" />
+                <input id="counter-price" type="number" step="0.01" min="0.01" name="counter_offer" class="w-full input input-bordered sm:w-32" placeholder="Counter price (if counter)" aria-label="Counter price" />
                 <button class="btn btn-outline btn-sm" aria-label="Submit response">Respond</button>
               </form>
               {% endif %}
             {% endif %}
 
             <details class="mt-3">
-              <summary class="link link-hover text-sm">View negotiation history</summary>
+              <summary class="text-sm link link-hover">View negotiation history</summary>
               <div class="mt-2 space-y-3">
                 {% for log in negotiation_logs %}
                 <div class="relative pl-6">
@@ -210,9 +210,9 @@
                   {% endif %}
                 </div>
                 {% empty %}
-                <div class="text-base-content/70 text-xs">No negotiation activity yet.</div>
+                <div class="text-xs text-base-content/70">No negotiation activity yet.</div>
                 {% endfor %}
-                <div class="border-l ml-1 pl-5"></div>
+                <div class="pl-5 ml-1 border-l"></div>
               </div>
             </details>
           </div>
@@ -220,19 +220,19 @@
 
         {# Meetup Details Card #}
         {% if meetup_details %}
-        <div class="card bg-base-300 overflow-hidden">
+        <div class="overflow-hidden card bg-base-300">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">📍</span> Step 2 — Meetup Details</h3>
             <div id="meetupDetails" class="mt-1 space-y-2">
-              <div class="flex items-center gap-2"><i class="fas fa-calendar"></i><span class="font-semibold">When:</span><span id="meetupTimeText">{{ meetup_details.meetup_time|date:"Y-m-d H:i" }}</span></div>
-              <div class="flex items-center gap-2"><i class="fas fa-map-marker-alt"></i><span class="font-semibold">Where:</span><span id="meetupPlaceText">{{ meetup_details.meetup_place }}</span></div>
+              <div class="flex gap-2 items-center"><i class="fas fa-calendar"></i><span class="font-semibold">When:</span><span id="meetupTimeText">{{ meetup_details.meetup_time|date:"Y-m-d H:i" }}</span></div>
+              <div class="flex gap-2 items-center"><i class="fas fa-map-marker-alt"></i><span class="font-semibold">Where:</span><span id="meetupPlaceText">{{ meetup_details.meetup_place }}</span></div>
               {% if meetup_details.meetup_timezone %}
               <div class="text-xs text-base-content/70">Timezone: {{ meetup_details.meetup_timezone }}</div>
               {% endif %}
               {% if meetup_confirmed %}
-              <div class="mt-2 flex flex-wrap gap-2 items-center">
+              <div class="flex flex-wrap gap-2 items-center mt-2">
                 <a class="btn btn-ghost btn-sm" href="{% url 'marketplace:request_meetup_ics' request_obj.id %}" aria-label="Download ICS invite">
-                  <i class="fas fa-calendar-plus mr-1"></i>Download ICS Invite
+                  <i class="mr-1 fas fa-calendar-plus"></i>Download ICS Invite
                 </a>
                 {% if can_mark_completed %}
                 <form method="post" action="{% url 'marketplace:mark_request_completed' request_obj.id %}" id="completion-actions">
@@ -249,28 +249,15 @@
 
         {# Propose/Update Meetup #}
         {% if can_propose_meetup or can_update_meetup %}
-        <div class="card bg-base-200 overflow-hidden" id="meetup-actions">
+        <div class="overflow-hidden card bg-base-200" id="meetup-actions">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">📍</span> Step 2 — {% if can_propose_meetup %}Propose Meetup{% else %}Update Meetup{% endif %}</h3>
-            <form id="meetupForm" method="post" action="{% if can_propose_meetup %}{% url 'marketplace:propose_meetup' request_obj.id %}{% else %}{% url 'marketplace:update_meetup' request_obj.id %}{% endif %}" class="flex flex-col sm:flex-row flex-wrap gap-2" aria-label="Meetup form">
+            <form id="meetupForm" method="post" action="{% if can_propose_meetup %}{% url 'marketplace:propose_meetup' request_obj.id %}{% else %}{% url 'marketplace:update_meetup' request_obj.id %}{% endif %}" class="flex flex-col flex-wrap gap-2 sm:flex-row" aria-label="Meetup form">
               {% csrf_token %}
-              <input type="datetime-local" name="meetup_time" class="input input-bordered w-full sm:w-56" value="{% if meetup_form.initial.meetup_time %}{{ meetup_form.initial.meetup_time|date:'Y-m-d\\TH:i' }}{% endif %}" aria-label="Meetup time" />
-              {% get_current_timezone as TIME_ZONE %}
-              <div class="text-xs text-base-content/70" aria-live="polite">Local timezone: {{ TIME_ZONE }}</div>
-              <select name="meetup_timezone" class="select select-bordered w-full sm:w-48" aria-label="Timezone">
-                <option value="">Use local timezone</option>
-                <option value="UTC" {% if meetup_form.initial.meetup_timezone == 'UTC' %}selected{% endif %}>UTC</option>
-                <option value="US/Eastern" {% if meetup_form.initial.meetup_timezone == 'US/Eastern' %}selected{% endif %}>US/Eastern</option>
-                <option value="US/Central" {% if meetup_form.initial.meetup_timezone == 'US/Central' %}selected{% endif %}>US/Central</option>
-                <option value="US/Mountain" {% if meetup_form.initial.meetup_timezone == 'US/Mountain' %}selected{% endif %}>US/Mountain</option>
-                <option value="US/Pacific" {% if meetup_form.initial.meetup_timezone == 'US/Pacific' %}selected{% endif %}>US/Pacific</option>
-                <option value="Europe/London" {% if meetup_form.initial.meetup_timezone == 'Europe/London' %}selected{% endif %}>Europe/London</option>
-                <option value="Europe/Paris" {% if meetup_form.initial.meetup_timezone == 'Europe/Paris' %}selected{% endif %}>Europe/Paris</option>
-                <option value="Asia/Singapore" {% if meetup_form.initial.meetup_timezone == 'Asia/Singapore' %}selected{% endif %}>Asia/Singapore</option>
-              </select>
-              <input type="text" name="meetup_place" class="input input-bordered w-full sm:w-64" placeholder="Place (e.g., cafe, park)" value="{{ meetup_form.initial.meetup_place }}" aria-label="Meetup place" />
+              <input type="datetime-local" name="meetup_time" class="w-full input input-bordered sm:w-56" value="{% if meetup_form.initial.meetup_time %}{{ meetup_form.initial.meetup_time|date:'Y-m-d\\TH:i' }}{% endif %}" aria-label="Meetup time" />
+              <input type="text" name="meetup_place" class="w-full input input-bordered sm:w-64" placeholder="Place (e.g., cafe, park)" value="{{ meetup_form.initial.meetup_place }}" aria-label="Meetup place" />
               {% if can_update_meetup %}
-              <input type="text" name="reschedule_reason" class="input input-bordered w-full sm:w-64" placeholder="Reschedule reason (optional)" value="{{ meetup_form.initial.reschedule_reason }}" aria-label="Reschedule reason" />
+              <input type="text" name="reschedule_reason" class="w-full input input-bordered sm:w-64" placeholder="Reschedule reason (optional)" value="{{ meetup_form.initial.reschedule_reason }}" aria-label="Reschedule reason" />
               {% endif %}
               <button id="meetupSubmit" class="btn btn-primary btn-sm confirm-meetup-btn" aria-label="Submit meetup">{% if can_propose_meetup %}Propose{% else %}Update{% endif %}</button>
             </form>
@@ -283,7 +270,7 @@
             </div>
             {% endif %}
             {# Smart suggestions for meetup times #}
-            <div class="mt-2 flex flex-wrap gap-2" aria-label="Suggested meetup times">
+            <div class="flex flex-wrap gap-2 mt-2" aria-label="Suggested meetup times">
               <button type="button" class="btn btn-ghost btn-xs" data-suggest-time="today-19:00">Tonight 7 PM</button>
               <button type="button" class="btn btn-ghost btn-xs" data-suggest-time="tomorrow-15:00">Tomorrow 3 PM</button>
               <button type="button" class="btn btn-ghost btn-xs" data-suggest-time="sat-10:00">Saturday 10 AM</button>
@@ -294,13 +281,13 @@
 
         {# Record Payment #}
         {% if can_record_payment %}
-        <div class="card bg-base-200 overflow-hidden" id="payment-actions">
+        <div class="overflow-hidden card bg-base-200" id="payment-actions">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">💰</span> Step 3 — Record Payment</h3>
-            <div class="text-xs text-base-content/70 mb-2">Agreed total (prefill): {% if payment_prefill_amount %}{{ payment_prefill_amount }}{% else %}N/A{% endif %}</div>
-            <form id="paymentForm" method="post" action="{% url 'marketplace:api_request_record_payment' request_obj.id %}" class="flex flex-col sm:flex-row flex-wrap gap-2" enctype="multipart/form-data" aria-label="Payment form">
+            <div class="mb-2 text-xs text-base-content/70">Agreed total (prefill): {% if payment_prefill_amount %}{{ payment_prefill_amount }}{% else %}N/A{% endif %}</div>
+            <form id="paymentForm" method="post" action="{% url 'marketplace:api_request_record_payment' request_obj.id %}" class="flex flex-col flex-wrap gap-2 sm:flex-row" enctype="multipart/form-data" aria-label="Payment form">
               {% csrf_token %}
-              <select name="payment_method" class="select select-bordered w-full sm:w-48" aria-label="Payment method">
+              <select name="payment_method" class="w-full select select-bordered sm:w-48" aria-label="Payment method">
                 {% for m in payment_methods %}
                   {% if m == 'cod' %}
                     <option value="cod">COD (Cash on Delivery)</option>
@@ -311,8 +298,8 @@
                   {% endif %}
                 {% endfor %}
               </select>
-              <input type="number" step="0.01" min="0.01" name="amount_paid" class="input input-bordered w-full sm:w-32" placeholder="Amount paid" value="{% if payment_prefill_amount %}{{ payment_prefill_amount }}{% endif %}" aria-label="Amount paid" />
-              <input type="file" name="payment_proof" class="file-input file-input-bordered w-full sm:w-64" accept="image/*,application/pdf" aria-label="Payment proof" />
+              <input type="number" step="0.01" min="0.01" name="amount_paid" class="w-full input input-bordered sm:w-32" placeholder="Amount paid" value="{% if payment_prefill_amount %}{{ payment_prefill_amount }}{% endif %}" aria-label="Amount paid" />
+              <input type="file" name="payment_proof" class="w-full file-input file-input-bordered sm:w-64" accept="image/*,application/pdf" aria-label="Payment proof" />
               <button id="paymentSubmit" class="btn btn-primary btn-sm record-payment-btn" aria-label="Record payment">Record Payment</button>
             </form>
           </div>
@@ -322,33 +309,33 @@
 
         {# Manage / Cancel #}
         {% if request_obj.status == 'pending' or request_obj.status == 'negotiating' %}
-        <div class="card bg-base-200 overflow-hidden" id="manage-actions">
+        <div class="overflow-hidden card bg-base-200" id="manage-actions">
           <div class="card-body">
             <details>
-              <summary class="card-title cursor-pointer"><span class="mr-2">🚦</span> Other Actions</summary>
-              <div class="mt-3 grid gap-3">
+              <summary class="cursor-pointer card-title"><span class="mr-2">🚦</span> Other Actions</summary>
+              <div class="grid gap-3 mt-3">
                 {% if request.user.is_staff or request.user.is_superuser %}
                 <form method="post" action="{% url 'marketplace:buyer_cancel_request' request_obj.id %}" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-start" aria-label="Cancel as buyer">
                   {% csrf_token %}
-                  <input name="reason" class="input input-bordered w-full sm:w-64" placeholder="Cancel reason (optional)" aria-label="Cancel reason" />
-                  <button class="btn btn-outline w-full sm:w-auto">Cancel as Buyer</button>
+                  <input name="reason" class="w-full input input-bordered sm:w-64" placeholder="Cancel reason (optional)" aria-label="Cancel reason" />
+                  <button class="w-full btn btn-outline sm:w-auto">Cancel as Buyer</button>
                 </form>
                 <form method="post" action="{% url 'marketplace:seller_cancel_request' request_obj.id %}" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-start" aria-label="Cancel as seller">
                   {% csrf_token %}
-                  <input name="reason" class="input input-bordered w-full sm:w-64" placeholder="Cancel reason (optional)" aria-label="Cancel reason" />
-                  <button class="btn btn-outline w-full sm:w-auto">Cancel as Seller</button>
+                  <input name="reason" class="w-full input input-bordered sm:w-64" placeholder="Cancel reason (optional)" aria-label="Cancel reason" />
+                  <button class="w-full btn btn-outline sm:w-auto">Cancel as Seller</button>
                 </form>
                 {% elif request.user.id == request_obj.buyer.id %}
                 <form method="post" action="{% url 'marketplace:buyer_cancel_request' request_obj.id %}" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-start" aria-label="Cancel request">
                   {% csrf_token %}
-                  <input name="reason" class="input input-bordered w-full sm:w-64" placeholder="Cancel reason (optional)" aria-label="Cancel reason" />
-                  <button class="btn btn-outline w-full sm:w-auto">Cancel Request</button>
+                  <input name="reason" class="w-full input input-bordered sm:w-64" placeholder="Cancel reason (optional)" aria-label="Cancel reason" />
+                  <button class="w-full btn btn-outline sm:w-auto">Cancel Request</button>
                 </form>
                 {% elif request.user.id == request_obj.seller.id %}
                 <form method="post" action="{% url 'marketplace:seller_cancel_request' request_obj.id %}" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-start" aria-label="Cancel request">
                   {% csrf_token %}
-                  <input name="reason" class="input input-bordered w-full sm:w-64" placeholder="Cancel reason (optional)" aria-label="Cancel reason" />
-                  <button class="btn btn-outline w-full sm:w-auto">Cancel Request</button>
+                  <input name="reason" class="w-full input input-bordered sm:w-64" placeholder="Cancel reason (optional)" aria-label="Cancel reason" />
+                  <button class="w-full btn btn-outline sm:w-auto">Cancel Request</button>
                 </form>
                 {% endif %}
               </div>
@@ -358,23 +345,23 @@
         {% endif %}
 
         {% if can_mark_completed %}
-        <div class="card bg-base-200 overflow-hidden" id="completion-actions">
+        <div class="overflow-hidden card bg-base-200" id="completion-actions">
           <div class="card-body">
-            <div class="alert alert-success mb-2">
-              <i class="fas fa-check-circle mr-2"></i>
+            <div class="mb-2 alert alert-success">
+              <i class="mr-2 fas fa-check-circle"></i>
               Step 4 — Meetup confirmed and payment recorded. You can mark this completed.
             </div>
             <form method="post" action="{% url 'marketplace:mark_request_completed' request_obj.id %}" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-start" aria-label="Completion form">
               {% csrf_token %}
-              <input name="note" class="input input-bordered w-full sm:w-64" placeholder="Completion note (optional)" aria-label="Completion note" />
-              <button class="btn btn-success btn-lg w-full sm:w-auto">Mark Completed</button>
+              <input name="note" class="w-full input input-bordered sm:w-64" placeholder="Completion note (optional)" aria-label="Completion note" />
+              <button class="w-full btn btn-success btn-lg sm:w-auto">Mark Completed</button>
             </form>
           </div>
         </div>
         {% endif %}
 
         {% if request_obj.status == 'completed' and request.user.id == request_obj.buyer.id %}
-        <div class="card bg-base-200 overflow-hidden">
+        <div class="overflow-hidden card bg-base-200">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">⭐</span> Rate Seller</h3>
             {% if can_rate %}
@@ -384,8 +371,8 @@
                 <label class="label"><span class="label-text">Score</span></label>
                 <div class="flex gap-3">
                   {% for val,label in rating_form.fields.score.choices %}
-                  <label class="label cursor-pointer">
-                    <span class="label-text mr-2">{{ label }}</span>
+                  <label class="cursor-pointer label">
+                    <span class="mr-2 label-text">{{ label }}</span>
                     <input type="radio" name="score" value="{{ val }}" class="radio radio-primary" {% if forloop.first %}checked{% endif %} />
                   </label>
                   {% endfor %}
@@ -399,7 +386,7 @@
             </form>
             {% else %}
             {% if existing_rating %}
-            <div class="alert alert-success mt-2">
+            <div class="mt-2 alert alert-success">
               <span class="font-semibold">Your rating:</span> {{ existing_rating.score }}/5
               {% if existing_rating.comment %}<div class="mt-1">“{{ existing_rating.comment }}”</div>{% endif %}
             </div>
@@ -414,26 +401,26 @@
     </div>
 
   {# RIGHT: Messages #}
-  <div class="card bg-base-100 shadow col-span-2" id="messagesPanel" data-panel aria-label="Messages">
+  <div class="col-span-2 shadow card bg-base-100" id="messagesPanel" data-panel aria-label="Messages">
     <div class="card-body">
-      <div class="flex items-center gap-3">
+      <div class="flex gap-3 items-center">
         <h2 class="card-title"><span class="mr-2">💬</span> Messages</h2>
         {% if thread_unread_count and thread_unread_count > 0 %}
         <span class="badge badge-warning" aria-live="polite">Unread {{ thread_unread_count }}</span>
         {% endif %}
         <span class="ml-auto text-xs text-base-content/70">Attachments <i class="fas fa-paperclip"></i> supported (images/PDFs)</span>
       </div>
-      <div class="text-xs text-base-content/70 mb-3 bg-base-200 rounded-xl p-3">Use chat for coordination; status updates stay on the left.</div>
+      <div class="p-3 mb-3 text-xs rounded-xl text-base-content/70 bg-base-200">Use chat for coordination; status updates stay on the left.</div>
 
       {# Live messages list #}
       <div id="messagesList" class="space-y-3 md:space-y-4 max-h-[60vh] overflow-y-auto px-2 md:px-4" role="log" aria-live="polite" aria-relevant="additions">
         {% for m in thread_messages %}
         <div class="chat {% if m.author_id == request.user.id %}chat-end{% else %}chat-start{% endif %}" data-message-id="{{ m.id }}" data-author-id="{{ m.author_id }}">
-          <div class="chat-header mb-1">
+          <div class="mb-1 chat-header">
             {{ m.author.username }}
-            <time class="timestamp text-xs opacity-50" title="{{ m.created_at|date:'Y-m-d H:i' }}">{{ m.created_at|timesince }} ago</time>
+            <time class="text-xs opacity-50 timestamp" title="{{ m.created_at|date:'Y-m-d H:i' }}">{{ m.created_at|timesince }} ago</time>
           </div>
-          <div class="chat-bubble mt-1">{{ m.content }}</div>
+          <div class="mt-1 chat-bubble">{{ m.content }}</div>
         </div>
         {% empty %}
         <div id="messagesEmpty" class="text-base-content/70">No messages yet. Start the conversation below.</div>
@@ -441,11 +428,11 @@
       </div>
 
       {# Typing indicator #}
-      <div id="typingIndicator" class="mt-2 hidden text-sm text-base-content/70" aria-live="polite"><i class="fas fa-ellipsis-h animate-pulse mr-2"></i>Other party is typing…</div>
+      <div id="typingIndicator" class="hidden mt-2 text-sm text-base-content/70" aria-live="polite"><i class="mr-2 animate-pulse fas fa-ellipsis-h"></i>Other party is typing…</div>
 
       {% if request_obj.status != 'completed' and request_obj.status != 'canceled' %}
       {# Quick replies #}
-      <div class="mt-3 flex flex-wrap gap-2" aria-label="Quick replies">
+      <div class="flex flex-wrap gap-2 mt-3" aria-label="Quick replies">
         <button type="button" class="btn btn-ghost btn-xs quick-reply" data-template="When can we meet?">When can we meet?</button>
         <button type="button" class="btn btn-ghost btn-xs quick-reply" data-template="Payment confirmed.">Payment confirmed.</button>
         <button type="button" class="btn btn-ghost btn-xs quick-reply" data-template="Can we meet at {{ meetup_details.meetup_place|default:'the cafe' }}?">Suggest a place</button>
@@ -457,15 +444,15 @@
         {% csrf_token %}
         <div class="form-control">
           <label class="label"><span class="label-text">New message</span></label>
-          <textarea id="messageInput" name="content" rows="4" class="textarea textarea-bordered w-full" placeholder="Type your message" aria-label="Message content"></textarea>
+          <textarea id="messageInput" name="content" rows="4" class="w-full textarea textarea-bordered" placeholder="Type your message" aria-label="Message content"></textarea>
         </div>
-        <div class="mt-2 flex items-center gap-3 justify-end">
+        <div class="flex gap-3 justify-end items-center mt-2">
           
-          <button type="submit" id="messageSubmit" class="btn btn-primary btn-circle btn-sm send-message-btn flex-none" aria-label="Send message" title="Send"><i class="fas fa-paper-plane"></i></button>
+          <button type="submit" id="messageSubmit" class="flex-none btn btn-primary btn-circle btn-sm send-message-btn" aria-label="Send message" title="Send"><i class="fas fa-paper-plane"></i></button>
         </div>
       </form>
       {% else %}
-      <div class="alert alert-info mt-4"><i class="fas fa-info-circle mr-2"></i>Messaging is closed because this request is {{ request_obj.get_status_display|lower }}.</div>
+      <div class="mt-4 alert alert-info"><i class="mr-2 fas fa-info-circle"></i>Messaging is closed because this request is {{ request_obj.get_status_display|lower }}.</div>
       {% endif %}
     </div>
   </div>
@@ -626,7 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const wrap = document.createElement('div'); wrap.className = `chat ${msg.author_id === {{ request.user.id }} ? 'chat-end' : 'chat-start'}`;
     wrap.setAttribute('data-message-id', msg.id);
     wrap.setAttribute('data-author-id', msg.author_id);
-    const header = document.createElement('div'); header.className = 'chat-header mb-1'; header.innerHTML = `${msg.author} <time class="timestamp text-xs opacity-50" title="${msg.created_at_fmt}">${msg.created_ago}</time>`;
+    const header = document.createElement('div'); header.className = 'chat-header mb-1'; header.innerHTML = `${msg.author} <time class="text-xs opacity-50 timestamp" title="${msg.created_at_fmt}">${msg.created_ago}</time>`;
     const bubble = document.createElement('div'); bubble.className = 'chat-bubble mt-1'; bubble.textContent = msg.content;
     wrap.appendChild(header); wrap.appendChild(bubble); messagesList.appendChild(wrap);
     hideEmptyIfHasMessages();
