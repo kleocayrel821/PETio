@@ -43,22 +43,22 @@
     </div>
     {# Progress stepper #}
     <ul class="steps steps-horizontal lg:steps" aria-label="Transaction progress" role="list">
-      <li class="step step-primary" aria-current="step" title="Request">Request</li>
-      <li class="step {% if request_obj.status == 'accepted' %}step-primary{% else %}{% if request_obj.status == 'negotiating' or request_obj.status == 'pending' %}step{% else %}step-primary{% endif %}{% endif %}" title="Confirmed">Confirmed</li>
-      <li class="step {% if meetup_details %}step-primary{% else %}step{% endif %}" title="Meetup">Meetup</li>
-      <li class="step {% if can_mark_completed %}step-primary{% else %}step{% endif %}" title="Payment">Payment</li>
-      <li class="step {% if request_obj.status == 'completed' %}step-primary{% else %}step{% endif %}" title="Complete">Complete</li>
+      <li class="step {% if page_step == 'request' %}step-primary{% else %}step{% endif %}" aria-current="step" title="Request"><a href="?step=request">Request</a></li>
+      <li class="step {% if page_step == 'confirmed' %}step-primary{% else %}step{% endif %}" title="Confirmed"><a href="?step=confirmed">Confirmed</a></li>
+      <li class="step {% if page_step == 'meetup' %}step-primary{% else %}step{% endif %}" title="Meetup"><a href="?step=meetup">Meetup</a></li>
+      <li class="step {% if page_step == 'payment' %}step-primary{% else %}step{% endif %}" title="Payment"><a href="?step=payment">Payment</a></li>
+      <li class="step {% if page_step == 'complete' %}step-primary{% else %}step{% endif %}" title="Complete"><a href="?step=complete">Complete</a></li>
     </ul>
     {# Primary action buttons #}
     <div class="flex flex-wrap gap-2" role="group" aria-label="Primary actions">
       {% if can_confirm_meetup %}
-      <a href="#meetup-actions" class="btn btn-primary btn-sm" aria-label="Confirm meetup action">Confirm Meetup</a>
+      <a href="?step=meetup#meetup-actions" class="btn btn-primary btn-sm" aria-label="Confirm meetup action">Confirm Meetup</a>
       {% elif can_record_payment %}
-      <a href="#payment-actions" class="btn btn-primary btn-sm" aria-label="Record payment action">Record Payment</a>
+      <a href="?step=payment#payment-actions" class="btn btn-primary btn-sm" aria-label="Record payment action">Record Payment</a>
       {% elif can_mark_completed %}
-      <a href="#completion-actions" class="btn btn-success btn-sm" aria-label="Mark complete action">Mark as Complete</a>
+      <a href="?step=complete#completion-actions" class="btn btn-success btn-sm" aria-label="Mark complete action">Mark as Complete</a>
       {% elif can_submit_offer %}
-      <a href="#negotiation-actions" class="btn btn-primary btn-sm" aria-label="Submit offer action">Submit Offer</a>
+      <a href="?step=request#negotiation-actions" class="btn btn-primary btn-sm" aria-label="Submit offer action">Submit Offer</a>
       {% else %}
       <a href="#messagesPanel" class="btn btn-primary btn-sm" aria-label="Open messages">Message</a>
       {% endif %}
@@ -130,6 +130,7 @@
         </div>
 
         {# Step 1 — Offer & Respond #}
+        {% if not page_step or page_step == 'request' %}
         <div class="overflow-hidden card bg-base-200" id="negotiation-actions">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">📊</span> Step 1 — Offer & Respond</h3>
@@ -217,9 +218,10 @@
             </details>
           </div>
         </div>
+        {% endif %}
 
         {# Meetup Details Card #}
-        {% if meetup_details %}
+        {% if (meetup_details and (not page_step or page_step == 'meetup')) %}
         <div class="overflow-hidden card bg-base-300">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">📍</span> Step 2 — Meetup Details</h3>
@@ -248,7 +250,7 @@
         {% endif %}
 
         {# Propose/Update Meetup #}
-        {% if can_propose_meetup or can_update_meetup %}
+        {% if (can_propose_meetup or can_update_meetup) and (not page_step or page_step == 'meetup') %}
         <div class="overflow-hidden card bg-base-200" id="meetup-actions">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">📍</span> Step 2 — {% if can_propose_meetup %}Propose Meetup{% else %}Update Meetup{% endif %}</h3>
@@ -280,7 +282,7 @@
         {% endif %}
 
         {# Record Payment #}
-        {% if can_record_payment %}
+        {% if can_record_payment and (not page_step or page_step == 'payment') %}
         <div class="overflow-hidden card bg-base-200" id="payment-actions">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">💰</span> Step 3 — Record Payment</h3>
@@ -344,7 +346,7 @@
         </div>
         {% endif %}
 
-        {% if can_mark_completed %}
+        {% if can_mark_completed and (not page_step or page_step == 'complete') %}
         <div class="overflow-hidden card bg-base-200" id="completion-actions">
           <div class="card-body">
             <div class="mb-2 alert alert-success">
@@ -543,6 +545,18 @@ async function submitFormJSON(formEl, submitBtn) {
     if (!resp.ok || data.status === 'error') { injectInlineErrors(formEl, data.field_errors || {}); showMarketplaceToast(data.message || 'Action failed', 'error'); return; }
     showMarketplaceToast(data.message || 'Success', 'success');
     const tx = data.data && data.data.transaction ? data.data.transaction : null; if (tx) ensureMeetupDetailsContainer(tx.meetup_place, tx.meetup_time, tx.meetup_timezone);
+    try {
+      if (formEl.id === 'meetupForm' || formEl.id === 'confirmForm') {
+        const next = (data && data.data && data.data.next_url) ? data.data.next_url : (location.pathname + '?step=payment#payment-actions');
+        location.href = next;
+        return;
+      }
+      if (formEl.id === 'paymentForm') {
+        const next = (data && data.data && data.data.next_url) ? data.data.next_url : (location.pathname + '?step=complete#completion-actions');
+        location.href = next;
+        return;
+      }
+    } catch (_) {}
   } catch (err) { console.error(err); showMarketplaceToast('Network error. Please try again.', 'error'); }
   finally { submitBtn.disabled = false; }
 }

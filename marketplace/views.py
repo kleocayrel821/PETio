@@ -999,6 +999,24 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         pr = self.object
+        step_raw = (self.request.GET.get("step") or "").strip().lower()
+        allowed_steps = {"request", "confirmed", "meetup", "payment", "complete"}
+        if step_raw not in allowed_steps:
+            try:
+                has_txn = bool(getattr(pr, "transaction", None))
+                has_meetup = has_txn and bool(getattr(pr.transaction, "meetup_time", None)) and bool(getattr(pr.transaction, "meetup_place", ""))
+                txn_paid = has_txn and getattr(pr.transaction, "status", None) == TransactionStatus.PAID
+                if pr.status == PurchaseRequestStatus.COMPLETED:
+                    step_raw = "complete"
+                elif txn_paid:
+                    step_raw = "payment"
+                elif has_meetup or pr.status == PurchaseRequestStatus.ACCEPTED:
+                    step_raw = "meetup" if has_meetup else "confirmed"
+                else:
+                    step_raw = "request"
+            except Exception:
+                step_raw = "request"
+        ctx["page_step"] = step_raw
         thread_messages = (
             RequestMessage.objects.filter(request=pr)
             .select_related("author")
@@ -1491,18 +1509,21 @@ def propose_meetup(request, request_id):
         _broadcast_counts_for_user(request.user)
     except Exception:
         pass
-    return json_ok(
-        "Meetup details proposed.",
-        data={
-            "request": {"id": pr.id, "status": pr.status},
-            "transaction": {
-                "id": pr.transaction.id,
-                "meetup_place": pr.transaction.meetup_place,
-                "meetup_time": pr.transaction.meetup_time.isoformat() if pr.transaction.meetup_time else None,
-                "meetup_timezone": pr.transaction.meetup_timezone,
+    if wants_json(request):
+        return json_ok(
+            "Meetup details proposed.",
+            data={
+                "request": {"id": pr.id, "status": pr.status},
+                "transaction": {
+                    "id": pr.transaction.id,
+                    "meetup_place": pr.transaction.meetup_place,
+                    "meetup_time": pr.transaction.meetup_time.isoformat() if pr.transaction.meetup_time else None,
+                    "meetup_timezone": pr.transaction.meetup_timezone,
+                },
+                "next_url": f"{reverse('marketplace:request_detail', kwargs={'pk': pr.id})}?step=payment#payment-actions",
             },
-        },
-    )
+        )
+    return redirect(f"{reverse('marketplace:request_detail', kwargs={'pk': pr.id})}?step=payment#payment-actions")
 
 
 @login_required
@@ -1547,19 +1568,22 @@ def update_meetup(request, request_id):
         _broadcast_counts_for_user(request.user)
     except Exception:
         pass
-    return json_ok(
-        "Meetup details updated.",
-        data={
-            "request": {"id": pr.id, "status": pr.status},
-            "transaction": {
-                "id": pr.transaction.id,
-                "meetup_place": pr.transaction.meetup_place,
-                "meetup_time": pr.transaction.meetup_time.isoformat() if pr.transaction.meetup_time else None,
-                "meetup_timezone": pr.transaction.meetup_timezone,
-                "reschedule_reason": pr.transaction.reschedule_reason,
+    if wants_json(request):
+        return json_ok(
+            "Meetup details updated.",
+            data={
+                "request": {"id": pr.id, "status": pr.status},
+                "transaction": {
+                    "id": pr.transaction.id,
+                    "meetup_place": pr.transaction.meetup_place,
+                    "meetup_time": pr.transaction.meetup_time.isoformat() if pr.transaction.meetup_time else None,
+                    "meetup_timezone": pr.transaction.meetup_timezone,
+                    "reschedule_reason": pr.transaction.reschedule_reason,
+                },
+                "next_url": f"{reverse('marketplace:request_detail', kwargs={'pk': pr.id})}?step=payment#payment-actions",
             },
-        },
-    )
+        )
+    return redirect(f"{reverse('marketplace:request_detail', kwargs={'pk': pr.id})}?step=payment#payment-actions")
 
 
 @login_required
@@ -1583,10 +1607,12 @@ def confirm_meetup(request, request_id):
     mt = pr.transaction.meetup_time
     if timezone.is_naive(mt):
         mt = timezone.make_aware(mt, timezone.get_default_timezone())
-    if mt <= timezone.now():
+    # Allow a small grace window to avoid timezone drift causing blocks
+    from datetime import timedelta as _td
+    if mt < (timezone.now() - _td(minutes=10)):
         if wants_json(request):
-            return json_error("Meetup time must be in the future", status=400)
-        return HttpResponseBadRequest("Meetup time is not in the future")
+            return json_error("Meetup time has passed", status=400)
+        return HttpResponseBadRequest("Meetup time has passed")
     TransactionLog.objects.create(
         request=pr,
         actor=request.user,
@@ -1602,9 +1628,9 @@ def confirm_meetup(request, request_id):
     except Exception:
         pass
     if wants_json(request):
-        return json_ok("Meetup confirmed.", data={"request_id": pr.pk})
+        return json_ok("Meetup confirmed.", data={"request_id": pr.pk, "next_url": f"{reverse('marketplace:request_detail', kwargs={'pk': pr.id})}?step=payment#payment-actions"})
     django_messages.success(request, "Meetup confirmed.")
-    return redirect("marketplace:request_detail", pk=pr.pk)
+    return redirect(f"{reverse('marketplace:request_detail', kwargs={'pk': pr.id})}?step=payment#payment-actions")
 
 
 @login_required
@@ -4363,6 +4389,7 @@ def api_request_record_payment(request, request_id):
                 "amount_paid": str(txn.amount_paid) if txn.amount_paid is not None else None,
             },
             "listing": {"id": listing.id, "status": listing.status, "quantity": listing.quantity},
+            "next_url": f"{reverse('marketplace:request_detail', kwargs={'pk': pr.id})}?step=complete#completion-actions",
         }
     )
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
