@@ -342,9 +342,15 @@
     <div class="modal-box max-w-4xl">
         <h3 class="font-bold text-lg mb-4">Product Image</h3>
         <figure class="mb-4">
-            <img src="{% static 'img/placeholder.svg' %}" 
-                 alt="{{ listing.title }} - Full Size" 
-                 class="w-full rounded-lg">
+            {% if listing.main_image %}
+            <img src="{{ listing.main_image.url }}"
+                 alt="{{ listing.title }} - Full Size"
+                 class="w-full rounded-lg object-contain max-h-[70vh]">
+            {% else %}
+            <img src="{% static 'img/placeholder.svg' %}"
+                 alt="{{ listing.title }} - Full Size"
+                 class="w-full rounded-lg object-contain max-h-[70vh]">
+            {% endif %}
         </figure>
         <div class="modal-action">
             <button class="btn btn-ghost" onclick="closeImageModal()">Close</button>
