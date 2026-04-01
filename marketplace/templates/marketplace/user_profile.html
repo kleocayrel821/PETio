@@ -20,10 +20,16 @@
         </div>
         <div>
           <div class="text-sm text-base-content/60">Marketplace Seller</div>
-          <h1 class="text-2xl font-bold">@{{ profile_user.username }}</h1>
-          <p class="text-base-content/70 text-sm mt-1">
-            {{ profile.location|default:"Location not set" }}
-          </p>
+          <h1 class="text-2xl font-bold">
+            {{ account_profile.display_name|default:profile_user.get_full_name|default:profile_user.username }}
+          </h1>
+          <div class="text-sm text-base-content/70">@{{ profile_user.username }}</div>
+          <div class="text-sm text-base-content/70 mt-1">
+            {{ profile_user.email }}
+          </div>
+          <div class="text-xs text-base-content/60">
+            Member since {{ profile_user.date_joined|date:"M d, Y" }}
+          </div>
         </div>
       </div>
       <div class="flex flex-col items-start md:items-end gap-2">
@@ -47,6 +53,9 @@
         <div class="text-xs text-base-content/60">
           No-shows: <span class="font-semibold">{{ profile.no_show_count|default:0 }}</span>
         </div>
+        <div class="text-xs text-base-content/60">
+          Listings: <span class="font-semibold">{{ listings_count|default:0 }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -63,6 +72,10 @@
           <div class="flex items-center justify-between">
             <span class="text-base-content/70">Completed as Seller</span>
             <span class="font-semibold">{{ completed_as_seller }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-base-content/70">Active Listings</span>
+            <span class="font-semibold">{{ listings_count|default:0 }}</span>
           </div>
         </div>
       </div>

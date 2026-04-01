@@ -3717,6 +3717,16 @@ def user_profile(request, user_id):
         percent_i = int((count_i * 100) / total_reviews) if total_reviews > 0 else 0
         rating_distribution.append({"stars": i, "count": count_i, "percent": percent_i})
 
+    try:
+        account_profile = profile_user.profile
+    except Exception:
+        account_profile = None
+
+    try:
+        listings_count = profile_user.listings.count()
+    except Exception:
+        listings_count = 0
+
     context = {
         "profile_user": profile_user,
         "profile": profile,
@@ -3724,6 +3734,8 @@ def user_profile(request, user_id):
         "completed_as_buyer": completed_as_buyer,
         "completed_as_seller": completed_as_seller,
         "rating_distribution": rating_distribution,
+        "account_profile": account_profile,
+        "listings_count": listings_count,
     }
     return render(request, "marketplace/user_profile.html", context)
 
