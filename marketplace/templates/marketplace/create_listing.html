@@ -202,6 +202,29 @@
         </div>
       </div>
 
+      <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="field min-w-0" id="field-gcash-name" aria-live="polite">
+          <label class="subsection-title" for="{{ form.gcash_name.id_for_label }}">
+            <i class="fas fa-user text-sky-500" title="Name that appears on your GCash account"></i> GCash Name (optional)
+          </label>
+          <div class="w-full">{{ form.gcash_name }}</div>
+          <span class="hint">Shown to buyers during GCash checkout for reference.</span>
+          {% if form.gcash_name.errors %}
+            <label class="label" role="alert" aria-live="polite"><span class="label-text-alt text-error">{{ form.gcash_name.errors.0 }}</span></label>
+          {% endif %}
+        </div>
+        <div class="field min-w-0" id="field-gcash-qr" aria-live="polite">
+          <label class="subsection-title" for="{{ form.gcash_qr.id_for_label }}">
+            <i class="fas fa-qrcode text-sky-500" title="Upload your GCash QR code for buyers to scan"></i> GCash QR (optional)
+          </label>
+          <div class="w-full">{{ form.gcash_qr }}</div>
+          <span class="hint">PNG/JPG up to 20MB. Displayed to buyers who choose GCash.</span>
+          {% if form.gcash_qr.errors %}
+            <label class="label" role="alert" aria-live="polite"><span class="label-text-alt text-error">{{ form.gcash_qr.errors.0 }}</span></label>
+          {% endif %}
+        </div>
+      </div>
+
       <div class="p-4">
         <div class="field min-w-0" id="field-description" aria-live="polite">
           <label class="subsection-title" for="{{ form.description.id_for_label }}">
