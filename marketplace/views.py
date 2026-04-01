@@ -3668,31 +3668,53 @@ def user_profile(request, user_id):
     from django.contrib.auth import get_user_model
     profile_user = get_object_or_404(get_user_model(), id=user_id)
 
-    # Ensure marketplace profile exists
+    # Ensure marketplace profile exists; fall back gracefully if table is missing
+    class _FallbackProfile:
+        bio = ""
+        location = ""
+        avatar = None
+        trust_score = 0
+        verified = False
+        no_show_count = 0
+
     profile = getattr(profile_user, "marketplace_profile", None)
     if profile is None:
-        from .models import UserProfile
-        profile, _ = UserProfile.objects.get_or_create(user=profile_user)
+        try:
+            from .models import UserProfile
+            profile, _ = UserProfile.objects.get_or_create(user=profile_user)
+        except Exception:
+            profile = _FallbackProfile()
 
     # Reviews: use SellerRating as the canonical post-transaction rating
-    reviews = SellerRating.objects.filter(seller=profile_user).select_related("buyer", "listing", "purchase_request").order_by("-created_at")[:20]
+    try:
+        reviews_qs = (
+            SellerRating.objects.filter(seller=profile_user)
+            .select_related("buyer", "listing", "purchase_request")
+            .order_by("-created_at")
+        )
+        reviews = list(reviews_qs[:20])
+    except Exception:
+        reviews = []
 
     # Completed transactions count via PurchaseRequest status
-    from .models import PurchaseRequestStatus
-    completed_as_buyer = (
-        PurchaseRequest.objects.filter(buyer=profile_user, status=PurchaseRequestStatus.COMPLETED)
-        .exclude(seller__username__startswith="smoke_")
-        .count()
-    )
-    completed_as_seller = (
-        PurchaseRequest.objects.filter(seller=profile_user, status=PurchaseRequestStatus.COMPLETED)
-        .exclude(buyer__username__startswith="smoke_")
-        .count()
-    )
+    try:
+        from .models import PurchaseRequestStatus
+        completed_as_buyer = (
+            PurchaseRequest.objects.filter(buyer=profile_user, status=PurchaseRequestStatus.COMPLETED)
+            .exclude(seller__username__startswith="smoke_")
+            .count()
+        )
+        completed_as_seller = (
+            PurchaseRequest.objects.filter(seller=profile_user, status=PurchaseRequestStatus.COMPLETED)
+            .exclude(buyer__username__startswith="smoke_")
+            .count()
+        )
+    except Exception:
+        completed_as_buyer = 0
+        completed_as_seller = 0
 
-    # Rating distribution rows (5..1 using `score` field)
     rating_distribution = [
-        {"stars": i, "count": reviews.filter(score=i).count()}
+        {"stars": i, "count": len([r for r in reviews if getattr(r, "score", 0) == i])}
         for i in range(5, 0, -1)
     ]
 
