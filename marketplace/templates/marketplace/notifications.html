@@ -26,7 +26,7 @@
         <button class="btn btn-sm">Mark all as read</button>
       </form>
     </div>
-    <div class="divide-y">
+    <div id="notificationsList" class="divide-y" data-next-page="{% if page_obj and page_obj.has_next %}{{ page_obj.next_page_number }}{% endif %}">
       {% for n in notifications %}
       <div class="py-3 flex items-start gap-3 marketplace-notif-item">
         <div class="mt-1">
@@ -78,6 +78,9 @@
       <div class="py-6 text-base-content/70">No notifications yet.</div>
       {% endfor %}
     </div>
+    <div id="notificationsLoading" class="py-3 text-center text-sm text-base-content/70 hidden">
+      Loading more notifications...
+    </div>
   </div>
  </div>
   
@@ -101,9 +104,14 @@
     if (parts.length === 2) return parts.pop().split(';').shift();
   }
   const csrftoken = getCookie('csrftoken');
-  document.querySelectorAll('.toggle-read').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.getAttribute('data-id');
+
+  document.addEventListener('click', async (event) => {
+    const toggleBtn = event.target.closest('.toggle-read');
+    if (toggleBtn) {
+      const id = toggleBtn.getAttribute('data-id');
+      if (!id) {
+        return;
+      }
       try {
         const res = await fetch(`{% url 'marketplace:notification_toggle_read' 0 %}`.replace('0', id), {
           method: 'POST',
@@ -113,7 +121,8 @@
           location.reload();
         }
       } catch (e) {}
-    });
+      return;
+    }
   });
 
   // Open modal for long broadcast content and mark as read if currently unread
@@ -121,31 +130,169 @@
     const modal = document.getElementById('notifModal');
     const titleEl = document.getElementById('notifModalTitle');
     const bodyEl = document.getElementById('notifModalBody');
-    document.querySelectorAll('.open-broadcast').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const title = btn.getAttribute('data-title') || 'Announcement';
-        const body = btn.getAttribute('data-body') || '';
-        titleEl.textContent = title;
-        bodyEl.textContent = body;
-        if (modal && typeof modal.showModal === 'function') {
-          modal.showModal();
-        } else {
-          modal.classList.add('modal-open');
-        }
-        // If currently unread, mark as read via toggle endpoint (one-way)
-        const unread = btn.getAttribute('data-unread') === '1';
-        const id = btn.getAttribute('data-id');
-        if (unread && id) {
-          try {
-            await fetch(`{% url 'marketplace:notification_toggle_read' 0 %}`.replace('0', id), {
-              method: 'POST',
-              headers: {'X-CSRFToken': csrftoken}
-            });
-            btn.setAttribute('data-unread', '0');
-          } catch (e) {}
-        }
-      });
+
+    document.addEventListener('click', async (event) => {
+      const btn = event.target.closest('.open-broadcast');
+      if (!btn) {
+        return;
+      }
+      const title = btn.getAttribute('data-title') || 'Announcement';
+      const body = btn.getAttribute('data-body') || '';
+      titleEl.textContent = title;
+      bodyEl.textContent = body;
+      if (modal && typeof modal.showModal === 'function') {
+        modal.showModal();
+      } else {
+        modal.classList.add('modal-open');
+      }
+      const unread = btn.getAttribute('data-unread') === '1';
+      const id = btn.getAttribute('data-id');
+      if (unread && id) {
+        try {
+          await fetch(`{% url 'marketplace:notification_toggle_read' 0 %}`.replace('0', id), {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrftoken}
+          });
+          btn.setAttribute('data-unread', '0');
+        } catch (e) {}
+      }
     });
+  })();
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function renderNotificationItem(data) {
+    const icon = (function() {
+      if (data.type === 'request_created') {
+        return '<i class="fas fa-envelope text-info"></i>';
+      }
+      if (data.type === 'status_changed') {
+        return '<i class="fas fa-sync-alt text-warning"></i>';
+      }
+      if (data.type === 'message_posted') {
+        return '<i class="fas fa-comment-dots text-success"></i>';
+      }
+      return '<i class="fas fa-bell"></i>';
+    })();
+
+    let titleHtml = '<a href="' + data.open_url + '" class="' + (data.unread ? 'font-bold' : 'font-normal') + '">' + escapeHtml(data.title) + '</a>';
+    let metaHtml = '';
+    if (data.related_listing) {
+      metaHtml += ' on <a class="link" href="' + data.related_listing.url + '">' + escapeHtml(data.related_listing.title) + '</a>';
+    }
+    if (data.related_request) {
+      metaHtml += ' — <a class="link" href="' + data.related_request.url + '">Purchase Request by @' + escapeHtml(data.related_request.buyer_username || '') + '</a>';
+    }
+
+    let bodyHtml = '';
+    if (data.body && data.type !== 'message_posted') {
+      if (data.type === 'system_broadcast' && data.body.length > 240) {
+        const truncated = escapeHtml(data.body.slice(0, 240)) + '…';
+        bodyHtml =
+          '<div class="text-base-content/70 text-sm break-words break-all">' + truncated + '</div>' +
+          '<div class="mt-2">' +
+          '<button class="btn btn-xs open-broadcast" data-id="' + data.id + '" data-title="' + escapeHtml(data.title) + '" data-body="' + escapeHtml(data.body) + '" data-unread="' + (data.unread ? '1' : '0') + '">View full</button>' +
+          '</div>';
+      } else {
+        bodyHtml = '<div class="text-base-content/70 text-sm break-words break-all">' + escapeHtml(data.body) + '</div>';
+      }
+    }
+
+    const badgeClass = data.unread ? 'badge-primary' : 'badge-ghost';
+    const badgeLabel = data.unread ? 'Unread' : 'Read';
+    const toggleLabel = data.unread ? 'Mark read' : 'Mark unread';
+
+    return (
+      '<div class="py-3 flex items-start gap-3 marketplace-notif-item">' +
+        '<div class="mt-1">' + icon + '</div>' +
+        '<div class="flex-1">' +
+          '<div class="text-sm">' + titleHtml + metaHtml + '</div>' +
+          bodyHtml +
+          '<div class="text-xs text-base-content/50">' + escapeHtml(data.created_at || '') + '</div>' +
+        '</div>' +
+        '<div class="flex items-center gap-2 marketplace-notif-actions">' +
+          '<span class="badge ' + badgeClass + '">' + badgeLabel + '</span>' +
+          '<button class="btn btn-ghost btn-xs toggle-read" data-id="' + data.id + '">' + toggleLabel + '</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  (function() {
+    const listEl = document.getElementById('notificationsList');
+    if (!listEl) {
+      return;
+    }
+    const loadingEl = document.getElementById('notificationsLoading');
+    let isLoading = false;
+
+    async function loadMore() {
+      if (isLoading) {
+        return;
+      }
+      const nextPage = listEl.getAttribute('data-next-page');
+      if (!nextPage) {
+        return;
+      }
+      isLoading = true;
+      if (loadingEl) {
+        loadingEl.classList.remove('hidden');
+      }
+      try {
+        const res = await fetch(`{% url 'marketplace:notifications_page_json' %}?page=${nextPage}`, {
+          headers: {'Accept': 'application/json'}
+        });
+        if (!res.ok) {
+          return;
+        }
+        const payload = await res.json();
+        const data = payload.data || {};
+        const items = data.notifications || [];
+        if (items.length === 0) {
+          listEl.setAttribute('data-next-page', '');
+          return;
+        }
+        const frag = document.createDocumentFragment();
+        for (let i = 0; i < items.length; i++) {
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = renderNotificationItem(items[i]);
+          while (wrapper.firstElementChild) {
+            frag.appendChild(wrapper.firstElementChild);
+          }
+        }
+        listEl.appendChild(frag);
+        if (data.has_next && data.next_page) {
+          listEl.setAttribute('data-next-page', data.next_page);
+        } else {
+          listEl.setAttribute('data-next-page', '');
+        }
+      } catch (e) {
+      } finally {
+        isLoading = false;
+        if (loadingEl) {
+          loadingEl.classList.add('hidden');
+        }
+      }
+    }
+
+    function onScroll() {
+      const scrollPos = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+      const fullHeight = document.documentElement.scrollHeight || document.body.scrollHeight || 0;
+      if (fullHeight - (scrollPos + viewportHeight) < 200) {
+        loadMore();
+      }
+    }
+
+    window.addEventListener('scroll', onScroll);
   })();
 </script>
 {% endblock %}

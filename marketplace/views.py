@@ -10,6 +10,7 @@ from django.contrib.auth import get_user_model
 from decimal import Decimal, InvalidOperation
 from django.conf import settings
 from django.utils.http import urlencode
+from django.core.paginator import Paginator
 
 from .models import Listing, Category
 from .models import (
@@ -1737,15 +1738,81 @@ class NotificationListView(LoginRequiredMixin, ListView):
     paginate_by = 30
 
     def get_queryset(self):
-        return (
-            Notification.objects.filter(user=self.request.user)
-            .select_related(
-                "related_request",
-                "related_request__buyer",
-                "related_listing",
-            )
-            .order_by("-created_at")
+        return _notifications_queryset(self.request.user)
+
+
+def _notifications_queryset(user):
+    return (
+        Notification.objects.filter(user=user)
+        .select_related(
+            "related_request",
+            "related_request__buyer",
+            "related_listing",
         )
+        .order_by("-created_at")
+    )
+
+
+@login_required
+def notifications_page_json(request):
+    try:
+        page_number = int(request.GET.get("page") or "1")
+    except (TypeError, ValueError):
+        page_number = 1
+    if page_number < 1:
+        page_number = 1
+
+    qs = _notifications_queryset(request.user)
+    paginator = Paginator(qs, 30)
+    try:
+        page = paginator.page(page_number)
+    except Exception:
+        return json_ok(data={"notifications": [], "has_next": False, "next_page": None})
+
+    items = []
+    for n in page.object_list:
+        item = {
+            "id": n.id,
+            "title": n.title,
+            "body": n.body or "",
+            "type": n.type,
+            "unread": bool(n.unread),
+            "created_at": n.created_at.strftime("%Y-%m-%d %H:%M") if n.created_at else "",
+            "open_url": reverse("marketplace:notification_open", args=[n.id]),
+            "toggle_url": reverse("marketplace:notification_toggle_read", args=[n.id]),
+        }
+        if n.related_listing_id:
+            item["related_listing"] = {
+                "id": n.related_listing_id,
+                "title": n.related_listing.title if n.related_listing else "",
+                "url": reverse("marketplace:listing_detail", args=[n.related_listing_id]),
+            }
+        else:
+            item["related_listing"] = None
+        if n.related_request_id:
+            buyer_username = ""
+            try:
+                buyer_username = getattr(n.related_request.buyer, "username", "")
+            except Exception:
+                buyer_username = ""
+            item["related_request"] = {
+                "id": n.related_request_id,
+                "buyer_username": buyer_username,
+                "url": reverse("marketplace:request_detail", args=[n.related_request_id]),
+            }
+        else:
+            item["related_request"] = None
+        items.append(item)
+
+    has_next = page.has_next()
+    next_page = page.next_page_number() if has_next else None
+    return json_ok(
+        data={
+            "notifications": items,
+            "has_next": has_next,
+            "next_page": next_page,
+        }
+    )
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
