@@ -66,6 +66,9 @@ class Listing(TimeStampedModel):
 
     # Minimal: one primary image to start. Can be extended with a related Image model later.
     main_image = models.ImageField(upload_to="listings/%Y/%m/", blank=True, null=True)
+    # Optional seller payment info for GCash checkout
+    gcash_name = models.CharField(max_length=120, blank=True, default="")
+    gcash_qr = models.ImageField(upload_to="listings/gcash/%Y/%m/", blank=True, null=True)
 
     status = models.CharField(
         max_length=16, choices=ListingStatus.choices, default=ListingStatus.PENDING, db_index=True

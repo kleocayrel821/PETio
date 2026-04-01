@@ -4,6 +4,20 @@
 <div class="max-w-2xl mx-auto">
   <div class="card bg-base-100 shadow-md p-6 rounded-xl">
     <div class="section-title"><i class="fas fa-receipt text-blue-500"></i> GCash Payment</div>
+    {% if txn.listing.gcash_name or txn.listing.gcash_qr %}
+    <div class="mb-4 p-3 rounded-xl bg-base-200">
+      <div class="font-semibold mb-1">Seller GCash Info</div>
+      {% if txn.listing.gcash_name %}
+      <div class="text-sm mb-1"><span class="opacity-70">Name:</span> {{ txn.listing.gcash_name }}</div>
+      {% endif %}
+      {% if txn.listing.gcash_qr %}
+      <div class="text-xs opacity-70 mb-1">QR Code</div>
+      <a href="{{ txn.listing.gcash_qr.url }}" target="_blank" rel="noopener">
+        <img src="{{ txn.listing.gcash_qr.url }}" alt="Seller GCash QR" class="max-h-64 rounded-lg border" />
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
       <div class="form-control mb-3">

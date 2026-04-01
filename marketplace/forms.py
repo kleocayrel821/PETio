@@ -33,6 +33,8 @@ class ListingForm(forms.ModelForm):
             "quantity",
             "is_fixed_price",
             "allow_offers",
+            "gcash_name",
+            "gcash_qr",
             "description",
             "main_image",
         ]
@@ -64,6 +66,15 @@ class ListingForm(forms.ModelForm):
             }),
             "allow_offers": forms.CheckboxInput(attrs={
                 "class": "checkbox checkbox-primary",
+            }),
+            "gcash_name": forms.TextInput(attrs={
+                "placeholder": "GCash account name (optional)",
+                "maxlength": "120",
+                "class": "input input-bordered w-full",
+            }),
+            "gcash_qr": forms.ClearableFileInput(attrs={
+                "accept": "image/*",
+                "class": "file-input file-input-bordered w-full",
             }),
             "description": forms.Textarea(attrs={
                 "placeholder": "Describe the item, condition, size, and any important details",
@@ -98,6 +109,14 @@ class ListingForm(forms.ModelForm):
         if getattr(image, "size", 0) > self.MAX_IMAGE_SIZE_BYTES:
             raise ValidationError("Image file too large (max 20 MB).")
         return image
+
+    def clean_gcash_qr(self):
+        qr = self.cleaned_data.get("gcash_qr")
+        if not qr:
+            return qr
+        if getattr(qr, "size", 0) > self.MAX_IMAGE_SIZE_BYTES:
+            raise ValidationError("QR image too large (max 20 MB).")
+        return qr
 
 
 class SellerRatingForm(forms.ModelForm):
