@@ -3668,7 +3668,6 @@ def user_profile(request, user_id):
     from django.contrib.auth import get_user_model
     profile_user = get_object_or_404(get_user_model(), id=user_id)
 
-    # Ensure marketplace profile exists; fall back gracefully if table is missing
     class _FallbackProfile:
         bio = ""
         location = ""
@@ -3685,7 +3684,6 @@ def user_profile(request, user_id):
         except Exception:
             profile = _FallbackProfile()
 
-    # Reviews: use SellerRating as the canonical post-transaction rating
     try:
         reviews_qs = (
             SellerRating.objects.filter(seller=profile_user)
@@ -3696,7 +3694,6 @@ def user_profile(request, user_id):
     except Exception:
         reviews = []
 
-    # Completed transactions count via PurchaseRequest status
     try:
         from .models import PurchaseRequestStatus
         completed_as_buyer = (
@@ -3713,10 +3710,12 @@ def user_profile(request, user_id):
         completed_as_buyer = 0
         completed_as_seller = 0
 
-    rating_distribution = [
-        {"stars": i, "count": len([r for r in reviews if getattr(r, "score", 0) == i])}
-        for i in range(5, 0, -1)
-    ]
+    total_reviews = len(reviews)
+    rating_distribution = []
+    for i in range(5, 0, -1):
+        count_i = len([r for r in reviews if getattr(r, "score", 0) == i])
+        percent_i = int((count_i * 100) / total_reviews) if total_reviews > 0 else 0
+        rating_distribution.append({"stars": i, "count": count_i, "percent": percent_i})
 
     context = {
         "profile_user": profile_user,
