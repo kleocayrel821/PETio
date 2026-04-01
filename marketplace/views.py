@@ -1789,8 +1789,16 @@ def seller_accept_request(request, request_id):
     )
     pr.transaction = txn
     pr.save(update_fields=["status", "accepted_at", "transaction", "updated_at"])
-    # Set listing reserved
-    pr.listing.status = ListingStatus.RESERVED
+    # Keep listing visible unless acceptance would exhaust remaining stock
+    try:
+        reserve_qty = int(pr.quantity) if pr.quantity else 1
+    except Exception:
+        reserve_qty = 1
+    try:
+        current_qty = int(pr.listing.quantity or 0)
+    except Exception:
+        current_qty = 0
+    pr.listing.status = ListingStatus.RESERVED if (current_qty - reserve_qty) <= 0 else ListingStatus.ACTIVE
     pr.listing.save(update_fields=["status", "updated_at"])
     TransactionLog.objects.create(
         request=pr,
@@ -2779,9 +2787,12 @@ def api_listing_reserve(request, listing_id):
         txn.status = TransactionStatus.AWAITING_PAYMENT
         txn.save(update_fields=["status"])
 
-    # Decrement stock and move listing to 'pending' state
+    # Decrement stock and keep listing visible while stock remains
     listing.quantity = max(0, listing.quantity - 1)
-    listing.status = ListingStatus.PENDING
+    if listing.quantity > 0:
+        listing.status = ListingStatus.ACTIVE
+    else:
+        listing.status = ListingStatus.SOLD
     listing.save(update_fields=["quantity", "status"])
     # If reservation exhausted stock, optionally auto-hide and cascade close open requests
     if listing.quantity <= 0:
@@ -2795,9 +2806,8 @@ def api_listing_reserve(request, listing_id):
             has_open_reqs = False
 
         if has_open_reqs:
-            # Hide from catalog to reflect no available stock for other buyers
-            listing.status = ListingStatus.ARCHIVED
-            listing.save(update_fields=["status"])
+            # Listing is sold-out; keep status SOLD and cascade-close requests
+            pass
 
         # Close open requests regardless since stock is exhausted
         _cascade_close_open_requests_for_listing(listing, reason="last unit reserved")
