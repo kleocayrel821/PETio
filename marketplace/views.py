@@ -3690,8 +3690,11 @@ def user_profile(request, user_id):
         .count()
     )
 
-    # Rating distribution (1..5 using `score` field)
-    rating_distribution = {i: reviews.filter(score=i).count() for i in range(1, 6)}
+    # Rating distribution rows (5..1 using `score` field)
+    rating_distribution = [
+        {"stars": i, "count": reviews.filter(score=i).count()}
+        for i in range(5, 0, -1)
+    ]
 
     context = {
         "profile_user": profile_user,
