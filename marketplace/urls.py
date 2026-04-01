@@ -55,6 +55,7 @@ else:
         path("transactions/", views.transactions, name="transactions"),
         path("messages/", views.messages, name="messages"),
         path("notifications/", views.NotificationListView.as_view(), name="notifications"),
+        path("notifications/page/", views.notifications_page_json, name="notifications_page_json"),
         path("notifications/mark-all/", views.mark_all_notifications_read, name="notifications_mark_all"),
         path("notifications/<int:notif_id>/toggle_read/", views.toggle_notification_read, name="notification_toggle_read"),
         path("notifications/<int:notif_id>/open/", views.open_notification, name="notification_open"),
