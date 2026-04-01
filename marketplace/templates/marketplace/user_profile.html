@@ -1,76 +1,314 @@
-<!--
-  Template: User Profile
-  Purpose: Display a user's marketplace profile including trust metrics, verification badge,
-           recent reviews (SellerRating), and completed transaction counts.
--->
 {% extends "base.html" %}
 
 {% block title %}{{ profile_user.username }} — Marketplace Profile{% endblock %}
 
+{% block extra_head %}
+  {{ block.super }}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Syne:wght@500;600;700&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block extra_css %}
+  {{ block.super }}
+  <style>
+    .marketplace-profile {
+      font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    }
+    .marketplace-profile .mp-heading,
+    .marketplace-profile .mp-number {
+      font-family: "Syne", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .marketplace-profile .paw-layer span {
+      flex: 0 0 auto;
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-<section class="container" style="max-width: 960px; margin: 0 auto; padding: 1.5rem;">
-  <header style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">
-    <div>
-      <h1 style="margin:0;">{{ profile_user.username }}</h1>
-      <p style="margin:0.25rem 0; color:#555;">{{ profile.location|default:"Location not set" }}</p>
-      <div style="display:flex; gap:0.75rem; align-items:center; margin-top:0.5rem;">
-        <span style="font-weight:600;">Trust Score:</span>
-        <span>{{ profile.trust_score|default:0 }}</span>
-        {% if profile.verified %}
-          <span style="background:#e6ffed; color:#0366d6; border:1px solid #c6e48b; padding:0.2rem 0.5rem; border-radius:4px;">Verified</span>
-        {% else %}
-          <span style="background:#fff5f5; color:#d6336c; border:1px solid #f5c2c7; padding:0.2rem 0.5rem; border-radius:4px;">Unverified</span>
-        {% endif %}
-        <span style="color:#888;">No-shows: {{ profile.no_show_count|default:0 }}</span>
+<main class="marketplace-profile min-h-[calc(100vh-4rem)] bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-5xl mx-auto">
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200/70 overflow-hidden">
+      <!-- Cover Banner -->
+      <div class="relative h-32">
+        <div class="absolute inset-0 bg-gradient-to-r from-[#5A3FC0] via-[#8B6FE8] to-[#C084FC]"></div>
+        <div class="paw-layer absolute inset-0 opacity-10 pointer-events-none flex flex-wrap items-center text-3xl leading-none">
+          <span class="mx-1 my-1">🐾</span>
+          <span class="mx-1 my-1">🐾</span>
+          <span class="mx-1 my-1">🐾</span>
+          <span class="mx-1 my-1">🐾</span>
+          <span class="mx-1 my-1">🐾</span>
+          <span class="mx-1 my-1">🐾</span>
+          <span class="mx-1 my-1">🐾</span>
+          <span class="mx-1 my-1">🐾</span>
+          <span class="mx-1 my-1">🐾</span>
+          <span class="mx-1 my-1">🐾</span>
+          <span class="mx-1 my-1">🐾</span>
+          <span class="mx-1 my-1">🐾</span>
+        </div>
       </div>
-    </div>
-  </header>
 
-  <section style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
-    <div style="border:1px solid #eee; padding:1rem; border-radius:6px;">
-      <h2 style="margin-top:0;">Transaction Summary</h2>
-      <ul style="list-style:none; padding:0; margin:0;">
-        <li>Completed as Buyer: <strong>{{ completed_as_buyer }}</strong></li>
-        <li>Completed as Seller: <strong>{{ completed_as_seller }}</strong></li>
-      </ul>
-    </div>
-    <div style="border:1px solid #eee; padding:1rem; border-radius:6px;">
-      <h2 style="margin-top:0;">Rating Distribution</h2>
-      <ul style="list-style:none; padding:0; margin:0;">
-        {% for row in rating_distribution %}
-        <li>{{ row.stars }}★: {{ row.count }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-  </section>
-
-  <section style="border:1px solid #eee; padding:1rem; border-radius:6px;">
-    <h2 style="margin-top:0;">Recent Reviews</h2>
-    {% if reviews %}
-      <ul style="list-style:none; padding:0; margin:0;">
-        {% for r in reviews %}
-          <li style="border-bottom:1px solid #f0f0f0; padding:0.75rem 0;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <strong>{{ r.buyer.username }}</strong>
-                {% if r.listing %}
-                  on <em>{{ r.listing.title }}</em>
+      <!-- Profile Card Body -->
+      <div class="px-6 pb-8 pt-0 sm:px-8 lg:px-10">
+        <!-- Avatar + Header Row -->
+        <div class="-mt-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div class="flex items-start gap-4">
+            <div class="shrink-0">
+              <div class="h-20 w-20 rounded-full border-4 border-white bg-gradient-to-br from-[#5A3FC0] via-[#8B6FE8] to-[#C084FC] flex items-center justify-center shadow-lg">
+                {% if profile.avatar %}
+                  <img src="{{ profile.avatar.url }}" alt="{{ profile_user.username }}" class="h-full w-full rounded-full object-cover">
+                {% else %}
+                  <span class="mp-heading text-xl text-white">
+                    {{ profile_user.username|first|upper }}
+                  </span>
                 {% endif %}
               </div>
-              <div>
-                <span>{{ r.score }}★</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <div class="mp-heading text-xl sm:text-2xl font-semibold text-slate-900">
+                @{{ profile_user.username }}
+              </div>
+              <div class="flex items-center gap-2 text-sm text-slate-500">
+                <svg class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 21.75s7.5-4.5 7.5-11.25A7.5 7.5 0 0 0 12 3 7.5 7.5 0 0 0 4.5 10.5C4.5 17.25 12 21.75 12 21.75z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                  <circle cx="12" cy="10.5" r="2.25" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+                <span>{{ profile.location|default:"Location not set" }}</span>
               </div>
             </div>
-            {% if r.comment %}
-              <p style="margin:0.5rem 0; color:#444;">{{ r.comment }}</p>
+          </div>
+
+          <!-- Badges -->
+          <div class="flex flex-wrap items-center gap-2">
+            {% if completed_as_seller %}
+            <span class="inline-flex items-center rounded-full border border-[#0F6E56]/30 bg-[#E1F5EE] px-3 py-1 text-xs font-semibold text-[#0F6E56]">
+              <span class="mr-1">🛍️</span>
+              Active Seller
+            </span>
             {% endif %}
-            <small style="color:#999;">{{ r.created_at }}</small>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p>No reviews yet.</p>
-    {% endif %}
-  </section>
-</section>
+
+            {% if profile.verified %}
+            <span class="inline-flex items-center rounded-full border border-teal-500/40 bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
+              <span class="mr-1">✓</span>
+              Verified
+            </span>
+            {% else %}
+            <span class="inline-flex items-center rounded-full border border-[#854F0B]/30 bg-[#FAEEDA] px-3 py-1 text-xs font-semibold text-[#854F0B]">
+              Unverified
+            </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Trust Score Row -->
+        <div class="mt-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div class="space-y-1">
+            <p class="text-[11px] tracking-[0.16em] text-slate-500 font-semibold">
+              TRUST SCORE
+            </p>
+            <p class="mp-number text-3xl font-semibold text-[#5A3FC0]">
+              {{ profile.trust_score|default:0 }}
+            </p>
+          </div>
+
+          <div class="flex-1 max-w-xl">
+            <div class="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+              <span class="font-medium">Overall</span>
+              <span class="mp-number text-sm text-slate-700">
+                {{ profile.trust_score|default:0 }} / 100
+              </span>
+            </div>
+            <div class="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[#5A3FC0] via-[#8B6FE8] to-[#C084FC]"
+                style="width: {{ profile.trust_score|default:0 }}%;"
+              ></div>
+            </div>
+            <p class="mt-1 text-xs text-slate-500">
+              {% if profile.trust_score|default:0 >= 80 %}
+                Excellent
+              {% elif profile.trust_score|default:0 >= 60 %}
+                Good
+              {% elif profile.trust_score|default:0 >= 40 %}
+                Fair
+              {% else %}
+                Needs attention
+              {% endif %}
+            </p>
+          </div>
+
+          <div class="md:text-right">
+            <div class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
+              <span class="mr-1 text-slate-400">⚠️</span>
+              <span>{{ profile.no_show_count|default:0 }} no-shows</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="mt-6 grid grid-cols-3 gap-4">
+          <div class="flex flex-col items-center justify-center rounded-2xl bg-slate-50 border border-slate-100 py-4 px-3">
+            <div class="text-lg">🛒</div>
+            <p class="mt-1 text-xs font-medium tracking-wide text-slate-500 uppercase">Bought</p>
+            <p class="mp-number mt-1 text-2xl font-semibold text-slate-900">
+              {{ completed_as_buyer|default:0 }}
+            </p>
+          </div>
+          <div class="flex flex-col items-center justify-center rounded-2xl bg-slate-50 border border-slate-100 py-4 px-3">
+            <div class="text-lg">🏷️</div>
+            <p class="mt-1 text-xs font-medium tracking-wide text-slate-500 uppercase">Sold</p>
+            <p class="mp-number mt-1 text-2xl font-semibold text-slate-900">
+              {{ completed_as_seller|default:0 }}
+            </p>
+          </div>
+          <div class="flex flex-col items-center justify-center rounded-2xl bg-slate-50 border border-slate-100 py-4 px-3">
+            <div class="text-lg">⭐</div>
+            <p class="mt-1 text-xs font-medium tracking-wide text-slate-500 uppercase">Avg Rating</p>
+            <p class="mp-number mt-1 text-2xl font-semibold text-slate-900" id="avgRatingValue">—</p>
+          </div>
+        </div>
+
+        <!-- Bottom Grid -->
+        <div class="mt-8 grid gap-6 md:grid-cols-2 mp-bottom-grid">
+          <!-- Rating Breakdown -->
+          <section>
+            <h2 class="mp-heading text-lg font-semibold text-slate-900 mb-3">
+              Rating Breakdown
+            </h2>
+            {% if rating_distribution %}
+              <div class="space-y-2">
+                {% for row in rating_distribution %}
+                <div
+                  class="flex items-center gap-3 text-sm"
+                  data-rating-row
+                  data-stars="{{ row.stars }}"
+                  data-count="{{ row.count }}"
+                >
+                  <div class="w-10 text-xs font-medium text-slate-500">
+                    {{ row.stars }}★
+                  </div>
+                  <div class="flex-1 h-2 rounded-full bg-slate-200 overflow-hidden">
+                    <div
+                      class="h-full rounded-full bg-gradient-to-r from-[#5A3FC0] via-[#8B6FE8] to-[#C084FC]"
+                      data-rating-fill
+                      style="width:0%;"
+                    ></div>
+                  </div>
+                  <div class="w-8 text-right text-xs text-slate-500">
+                    {{ row.count }}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <p class="text-sm text-slate-500">
+                No ratings yet.
+              </p>
+            {% endif %}
+          </section>
+
+          <!-- Recent Reviews -->
+          <section>
+            <h2 class="mp-heading text-lg font-semibold text-slate-900 mb-3">
+              Recent Reviews
+            </h2>
+            {% if reviews %}
+              <div class="space-y-3">
+                {% for r in reviews|slice:":3" %}
+                <article class="flex gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+                  <div class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-slate-50 text-sm font-semibold">
+                    {{ r.buyer.username|first|upper }}
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="text-sm font-semibold text-slate-900 truncate">
+                        {{ r.buyer.username }}
+                        {% if r.listing %}
+                          <span class="text-xs font-normal text-slate-500">
+                            on {{ r.listing.title }}
+                          </span>
+                        {% endif %}
+                      </div>
+                      <div class="ml-2 shrink-0 text-xs font-medium text-amber-500">
+                        {{ r.score }}★
+                      </div>
+                    </div>
+                    {% if r.comment %}
+                    <p class="mt-1 text-xs text-slate-600 break-words">
+                      {{ r.comment|truncatechars:140 }}
+                    </p>
+                    {% endif %}
+                    <p class="mt-1 text-[11px] text-slate-400">
+                      {{ r.created_at|date:"M d, Y" }}
+                    </p>
+                  </div>
+                </article>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center">
+                <div class="mb-3 rounded-full bg-slate-200 p-3 text-slate-500">
+                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M7.5 8.25h9m-9 3.5h5.25M6 18.75h12A2.25 2.25 0 0 0 20.25 16.5V7.5A2.25 2.25 0 0 0 18 5.25H6A2.25 2.25 0 0 0 3.75 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <p class="text-sm font-medium text-slate-800">No reviews yet</p>
+                <p class="mt-1 text-xs text-slate-500 max-w-xs">
+                  Once buyers start leaving feedback, their comments will appear here.
+                </p>
+              </div>
+            {% endif %}
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const rows = Array.from(document.querySelectorAll('[data-rating-row]'));
+      if (!rows.length) {
+        const avgEl = document.getElementById('avgRatingValue');
+        if (avgEl) avgEl.textContent = '\u2014';
+        return;
+      }
+
+      const counts = rows.map(function (row) {
+        return parseInt(row.getAttribute('data-count') || '0', 10) || 0;
+      });
+      const max = Math.max.apply(null, counts);
+
+      let totalCount = 0;
+      let weightedSum = 0;
+
+      rows.forEach(function (row) {
+        const stars = parseInt(row.getAttribute('data-stars') || '0', 10) || 0;
+        const count = parseInt(row.getAttribute('data-count') || '0', 10) || 0;
+        totalCount += count;
+        weightedSum += stars * count;
+
+        const fill = row.querySelector('[data-rating-fill]');
+        if (!fill) return;
+        var width = 0;
+        if (max > 0 && count > 0) {
+          width = (count / max) * 100;
+        }
+        fill.style.width = width + '%';
+      });
+
+      const avgEl = document.getElementById('avgRatingValue');
+      if (!avgEl) return;
+
+      if (totalCount > 0 && weightedSum > 0) {
+        const avg = weightedSum / totalCount;
+        avgEl.textContent = avg.toFixed(1);
+      } else {
+        avgEl.textContent = '\u2014';
+      }
+    });
+  </script>
 {% endblock %}
