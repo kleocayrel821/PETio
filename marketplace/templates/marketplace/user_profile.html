@@ -37,11 +37,9 @@
     <div style="border:1px solid #eee; padding:1rem; border-radius:6px;">
       <h2 style="margin-top:0;">Rating Distribution</h2>
       <ul style="list-style:none; padding:0; margin:0;">
-        <li>5★: {{ rating_distribution.5 }}</li>
-        <li>4★: {{ rating_distribution.4 }}</li>
-        <li>3★: {{ rating_distribution.3 }}</li>
-        <li>2★: {{ rating_distribution.2 }}</li>
-        <li>1★: {{ rating_distribution.1 }}</li>
+        {% for row in rating_distribution %}
+        <li>{{ row.stars }}★: {{ row.count }}</li>
+        {% endfor %}
       </ul>
     </div>
   </section>

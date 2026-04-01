@@ -101,7 +101,7 @@ class FeedingScheduleSerializer(serializers.ModelSerializer):
         return rep
 
     def to_internal_value(self, data):
-        """Accept hybrid time formats:
+        """Accept hybrid time formats:i
         - "HH:MM AM/PM" (12-hour)
         - "H:MM AM/PM" (12-hour single-digit hour)
         - "HH:MM:SS AM/PM" (12-hour with seconds)
