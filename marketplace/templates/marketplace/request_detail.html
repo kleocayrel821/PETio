@@ -290,7 +290,7 @@
               <select id="paymentMethod" name="payment_method" class="w-full select select-bordered sm:w-48" aria-label="Payment method">
                 {% for m in payment_methods %}
                   {% if m == 'cod' %}
-                    <option value="cod">COD (Cash on Delivery)</option>
+                    <option value="cod">Cash</option>
                   {% elif m == 'gcash' %}
                     <option value="gcash">GCash</option>
                   {% else %}
@@ -649,6 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (qrGroup) qrGroup.style.display = isCOD ? 'none' : '';
       if (amountInput) amountInput.disabled = isCOD;
       if (proofInput) proofInput.disabled = isCOD;
+      if (paymentBtn) paymentBtn.textContent = isCOD ? 'Set Meetup' : 'Record Payment';
     }
     if (methodSel) { methodSel.addEventListener('change', updatePaymentVisibility); updatePaymentVisibility(); }
   }
