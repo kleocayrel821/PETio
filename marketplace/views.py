@@ -1734,9 +1734,18 @@ class NotificationListView(LoginRequiredMixin, ListView):
     model = Notification
     template_name = "marketplace/notifications.html"
     context_object_name = "notifications"
+    paginate_by = 30
 
     def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user).order_by("-created_at")
+        return (
+            Notification.objects.filter(user=self.request.user)
+            .select_related(
+                "related_request",
+                "related_request__buyer",
+                "related_listing",
+            )
+            .order_by("-created_at")
+        )
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
