@@ -1,76 +1,137 @@
-<!--
-  Template: User Profile
-  Purpose: Display a user's marketplace profile including trust metrics, verification badge,
-           recent reviews (SellerRating), and completed transaction counts.
--->
-{% extends "base.html" %}
+{% extends "marketplace/base_marketplace.html" %}
 
-{% block title %}{{ profile_user.username }} — Marketplace Profile{% endblock %}
+{% block marketplace_title %}{{ profile_user.username }} — Marketplace Profile{% endblock %}
+{% block marketplace_header %}Marketplace Profile{% endblock %}
+{% block marketplace_subtitle %}Trust, history, and reviews for @{{ profile_user.username }}{% endblock %}
 
-{% block content %}
-<section class="container" style="max-width: 960px; margin: 0 auto; padding: 1.5rem;">
-  <header style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">
-    <div>
-      <h1 style="margin:0;">{{ profile_user.username }}</h1>
-      <p style="margin:0.25rem 0; color:#555;">{{ profile.location|default:"Location not set" }}</p>
-      <div style="display:flex; gap:0.75rem; align-items:center; margin-top:0.5rem;">
-        <span style="font-weight:600;">Trust Score:</span>
-        <span>{{ profile.trust_score|default:0 }}</span>
-        {% if profile.verified %}
-          <span style="background:#e6ffed; color:#0366d6; border:1px solid #c6e48b; padding:0.2rem 0.5rem; border-radius:4px;">Verified</span>
-        {% else %}
-          <span style="background:#fff5f5; color:#d6336c; border:1px solid #f5c2c7; padding:0.2rem 0.5rem; border-radius:4px;">Unverified</span>
-        {% endif %}
-        <span style="color:#888;">No-shows: {{ profile.no_show_count|default:0 }}</span>
+{% block breadcrumbs %}
+  <li>Seller Profile</li>
+{% endblock %}
+
+{% block marketplace_content %}
+<div class="space-y-6">
+  <div class="card bg-base-100 shadow-lg">
+    <div class="card-body flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div class="flex items-center gap-4">
+        <div class="avatar placeholder">
+          <div class="bg-primary text-primary-content rounded-full w-16 h-16 flex items-center justify-center text-2xl font-semibold">
+            <span>{{ profile_user.username|first|upper }}</span>
+          </div>
+        </div>
+        <div>
+          <div class="text-sm text-base-content/60">Marketplace Seller</div>
+          <h1 class="text-2xl font-bold">@{{ profile_user.username }}</h1>
+          <p class="text-base-content/70 text-sm mt-1">
+            {{ profile.location|default:"Location not set" }}
+          </p>
+        </div>
+      </div>
+      <div class="flex flex-col items-start md:items-end gap-2">
+        <div class="flex items-center gap-3">
+          <div class="text-sm font-semibold">
+            Trust Score
+            <span class="text-lg ml-2">{{ profile.trust_score|default:0 }}</span>
+          </div>
+          {% if profile.verified %}
+          <span class="badge badge-success badge-lg gap-2">
+            <i class="fas fa-check-circle"></i>
+            Verified
+          </span>
+          {% else %}
+          <span class="badge badge-ghost badge-lg gap-2 text-error border-error">
+            <i class="fas fa-exclamation-triangle"></i>
+            Unverified
+          </span>
+          {% endif %}
+        </div>
+        <div class="text-xs text-base-content/60">
+          No-shows: <span class="font-semibold">{{ profile.no_show_count|default:0 }}</span>
+        </div>
       </div>
     </div>
-  </header>
+  </div>
 
-  <section style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
-    <div style="border:1px solid #eee; padding:1rem; border-radius:6px;">
-      <h2 style="margin-top:0;">Transaction Summary</h2>
-      <ul style="list-style:none; padding:0; margin:0;">
-        <li>Completed as Buyer: <strong>{{ completed_as_buyer }}</strong></li>
-        <li>Completed as Seller: <strong>{{ completed_as_seller }}</strong></li>
-      </ul>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h2 class="card-title text-base-content mb-2">Transaction Summary</h2>
+        <div class="space-y-1 text-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-base-content/70">Completed as Buyer</span>
+            <span class="font-semibold">{{ completed_as_buyer }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-base-content/70">Completed as Seller</span>
+            <span class="font-semibold">{{ completed_as_seller }}</span>
+          </div>
+        </div>
+      </div>
     </div>
-    <div style="border:1px solid #eee; padding:1rem; border-radius:6px;">
-      <h2 style="margin-top:0;">Rating Distribution</h2>
-      <ul style="list-style:none; padding:0; margin:0;">
-        {% for row in rating_distribution %}
-        <li>{{ row.stars }}★: {{ row.count }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-  </section>
 
-  <section style="border:1px solid #eee; padding:1rem; border-radius:6px;">
-    <h2 style="margin-top:0;">Recent Reviews</h2>
-    {% if reviews %}
-      <ul style="list-style:none; padding:0; margin:0;">
-        {% for r in reviews %}
-          <li style="border-bottom:1px solid #f0f0f0; padding:0.75rem 0;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <strong>{{ r.buyer.username }}</strong>
-                {% if r.listing %}
-                  on <em>{{ r.listing.title }}</em>
-                {% endif %}
-              </div>
-              <div>
-                <span>{{ r.score }}★</span>
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h2 class="card-title text-base-content mb-2">Rating Distribution</h2>
+        {% if rating_distribution %}
+        <div class="space-y-2">
+          {% for row in rating_distribution %}
+          <div class="flex items-center gap-3 text-sm">
+            <div class="w-10 font-semibold">{{ row.stars }}★</div>
+            <div class="flex-1">
+              <div class="w-full bg-base-200 rounded-full h-2">
+                <div class="bg-primary h-2 rounded-full" style="width: {{ row.percent }}%;"></div>
               </div>
             </div>
-            {% if r.comment %}
-              <p style="margin:0.5rem 0; color:#444;">{{ r.comment }}</p>
-            {% endif %}
-            <small style="color:#999;">{{ r.created_at }}</small>
-          </li>
+            <div class="w-10 text-right text-base-content/70">{{ row.count }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-base-content/70">No ratings yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="card-title text-base-content">Recent Reviews</h2>
+        {% if reviews %}
+        <span class="badge badge-outline text-xs">{{ reviews|length }} total</span>
+        {% endif %}
+      </div>
+      {% if reviews %}
+      <div class="divide-y divide-base-200">
+        {% for r in reviews %}
+        <div class="py-3 flex flex-col gap-1">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-sm">@{{ r.buyer.username }}</span>
+              {% if r.listing %}
+              <span class="text-xs text-base-content/60">on {{ r.listing.title }}</span>
+              {% endif %}
+            </div>
+            <div class="flex items-center gap-1 text-yellow-500 text-sm">
+              <i class="fas fa-star"></i>
+              <span class="font-semibold">{{ r.score }}</span>
+            </div>
+          </div>
+          {% if r.comment %}
+          <p class="text-sm text-base-content/80">{{ r.comment }}</p>
+          {% endif %}
+          <div class="text-xs text-base-content/60">
+            {{ r.created_at|date:"Y-m-d H:i" }}
+          </div>
+        </div>
         {% endfor %}
-      </ul>
-    {% else %}
-      <p>No reviews yet.</p>
-    {% endif %}
-  </section>
-</section>
+      </div>
+      {% else %}
+      <div class="py-6 text-center text-base-content/60">
+        <p class="mb-1">No reviews yet.</p>
+        <p class="text-sm">Once buyers rate this seller, reviews will appear here.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
 {% endblock %}
