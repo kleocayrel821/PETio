@@ -154,6 +154,7 @@ def my_devices_page(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def claim_device(request):
+    has_devices = Hardware.objects.filter(paired_user=request.user, is_paired=True).filter(is_paired=True).exists()
     if request.method == "POST":
         unique_key = request.POST.get("unique_key") or ""
         device_id = request.POST.get("device_id") or ""
@@ -164,15 +165,15 @@ def claim_device(request):
                 k = _uuid.UUID(str(unique_key))
             except Exception:
                 messages.error(request, "Invalid hardware key")
-                return render(request, "app/claim_device.html")
+                return render(request, "app/claim_device.html", {"has_devices": has_devices})
             try:
                 hw = Hardware.objects.get(unique_key=k)
             except Hardware.DoesNotExist:
                 messages.error(request, "Hardware not found")
-                return render(request, "app/claim_device.html")
+                return render(request, "app/claim_device.html", {"has_devices": has_devices})
             if hw.is_paired and hw.paired_user_id and hw.paired_user_id != request.user.id:
                 messages.error(request, "Hardware already paired to another account")
-                return render(request, "app/claim_device.html")
+                return render(request, "app/claim_device.html", {"has_devices": has_devices})
             if hw.is_paired and hw.paired_user_id == request.user.id:
                 messages.info(request, "Hardware already paired to your account")
                 return redirect("my_devices_page")
@@ -190,7 +191,7 @@ def claim_device(request):
             p = (pin or "").strip()
             if len(p) != 6 or not p.isdigit():
                 messages.error(request, "PIN must be 6 digits")
-                return render(request, "app/claim_device.html")
+                return render(request, "app/claim_device.html", {"has_devices": has_devices})
             from django.utils import timezone as _tz
             from django.db import transaction as _tx
             from .models import Hardware, PairingSession, ControllerSettings
@@ -200,7 +201,7 @@ def claim_device(request):
                     hw, _ = Hardware.objects.select_for_update().get_or_create(device_id=did, defaults={"is_paired": False})
                     if hw.is_paired and hw.paired_user_id and hw.paired_user_id != request.user.id:
                         messages.error(request, "Device already paired to another account")
-                        return render(request, "app/claim_device.html")
+                        return render(request, "app/claim_device.html", {"has_devices": has_devices})
                     # Enforce 1:1 — user may only own one device
                     if Hardware.objects.filter(paired_user=request.user, is_paired=True).exclude(id=hw.id).exists():
                         messages.error(request, "You already have a paired device")
@@ -229,10 +230,10 @@ def claim_device(request):
                 return redirect("home")
             except Exception as e:
                 messages.error(request, f"Failed to claim device: {str(e)}")
-                return render(request, "app/claim_device.html")
+                return render(request, "app/claim_device.html", {"has_devices": has_devices})
         else:
             messages.error(request, "Provide a hardware key, or device ID and PIN")
-    return render(request, "app/claim_device.html")
+    return render(request, "app/claim_device.html", {"has_devices": has_devices})
 # API views for ESP8266 communication
 @permission_classes([AllowAny])
 @authentication_classes([])
