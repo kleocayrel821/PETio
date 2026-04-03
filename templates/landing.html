@@ -3,174 +3,193 @@
 
 {% block title %}Feed Smarter. Connect Better. Care Together. | PETio{% endblock %}
 
-{% block body_class %} class="bg-base-100" {% endblock %}
-
 {% block content %}
-<div class="container mx-auto max-w-6xl px-4 lg:px-6 py-10 lg:py-16">
-  <div class="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
-    <div class="flex-1 space-y-6">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-200 text-xs font-semibold text-base-content/70 uppercase tracking-[0.2em]">
-        <span class="w-2 h-2 rounded-full bg-primary"></span>
-        <span>Smart feeding dashboard</span>
-      </div>
-      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-base-content leading-tight">
-        Feed smarter, watch in real time, and stay in control from anywhere.
-      </h1>
-      <p class="text-base lg:text-lg text-base-content/70 max-w-xl">
-        PETio connects your automatic feeder to a clean, real-time dashboard so you can trigger feeds, manage schedules, and review history in one place.
-      </p>
-      <div class="flex flex-wrap items-center gap-3">
-        <a
-          href="{% if user.is_authenticated %}{% url 'home' %}{% else %}{% url 'login' %}{% endif %}"
-          class="btn btn-primary btn-lg btn-enhanced"
-        >
-          <i class="fas fa-gauge-high"></i>
-          <span>Open Controller</span>
-        </a>
-        <a
-          href="{% url 'accounts:signup' %}"
-          class="btn btn-ghost btn-lg btn-enhanced border-base-300 text-base-content/80"
-        >
-          <i class="fas fa-paw"></i>
-          <span>Create an account</span>
-        </a>
-      </div>
-      <div class="flex flex-wrap gap-6 text-sm text-base-content/60 pt-2">
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-success"></span>
-          <span>Real-time device status</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-primary"></span>
-          <span>One-tap Feed Now controls</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-warning"></span>
-          <span>Schedule and history in one view</span>
-        </div>
-      </div>
-    </div>
-    <div class="flex-1 w-full">
-      <div class="enhanced-card space-y-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <div class="text-xs font-semibold uppercase tracking-widest text-base-content/60">
-              Live control snapshot
-            </div>
-            <div class="text-sm text-base-content/70">
-              Preview of the controller dashboard
-            </div>
-          </div>
-          <span class="status-badge status-enabled">
-            <i class="fas fa-circle text-success text-[8px]"></i>
-            Online
-          </span>
-        </div>
-        <div class="mt-4 grid gap-4 md:grid-cols-2">
-          <div class="space-y-3">
-            <div class="subsection-title flex items-center gap-2 mb-1">
-              <i class="fas fa-utensils text-primary"></i>
-              <span>Feed Now</span>
-            </div>
-            <div>
-              <div class="flex items-center justify-between text-xs text-base-content/60 mb-1">
-                <span>Portion size</span>
-                <span class="font-semibold text-base-content">90 g</span>
-              </div>
-              <div class="w-full h-2 rounded-full bg-base-200 overflow-hidden">
-                <div class="h-full w-1/2 bg-primary"></div>
-              </div>
-            </div>
-            <button class="btn btn-primary btn-enhanced w-full mt-2">
-              <i class="fas fa-paw"></i>
-              <span>Simulated Feed</span>
-            </button>
-          </div>
-          <div class="space-y-3">
-            <div class="subsection-title flex items-center gap-2 mb-1">
-              <i class="fas fa-calendar-alt text-accent"></i>
-              <span>Today&apos;s schedule</span>
-            </div>
-            <ul class="space-y-2 text-sm text-base-content/80">
-              <li class="flex items-center justify-between">
-                <span class="flex items-center gap-2">
-                  <i class="fas fa-clock text-primary text-xs"></i>
-                  7:00 AM
-                </span>
-                <span class="text-base-content/60">60 g</span>
-              </li>
-              <li class="flex items-center justify-between">
-                <span class="flex items-center gap-2">
-                  <i class="fas fa-clock text-primary text-xs"></i>
-                  12:00 PM
-                </span>
-                <span class="text-base-content/60">90 g</span>
-              </li>
-              <li class="flex items-center justify-between">
-                <span class="flex items-center gap-2">
-                  <i class="fas fa-clock text-primary text-xs"></i>
-                  7:00 PM
-                </span>
-                <span class="text-base-content/60">90 g</span>
-              </li>
-            </ul>
-            <div class="mt-3 rounded-lg bg-base-200 px-3 py-2 text-xs text-base-content/70">
-              Last feed: <span class="font-semibold text-base-content">Today at 12:03 PM</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+<!-- Hero Section -->
+<div class="relative overflow-hidden bg-base-100">
+    <!-- Decorative Background Elements -->
+    <div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+    <div class="absolute bottom-[10%] right-[-5%] w-[400px] h-[400px] bg-accent/20 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
 
-  <div class="mt-12 lg:mt-16 space-y-8">
-    <h2 class="section-title">
-      <i class="fas fa-layer-group text-primary"></i>
-      Built on the same interface you use every day
-    </h2>
-    <div class="responsive-grid">
-      <div class="enhanced-card">
-        <div class="subsection-title flex items-center gap-2 mb-2">
-          <i class="fas fa-utensils text-primary"></i>
-          <span>Feed Now controls</span>
+    <div class="container mx-auto max-w-7xl px-6 pt-20 pb-32 relative z-10">
+        <div class="text-center max-w-4xl mx-auto space-y-8">
+            <!-- Eyebrow Tag -->
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-base-200 border border-base-300 text-sm font-medium text-base-content/80 shadow-sm transition-all hover:border-primary/50">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                </span>
+                Welcome to the future of pet care
+            </div>
+            
+            <!-- Headline -->
+            <h1 class="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-base-content leading-tight tracking-tight">
+                Smart feeding, <br/>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">effortless connection.</span>
+            </h1>
+            
+            <!-- Subtitle -->
+            <p class="text-lg sm:text-xl text-base-content/70 max-w-2xl mx-auto leading-relaxed">
+                PETio brings automated feeding, social connection, and a thriving marketplace into one unified platform. Take care of your furry friends from anywhere.
+            </p>
+            
+            <!-- CTA Buttons -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'home' %}" class="btn btn-primary btn-lg rounded-full px-8 shadow-lg shadow-primary/30 hover:-translate-y-1 transition-all">
+                        Go to Dashboard <i class="fas fa-arrow-right ml-2"></i>
+                    </a>
+                {% else %}
+                    <a href="{% url 'accounts:signup' %}" class="btn btn-primary btn-lg rounded-full px-8 shadow-lg shadow-primary/30 hover:-translate-y-1 transition-all">
+                        Get Started for Free
+                    </a>
+                    <a href="{% url 'login' %}" class="btn btn-ghost btn-lg rounded-full px-8 bg-base-200 hover:bg-base-300 hover:-translate-y-1 transition-all border border-base-300">
+                        Sign In
+                    </a>
+                {% endif %}
+            </div>
         </div>
-        <p class="text-sm text-base-content/70 mb-3">
-          Trigger on-demand feeds with clear visual feedback and instant device status, just like inside the controller dashboard.
-        </p>
-        <div class="flex items-center gap-2 text-xs text-base-content/60">
-          <span class="status-badge status-enabled">Low latency</span>
-          <span>Optimized for quick actions during busy days.</span>
+        
+        <!-- Abstract Dashboard Mockup -->
+        <div class="mt-24 relative mx-auto max-w-5xl perspective-1000">
+            <!-- Decorative Glow Behind Mockup -->
+            <div class="absolute inset-0 bg-gradient-to-r from-primary/30 to-accent/30 blur-2xl rounded-[3rem] opacity-50 pointer-events-none"></div>
+            
+            <!-- Mockup Window -->
+            <div class="relative rounded-2xl border border-base-300 bg-base-200/50 p-2 shadow-2xl backdrop-blur-sm transform transition-transform hover:scale-[1.02] duration-500">
+                <div class="rounded-xl overflow-hidden bg-base-100 border border-base-200 shadow-inner">
+                    <!-- Browser Header -->
+                    <div class="bg-base-200/80 px-4 py-3 border-b border-base-300 flex items-center justify-between">
+                        <div class="flex gap-2">
+                            <div class="w-3 h-3 rounded-full bg-error/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-warning/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-success/80"></div>
+                        </div>
+                        <div class="w-1/3 h-4 bg-base-300 rounded-full"></div>
+                        <div class="w-8 h-4"></div> <!-- Spacer for balance -->
+                    </div>
+                    <!-- Abstract Dashboard Content -->
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 opacity-60 pointer-events-none bg-base-100">
+                        <!-- Left Column (Feed Controls) -->
+                        <div class="col-span-2 space-y-6">
+                            <div class="flex items-center gap-4 mb-4">
+                                <div class="w-12 h-12 bg-primary/20 rounded-full"></div>
+                                <div class="space-y-2">
+                                    <div class="h-4 w-32 bg-base-300 rounded-full"></div>
+                                    <div class="h-3 w-20 bg-success/30 rounded-full"></div>
+                                </div>
+                            </div>
+                            <div class="h-40 bg-base-200 rounded-2xl border border-base-300 flex items-center justify-center">
+                                <div class="h-12 w-48 bg-primary/20 rounded-full"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="h-28 bg-base-200 rounded-2xl border border-base-300"></div>
+                                <div class="h-28 bg-base-200 rounded-2xl border border-base-300"></div>
+                            </div>
+                        </div>
+                        <!-- Right Column (Schedule/History) -->
+                        <div class="space-y-4">
+                            <div class="h-8 w-24 bg-base-300 rounded-full mb-2"></div>
+                            <div class="h-16 bg-accent/10 rounded-xl border border-accent/20"></div>
+                            <div class="h-16 bg-base-200 rounded-xl border border-base-300"></div>
+                            <div class="h-16 bg-base-200 rounded-xl border border-base-300"></div>
+                            <div class="h-16 bg-base-200 rounded-xl border border-base-300"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="enhanced-card">
-        <div class="subsection-title flex items-center gap-2 mb-2">
-          <i class="fas fa-calendar-alt text-accent"></i>
-          <span>Schedule management</span>
-        </div>
-        <p class="text-sm text-base-content/70 mb-3">
-          Use a simple grid to set recurring feeds, edit times, and adjust portions without losing track of your pet&apos;s routine.
-        </p>
-        <div class="flex items-center gap-2 text-xs text-base-content/60">
-          <span class="status-badge">Dashboard grid</span>
-          <span>Same layout system as the in-app Schedules view.</span>
-        </div>
-      </div>
-      <div class="enhanced-card">
-        <div class="subsection-title flex items-center gap-2 mb-2">
-          <i class="fas fa-history text-primary"></i>
-          <span>Feeding history</span>
-        </div>
-        <p class="text-sm text-base-content/70 mb-3">
-          Review recent events with a clean table that mirrors the History tab, including time, action, amount, and status.
-        </p>
-        <div class="flex items-center gap-2 text-xs text-base-content/60">
-          <span class="status-badge">Audit trail</span>
-          <span>Designed for quick scanning at a glance.</span>
-        </div>
-      </div>
     </div>
-  </div>
 </div>
+
+<!-- Features Section -->
+<div class="py-24 bg-base-200/50">
+    <div class="container mx-auto max-w-7xl px-6">
+        <div class="text-center max-w-3xl mx-auto mb-20">
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-base-content mb-6">Everything you need in one place</h2>
+            <p class="text-base-content/70 text-lg sm:text-xl">
+                We've combined reliable hardware control with a thriving community to give you the ultimate pet care experience.
+            </p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Feature 1 -->
+            <div class="bg-base-100 rounded-[2rem] p-10 border border-base-200 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 group">
+                <div class="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-3xl mb-8 group-hover:bg-primary group-hover:text-primary-content transition-colors shadow-sm">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-base-content mb-4">Smart Control</h3>
+                <p class="text-base-content/70 leading-relaxed text-lg">
+                    Trigger feeds remotely, manage schedules, and track feeding history with our low-latency hardware integration.
+                </p>
+            </div>
+            
+            <!-- Feature 2 -->
+            <div class="bg-base-100 rounded-[2rem] p-10 border border-base-200 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 group">
+                <div class="w-16 h-16 rounded-2xl bg-accent/10 text-accent flex items-center justify-center text-3xl mb-8 group-hover:bg-accent group-hover:text-accent-content transition-colors shadow-sm">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-base-content mb-4">Pet Social</h3>
+                <p class="text-base-content/70 leading-relaxed text-lg">
+                    Connect with other pet owners, share adorable moments, and build a community around your furry companions.
+                </p>
+            </div>
+            
+            <!-- Feature 3 -->
+            <div class="bg-base-100 rounded-[2rem] p-10 border border-base-200 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 group">
+                <div class="w-16 h-16 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center text-3xl mb-8 group-hover:bg-secondary group-hover:text-secondary-content transition-colors shadow-sm">
+                    <i class="fas fa-store"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-base-content mb-4">Marketplace</h3>
+                <p class="text-base-content/70 leading-relaxed text-lg">
+                    Buy, sell, and trade pet supplies securely. Check seller trust scores and read reviews before making a purchase.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CTA Banner Section -->
+<div class="py-24 bg-base-100">
+    <div class="container mx-auto max-w-5xl px-6">
+        <div class="relative rounded-[3rem] overflow-hidden bg-gradient-to-br from-primary to-primary/80 text-primary-content shadow-2xl p-12 sm:p-20 text-center border border-primary/20">
+            <!-- Decorative Elements inside CTA -->
+            <div class="absolute top-0 right-0 -mt-16 -mr-16 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute bottom-0 left-0 -mb-16 -ml-16 w-64 h-64 bg-black opacity-10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="relative z-10 max-w-3xl mx-auto">
+                <h2 class="text-4xl sm:text-5xl font-extrabold mb-6 tracking-tight">Ready to simplify pet care?</h2>
+                <p class="text-primary-content/90 text-xl sm:text-2xl mb-12 font-medium">
+                    Join thousands of pet owners who trust PETio to keep their pets fed, happy, and connected.
+                </p>
+                {% if not user.is_authenticated %}
+                <a href="{% url 'accounts:signup' %}" class="btn bg-base-100 text-primary hover:bg-base-200 hover:scale-105 border-none btn-lg rounded-full px-12 shadow-xl transition-all font-bold text-lg">
+                    Create Your Free Account
+                </a>
+                {% else %}
+                <a href="{% url 'home' %}" class="btn bg-base-100 text-primary hover:bg-base-200 hover:scale-105 border-none btn-lg rounded-full px-12 shadow-xl transition-all font-bold text-lg">
+                    Go to Dashboard
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Simple Footer -->
+<footer class="bg-base-200/50 border-t border-base-300 text-base-content py-12">
+    <div class="container mx-auto max-w-7xl px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="flex items-center gap-3 text-2xl font-black tracking-tight">
+            <div class="w-10 h-10 rounded-xl bg-primary text-primary-content flex items-center justify-center">
+                <i class="fas fa-paw"></i>
+            </div>
+            <span>PETio</span>
+        </div>
+        <p class="text-base-content/60 text-sm font-medium">© 2026 PETio. All rights reserved.</p>
+        <div class="flex gap-6">
+            <a href="#" class="w-10 h-10 rounded-full bg-base-100 border border-base-300 flex items-center justify-center text-base-content/60 hover:text-primary hover:border-primary/50 transition-all"><i class="fab fa-twitter"></i></a>
+            <a href="#" class="w-10 h-10 rounded-full bg-base-100 border border-base-300 flex items-center justify-center text-base-content/60 hover:text-primary hover:border-primary/50 transition-all"><i class="fab fa-instagram"></i></a>
+            <a href="#" class="w-10 h-10 rounded-full bg-base-100 border border-base-300 flex items-center justify-center text-base-content/60 hover:text-primary hover:border-primary/50 transition-all"><i class="fab fa-facebook-f"></i></a>
+        </div>
+    </div>
+</footer>
 {% endblock %}
-
-
