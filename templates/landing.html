@@ -1,264 +1,174 @@
-<!--
-  Landing Page Template (Unified)
-  Purpose: Marketing landing aligned with global design system (Tailwind + DaisyUI + base.css).
-  Notes:
-  - Uses shared tokens and components from base.html: enhanced-card, btn-enhanced, status-badge, section-title.
-  - Removes bespoke animations and heavy inline styles for consistency and readability.
-  - Keeps clear CTAs to sign up and explore features without duplicating signup form logic.
--->
 {% extends "base.html" %}
+{% load static %}
+
 {% block title %}Feed Smarter. Connect Better. Care Together. | PETio{% endblock %}
 
-{% block extra_css %}
-<style>
-  .landing-theme { font-family: 'XXII Geom DEMO', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; position: relative; z-index: 1; }
-  .landing-theme .text-sm, .landing-theme .text-xs, .landing-theme small { font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-  .landing-theme p { font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-  .hero-section {
-    background: linear-gradient(90deg, var(--bg-secondary) 60%, var(--bg-primary) 100%);
-    padding: 64px 0 48px;
-    border-radius: 0 0 32px 32px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
-  }
-  .hero-headline {
-    color: var(--text-primary);
-    font-weight: 800;
-    letter-spacing: -0.02em;
-  }
-  .hero-subtitle {
-    color: var(--text-secondary);
-    max-width: 60ch;
-  }
-  .features-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 24px;
-  }
-  .cta-section {
-    background: var(--bg-secondary);
-    border-radius: 16px;
-    padding: 32px 24px;
-    box-shadow: var(--shadow-card);
-  }
-  .signup-section .enhanced-card {
-    max-width: 520px;
-    margin: 0 auto;
-  }
-  .feature-icon {
-    font-size: 1.5rem;
-    line-height: 1;
-  }
-  .hero-cta-group .btn { min-width: 180px; }
-
-  .landing-theme {
-    --palette-1: #473472;
-    --palette-2: #53629E;
-    --palette-3: #87BAC3;
-    --palette-4: #D6F4ED;
-    --bg-primary: #D6F4ED;
-    --bg-secondary: #87BAC3;
-  }
-  .landing-theme .hero-section {
-    background: radial-gradient(900px 400px at 10% 10%, rgba(135,186,195,0.25), transparent 60%), linear-gradient(90deg, #D6F4ED 0%, #87BAC3 100%);
-    border-radius: 24px;
-    box-shadow: 0 8px 30px rgba(23,20,48,0.08);
-  }
-  .landing-theme .hero-headline { color: #473472; }
-  .landing-theme .hero-subtitle { color: #53629E; }
-  .landing-theme .status-badge { background: rgba(83,98,158,0.12); color: #53629E; border: 1px solid rgba(83,98,158,0.22); }
-  .landing-theme .bg-primary { background-color: #53629E !important; }
-  .landing-theme .text-primary { color: #53629E !important; }
-  .landing-theme .enhanced-card { border-color: rgba(83,98,158,0.18); background: rgba(255,255,255,0.92); }
-  .landing-theme .enhanced-card:hover { background: #D6F4ED; }
-  .landing-theme .btn-primary { background: linear-gradient(135deg, #53629E, #473472); color: #fff; border: none; }
-  .landing-theme .btn-primary:hover { filter: brightness(1.05); box-shadow: 0 10px 24px rgba(71,52,114,0.2); }
-  .landing-theme .btn-accent { background: linear-gradient(135deg, #87BAC3, #53629E); color: #fff; border: none; }
-  .landing-theme .btn-ghost { color: #473472; border-color: rgba(83,98,158,0.25); }
-  .landing-theme .cta-section { background: linear-gradient(90deg, #D6F4ED, #87BAC3); border: 1px solid rgba(83,98,158,0.18); }
-
-  .landing-theme .feature-card {
-    position: relative;
-    overflow: hidden;
-    border-radius: 22px;
-    background: rgba(255,255,255,0.96);
-    border: 1px solid rgba(83,98,158,0.22);
-    box-shadow: 0 10px 24px rgba(83,98,158,0.10);
-    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
-  }
-  .landing-theme .feature-card::before {
-    content: '';
-    position: absolute;
-    top: -40px; left: -40px;
-    width: 160px; height: 160px;
-    border-radius: 50%;
-    background: radial-gradient(closest-side, rgba(135,186,195,0.25), transparent 70%);
-  }
-  .landing-theme .feature-card::after {
-    content: '';
-    position: absolute;
-    bottom: -60px; right: -60px;
-    width: 220px; height: 220px;
-    border-radius: 50%;
-    background: radial-gradient(closest-side, rgba(83,98,158,0.18), transparent 70%);
-  }
-  .landing-theme .feature-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 16px 36px rgba(71,52,114,0.18);
-    border-color: #53629E66;
-    background: rgba(255,255,255,0.98);
-  }
-  .landing-theme .icon-badge {
-    width: 40px; height: 40px;
-    border-radius: 9999px;
-    display: inline-flex; align-items: center; justify-content: center;
-    background: rgba(83,98,158,0.12);
-    border: 1px solid rgba(83,98,158,0.22);
-  }
-  .landing-theme .feature-icon { width: 22px; height: 22px; color: #53629E; }
-  .icon-scatter-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
-  .icon-scatter-item { position: absolute; opacity: 0.14; stroke: #53629E; filter: drop-shadow(0 1px 2px rgba(83,98,158,0.10)); }
-</style>
-{% endblock %}
+{% block body_class %} class="bg-base-100" {% endblock %}
 
 {% block content %}
-<div class="landing-theme max-w-7xl mx-auto px-6">
-  <div id="iconScatterLayer" class="icon-scatter-layer" aria-hidden="true"></div>
-
-  <!-- Hero -->
-  <section class="hero-section">
-    <div class="grid grid-cols-1 md:grid-cols-2 items-center gap-10">
-      <div>
-        <span class="status-badge inline-flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-primary"></span>
-          Smart Pet Care Platform
-        </span>
-        <h1 class="hero-headline text-4xl md:text-5xl mt-4">
-          Feed Smarter. Connect Better. Care Together.
-        </h1>
-        <p class="hero-subtitle mt-4">
-          PETio unifies feeding schedules, activity tracking, and a friendly community in one clean interface that works across devices.
-        </p>
-        <div class="hero-cta-group mt-6 flex flex-wrap gap-3">
-          <a href="{% url 'accounts:signup' %}" class="btn btn-primary btn-enhanced">Get Started</a>
-          <a href="#features" class="btn btn-ghost btn-enhanced">Explore Features</a>
+<div class="container mx-auto max-w-6xl px-4 lg:px-6 py-10 lg:py-16">
+  <div class="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
+    <div class="flex-1 space-y-6">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-200 text-xs font-semibold text-base-content/70 uppercase tracking-[0.2em]">
+        <span class="w-2 h-2 rounded-full bg-primary"></span>
+        <span>Smart feeding dashboard</span>
+      </div>
+      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-base-content leading-tight">
+        Feed smarter, watch in real time, and stay in control from anywhere.
+      </h1>
+      <p class="text-base lg:text-lg text-base-content/70 max-w-xl">
+        PETio connects your automatic feeder to a clean, real-time dashboard so you can trigger feeds, manage schedules, and review history in one place.
+      </p>
+      <div class="flex flex-wrap items-center gap-3">
+        <a
+          href="{% if user.is_authenticated %}{% url 'home' %}{% else %}{% url 'login' %}{% endif %}"
+          class="btn btn-primary btn-lg btn-enhanced"
+        >
+          <i class="fas fa-gauge-high"></i>
+          <span>Open Controller</span>
+        </a>
+        <a
+          href="{% url 'accounts:signup' %}"
+          class="btn btn-ghost btn-lg btn-enhanced border-base-300 text-base-content/80"
+        >
+          <i class="fas fa-paw"></i>
+          <span>Create an account</span>
+        </a>
+      </div>
+      <div class="flex flex-wrap gap-6 text-sm text-base-content/60 pt-2">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-success"></span>
+          <span>Real-time device status</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-primary"></span>
+          <span>One-tap Feed Now controls</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-warning"></span>
+          <span>Schedule and history in one view</span>
         </div>
       </div>
-      <div class="feature-card enhanced-card p-6">
-        <div class="flex items-center gap-3">
-          <span class="icon-badge"><i data-feather="grid" class="feature-icon"></i></span>
+    </div>
+    <div class="flex-1 w-full">
+      <div class="enhanced-card space-y-4">
+        <div class="flex items-center justify-between">
           <div>
-            <div class="font-semibold">Unified Dashboard</div>
-            <div class="text-sm text-base-content/70">Status at a glance</div>
+            <div class="text-xs font-semibold uppercase tracking-widest text-base-content/60">
+              Live control snapshot
+            </div>
+            <div class="text-sm text-base-content/70">
+              Preview of the controller dashboard
+            </div>
+          </div>
+          <span class="status-badge status-enabled">
+            <i class="fas fa-circle text-success text-[8px]"></i>
+            Online
+          </span>
+        </div>
+        <div class="mt-4 grid gap-4 md:grid-cols-2">
+          <div class="space-y-3">
+            <div class="subsection-title flex items-center gap-2 mb-1">
+              <i class="fas fa-utensils text-primary"></i>
+              <span>Feed Now</span>
+            </div>
+            <div>
+              <div class="flex items-center justify-between text-xs text-base-content/60 mb-1">
+                <span>Portion size</span>
+                <span class="font-semibold text-base-content">90 g</span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-base-200 overflow-hidden">
+                <div class="h-full w-1/2 bg-primary"></div>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-enhanced w-full mt-2">
+              <i class="fas fa-paw"></i>
+              <span>Simulated Feed</span>
+            </button>
+          </div>
+          <div class="space-y-3">
+            <div class="subsection-title flex items-center gap-2 mb-1">
+              <i class="fas fa-calendar-alt text-accent"></i>
+              <span>Today&apos;s schedule</span>
+            </div>
+            <ul class="space-y-2 text-sm text-base-content/80">
+              <li class="flex items-center justify-between">
+                <span class="flex items-center gap-2">
+                  <i class="fas fa-clock text-primary text-xs"></i>
+                  7:00 AM
+                </span>
+                <span class="text-base-content/60">60 g</span>
+              </li>
+              <li class="flex items-center justify-between">
+                <span class="flex items-center gap-2">
+                  <i class="fas fa-clock text-primary text-xs"></i>
+                  12:00 PM
+                </span>
+                <span class="text-base-content/60">90 g</span>
+              </li>
+              <li class="flex items-center justify-between">
+                <span class="flex items-center gap-2">
+                  <i class="fas fa-clock text-primary text-xs"></i>
+                  7:00 PM
+                </span>
+                <span class="text-base-content/60">90 g</span>
+              </li>
+            </ul>
+            <div class="mt-3 rounded-lg bg-base-200 px-3 py-2 text-xs text-base-content/70">
+              Last feed: <span class="font-semibold text-base-content">Today at 12:03 PM</span>
+            </div>
           </div>
         </div>
-        <div class="mt-4 text-sm text-base-content/80">
-          See schedules, history, and notifications together with consistent styling and readable typography.
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-12 lg:mt-16 space-y-8">
+    <h2 class="section-title">
+      <i class="fas fa-layer-group text-primary"></i>
+      Built on the same interface you use every day
+    </h2>
+    <div class="responsive-grid">
+      <div class="enhanced-card">
+        <div class="subsection-title flex items-center gap-2 mb-2">
+          <i class="fas fa-utensils text-primary"></i>
+          <span>Feed Now controls</span>
+        </div>
+        <p class="text-sm text-base-content/70 mb-3">
+          Trigger on-demand feeds with clear visual feedback and instant device status, just like inside the controller dashboard.
+        </p>
+        <div class="flex items-center gap-2 text-xs text-base-content/60">
+          <span class="status-badge status-enabled">Low latency</span>
+          <span>Optimized for quick actions during busy days.</span>
+        </div>
+      </div>
+      <div class="enhanced-card">
+        <div class="subsection-title flex items-center gap-2 mb-2">
+          <i class="fas fa-calendar-alt text-accent"></i>
+          <span>Schedule management</span>
+        </div>
+        <p class="text-sm text-base-content/70 mb-3">
+          Use a simple grid to set recurring feeds, edit times, and adjust portions without losing track of your pet&apos;s routine.
+        </p>
+        <div class="flex items-center gap-2 text-xs text-base-content/60">
+          <span class="status-badge">Dashboard grid</span>
+          <span>Same layout system as the in-app Schedules view.</span>
+        </div>
+      </div>
+      <div class="enhanced-card">
+        <div class="subsection-title flex items-center gap-2 mb-2">
+          <i class="fas fa-history text-primary"></i>
+          <span>Feeding history</span>
+        </div>
+        <p class="text-sm text-base-content/70 mb-3">
+          Review recent events with a clean table that mirrors the History tab, including time, action, amount, and status.
+        </p>
+        <div class="flex items-center gap-2 text-xs text-base-content/60">
+          <span class="status-badge">Audit trail</span>
+          <span>Designed for quick scanning at a glance.</span>
         </div>
       </div>
     </div>
-  </section>
-
-  <!-- Features -->
-  <section id="features" class="mt-10">
-    <h2 class="section-title">Features That Fit Your Day</h2>
-    <div class="features-grid mt-6">
-      <div class="feature-card enhanced-card p-5">
-        <div class="flex items-center gap-3">
-          <span class="status-badge">Scheduling</span>
-          <span class="text-sm text-base-content/70">Automated routines</span>
-        </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="clock" class="feature-icon"></i></span>Smart Feeding</div>
-        <p class="text-base-content/80">Plan and track meals with alerts and history.</p>
-      </div>
-
-      <div class="feature-card enhanced-card p-5">
-        <div class="flex items-center gap-3">
-          <span class="status-badge">Activity</span>
-          <span class="text-sm text-base-content/70">Health insights</span>
-        </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="activity" class="feature-icon"></i></span>Daily Tracking</div>
-        <p class="text-base-content/80">Log walks, playtime, and mood in one timeline.</p>
-      </div>
-
-      <div class="feature-card enhanced-card p-5">
-        <div class="flex items-center gap-3">
-          <span class="status-badge">Profiles</span>
-          <span class="text-sm text-base-content/70">Per-pet history</span>
-        </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="bar-chart-2" class="feature-icon"></i></span>Pet Profiles</div>
-        <p class="text-base-content/80">Track nutrition, habits, and feeding patterns.</p>
-      </div>
-
-      <div class="feature-card enhanced-card p-5">
-        <div class="flex items-center gap-3">
-          <span class="status-badge">Community</span>
-          <span class="text-sm text-base-content/70">Share moments</span>
-        </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="users" class="feature-icon"></i></span>Social Feed</div>
-        <p class="text-base-content/80">Connect with other owners and share your pet's day.</p>
-      </div>
-
-      <div class="feature-card enhanced-card p-5">
-        <div class="flex items-center gap-3">
-          <span class="status-badge">Marketplace</span>
-          <span class="text-sm text-base-content/70">Trusted listings</span>
-        </div>
-        <div class="mt-2 font-bold flex items-center gap-2"><span class="icon-badge"><i data-feather="shopping-cart" class="feature-icon"></i></span>Buy & Sell</div>
-        <p class="text-base-content/80">Find essentials for your pet in one place.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Secondary CTA -->
-  <section class="cta-section mt-10">
-    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-      <div>
-        <div class="text-sm text-base-content/70">Ready when you are</div>
-        <div class="font-semibold">Start managing routines with ease</div>
-      </div>
-      <div class="flex gap-3">
-        <a href="{% url 'accounts:signup' %}" class="btn btn-accent btn-enhanced">Create Account</a>
-        <a href="{% url 'login' %}" class="btn btn-ghost btn-enhanced">Log In</a>
-      </div>
-    </div>
-  </section>
-
+  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="https://unpkg.com/feather-icons"></script>
-<script>
-  (function(){
-    function scatter() {
-      var layer = document.getElementById('iconScatterLayer');
-      if (!layer) return;
-      layer.innerHTML = '';
-      var w = window.innerWidth || 1200;
-      var h = window.innerHeight || 800;
-      var baseCount = Math.max(16, Math.min(56, Math.floor((w * h) / 28000)));
-      var iconSet = ['clock','activity','bar-chart-2','users','shopping-cart'];
-      for (var i = 0; i < baseCount; i++) {
-        var el = document.createElement('i');
-        var name = iconSet[Math.floor(Math.random() * iconSet.length)];
-        el.setAttribute('data-feather', name);
-        el.className = 'icon-scatter-item';
-        var x = Math.random() * 100;
-        var y = Math.random() * 100;
-        var s = 0.8 + Math.random() * 1.4;
-        var r = Math.floor(Math.random() * 360);
-        el.style.left = x + '%';
-        el.style.top = y + '%';
-        el.style.transform = 'translate(-50%, -50%) scale(' + s + ') rotate(' + r + 'deg)';
-        layer.appendChild(el);
-      }
-      if (window.feather && typeof window.feather.replace === 'function') {
-        window.feather.replace({ width: 28, height: 28, 'stroke-width': 1.8 });
-      }
-    }
-    function debounce(fn, delay){ var t; return function(){ clearTimeout(t); t = setTimeout(fn, delay); }; }
-    document.addEventListener('DOMContentLoaded', scatter);
-    window.addEventListener('resize', debounce(scatter, 200));
-  })();
-</script>
 {% endblock %}

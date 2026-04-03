@@ -57,6 +57,7 @@
 
     <form id="claimForm" method="post" action="{% url 'claim_device_page' %}" novalidate>
       {% csrf_token %}
+      {% if has_devices %}
       <div class="section" id="optA">
         <div class="section-title"><span class="badge">Option A</span> Using Hardware Key</div>
         <div class="field">
@@ -68,6 +69,7 @@
       </div>
 
       <div class="divider"><span class="line"></span><span class="label">or</span><span class="line"></span></div>
+      {% endif %}
 
       <div class="section" id="optB">
         <div class="section-title"><span class="badge">Option B</span> Using Device PIN</div>
@@ -94,7 +96,7 @@
             </path>
           </svg>
         </button>
-        <a class="secondary" href="{% url 'my_devices_page' %}">Back to My Devices</a>
+        <a class="secondary" href="{% url 'my_devices_page' %}">Back to My Device</a>
       </div>
     </form>
   </div>
@@ -102,7 +104,7 @@
 {% endblock %}
 {% block extra_js %}
 <script>
-  const hasDevices = false;
+  const hasDevices = {{ has_devices|yesno:"true,false" }};
   function applySidebarFilter(){
     var nav=document.querySelector('.sidebar nav');
     if(!nav) return;
@@ -113,17 +115,121 @@
       else{ a.style.display=''; }
     });
   }
-  const hardwareKey=document.getElementById('hardwareKey');const deviceId=document.getElementById('deviceId');const pin=document.getElementById('pin');const claimBtn=document.getElementById('claimBtn');const uuidStatus=document.getElementById('uuidStatus');const pinStatus=document.getElementById('pinStatus');const optA=document.getElementById('optA');const optB=document.getElementById('optB');const btnText=document.getElementById('btnText');const btnSpin=document.getElementById('btnSpin');const API_BASE='';
+  const hardwareKey=document.getElementById('hardwareKey');
+  const deviceId=document.getElementById('deviceId');
+  const pin=document.getElementById('pin');
+  const claimBtn=document.getElementById('claimBtn');
+  const uuidStatus=document.getElementById('uuidStatus');
+  const pinStatus=document.getElementById('pinStatus');
+  const optA=document.getElementById('optA');
+  const optB=document.getElementById('optB');
+  const btnText=document.getElementById('btnText');
+  const btnSpin=document.getElementById('btnSpin');
+  const API_BASE='';
   function csrf(){const m=document.querySelector('meta[name="csrf-token"]');return m?m.content:''}
   function isUUID(v){return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test((v||'').trim())}
   function isDevId(v){if(!v)return false;let s=String(v).trim().toUpperCase();if(!s.startsWith('ESP-'))s='ESP-'+s.replace(/^ESP-?/,'');return /^ESP-[A-Z0-9]{6,16}$/.test(s)}
   function isPin(v){return /^\d{6}$/.test((v||'').trim())}
-  function norm(){if(deviceId.value){let s=deviceId.value.toUpperCase().replace(/\s+/g,'');if(!s.startsWith('ESP-'))s='ESP-'+s.replace(/^ESP-?/,'');deviceId.value=s}if(pin.value){pin.value=pin.value.replace(/\D/g,'').slice(0,6)}if(hardwareKey.value){hardwareKey.value=hardwareKey.value.trim()}}
-  function choose(){const hasUUID=isUUID(hardwareKey.value);const hasPIN=isDevId(deviceId.value)&&isPin(pin.value);optA.classList.toggle('active',hasUUID&&!hasPIN);optB.classList.toggle('active',hasPIN&&!hasUUID);claimBtn.disabled=!(hasUUID||hasPIN)}
+  function norm(){
+    if(deviceId && deviceId.value){
+      let s=deviceId.value.toUpperCase().replace(/\s+/g,'');
+      if(!s.startsWith('ESP-'))s='ESP-'+s.replace(/^ESP-?/,'');
+      deviceId.value=s;
+    }
+    if(pin && pin.value){
+      pin.value=pin.value.replace(/\D/g,'').slice(0,6);
+    }
+    if(hardwareKey && hardwareKey.value){
+      hardwareKey.value=hardwareKey.value.trim();
+    }
+  }
+  function choose(){
+    const hasUUID=hardwareKey ? isUUID(hardwareKey.value) : false;
+    const hasPIN=isDevId(deviceId && deviceId.value) && isPin(pin && pin.value);
+    if(optA){ optA.classList.toggle('active',hasUUID&&!hasPIN); }
+    if(optB){ optB.classList.toggle('active',hasPIN&&!hasUUID); }
+    claimBtn.disabled=!(hasUUID||hasPIN);
+  }
   function toast(msg,type){if(window.toastManager){if(type==='error')toastManager.error(msg);else toastManager.success(msg)}else{alert(msg)}}
   function setLoading(v){claimBtn.disabled=v;btnText.textContent=v?'Claiming…':'Claim Device';btnSpin.style.display=v?'inline':'none'}
   async function validateKey(uuid){try{const res=await fetch(API_BASE+'/api/hardware/validate-key/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},body:JSON.stringify({unique_key:uuid})});if(!res.ok)return null;return await res.json()}catch(e){return null}}
-  async function submitClaim(e){e.preventDefault();norm();uuidStatus.style.display='none';pinStatus.style.display='none';const usingUUID=isUUID(hardwareKey.value);const usingPIN=isDevId(deviceId.value)&&isPin(pin.value);if(!(usingUUID||usingPIN))return;setLoading(true);try{if(usingUUID){const key=hardwareKey.value.trim();const v=await validateKey(key);if(v&&v.valid===false){uuidStatus.textContent='Key is not recognized';uuidStatus.className='status err';uuidStatus.style.display='block';setLoading(false);return}const r=await fetch(API_BASE+'/api/hardware/pair/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},body:JSON.stringify({unique_key:key})});const d=await r.json().catch(()=>({}));if(r.ok){toast('Device claimed');hardwareKey.value='';choose();window.setTimeout(()=>{window.location.href='{% url "my_devices_page" %}'},800)}else if(r.status===403){toast('Please log in to claim', 'error');window.location.href='{% url "login" %}?next={{ request.path }}'}else{const msg=d&&(d.error||d.message)||'Unable to claim with this key';uuidStatus.textContent=msg;uuidStatus.className='status err';uuidStatus.style.display='block';toast(msg,'error')}}else{const payload={device_id:deviceId.value.trim().toUpperCase(),pin:pin.value.trim()};const r=await fetch(API_BASE+'/api/device/pair/claim/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},body:JSON.stringify(payload)});const d=await r.json().catch(()=>({}));if(r.ok){toast('Device claimed');deviceId.value='';pin.value='';choose();window.setTimeout(()=>{window.location.href='{% url "my_devices_page" %}'},800)}else if(r.status===403){toast('Please log in to claim', 'error');window.location.href='{% url "login" %}?next={{ request.path }}'}else{const msg=d&&(d.error||d.message)||'Invalid Device ID or PIN';pinStatus.textContent=msg;pinStatus.className='status err';pinStatus.style.display='block';toast(msg,'error')}}}catch(err){toast('Network error','error')}finally{setLoading(false)}}
-  ;['input','blur','keyup','change'].forEach(ev=>{hardwareKey.addEventListener(ev,()=>{norm();choose()});deviceId.addEventListener(ev,()=>{norm();choose()});pin.addEventListener(ev,()=>{norm();choose()})});document.getElementById('claimForm').addEventListener('submit',submitClaim);applySidebarFilter();choose();
+  async function submitClaim(e){
+    e.preventDefault();
+    norm();
+    if(uuidStatus){ uuidStatus.style.display='none'; }
+    if(pinStatus){ pinStatus.style.display='none'; }
+    const usingUUID=hardwareKey ? isUUID(hardwareKey.value) : false;
+    const usingPIN=isDevId(deviceId && deviceId.value)&&isPin(pin && pin.value);
+    if(!(usingUUID||usingPIN))return;
+    setLoading(true);
+    try{
+      if(usingUUID){
+        const key=hardwareKey.value.trim();
+        const v=await validateKey(key);
+        if(v&&v.valid===false){
+          if(uuidStatus){
+            uuidStatus.textContent='Key is not recognized';
+            uuidStatus.className='status err';
+            uuidStatus.style.display='block';
+          }
+          setLoading(false);
+          return;
+        }
+        const r=await fetch(API_BASE+'/api/hardware/pair/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},body:JSON.stringify({unique_key:key})});
+        const d=await r.json().catch(()=>({}));
+        if(r.ok){
+          toast('Device claimed');
+          hardwareKey.value='';
+          choose();
+          window.setTimeout(()=>{window.location.href='{% url "my_devices_page" %}'},800);
+        }else if(r.status===403){
+          toast('Please log in to claim', 'error');
+          window.location.href='{% url "login" %}?next={{ request.path }}';
+        }else{
+          const msg=d&&(d.error||d.message)||'Unable to claim with this key';
+          if(uuidStatus){
+            uuidStatus.textContent=msg;
+            uuidStatus.className='status err';
+            uuidStatus.style.display='block';
+          }
+          toast(msg,'error');
+        }
+      }else{
+        const payload={device_id:(deviceId&&deviceId.value||'').trim().toUpperCase(),pin:(pin&&pin.value||'').trim()};
+        const r=await fetch(API_BASE+'/api/device/pair/claim/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},body:JSON.stringify(payload)});
+        const d=await r.json().catch(()=>({}));
+        if(r.ok){
+          toast('Device claimed');
+          if(deviceId){ deviceId.value=''; }
+          if(pin){ pin.value=''; }
+          choose();
+          window.setTimeout(()=>{window.location.href='{% url "my_devices_page" %}'},800);
+        }else if(r.status===403){
+          toast('Please log in to claim', 'error');
+          window.location.href='{% url "login" %}?next={{ request.path }}';
+        }else{
+          const msg=d&&(d.error||d.message)||'Invalid Device ID or PIN';
+          if(pinStatus){
+            pinStatus.textContent=msg;
+            pinStatus.className='status err';
+            pinStatus.style.display='block';
+          }
+          toast(msg,'error');
+        }
+      }
+    }catch(err){
+      toast('Network error','error');
+    }finally{
+      setLoading(false);
+    }
+  }
+  ['input','blur','keyup','change'].forEach(function(ev){
+    if(hardwareKey){ hardwareKey.addEventListener(ev,function(){norm();choose()}); }
+    if(deviceId){ deviceId.addEventListener(ev,function(){norm();choose()}); }
+    if(pin){ pin.addEventListener(ev,function(){norm();choose()}); }
+  });
+  document.getElementById('claimForm').addEventListener('submit',submitClaim);
+  applySidebarFilter();
+  choose();
 </script>
 {% endblock %}
