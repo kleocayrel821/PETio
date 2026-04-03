@@ -154,7 +154,10 @@ def my_devices_page(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def claim_device(request):
-    has_devices = Hardware.objects.filter(paired_user=request.user, is_paired=True).filter(is_paired=True).exists()
+    try:
+        has_devices = Hardware.objects.filter(paired_user=request.user, is_paired=True).exists()
+    except Exception:
+        has_devices = False
     if request.method == "POST":
         unique_key = request.POST.get("unique_key") or ""
         device_id = request.POST.get("device_id") or ""
