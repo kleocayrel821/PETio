@@ -348,7 +348,7 @@
                 {% csrf_token %}
                 <div class="form-control">
                   <label class="pt-0 pb-1 label"><span class="label-text">Reference ID</span></label>
-                  <input type="text" name="gcash_ref" maxlength="13" class="w-full input input-bordered sm:w-80" placeholder="GCash reference number" required />
+                  <input type="text" name="gcash_ref" maxlength="13" class="w-full input input-bordered sm:w-80" placeholder="GCash reference number" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,'')" required />
                 </div>
                 <div class="form-control">
                   <label class="pt-0 pb-1 label"><span class="label-text">Receipt Image</span></label>

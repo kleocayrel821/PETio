@@ -3245,6 +3245,11 @@ def checkout_gcash(request, txn_id):
         return redirect_to_login(next=reverse("marketplace:checkout_gcash", args=[txn_id]))
     if request.method == "POST":
         ref = sanitize_text((request.POST.get("gcash_ref") or "").strip(), max_len=13)
+        if ref and not ref.isdigit():
+            if wants_json(request):
+                return json_error("Reference number must contain digits only", status=400, field_errors={"gcash_ref": ["Reference number must contain digits only"]})
+            django_messages.error(request, "Reference number must contain digits only")
+            return render(request, "marketplace/checkout_gcash.html", {"txn": txn})
         proof = request.FILES.get("payment_proof")
         txn.gcash_ref = ref
         if proof is not None:
@@ -4554,6 +4559,8 @@ def buyer_submit_gcash_payment(request, request_id):
     receipt = request.FILES.get("payment_receipt")
     if not ref:
         return json_error("Reference number is required", status=400, field_errors={"gcash_ref": ["Reference number is required"]})
+    if not ref.isdigit():
+        return json_error("Reference number must contain digits only", status=400, field_errors={"gcash_ref": ["Reference number must contain digits only"]})
     txn.gcash_ref = ref
     if receipt is not None:
         txn.payment_proof = receipt
