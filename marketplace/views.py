@@ -3244,7 +3244,7 @@ def checkout_gcash(request, txn_id):
     if request.user.id != txn.buyer_id:
         return redirect_to_login(next=reverse("marketplace:checkout_gcash", args=[txn_id]))
     if request.method == "POST":
-        ref = (request.POST.get("gcash_ref") or "").strip()
+        ref = sanitize_text((request.POST.get("gcash_ref") or "").strip(), max_len=13)
         proof = request.FILES.get("payment_proof")
         txn.gcash_ref = ref
         if proof is not None:
@@ -4550,7 +4550,7 @@ def buyer_submit_gcash_payment(request, request_id):
     txn = pr.transaction
     if getattr(txn, "payment_method", None) != "gcash":
         return json_error("Payment method is not GCash", status=400)
-    ref = sanitize_text((request.POST.get("gcash_ref") or "").strip(), max_len=64)
+    ref = sanitize_text((request.POST.get("gcash_ref") or "").strip(), max_len=13)
     receipt = request.FILES.get("payment_receipt")
     if not ref:
         return json_error("Reference number is required", status=400, field_errors={"gcash_ref": ["Reference number is required"]})

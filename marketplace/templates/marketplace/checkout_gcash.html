@@ -22,7 +22,7 @@
       {% csrf_token %}
       <div class="mb-3 form-control">
         <label class="label"><span class="label-text">Reference Number</span></label>
-        <input name="gcash_ref" type="text" class="input input-bordered" value="{{ txn.gcash_ref }}" required />
+        <input name="gcash_ref" type="text" class="input input-bordered" value="{{ txn.gcash_ref }}" maxlength="13" required />
       </div>
       <div class="mb-4 form-control">
         <label class="label"><span class="label-text">Proof of Payment</span></label>
