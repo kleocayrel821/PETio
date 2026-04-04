@@ -1,176 +1,748 @@
-{% extends "base.html" %}
-{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Feed Smarter. Connect Better. Care Together. | PETio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-{% block title %}Feed Smarter. Connect Better. Care Together. | PETio{% endblock %}
+  :root {
+    --c-purple-dark: #2D3436;
+    --c-purple-mid: #6C5CE7;
+    --c-teal: #00B894;
+    --c-mint: #F8F9FA;
+    --c-white: #FFFFFF;
+    --c-text-muted: #636E72;
+    --c-border: #E9ECEF;
+    --c-border-hover: #DDE2E6;
+    --radius-sm: 12px;
+    --radius-md: 18px;
+    --radius-lg: 26px;
+    --radius-xl: 36px;
+  }
 
-{% block body_class %} class="bg-base-100" {% endblock %}
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--c-purple-dark);
+    background:
+      radial-gradient(circle at 7% 8%, rgba(108, 92, 231, 0.08), transparent 30%),
+      radial-gradient(circle at 92% 0%, rgba(0, 184, 148, 0.08), transparent 28%),
+      var(--c-white);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
 
-{% block content %}
-<div class="container mx-auto max-w-6xl px-4 lg:px-6 py-10 lg:py-16">
-  <div class="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
-    <div class="flex-1 space-y-6">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-200 text-xs font-semibold text-base-content/70 uppercase tracking-[0.2em]">
-        <span class="w-2 h-2 rounded-full bg-primary"></span>
-        <span>Smart feeding dashboard</span>
+  .nav {
+    position: sticky; top: 0; z-index: 100;
+    height: 72px;
+    padding: 0 32px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px;
+    background: rgba(255, 255, 255, 0.84);
+    border-bottom: 1px solid var(--c-border);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+  .nav-brand {
+    display: flex; align-items: center; gap: 8px;
+    text-decoration: none;
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-size: 24px;
+    letter-spacing: -0.02em;
+    color: var(--c-purple-dark);
+  }
+  .nav-brand-dot {
+    width: 8px; height: 8px;
+    border-radius: 999px;
+    background: var(--c-purple-mid);
+    box-shadow: 0 0 0 7px rgba(108, 92, 231, 0.15);
+  }
+  .nav-links { display: flex; align-items: center; gap: 10px; list-style: none; }
+  .nav-links a {
+    display: inline-flex;
+    font-size: 14px; font-weight: 500;
+    padding: 10px 14px;
+    border-radius: 999px;
+    text-decoration: none;
+    color: var(--c-text-muted);
+    transition: .2s ease;
+  }
+  .nav-links a:hover { color: var(--c-purple-dark); background: rgba(108, 92, 231, 0.08); }
+  .nav-cta {
+    color: #fff !important;
+    background: linear-gradient(135deg, var(--c-purple-mid), #5A4BD1) !important;
+    box-shadow: 0 8px 18px rgba(108, 92, 231, 0.25);
+  }
+  .nav-cta:hover { transform: translateY(-1px); filter: brightness(1.03); }
+
+  .hero {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 86px 32px 74px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.07fr) minmax(0, 0.93fr);
+    gap: 34px;
+    align-items: center;
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-bottom: 24px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: .16em; text-transform: uppercase;
+    color: var(--c-purple-mid);
+    border: 1px solid rgba(108, 92, 231, 0.22);
+    background: rgba(108, 92, 231, 0.08);
+    border-radius: 999px;
+    padding: 8px 13px;
+  }
+  .hero-eyebrow-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--c-teal); }
+  .hero-headline {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-size: clamp(44px, 6vw, 72px);
+    font-weight: 400;
+    line-height: .98;
+    letter-spacing: -0.036em;
+    margin-bottom: 18px;
+    color: var(--c-purple-dark);
+  }
+  .hero-headline em {
+    font-style: normal;
+    color: transparent;
+    background: linear-gradient(135deg, var(--c-purple-mid), var(--c-teal));
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  .hero-body {
+    max-width: 50ch;
+    margin-bottom: 30px;
+    font-size: 18px;
+    line-height: 1.65;
+    color: var(--c-text-muted);
+  }
+  .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn-primary, .btn-dark {
+    display: inline-flex; align-items: center; gap: 8px;
+    border-radius: 999px;
+    padding: 13px 24px;
+    font-size: 15px; font-weight: 700;
+    text-decoration: none;
+    color: #fff;
+    background: linear-gradient(140deg, var(--c-purple-mid), #5A4BD1);
+    border: none;
+    box-shadow: 0 10px 22px rgba(108, 92, 231, 0.24);
+    transition: .2s ease;
+  }
+  .btn-primary:hover, .btn-dark:hover { transform: translateY(-2px); filter: brightness(1.05); }
+  .btn-primary svg { width: 16px; height: 16px; }
+  .btn-ghost, .btn-secondary {
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: 999px;
+    padding: 12px 20px;
+    font-size: 14px; font-weight: 600;
+    text-decoration: none;
+    color: var(--c-purple-dark);
+    background: rgba(45, 52, 54, 0.03);
+    border: 1px solid var(--c-border);
+    transition: .2s ease;
+  }
+  .btn-ghost:hover, .btn-secondary:hover {
+    background: rgba(108, 92, 231, 0.08);
+    border-color: rgba(108, 92, 231, 0.25);
+    color: var(--c-purple-mid);
+  }
+
+  .hero-visual { position: relative; }
+  .hero-card {
+    position: relative; z-index: 2;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(233, 236, 239, 0.92);
+    padding: 26px;
+    box-shadow: 0 26px 65px rgba(45, 52, 54, 0.11);
+    backdrop-filter: blur(4px);
+  }
+  .hero-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .hero-card-title {
+    font-size: 11px; font-weight: 800;
+    letter-spacing: .12em; text-transform: uppercase;
+    color: var(--c-text-muted);
+  }
+  .hero-card-badge {
+    border-radius: 999px;
+    border: 1px solid rgba(0, 184, 148, 0.28);
+    background: rgba(0, 184, 148, 0.14);
+    color: #03856b;
+    font-size: 11px; font-weight: 700;
+    padding: 5px 10px;
+  }
+  .pet-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-bottom: 10px;
+    padding: 11px 12px;
+    border-radius: var(--radius-md);
+    background: var(--c-mint);
+    border: 1px solid var(--c-border);
+  }
+  .pet-row:last-child { margin-bottom: 0; }
+  .pet-row-left { display: flex; align-items: center; gap: 11px; }
+  .pet-avatar {
+    width: 38px; height: 38px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(45, 52, 54, 0.06);
+    font-size: 17px;
+  }
+  .pet-name { font-size: 14px; font-weight: 700; color: var(--c-purple-dark); }
+  .pet-time { font-size: 12px; color: var(--c-text-muted); margin-top: 2px; }
+  .pet-status {
+    border-radius: 999px;
+    padding: 4px 9px;
+    font-size: 11px; font-weight: 700;
+  }
+  .status-green { background: rgba(0, 184, 148, 0.13); color: #03856b; border: 1px solid rgba(0, 184, 148, 0.22); }
+  .status-blue { background: rgba(108, 92, 231, 0.12); color: #5a4bd1; border: 1px solid rgba(108, 92, 231, 0.2); }
+  .status-amber { background: rgba(253, 203, 110, 0.2); color: #a96b00; border: 1px solid rgba(253, 203, 110, 0.33); }
+  .hero-card-footer {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--c-border);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .next-feed { font-size: 12px; color: var(--c-text-muted); }
+  .next-feed strong { color: var(--c-purple-dark); font-weight: 700; }
+  .mini-btn {
+    border-radius: 999px;
+    border: 1px solid rgba(108, 92, 231, 0.2);
+    background: rgba(108, 92, 231, 0.1);
+    color: #5a4bd1;
+    font-size: 12px; font-weight: 700;
+    padding: 6px 12px;
+  }
+
+  .float-pill {
+    position: absolute; z-index: 3;
+    display: flex; align-items: center; gap: 7px;
+    padding: 8px 13px;
+    border-radius: 999px;
+    font-size: 12px; font-weight: 700;
+    color: var(--c-purple-dark);
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid var(--c-border);
+    box-shadow: 0 14px 34px rgba(45, 52, 54, 0.15);
+    white-space: nowrap;
+  }
+  .float-pill-dot { width: 7px; height: 7px; border-radius: 999px; }
+  .pill-1 { top: -12px; right: 20px; animation: floatA 4.3s ease-in-out infinite; }
+  .pill-2 { left: -22px; bottom: 15px; animation: floatB 4.6s ease-in-out infinite .4s; }
+  .pill-3 { right: -22px; top: 52%; transform: translateY(-50%); animation: floatC 5s ease-in-out infinite .9s; }
+  @keyframes floatA { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+  @keyframes floatB { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+  @keyframes floatC { 0%,100% { transform: translateY(-50%) translateX(0); } 50% { transform: translateY(-50%) translateX(5px); } }
+
+  .proof-strip {
+    max-width: 1180px; margin: 0 auto;
+    padding: 0 32px 86px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .proof-stat {
+    background: rgba(248, 249, 250, 0.9);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    padding: 18px 18px;
+  }
+  .proof-divider { display: none; }
+  .proof-num {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-size: 35px; line-height: .95;
+    color: var(--c-purple-dark);
+  }
+  .proof-label {
+    margin-top: 7px;
+    font-size: 12px; font-weight: 600;
+    letter-spacing: .05em; text-transform: uppercase;
+    color: var(--c-text-muted);
+  }
+
+  .features {
+    position: relative; overflow: hidden;
+    padding: 96px 32px;
+    background:
+      radial-gradient(circle at 90% 16%, rgba(0, 184, 148, 0.12), transparent 28%),
+      linear-gradient(180deg, #2D3436 0%, #252c2f 100%);
+  }
+  .features-inner { max-width: 1180px; margin: 0 auto; position: relative; z-index: 1; }
+  .features-eyebrow {
+    margin-bottom: 12px;
+    color: #00B894;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: .09em; text-transform: uppercase;
+  }
+  .features-headline {
+    margin-bottom: 46px;
+    max-width: 22ch;
+    color: #fff;
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-size: clamp(36px, 4.2vw, 54px);
+    line-height: 1.03;
+    letter-spacing: -0.024em;
+  }
+  .features-headline em { color: #FDCB6E; font-style: normal; }
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .feature-cell {
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 28px 24px;
+    transition: .2s ease;
+  }
+  .feature-cell:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .feature-num {
+    margin-bottom: 20px;
+    color: rgba(255,255,255,0.48);
+    font-size: 12px; font-weight: 700;
+    letter-spacing: .08em;
+  }
+  .feature-icon-wrap {
+    width: 50px; height: 50px;
+    margin-bottom: 20px;
+    border-radius: 14px;
+    border: 1px solid rgba(0,184,148,0.25);
+    background: rgba(0,184,148,0.12);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .feature-icon-wrap svg {
+    width: 22px; height: 22px;
+    stroke: #00B894;
+    fill: none; stroke-width: 1.8;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .feature-name {
+    margin-bottom: 10px;
+    color: #fff;
+    font-size: 22px; font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .feature-desc {
+    color: rgba(255,255,255,0.75);
+    font-size: 14px; line-height: 1.65;
+  }
+  .feature-tag {
+    margin-top: 20px;
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    padding: 6px 10px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+  .feature-tag::before { content: ''; width: 7px; height: 7px; border-radius: 999px; background: #00B894; }
+
+  .how {
+    max-width: 1180px; margin: 0 auto;
+    padding: 96px 32px 88px;
+  }
+  .how-eyebrow {
+    margin-bottom: 14px;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: var(--c-purple-mid);
+  }
+  .how-headline {
+    margin-bottom: 38px;
+    max-width: 24ch;
+    color: var(--c-purple-dark);
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-size: clamp(34px, 4.1vw, 52px);
+    letter-spacing: -0.026em;
+    line-height: 1.03;
+  }
+  .how-steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .how-step {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--c-border);
+    background: #fff;
+    box-shadow: 0 10px 25px rgba(45, 52, 54, 0.06);
+    padding: 20px 20px 22px;
+  }
+  .how-step::before { content: none; }
+  .how-step-num {
+    margin-bottom: 12px;
+    color: var(--c-purple-mid);
+    font-size: 12px; font-weight: 700;
+    letter-spacing: .06em;
+  }
+  .how-step-title {
+    margin-bottom: 8px;
+    color: var(--c-purple-dark);
+    font-size: 19px; font-weight: 700;
+  }
+  .how-step-body { color: var(--c-text-muted); font-size: 14px; line-height: 1.66; }
+
+  .cta-wrap { padding: 0 32px 88px; }
+  .cta-block {
+    max-width: 1180px; margin: 0 auto;
+    display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 28px; align-items: center;
+    border-radius: 34px;
+    padding: 48px 42px;
+    background:
+      radial-gradient(circle at 88% 12%, rgba(0, 184, 148, 0.16), transparent 36%),
+      linear-gradient(120deg, #6C5CE7 0%, #5A4BD1 100%);
+    border: 1px solid rgba(255,255,255,0.22);
+    box-shadow: 0 24px 58px rgba(108, 92, 231, 0.35);
+  }
+  .cta-block::after { content: none; }
+  .cta-label {
+    margin-bottom: 8px;
+    color: rgba(255,255,255,0.76);
+    font-size: 12px; font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .cta-headline {
+    margin-bottom: 8px;
+    color: #fff;
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-size: clamp(34px, 4vw, 50px);
+    line-height: 1.04;
+    letter-spacing: -0.022em;
+  }
+  .cta-sub { color: rgba(255,255,255,0.82); font-size: 15px; font-weight: 500; }
+  .cta-actions { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+  .btn-dark {
+    background: #fff;
+    color: #5A4BD1;
+    box-shadow: 0 10px 20px rgba(45, 52, 54, 0.16);
+  }
+  .btn-dark:hover { filter: brightness(0.98); }
+  .btn-secondary {
+    color: #fff;
+    border-color: rgba(255,255,255,0.38);
+    background: rgba(255,255,255,0.08);
+  }
+  .btn-secondary:hover { color: #fff; border-color: rgba(255,255,255,0.52); background: rgba(255,255,255,0.16); }
+
+  .footer {
+    max-width: 1180px; margin: 0 auto;
+    padding: 30px 32px 34px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;
+    border-top: 1px solid var(--c-border);
+  }
+  .footer-brand {
+    text-decoration: none;
+    color: var(--c-purple-dark);
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-size: 20px;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .footer-copy { font-size: 13px; color: var(--c-text-muted); }
+  .footer-links { list-style: none; display: flex; gap: 20px; }
+  .footer-links a {
+    text-decoration: none;
+    color: var(--c-text-muted);
+    font-size: 13px; font-weight: 600;
+    transition: .2s ease;
+  }
+  .footer-links a:hover { color: var(--c-purple-mid); }
+
+  .fade-up {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity .65s ease, transform .65s ease;
+  }
+  .fade-up.visible { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 980px) {
+    .hero { grid-template-columns: 1fr; gap: 32px; padding: 68px 24px 58px; }
+    .hero-headline { font-size: clamp(40px, 10vw, 58px); }
+    .hero-visual { max-width: 560px; margin: 0 auto; width: 100%; }
+    .proof-strip { grid-template-columns: repeat(2, minmax(0,1fr)); padding: 0 24px 72px; }
+    .features { padding: 82px 24px; }
+    .features-grid { grid-template-columns: 1fr; }
+    .how { padding: 82px 24px; }
+    .how-steps { grid-template-columns: 1fr; }
+    .cta-wrap { padding: 0 24px 72px; }
+    .cta-block { grid-template-columns: 1fr; padding: 38px 28px; }
+    .cta-actions { align-items: flex-start; }
+    .footer { padding: 30px 24px 34px; }
+  }
+  @media (max-width: 760px) {
+    .nav { padding: 0 16px; height: 66px; }
+    .nav-links { display: none; }
+    .proof-strip { grid-template-columns: 1fr; gap: 10px; }
+    .float-pill, .pill-3 { display: none; }
+    .pill-2 { left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <a href="#" class="nav-brand">
+    <span class="nav-brand-dot"></span>PETio
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#" class="nav-cta">Get started</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section>
+  <div class="hero">
+    <div>
+      <div class="hero-eyebrow fade-up">
+        <span class="hero-eyebrow-dot"></span>
+        Smart Pet Care Platform
       </div>
-      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-base-content leading-tight">
-        Feed smarter, watch in real time, and stay in control from anywhere.
+      <h1 class="hero-headline fade-up">
+        The pet app<br><em>you've been waiting for.</em>
       </h1>
-      <p class="text-base lg:text-lg text-base-content/70 max-w-xl">
-        PETio connects your automatic feeder to a clean, real-time dashboard so you can trigger feeds, manage schedules, and review history in one place.
+      <p class="hero-body fade-up">
+        PETio brings your pet's whole life into one place — feeding schedules, daily logs, a community that gets it, and a marketplace for everything they need.
       </p>
-      <div class="flex flex-wrap items-center gap-3">
-        <a
-          href="{% if user.is_authenticated %}{% url 'home' %}{% else %}{% url 'login' %}{% endif %}"
-          class="btn btn-primary btn-lg btn-enhanced"
-        >
-          <i class="fas fa-gauge-high"></i>
-          <span>Open Controller</span>
+      <div class="hero-actions fade-up">
+        <a href="#" class="btn-primary">
+          Get started free
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
         </a>
-        <a
-          href="{% url 'accounts:signup' %}"
-          class="btn btn-ghost btn-lg btn-enhanced border-base-300 text-base-content/80"
-        >
-          <i class="fas fa-paw"></i>
-          <span>Create an account</span>
-        </a>
-      </div>
-      <div class="flex flex-wrap gap-6 text-sm text-base-content/60 pt-2">
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-success"></span>
-          <span>Real-time device status</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-primary"></span>
-          <span>One-tap Feed Now controls</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-warning"></span>
-          <span>Schedule and history in one view</span>
-        </div>
+        <a href="#features" class="btn-ghost">Explore features</a>
       </div>
     </div>
-    <div class="flex-1 w-full">
-      <div class="enhanced-card space-y-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <div class="text-xs font-semibold uppercase tracking-widest text-base-content/60">
-              Live control snapshot
-            </div>
-            <div class="text-sm text-base-content/70">
-              Preview of the controller dashboard
-            </div>
-          </div>
-          <span class="status-badge status-enabled">
-            <i class="fas fa-circle text-success text-[8px]"></i>
-            Online
-          </span>
+
+    <div class="hero-visual fade-up">
+      <!-- Floating pill 1 -->
+      <div class="float-pill pill-1">
+        <span class="float-pill-dot" style="background:#1D9E75;"></span>
+        Mochi fed · 5 min ago
+      </div>
+      <!-- Floating pill 2 -->
+      <div class="float-pill pill-2">
+        <span class="float-pill-dot" style="background:var(--c-teal);"></span>
+        12 new posts in feed
+      </div>
+      <!-- Floating pill 3 -->
+      <div class="float-pill pill-3">
+        <span class="float-pill-dot" style="background:var(--c-purple-mid);"></span>
+        3 items on watchlist
+      </div>
+
+      <!-- Dashboard card -->
+      <div class="hero-card">
+        <div class="hero-card-header">
+          <span class="hero-card-title">Controller Functions</span>
+          <span class="hero-card-badge">Smart feeding, live control</span>
         </div>
-        <div class="mt-4 grid gap-4 md:grid-cols-2">
-          <div class="space-y-3">
-            <div class="subsection-title flex items-center gap-2 mb-1">
-              <i class="fas fa-utensils text-primary"></i>
-              <span>Feed Now</span>
-            </div>
+
+        <div class="pet-row">
+          <div class="pet-row-left">
+            <div class="pet-avatar" style="background:rgba(214,244,237,0.8);">🍽️</div>
             <div>
-              <div class="flex items-center justify-between text-xs text-base-content/60 mb-1">
-                <span>Portion size</span>
-                <span class="font-semibold text-base-content">90 g</span>
-              </div>
-              <div class="w-full h-2 rounded-full bg-base-200 overflow-hidden">
-                <div class="h-full w-1/2 bg-primary"></div>
-              </div>
-            </div>
-            <button class="btn btn-primary btn-enhanced w-full mt-2">
-              <i class="fas fa-paw"></i>
-              <span>Simulated Feed</span>
-            </button>
-          </div>
-          <div class="space-y-3">
-            <div class="subsection-title flex items-center gap-2 mb-1">
-              <i class="fas fa-calendar-alt text-accent"></i>
-              <span>Today&apos;s schedule</span>
-            </div>
-            <ul class="space-y-2 text-sm text-base-content/80">
-              <li class="flex items-center justify-between">
-                <span class="flex items-center gap-2">
-                  <i class="fas fa-clock text-primary text-xs"></i>
-                  7:00 AM
-                </span>
-                <span class="text-base-content/60">60 g</span>
-              </li>
-              <li class="flex items-center justify-between">
-                <span class="flex items-center gap-2">
-                  <i class="fas fa-clock text-primary text-xs"></i>
-                  12:00 PM
-                </span>
-                <span class="text-base-content/60">90 g</span>
-              </li>
-              <li class="flex items-center justify-between">
-                <span class="flex items-center gap-2">
-                  <i class="fas fa-clock text-primary text-xs"></i>
-                  7:00 PM
-                </span>
-                <span class="text-base-content/60">90 g</span>
-              </li>
-            </ul>
-            <div class="mt-3 rounded-lg bg-base-200 px-3 py-2 text-xs text-base-content/70">
-              Last feed: <span class="font-semibold text-base-content">Today at 12:03 PM</span>
+              <div class="pet-name">Feed Now</div>
+              <div class="pet-time">Trigger instant feeding with portion control</div>
             </div>
           </div>
+          <span class="pet-status status-green">Remote</span>
+        </div>
+
+        <div class="pet-row">
+          <div class="pet-row-left">
+            <div class="pet-avatar" style="background:rgba(135,186,195,0.25);">⏰</div>
+            <div>
+              <div class="pet-name">Smart Schedules</div>
+              <div class="pet-time">Set recurring meals by time, amount, and day</div>
+            </div>
+          </div>
+          <span class="pet-status status-blue">Auto</span>
+        </div>
+
+        <div class="pet-row">
+          <div class="pet-row-left">
+            <div class="pet-avatar" style="background:rgba(250,238,218,0.8);">✔</div>
+            <div>
+              <div class="pet-name">History & Status</div>
+              <div class="pet-time">Track feeding logs and monitor device activity live</div>
+            </div>
+          </div>
+          <span class="pet-status status-amber">Tracked</span>
+        </div>
+
+        <div class="hero-card-footer">
+          <span class="next-feed">Includes: <strong>pairing, commands, schedules, and logs</strong></span>
+          <span class="mini-btn">Open controller</span>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="mt-12 lg:mt-16 space-y-8">
-    <h2 class="section-title">
-      <i class="fas fa-layer-group text-primary"></i>
-      Built on the same interface you use every day
+  <!-- Social proof strip -->
+  <div class="proof-strip">
+    <div class="proof-stat">
+      <span class="proof-num">10k+</span>
+      <span class="proof-label">Pet owners</span>
+    </div>
+    <div class="proof-divider"></div>
+    <div class="proof-stat">
+      <span class="proof-num">50k+</span>
+      <span class="proof-label">Meals tracked</span>
+    </div>
+    <div class="proof-divider"></div>
+    <div class="proof-stat">
+      <span class="proof-num">3</span>
+      <span class="proof-label">Core features</span>
+    </div>
+    <div class="proof-divider"></div>
+    <div class="proof-stat">
+      <span class="proof-num">Free</span>
+      <span class="proof-label">To get started</span>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="features-inner">
+    <p class="features-eyebrow fade-up">What PETio does</p>
+    <h2 class="features-headline fade-up">
+      Three tools.<br><em>One happy pet.</em>
     </h2>
-    <div class="responsive-grid">
-      <div class="enhanced-card">
-        <div class="subsection-title flex items-center gap-2 mb-2">
-          <i class="fas fa-utensils text-primary"></i>
-          <span>Feed Now controls</span>
+
+    <div class="features-grid fade-up">
+
+      <!-- Controller -->
+      <div class="feature-cell">
+        <div class="feature-num">01</div>
+        <div class="feature-icon-wrap">
+          <!-- Sliders icon -->
+          <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><line x1="7" y1="12" x2="24" y2="12"/><line x1="0" y1="12" x2="3" y2="12"/><line x1="17" y1="6" x2="24" y2="6"/><line x1="0" y1="6" x2="15" y2="6"/><line x1="17" y1="18" x2="24" y2="18"/><line x1="0" y1="18" x2="15" y2="18"/></svg>
         </div>
-        <p class="text-sm text-base-content/70 mb-3">
-          Trigger on-demand feeds with clear visual feedback and instant device status, just like inside the controller dashboard.
+        <h3 class="feature-name">Controller</h3>
+        <p class="feature-desc">
+          Build feeding schedules, track daily activity, and get reminders that actually fit your routine. Your pet's life, organized.
         </p>
-        <div class="flex items-center gap-2 text-xs text-base-content/60">
-          <span class="status-badge status-enabled">Low latency</span>
-          <span>Optimized for quick actions during busy days.</span>
-        </div>
+        <span class="feature-tag">Schedules & reminders</span>
       </div>
-      <div class="enhanced-card">
-        <div class="subsection-title flex items-center gap-2 mb-2">
-          <i class="fas fa-calendar-alt text-accent"></i>
-          <span>Schedule management</span>
+
+      <!-- Social -->
+      <div class="feature-cell">
+        <div class="feature-num">02</div>
+        <div class="feature-icon-wrap">
+          <!-- Users icon -->
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </div>
-        <p class="text-sm text-base-content/70 mb-3">
-          Use a simple grid to set recurring feeds, edit times, and adjust portions without losing track of your pet&apos;s routine.
+        <h3 class="feature-name">Social</h3>
+        <p class="feature-desc">
+          Share milestones, swap tips, and find your pet-owner tribe. A community built around the animals you love, not the algorithm.
         </p>
-        <div class="flex items-center gap-2 text-xs text-base-content/60">
-          <span class="status-badge">Dashboard grid</span>
-          <span>Same layout system as the in-app Schedules view.</span>
-        </div>
+        <span class="feature-tag">Community & posts</span>
       </div>
-      <div class="enhanced-card">
-        <div class="subsection-title flex items-center gap-2 mb-2">
-          <i class="fas fa-history text-primary"></i>
-          <span>Feeding history</span>
+
+      <!-- Marketplace -->
+      <div class="feature-cell">
+        <div class="feature-num">03</div>
+        <div class="feature-icon-wrap">
+          <!-- Shopping bag icon -->
+          <svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
         </div>
-        <p class="text-sm text-base-content/70 mb-3">
-          Review recent events with a clean table that mirrors the History tab, including time, action, amount, and status.
+        <h3 class="feature-name">Marketplace</h3>
+        <p class="feature-desc">
+          Browse trusted listings for food, toys, accessories, and more. Buy from fellow pet owners or list what your pet has outgrown.
         </p>
-        <div class="flex items-center gap-2 text-xs text-base-content/60">
-          <span class="status-badge">Audit trail</span>
-          <span>Designed for quick scanning at a glance.</span>
-        </div>
+        <span class="feature-tag">Buy & sell</span>
       </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how" class="how">
+  <p class="how-eyebrow fade-up">Simple by design</p>
+  <h2 class="how-headline fade-up">Up and running in minutes.</h2>
+
+  <div class="how-steps">
+    <div class="how-step fade-up">
+      <div class="how-step-num">01 — Create your profile</div>
+      <h3 class="how-step-title">Add your pets</h3>
+      <p class="how-step-body">Set up profiles for each of your pets. Add their species, breed, birthday, and dietary needs in under two minutes.</p>
+    </div>
+    <div class="how-step fade-up">
+      <div class="how-step-num">02 — Set your schedule</div>
+      <h3 class="how-step-title">Build a routine</h3>
+      <p class="how-step-body">Use the Controller to set feeding times, activity reminders, and health checkups. PETio keeps track so you don't have to.</p>
+    </div>
+    <div class="how-step fade-up">
+      <div class="how-step-num">03 — Join the community</div>
+      <h3 class="how-step-title">Connect & discover</h3>
+      <p class="how-step-body">Post moments, follow fellow owners, and find great deals in the Marketplace — all in one place, all free to start.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-wrap">
+  <div class="cta-block fade-up">
+    <div>
+      <p class="cta-label">Start today</p>
+      <h2 class="cta-headline">Your pet deserves better care.<br>You deserve less stress.</h2>
+      <p class="cta-sub">Free to join. No credit card needed.</p>
+    </div>
+    <div class="cta-actions">
+      <a href="#" class="btn-dark">Create free account</a>
+      <a href="#" class="btn-secondary">Sign in instead</a>
     </div>
   </div>
 </div>
-{% endblock %}
 
+<!-- FOOTER -->
+<footer>
+  <div class="footer">
+    <a href="#" class="footer-brand">
+      <span class="nav-brand-dot"></span>PETio
+    </a>
+    <ul class="footer-links">
+      <li><a href="#">Privacy</a></li>
+      <li><a href="#">Terms</a></li>
+      <li><a href="#">Contact</a></li>
+    </ul>
+    <p class="footer-copy">© 2025 PETio. Made with care for pets.</p>
+  </div>
+</footer>
 
+<script>
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        const el = e.target;
+        const siblings = Array.from(el.parentElement.querySelectorAll('.fade-up'));
+        const idx = siblings.indexOf(el);
+        setTimeout(() => el.classList.add('visible'), idx * 80);
+        obs.unobserve(el);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
+</script>
+</body>
+</html>
