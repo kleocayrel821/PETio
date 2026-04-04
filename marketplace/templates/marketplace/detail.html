@@ -117,10 +117,11 @@
                 <div id="buyNowHelp" class="text-xs text-base-content/70 mt-1">Instant purchase for fixed-price listings.</div>
                 {% endif %}
                 {% if request.user.id != listing.seller_id %}
-                <button class="btn btn-ghost btn-block" onclick="openMessageModal()">
+                {% url 'marketplace:messages' as messages_url %}
+                <a class="btn btn-ghost btn-block" href="{{ messages_url }}?listing_id={{ listing.pk }}">
                     <i class="fas fa-envelope mr-2"></i>
                     Message Seller
-                </button>
+                </a>
                 <div class="flex gap-2">
                     <button class="btn btn-outline btn-error flex-1" onclick="openReportModal()">
                         <i class="fas fa-flag mr-2"></i>
