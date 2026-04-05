@@ -418,7 +418,7 @@
         {% endif %}
 
         {% if request_obj.status == 'completed' and request.user.id == request_obj.buyer.id %}
-        <div class="overflow-hidden card bg-base-200">
+        <div class="overflow-hidden card bg-base-200" id="rate-seller">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">⭐</span> Rate Seller</h3>
             {% if can_rate %}

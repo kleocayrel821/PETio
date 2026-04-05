@@ -2100,7 +2100,8 @@ def mark_request_completed(request, request_id):
     except Exception:
         pass
     django_messages.success(request, "Transaction completed.")
-    return redirect("marketplace:buyer_dashboard")
+    url = reverse("marketplace:request_detail", kwargs={"pk": pr.id}) + "#rate-seller"
+    return redirect(url)
 
 
 def _is_moderator(user):
