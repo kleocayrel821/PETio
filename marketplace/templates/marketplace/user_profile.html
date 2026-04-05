@@ -50,17 +50,6 @@
             Trust Score
             <span class="text-lg ml-2">{{ profile.trust_score|default:0 }}</span>
           </div>
-          {% if profile.verified %}
-          <span class="badge badge-success badge-lg gap-2">
-            <i class="fas fa-check-circle"></i>
-            Verified
-          </span>
-          {% else %}
-          <span class="badge badge-ghost badge-lg gap-2 text-error border-error">
-            <i class="fas fa-exclamation-triangle"></i>
-            Unverified
-          </span>
-          {% endif %}
         </div>
         <div class="text-xs text-base-content/60">
           No-shows: <span class="font-semibold">{{ profile.no_show_count|default:0 }}</span>
