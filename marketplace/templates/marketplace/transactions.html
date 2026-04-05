@@ -53,8 +53,7 @@
     {% if grouped.pending %}
     <ul class="space-y-2">
       {% for txn in grouped.pending %}
-        <li class="card p-3 txn-click"
-            data-href="{% if txn.purchase_request %}{% url 'marketplace:request_detail' txn.purchase_request.id %}{% else %}{% url 'marketplace:transaction_detail' txn.id %}{% endif %}">
+        <li class="card p-3">
           <div class="flex justify-between items-center">
             <div class="font-medium">
               {{ txn.listing.title }}
@@ -80,6 +79,9 @@
               </form>
             </div>
           {% endif %}
+          <div class="mt-2">
+            <a href="{% url 'marketplace:transaction_detail' txn.id %}" class="btn btn-xs btn-outline">View Details</a>
+          </div>
         </li>
       {% endfor %}
     </ul>
@@ -97,8 +99,7 @@
     {% if grouped.confirmed %}
     <ul class="space-y-2">
       {% for txn in grouped.confirmed %}
-        <li class="card p-3 txn-click"
-            data-href="{% if txn.purchase_request %}{% url 'marketplace:request_detail' txn.purchase_request.id %}{% else %}{% url 'marketplace:transaction_detail' txn.id %}{% endif %}">
+        <li class="card p-3">
           <div class="flex justify-between items-center">
             <div class="font-medium">
               {{ txn.listing.title }}
@@ -123,6 +124,9 @@
           {% endif %}
           {% if txn.amount_paid %}
             <div class="text-xs mt-1">Paid: {{ txn.amount_paid }} {% if txn.payment_method %}via {% if txn.payment_method == 'cod' %}COD (Cash on Delivery){% elif txn.payment_method == 'gcash' %}GCash{% else %}{{ txn.payment_method }}{% endif %}{% endif %}</div>
+          {% endif %}
+          {% if txn.purchase_request %}
+            <div class="mt-2"><a href="{% url 'marketplace:request_detail' txn.purchase_request.id %}" class="btn btn-xs btn-outline">View Request</a></div>
           {% endif %}
           <div class="mt-2 flex gap-2 items-center">
             {# Cancel allowed while request is still pending/negotiating #}
@@ -189,8 +193,7 @@
     {% if grouped.completed %}
     <ul class="space-y-2">
       {% for txn in grouped.completed %}
-        <li class="card p-3 txn-click"
-            data-href="{% if txn.purchase_request %}{% url 'marketplace:request_detail' txn.purchase_request.id %}{% else %}{% url 'marketplace:transaction_detail' txn.id %}{% endif %}">
+        <li class="card p-3">
           <div class="flex justify-between items-center">
             <div class="font-medium">
               {{ txn.listing.title }}
@@ -204,6 +207,12 @@
             <span class="badge badge-success">Completed</span>
           </div>
           <div class="text-xs opacity-70 mt-1">You are {% if txn.buyer_id == user.id %}the buyer{% else %}the seller{% endif %} · Completed {{ txn.updated_at|date:"M j, Y g:i a" }}</div>
+          <div class="mt-2 flex gap-2 items-center">
+            <a href="{% url 'marketplace:transaction_detail' txn.id %}" class="btn btn-xs btn-outline">View Details</a>
+            {% if txn.purchase_request %}
+            <a href="{% url 'marketplace:request_detail' txn.purchase_request.id %}" class="btn btn-xs btn-ghost">View Request</a>
+            {% endif %}
+          </div>
         </li>
       {% endfor %}
     </ul>
@@ -220,8 +229,7 @@
     {% if grouped.canceled %}
     <ul class="space-y-2">
       {% for txn in grouped.canceled %}
-        <li class="card p-3 txn-click"
-            data-href="{% if txn.purchase_request %}{% url 'marketplace:request_detail' txn.purchase_request.id %}{% else %}{% url 'marketplace:transaction_detail' txn.id %}{% endif %}">
+        <li class="card p-3">
           <div class="flex justify-between items-center">
             <div class="font-medium">
               {{ txn.listing.title }}
@@ -256,21 +264,5 @@ function submitSellerAction(form, act) {
     .catch(() => { location.reload(); });
   return false;
 }
-// Make transaction cards clickable to open the related request (fallback to transaction detail)
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.txn-click').forEach(el => {
-    const href = el.getAttribute('data-href');
-    if (!href) return;
-    el.style.cursor = 'pointer';
-    el.addEventListener('click', (e) => {
-      let t = e.target;
-      while (t && t !== el) {
-        if (t.tagName === 'A' || t.tagName === 'BUTTON' || (t.closest && t.closest('form'))) return;
-        t = t.parentElement;
-      }
-      window.location.href = href;
-    });
-  });
-});
 </script>
 {% endblock %}
