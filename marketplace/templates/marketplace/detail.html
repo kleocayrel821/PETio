@@ -140,14 +140,18 @@
         <div class="bg-base-200 rounded-xl p-6">
             <h3 class="font-semibold mb-4">Seller Information</h3>
             <div class="flex items-center gap-4">
+                {% with display_name=seller_account_profile.display_name|default:listing.seller.username %}
                 <div class="avatar placeholder">
                     <div class="bg-primary text-primary-content rounded-full w-12">
-                        <span class="text-lg">{{ listing.seller.username|first|upper }}</span>
+                        <span class="text-lg">{{ display_name|first|upper }}</span>
                     </div>
                 </div>
                 <div class="flex-1">
-                    <div class="font-semibold">@{{ listing.seller.username }}</div>
+                    <div class="font-semibold">@{{ display_name }}</div>
                     <div class="text-sm text-base-content/70">PETio seller</div>
+                    <div class="text-xs text-base-content/60">
+                        {{ seller_account_profile.location|default:"Location not set" }}
+                    </div>
                     <div class="flex items-center gap-2 mt-1">
                         {% if seller_rating_count %}
                         <div class="rating rating-sm">
@@ -159,6 +163,7 @@
                         {% endif %}
                     </div>
                 </div>
+                {% endwith %}
                 {% if request.user.id == listing.seller_id %}
                 {% url 'accounts:profile' as profile_url %}
                 <a class="btn btn-ghost btn-sm" href="{{ profile_url }}">
