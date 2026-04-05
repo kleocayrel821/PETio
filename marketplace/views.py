@@ -634,7 +634,6 @@ class ListingDetailView(LoginRequiredMixin, DetailView):
                     can_request = existing_pending is None
         ctx["can_request_purchase"] = can_request
         ctx["existing_pending_request"] = existing_pending
-        # Seller rating aggregates for this listing's seller
         try:
             from .models import SellerRating
             agg = SellerRating.objects.filter(seller_id=listing.seller_id).aggregate(
@@ -642,9 +641,22 @@ class ListingDetailView(LoginRequiredMixin, DetailView):
             )
             ctx["seller_rating_avg"] = agg.get("avg") or 0.0
             ctx["seller_rating_count"] = agg.get("count") or 0
+            listing_agg = SellerRating.objects.filter(listing_id=listing.id).aggregate(
+                avg=Avg("score"), count=Count("id")
+            )
+            ctx["listing_rating_avg"] = listing_agg.get("avg") or 0.0
+            ctx["listing_rating_count"] = listing_agg.get("count") or 0
+            ctx["listing_ratings"] = list(
+                SellerRating.objects.filter(listing_id=listing.id)
+                .select_related("buyer")
+                .order_by("-created_at")[:10]
+            )
         except Exception:
             ctx["seller_rating_avg"] = 0.0
             ctx["seller_rating_count"] = 0
+            ctx["listing_rating_avg"] = 0.0
+            ctx["listing_rating_count"] = 0
+            ctx["listing_ratings"] = []
         # Similar products: active listings in the same category, excluding current
         try:
             if getattr(listing, "category_id", None):
