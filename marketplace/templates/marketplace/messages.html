@@ -203,12 +203,14 @@ function renderMessageBubble(msg) {
   const sideClass = isMe ? 'chat-end' : 'chat-start';
   const bubbleClass = isMe ? 'chat-bubble-secondary' : 'chat-bubble-primary';
   const avatarBg = isMe ? 'bg-secondary text-secondary-content' : 'bg-primary text-primary-content';
-  const headerName = isMe ? 'You' : `@${msg.sender_username || 'user'}`;
+  const baseName = msg.sender_display_name || msg.sender_username || 'user';
+  const headerName = isMe ? 'You' : `@${baseName}`;
   const createdAt = msg.created_at ? new Date(msg.created_at) : new Date();
   const timeText = createdAt.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
   const pendingClass = msg.pending ? 'opacity-70' : '';
   const pendingSpinner = msg.pending ? '<span class="loading loading-spinner loading-xs ml-2" aria-label="Sending"></span>' : '';
-  const avatarChar = (msg.sender_username || 'U')[0].toUpperCase();
+  const avatarSource = baseName || 'U';
+  const avatarChar = avatarSource.charAt(0).toUpperCase();
   return `
     <div class="chat ${sideClass}" data-temp-id="${msg.tempId || ''}" data-message-id="${msg.id || ''}">
       <div class="chat-image avatar">
@@ -293,8 +295,8 @@ async function startOrGetThread(listingId) {
   updateIntegrationBanner(data.thread.listing_id);
   // Update header with participant and product
   updateChatHeader({
-    buyer: { id: data.thread.buyer_id, username: data.thread.buyer_username },
-    seller: { id: data.thread.seller_id, username: data.thread.seller_username },
+    buyer: data.thread.buyer || { id: data.thread.buyer_id, username: data.thread.buyer_username },
+    seller: data.thread.seller || { id: data.thread.seller_id, username: data.thread.seller_username },
     listing_id: data.thread.listing_id
   });
   try {
@@ -483,9 +485,11 @@ function updateChatHeader(thread) {
   const avatarCharEl = document.getElementById('headerAvatarChar');
   if (!headerEl || !thread) return;
   const other = (thread.buyer && thread.buyer.id === currentUserId) ? thread.seller : thread.buyer;
-  const name = other && other.username ? `@${other.username}` : 'Conversation';
+  const baseName = other && (other.display_name || other.username) ? (other.display_name || other.username) : '';
+  const name = baseName ? `@${baseName}` : 'Conversation';
   headerEl.textContent = name;
-  avatarCharEl.textContent = (other && other.username ? other.username[0] : '?').toUpperCase();
+  const avatarSource = baseName || (other && other.username) || '?';
+  avatarCharEl.textContent = avatarSource.charAt(0).toUpperCase();
 }
 
 /**
@@ -562,9 +566,11 @@ function renderConversations(threads) {
   const now = Date.now();
   threads.forEach((t) => {
     const other = (t.buyer && t.buyer.id === currentUserId) ? t.seller : t.buyer;
-    const name = other && other.username ? `@${other.username}` : 'Conversation';
+    const baseName = other && (other.display_name || other.username) ? (other.display_name || other.username) : '';
+    const name = baseName ? `@${baseName}` : 'Conversation';
     const lastAt = t.last_message_at ? new Date(t.last_message_at).toLocaleString() : '';
-    const avatarChar = (other && other.username ? other.username[0] : '?').toUpperCase();
+    const avatarSource = baseName || (other && other.username) || '?';
+    const avatarChar = avatarSource.charAt(0).toUpperCase();
     const recent = t.last_message_at ? (now - new Date(t.last_message_at).getTime()) < (5 * 60 * 1000) : false;
     const statusDot = recent ? 'bg-green-500' : 'bg-base-300';
     html += `
@@ -697,9 +703,9 @@ function appendIncomingMessageBubble(m, meId) {
   wrap.setAttribute('data-message-id', m.id);
   const header = document.createElement('div');
   header.className = 'chat-header mb-1';
-  const username = m.sender_username || m.author || '';
+  const baseName = m.sender_display_name || m.sender_username || m.author || '';
   const createdFmt = m.created_at_fmt || '';
-  header.textContent = username + (createdFmt ? ' • ' + createdFmt : '');
+  header.textContent = baseName + (createdFmt ? ' • ' + createdFmt : '');
   const bubble = document.createElement('div');
   bubble.className = 'chat-bubble mt-1';
   bubble.textContent = m.content;

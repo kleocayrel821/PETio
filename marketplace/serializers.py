@@ -10,12 +10,39 @@ from .models import Category, Listing, MessageThread, Message, Transaction, Repo
 User = get_user_model()
 
 
-class UserSummarySerializer(serializers.ModelSerializer):
-    """Lightweight user serializer exposing id and username only."""
-
-    class Meta:
-        model = User
-        fields = ["id", "username"]
+13→class UserSummarySerializer(serializers.ModelSerializer):
+14→    display_name = serializers.SerializerMethodField()
+15→    avatar_url = serializers.SerializerMethodField()
+16→
+17→    def get_display_name(self, obj):
+18→        try:
+19→            profile = getattr(obj, "profile", None)
+20→            if profile and getattr(profile, "display_name", ""):
+21→                return profile.display_name
+22→        except Exception:
+23→            pass
+24→        return ""
+25→
+26→    def get_avatar_url(self, obj):
+27→        try:
+28→            profile = getattr(obj, "profile", None)
+29→            avatar = getattr(profile, "avatar", None) if profile is not None else None
+30→            if avatar:
+31→                request = self.context.get("request") if hasattr(self, "context") else None
+32→                url = avatar.url
+33→                if request is not None:
+34→                    try:
+35→                        return request.build_absolute_uri(url)
+36→                    except Exception:
+37→                        return url
+38→                return url
+39→        except Exception:
+40→            pass
+41→        return ""
+42→
+43→    class Meta:
+44→        model = User
+45→        fields = ["id", "username", "display_name", "avatar_url"]
 
 
 class CategorySerializer(serializers.ModelSerializer):
