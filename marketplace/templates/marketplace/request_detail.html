@@ -614,12 +614,7 @@ async function submitFormJSON(formEl, submitBtn, options) {
   const opts = options || {};
   const reloadOnSuccess = !!opts.reloadOnSuccess;
   submitBtn.disabled = true;
-  let spinner = null;
-  try {
-    spinner = document.createElement('span');
-    spinner.className = 'loading loading-spinner loading-xs ml-2';
-    submitBtn.appendChild(spinner);
-  } catch (_) {}
+  submitBtn.classList.add('loading');
   try {
     clearInlineErrors(formEl);
     const fd = new FormData(formEl); const url = formEl.getAttribute('action');
@@ -640,7 +635,7 @@ async function submitFormJSON(formEl, submitBtn, options) {
   } catch (err) { console.error(err); showMarketplaceToast('Network error. Please try again.', 'error'); }
   finally {
     submitBtn.disabled = false;
-    if (spinner && spinner.parentNode) spinner.parentNode.removeChild(spinner);
+    submitBtn.classList.remove('loading');
   }
 }
 
