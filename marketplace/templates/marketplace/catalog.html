@@ -193,14 +193,12 @@
                 <div class="text-xs sm:text-sm text-base-content/70">{{ item.quantity }} available</div>
             </div>
             <div class="seller-row flex items-center gap-2 mt-2 text-xs sm:text-sm text-base-content/70 whitespace-nowrap">
-                {% with display_name=item.seller.profile.display_name|default:item.seller.username %}
                 <div class="avatar placeholder">
                     <div class="bg-neutral text-neutral-content rounded-full w-6">
-                        <span class="text-xs">{{ display_name|first|upper }}</span>
+                        <span class="text-xs">{{ item.seller.username|first|upper }}</span>
                     </div>
                 </div>
-                <span class="seller-name">@{{ display_name }}</span>
-                {% endwith %}
+                <span class="seller-name">@{{ item.seller.username }}</span>
                 {% if item.seller_rating_count %}
                 <span class="ml-auto flex items-center gap-1 seller-rating-text">
                     <i class="fas fa-star text-yellow-400"></i>
