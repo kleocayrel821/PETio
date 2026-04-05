@@ -60,6 +60,9 @@
             <i class="fas fa-exclamation-triangle"></i>
             Unverified
           </span>
+          {% if can_request_verification %}
+          <a href="{% url 'marketplace:verification' %}" class="btn btn-xs btn-outline">Verify Account</a>
+          {% endif %}
           {% endif %}
         </div>
         <div class="text-xs text-base-content/60">

@@ -235,6 +235,18 @@ class UserProfileAdmin(admin.ModelAdmin):
     list_filter = ("verified",)
     search_fields = ("user__username", "location")
     raw_id_fields = ("user",)
+    actions = ["mark_verified", "mark_unverified"]
+
+    def mark_verified(self, request, queryset):
+        updated = queryset.update(verified=True)
+        self.message_user(request, f"Marked {updated} profile(s) as verified.")
+
+    def mark_unverified(self, request, queryset):
+        updated = queryset.update(verified=False)
+        self.message_user(request, f"Marked {updated} profile(s) as unverified.")
+
+    mark_verified.short_description = "Mark selected profiles as Verified"
+    mark_unverified.short_description = "Mark selected profiles as Unverified"
 
 class TransactionDisputeAdmin(admin.ModelAdmin):
     list_display = ("transaction", "reporter", "dispute_type", "status", "created_at")
