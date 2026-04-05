@@ -2479,6 +2479,7 @@ def transactions(request):
         "query": query,
         "sort": sort,
         "limit": per_bucket_limit,
+        "limit_choices": [20, 50, 100, 150, 200],
         "unread_notifications": _unread_count(user),
     }
     return render(request, "marketplace/transactions.html", ctx)
