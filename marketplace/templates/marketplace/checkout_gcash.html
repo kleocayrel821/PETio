@@ -30,8 +30,8 @@
       </div>
       <div class="mb-4 text-xs opacity-70">Amount: {{ txn.listing.price }}</div>
       <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <button type="submit" class="btn btn-primary w-full sm:w-auto">Submit Payment</button>
-        <a href="{% url 'marketplace:transactions' %}" class="btn btn-ghost w-full text-center sm:w-auto">Back to Transactions</a>
+        <button type="submit" class="w-full btn btn-primary sm:w-auto">Submit Payment</button>
+        <a href="{% url 'marketplace:transactions' %}" class="w-full text-center btn btn-ghost sm:w-auto">Back to Transactions</a>
       </div>
     </form>
   </div>
