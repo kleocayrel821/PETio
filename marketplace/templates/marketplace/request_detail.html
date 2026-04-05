@@ -314,11 +314,29 @@
         <div class="overflow-hidden card bg-base-200" id="payment-actions">
           <div class="card-body">
             <h3 class="card-title"><span class="mr-2">💰</span> Step 3 — Payment</h3>
-            {% if request_obj.transaction and request_obj.transaction.status in ('paid','completed') %}
+            {% if request_obj.transaction and request_obj.transaction.status == 'completed' %}
             <div class="p-3 text-sm rounded-xl bg-base-100">
               {% if request.user.id == request_obj.seller.id %}
               <div class="mb-1"><span class="font-semibold">Buyer:</span> @{{ request_obj.buyer.username }}</div>
-              <div class="mb-1"><span class="font-semibold">Status:</span> {% if request_obj.transaction.status == 'completed' %}Payment completed{% else %}Paid{% endif %} {% if request_obj.transaction.payment_method %}({% if request_obj.transaction.payment_method == 'gcash' %}GCash{% elif request_obj.transaction.payment_method == 'cod' %}Cash{% else %}{{ request_obj.transaction.payment_method|capfirst }}{% endif %}){% endif %}</div>
+              <div class="mb-1"><span class="font-semibold">Status:</span> Payment completed {% if request_obj.transaction.payment_method %}({% if request_obj.transaction.payment_method == 'gcash' %}GCash{% elif request_obj.transaction.payment_method == 'cod' %}Cash{% else %}{{ request_obj.transaction.payment_method|capfirst }}{% endif %}){% endif %}</div>
+              {% else %}
+              <div class="mb-1"><span class="font-semibold">Seller:</span> @{{ request_obj.seller.username }}</div>
+              <div><span class="font-semibold">Price:</span> {{ request_obj.transaction.amount_paid }} {% if request_obj.transaction.payment_method %}via {% if request_obj.transaction.payment_method == 'gcash' %}GCash{% elif request_obj.transaction.payment_method == 'cod' %}Cash{% else %}{{ request_obj.transaction.payment_method|capfirst }}{% endif %}{% endif %}</div>
+              {% endif %}
+              {% if request_obj.transaction.payment_method == 'gcash' and request_obj.transaction.payment_proof %}
+              <div class="mt-2">
+                <div class="mb-1 text-xs opacity-70">GCash Receipt</div>
+                <a href="{{ request_obj.transaction.payment_proof.url }}" target="_blank" rel="noopener">
+                  <img src="{{ request_obj.transaction.payment_proof.url }}" alt="GCash receipt" class="max-h-64 rounded-lg border" />
+                </a>
+              </div>
+              {% endif %}
+            </div>
+            {% elif request_obj.transaction and request_obj.transaction.status == 'paid' %}
+            <div class="p-3 text-sm rounded-xl bg-base-100">
+              {% if request.user.id == request_obj.seller.id %}
+              <div class="mb-1"><span class="font-semibold">Buyer:</span> @{{ request_obj.buyer.username }}</div>
+              <div class="mb-1"><span class="font-semibold">Status:</span> Paid {% if request_obj.transaction.payment_method %}({% if request_obj.transaction.payment_method == 'gcash' %}GCash{% elif request_obj.transaction.payment_method == 'cod' %}Cash{% else %}{{ request_obj.transaction.payment_method|capfirst }}{% endif %}){% endif %}</div>
               {% else %}
               <div class="mb-1"><span class="font-semibold">Seller:</span> @{{ request_obj.seller.username }}</div>
               <div><span class="font-semibold">Price:</span> {{ request_obj.transaction.amount_paid }} {% if request_obj.transaction.payment_method %}via {% if request_obj.transaction.payment_method == 'gcash' %}GCash{% elif request_obj.transaction.payment_method == 'cod' %}Cash{% else %}{{ request_obj.transaction.payment_method|capfirst }}{% endif %}{% endif %}</div>
