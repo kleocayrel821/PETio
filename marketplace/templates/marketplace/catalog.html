@@ -193,10 +193,18 @@
                 <div class="text-xs sm:text-sm text-base-content/70">{{ item.quantity }} available</div>
             </div>
             <div class="seller-row flex items-center gap-2 mt-2 text-xs sm:text-sm text-base-content/70 whitespace-nowrap">
-                <div class="avatar placeholder">
-                    <div class="bg-neutral text-neutral-content rounded-full w-6">
+                <div class="avatar">
+                    {% with p=item.seller.profile %}
+                    {% if p and p.avatar %}
+                    <div class="w-6 h-6 rounded-full overflow-hidden ring ring-neutral ring-offset-1">
+                        <img src="{{ p.avatar.url }}" alt="{{ item.seller.username }} avatar" class="w-full h-full object-cover">
+                    </div>
+                    {% else %}
+                    <div class="bg-neutral text-neutral-content rounded-full w-6 h-6 flex items-center justify-center">
                         <span class="text-xs">{{ item.seller.username|first|upper }}</span>
                     </div>
+                    {% endif %}
+                    {% endwith %}
                 </div>
                 <span class="seller-name">@{{ item.seller.username }}</span>
                 {% if item.seller_rating_count %}

@@ -79,9 +79,12 @@
     <div class="p-4 border-b border-base-300" id="chatHeader">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="avatar placeholder">
-            <div class="bg-neutral text-neutral-content rounded-full w-9">
-              <span id="headerAvatarChar" class="text-sm">?</span>
+          <div class="avatar">
+            <div class="w-9 h-9 rounded-full overflow-hidden ring ring-neutral ring-offset-1" id="chatAvatarWrap">
+              <img id="chatAvatarImg" alt="User avatar" class="w-full h-full object-cover hidden">
+              <div class="bg-neutral text-neutral-content w-full h-full flex items-center justify-center" id="chatAvatarFallback">
+                <span id="headerAvatarChar" class="text-sm">?</span>
+              </div>
             </div>
           </div>
           <div>
@@ -474,6 +477,19 @@ async function getListingTitle(listingId) {
   return listingTitleCache[key];
 }
 
+// Update chat header avatar if user profile image is available
+function applyHeaderAvatar(username, avatarUrl) {
+  const img = document.getElementById('chatAvatarImg');
+  const fallback = document.getElementById('chatAvatarFallback');
+  const ch = document.getElementById('headerAvatarChar');
+  if (avatarUrl) {
+    try { img.src = avatarUrl; img.classList.remove('hidden'); fallback.classList.add('hidden'); } catch(_) {}
+  } else {
+    if (ch) ch.textContent = (username || '?').slice(0,1).toUpperCase();
+    try { img.classList.add('hidden'); fallback.classList.remove('hidden'); } catch(_) {}
+  }
+}
+
 /**
  * Update chat header username based on the other participant.
  * @param {Object} thread
@@ -483,9 +499,21 @@ function updateChatHeader(thread) {
   const avatarCharEl = document.getElementById('headerAvatarChar');
   if (!headerEl || !thread) return;
   const other = (thread.buyer && thread.buyer.id === currentUserId) ? thread.seller : thread.buyer;
-  const name = other && other.username ? `@${other.username}` : 'Conversation';
+  const uname = other && other.username ? other.username : null;
+  const name = uname ? `@${uname}` : 'Conversation';
   headerEl.textContent = name;
-  avatarCharEl.textContent = (other && other.username ? other.username[0] : '?').toUpperCase();
+  avatarCharEl.textContent = (uname ? uname[0] : '?').toUpperCase();
+  try {
+    const uid = (thread.buyer && thread.buyer.id === currentUserId) ? (thread.seller && thread.seller.id) : (thread.buyer && thread.buyer.id);
+    if (uid) {
+      fetch(`/accounts/api/profile/${uid}/`, { credentials: 'same-origin' })
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(p => { applyHeaderAvatar(uname, (p && p.avatar_url) ? p.avatar_url : null); })
+        .catch(() => { applyHeaderAvatar(uname, null); });
+    } else {
+      applyHeaderAvatar(uname, null);
+    }
+  } catch (_) { applyHeaderAvatar(uname, null); }
 }
 
 /**
