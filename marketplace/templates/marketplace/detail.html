@@ -140,18 +140,10 @@
         <div class="bg-base-200 rounded-xl p-6">
             <h3 class="font-semibold mb-4">Seller Information</h3>
             <div class="flex items-center gap-4">
-                <div class="avatar">
-                    {% with p=listing.seller.profile %}
-                    {% if p and p.avatar %}
-                    <div class="w-12 h-12 rounded-full overflow-hidden ring ring-primary ring-offset-2">
-                        <img src="{{ p.avatar.url }}" alt="{{ listing.seller.username }} avatar" class="w-full h-full object-cover">
-                    </div>
-                    {% else %}
-                    <div class="bg-primary text-primary-content rounded-full w-12 h-12 flex items-center justify-center">
+                <div class="avatar placeholder">
+                    <div class="bg-primary text-primary-content rounded-full w-12">
                         <span class="text-lg">{{ listing.seller.username|first|upper }}</span>
                     </div>
-                    {% endif %}
-                    {% endwith %}
                 </div>
                 <div class="flex-1">
                     <div class="font-semibold">@{{ listing.seller.username }}</div>
