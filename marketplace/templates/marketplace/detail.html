@@ -189,16 +189,52 @@
 
 <!-- Specifications section removed; show when real structured specs exist -->
 
-<!-- Reviews Section (Placeholder for future implementation) -->
 <div class="bg-base-200 rounded-xl p-6 mb-8">
     <h2 class="text-2xl font-bold mb-4">Reviews & Ratings</h2>
+    {% if listing_ratings and listing_rating_count %}
+    <div class="flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-star text-3xl text-yellow-400"></i>
+                <div>
+                    <div class="text-xl font-semibold">{{ listing_rating_avg|floatformat:1 }}/5</div>
+                    <div class="text-sm text-base-content/70">{{ listing_rating_count }} review{% if listing_rating_count != 1 %}s{% endif %}</div>
+                </div>
+            </div>
+        </div>
+        <div class="divide-y divide-base-300 rounded-xl bg-base-100">
+            {% for r in listing_ratings %}
+            <div class="p-4">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <div class="avatar placeholder">
+                            <div class="w-8 rounded-full bg-primary text-primary-content">
+                                <span>{{ r.buyer.username|first|upper }}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold">@{{ r.buyer.username }}</div>
+                            <div class="text-xs text-base-content/70">{{ r.created_at|date:"Y-m-d" }}</div>
+                        </div>
+                    </div>
+                    <div class="text-sm font-semibold">{{ r.score }}/5</div>
+                </div>
+                {% if r.comment %}
+                <div class="mt-2 text-sm text-base-content/80">{{ r.comment }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
     <div class="text-center py-8">
         <i class="fas fa-star text-4xl text-base-content/30 mb-4"></i>
-        <h3 class="text-lg font-semibold mb-2">Reviews Coming Soon</h3>
+        <h3 class="text-lg font-semibold mb-2">No reviews yet</h3>
         <p class="text-base-content/70">
-            The review system will be available in a future update. For now, you can message the seller directly for more information.
+            This product has no reviews yet. Buyers can rate the seller after completing a request.
         </p>
     </div>
+    {% endif %}
 </div>
 
 <!-- Similar Products (dynamic by category) -->
