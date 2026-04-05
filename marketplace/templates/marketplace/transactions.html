@@ -206,6 +206,13 @@
             </div>
             <span class="badge badge-success">Completed</span>
           </div>
+          <div class="text-xs opacity-70 mt-1">You are {% if txn.buyer_id == user.id %}the buyer{% else %}the seller{% endif %} · Completed {{ txn.updated_at|date:"M j, Y g:i a" }}</div>
+          <div class="mt-2 flex gap-2 items-center">
+            <a href="{% url 'marketplace:transaction_detail' txn.id %}" class="btn btn-xs btn-outline">View Details</a>
+            {% if txn.purchase_request %}
+            <a href="{% url 'marketplace:request_detail' txn.purchase_request.id %}" class="btn btn-xs btn-ghost">View Request</a>
+            {% endif %}
+          </div>
         </li>
       {% endfor %}
     </ul>

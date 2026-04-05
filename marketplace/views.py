@@ -948,16 +948,16 @@ class RequestsOverviewView(LoginRequiredMixin, TemplateView):
         ctx["unread_notifications"] = _unread_count(user)
 
         buyer_qs = (
-            PurchaseRequest.objects
-            .filter(buyer=user)
+            PurchaseRequest.objects.filter(buyer=user)
             .exclude(seller__username__startswith="smoke_")
+            .exclude(status=PurchaseRequestStatus.COMPLETED)
             .select_related("listing", "seller")
             .order_by("-created_at")
         )
         seller_qs = (
-            PurchaseRequest.objects
-            .filter(seller=user)
+            PurchaseRequest.objects.filter(seller=user)
             .exclude(buyer__username__startswith="smoke_")
+            .exclude(status=PurchaseRequestStatus.COMPLETED)
             .select_related("listing", "buyer")
             .order_by("-created_at")
         )
