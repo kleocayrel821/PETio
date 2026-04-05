@@ -2463,13 +2463,22 @@ def transactions(request):
 
     counts = {k: grouped[k].count() for k in grouped}
 
+    # Limit per bucket for UI scroll containers; can be adjusted via ?limit=
+    try:
+        per_bucket_limit = int(request.GET.get("limit", "50"))
+        if per_bucket_limit < 10: per_bucket_limit = 10
+        if per_bucket_limit > 200: per_bucket_limit = 200
+    except Exception:
+        per_bucket_limit = 50
+    grouped_limited = {k: grouped[k][:per_bucket_limit] for k in grouped}
     ctx = {
-        "grouped": grouped,
+        "grouped": grouped_limited,
         "counts": counts,
         "active_status": status_filter,
         "active_role": role,
         "query": query,
         "sort": sort,
+        "limit": per_bucket_limit,
         "unread_notifications": _unread_count(user),
     }
     return render(request, "marketplace/transactions.html", ctx)

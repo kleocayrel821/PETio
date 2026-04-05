@@ -39,6 +39,14 @@
         <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest</option>
       </select>
     </div>
+    <div>
+      <label class="label"><span class="label-text">Items per group</span></label>
+      <select name="limit" class="select select-bordered select-sm">
+        {% for n in 20,50,100,150,200 %}
+          <option value="{{ n }}" {% if limit == n %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+    </div>
     <div class="ml-auto">
       <button type="submit" class="btn btn-sm btn-primary">Apply</button>
       <a href="{% url 'marketplace:transactions' %}" class="btn btn-sm btn-ghost">Clear</a>
@@ -51,7 +59,7 @@
   <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
     <div class="section-title"><i class="fas fa-hourglass-half text-yellow-400"></i> Pending</div>
     {% if grouped.pending %}
-    <ul class="space-y-2">
+    <ul class="space-y-2 max-h-[420px] overflow-y-auto pr-1">
       {% for txn in grouped.pending %}
         <li class="card p-3">
           <div class="flex justify-between items-center">
@@ -97,7 +105,7 @@
   <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
     <div class="section-title"><i class="fas fa-check-circle text-green-400"></i> Confirmed</div>
     {% if grouped.confirmed %}
-    <ul class="space-y-2">
+    <ul class="space-y-2 max-h-[420px] overflow-y-auto pr-1">
       {% for txn in grouped.confirmed %}
         <li class="card p-3">
           <div class="flex justify-between items-center">
@@ -191,7 +199,7 @@
   <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
     <div class="section-title"><i class="fas fa-history text-blue-400"></i> Completed</div>
     {% if grouped.completed %}
-    <ul class="space-y-2">
+    <ul class="space-y-2 max-h-[420px] overflow-y-auto pr-1">
       {% for txn in grouped.completed %}
         <li class="card p-3">
           <div class="flex justify-between items-center">
@@ -227,7 +235,7 @@
   <div class="card bg-base-100 shadow-md sm:shadow-lg p-4 sm:p-6 rounded-xl">
     <div class="section-title"><i class="fas fa-ban text-red-400"></i> Cancelled</div>
     {% if grouped.canceled %}
-    <ul class="space-y-2">
+    <ul class="space-y-2 max-h-[420px] overflow-y-auto pr-1">
       {% for txn in grouped.canceled %}
         <li class="card p-3">
           <div class="flex justify-between items-center">
