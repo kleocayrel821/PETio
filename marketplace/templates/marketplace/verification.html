@@ -1,26 +1,25 @@
-{% extends "marketplace/base_marketplace.html" %}
-{% block marketplace_title %}Verification{% endblock %}
-{% block marketplace_header %}Account Verification{% endblock %}
-{% block marketplace_subtitle %}Increase buyer confidence by verifying your seller profile{% endblock %}
-{% block marketplace_content %}
-<div class="card bg-base-100 shadow">
-  <div class="card-body">
-    {% if profile and profile.verified %}
-    <div class="alert alert-success">
-      <i class="fas fa-check-circle mr-2"></i>Your account is verified.
-    </div>
-    {% else %}
-    <div class="prose max-w-none">
-      <h3>How verification works</h3>
-      <p>Verification helps buyers trust your listings. For now, please email our support team and include one valid ID. Our team will review and mark your profile as verified.</p>
-      <ul>
-        <li>Email: <a class="link" href="mailto:petio.ph@gmail.com">petio.ph@gmail.com</a></li>
-        <li>Subject: PETio Marketplace Verification</li>
-        <li>Include: Your PETio username and one valid ID</li>
-      </ul>
-    </div>
-    <a href="mailto:petio.ph@gmail.com?subject=PETio%20Marketplace%20Verification" class="btn btn-primary mt-4">Contact Support</a>
-    {% endif %}
+<!--
+  Template: Verification Page
+  Purpose: Provide guidance and CTA for users to verify their marketplace profile.
+-->
+{% extends "base.html" %}
+
+{% block title %}Verify Your Marketplace Profile{% endblock %}
+
+{% block content %}
+<section class="container" style="max-width: 720px; margin: 0 auto; padding: 1.5rem;">
+  <h1>Verification</h1>
+  <p style="color:#555;">Verifying your profile helps increase trust, improves your visibility, and may unlock additional marketplace features.</p>
+
+  <ol style="line-height:1.7;">
+    <li>Confirm your email address.</li>
+    <li>Optionally add a phone number for SMS meetup reminders.</li>
+    <li>Complete your profile details (location, avatar).</li>
+  </ol>
+
+  <div style="margin-top: 1rem;">
+    <a href="/accounts/profile/" class="btn" style="display:inline-block; background:#0366d6; color:#fff; padding:0.5rem 0.75rem; border-radius:4px; text-decoration:none;">Go to Profile Settings</a>
   </div>
-  </div>
+  <p style="margin-top:0.75rem; color:#777;">Once verified, a badge will appear on your marketplace profile.</p>
+</section>
 {% endblock %}

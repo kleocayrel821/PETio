@@ -3116,15 +3116,6 @@ def api_listing_buy_now(request, listing_id):
     seller = listing.seller
     if buyer.id == seller.id:
         return JsonResponse({"error": "Seller cannot use Buy Now on own listing"}, status=400)
-    # Optional gate: require verified profile for large-value transactions
-    try:
-        needs_verification_threshold = Decimal("5000")
-        if listing.price is not None and Decimal(str(listing.price)) >= needs_verification_threshold:
-            prof = getattr(buyer, "marketplace_profile", None)
-            if not prof or not getattr(prof, "verified", False):
-                return JsonResponse({"error": "Verification required for high-value purchases"}, status=403, json_dumps_params={"ensure_ascii": False})
-    except Exception:
-        pass
 
     # Optional payment method from JSON or form data
     payment_method = None
@@ -3773,20 +3764,9 @@ def user_profile(request, user_id):
         "rating_distribution": rating_distribution,
         "account_profile": account_profile,
         "listings_count": listings_count,
-        "can_request_verification": (request.user.id == profile_user.id and (not getattr(profile, "verified", False))),
     }
     return render(request, "marketplace/user_profile.html", context)
 
-@login_required
-def verification_page(request):
-    """Simple self-serve verification request page.
-    For now, this page informs users to contact support; staff can mark verified in admin.
-    """
-    try:
-        prof = getattr(request.user, "marketplace_profile", None)
-    except Exception:
-        prof = None
-    return render(request, "marketplace/verification.html", {"profile": prof})
 
 @login_required
 def send_meetup_reminder(request, pk):
