@@ -42,7 +42,7 @@
     <div>
       <label class="label"><span class="label-text">Items per group</span></label>
       <select name="limit" class="select select-bordered select-sm">
-        {% for n in 20,50,100,150,200 %}
+        {% for n in limit_choices %}
           <option value="{{ n }}" {% if limit == n %}selected{% endif %}>{{ n }}</option>
         {% endfor %}
       </select>
