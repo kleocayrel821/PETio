@@ -657,11 +657,6 @@ class ListingDetailView(LoginRequiredMixin, DetailView):
             ctx["listing_rating_avg"] = 0.0
             ctx["listing_rating_count"] = 0
             ctx["listing_ratings"] = []
-        try:
-            seller_profile = getattr(listing.seller, "profile", None)
-        except Exception:
-            seller_profile = None
-        ctx["seller_account_profile"] = seller_profile
         # Similar products: active listings in the same category, excluding current
         try:
             if getattr(listing, "category_id", None):
@@ -2601,37 +2596,6 @@ class DashboardView(LoginRequiredMixin, ListView):
 from .models import MessageThread, Message  # placed here to avoid circular import warnings
 
 
-def _build_user_identity(user, request=None):
-    if user is None:
-        return {"id": None, "username": "", "display_name": "", "avatar_url": "", "location": ""}
-    data = {
-        "id": getattr(user, "id", None),
-        "username": getattr(user, "username", "") or "",
-        "display_name": "",
-        "avatar_url": "",
-        "location": "",
-    }
-    try:
-        profile = getattr(user, "profile", None)
-        if profile is not None:
-            if getattr(profile, "display_name", ""):
-                data["display_name"] = profile.display_name
-            if getattr(profile, "location", ""):
-                data["location"] = profile.location
-            avatar = getattr(profile, "avatar", None)
-            if avatar:
-                url = avatar.url
-                if request is not None:
-                    try:
-                        url = request.build_absolute_uri(url)
-                    except Exception:
-                        pass
-                data["avatar_url"] = url
-    except Exception:
-        pass
-    return data
-
-
 @csrf_protect
 @require_http_methods(["POST"])  # Idempotent start-or-get behavior
 def api_start_or_get_thread(request):
@@ -2651,7 +2615,7 @@ def api_start_or_get_thread(request):
         return HttpResponseBadRequest("Missing listing_id")
 
     try:
-        listing = Listing.objects.select_related("seller", "seller__profile").get(pk=listing_id, status="active")
+        listing = Listing.objects.select_related("seller").get(pk=listing_id, status="active")
     except Listing.DoesNotExist:
         return HttpResponseBadRequest("Listing not found or inactive")
 
@@ -2663,18 +2627,15 @@ def api_start_or_get_thread(request):
         defaults={"last_message_at": timezone.now()}
     )
 
-    buyer_identity = _build_user_identity(buyer, request=request)
-    seller_identity = _build_user_identity(seller, request=request)
+    # Prepare response data
     thread_data = {
         "id": thread.id,
         "listing_id": listing.id,
         "listing_title": listing.title,
-        "buyer_id": buyer_identity["id"],
-        "buyer_username": buyer_identity["username"],
-        "seller_id": seller_identity["id"],
-        "seller_username": seller_identity["username"],
-        "buyer": buyer_identity,
-        "seller": seller_identity,
+        "buyer_id": buyer.id,
+        "buyer_username": getattr(buyer, "username", str(buyer)),
+        "seller_id": seller.id,
+        "seller_username": getattr(seller, "username", str(seller)),
         "last_message_at": thread.last_message_at.isoformat(),
         "created": created,
     }
@@ -2695,23 +2656,19 @@ def api_start_or_get_thread(request):
 
     recent_messages = (
         Message.objects.filter(thread=thread)
-        .select_related("sender", "sender__profile")
+        .select_related("sender")
         .order_by("-id")[:20]
     )
-    messages_list = []
-    for m in reversed(list(recent_messages)):
-        sender_identity = _build_user_identity(m.sender, request=request)
-        messages_list.append(
-            {
-                "id": m.id,
-                "sender_id": m.sender_id,
-                "sender_username": sender_identity["username"],
-                "sender_display_name": sender_identity.get("display_name") or "",
-                "sender_avatar_url": sender_identity.get("avatar_url") or "",
-                "content": m.content,
-                "created_at": m.created_at.isoformat(),
-            }
-        )
+    messages_list = [
+        {
+            "id": m.id,
+            "sender_id": m.sender_id,
+            "sender_username": getattr(m.sender, "username", str(m.sender)),
+            "content": m.content,
+            "created_at": m.created_at.isoformat(),
+        }
+        for m in reversed(list(recent_messages))
+    ]
 
     # Mark unread messages from other party as read when opening the thread
     try:
@@ -2735,7 +2692,7 @@ def api_fetch_messages(request, thread_id):
     if not request.user.is_authenticated:
         return HttpResponseForbidden("Authentication required")
     try:
-        thread = MessageThread.objects.select_related("buyer", "buyer__profile", "seller", "seller__profile", "listing").get(pk=thread_id)
+        thread = MessageThread.objects.select_related("buyer", "seller", "listing").get(pk=thread_id)
     except MessageThread.DoesNotExist:
         return HttpResponseBadRequest("Thread not found")
 
@@ -2757,22 +2714,18 @@ def api_fetch_messages(request, thread_id):
     qs = Message.objects.filter(thread=thread)
     if after_id:
         qs = qs.filter(id__gt=after_id)
-    qs = qs.select_related("sender", "sender__profile").order_by("id")[:limit]
+    qs = qs.select_related("sender").order_by("id")[:limit]
 
-    messages_list = []
-    for m in qs:
-        sender_identity = _build_user_identity(m.sender, request=request)
-        messages_list.append(
-            {
-                "id": m.id,
-                "sender_id": m.sender_id,
-                "sender_username": sender_identity["username"],
-                "sender_display_name": sender_identity.get("display_name") or "",
-                "sender_avatar_url": sender_identity.get("avatar_url") or "",
-                "content": m.content,
-                "created_at": m.created_at.isoformat(),
-            }
-        )
+    messages_list = [
+        {
+            "id": m.id,
+            "sender_id": m.sender_id,
+            "sender_username": getattr(m.sender, "username", str(m.sender)),
+            "content": m.content,
+            "created_at": m.created_at.isoformat(),
+        }
+        for m in qs
+    ]
 
     # Lookup any related purchase request for this conversation participants/listing.
     try:
@@ -2832,18 +2785,16 @@ def api_post_message(request, thread_id):
     content = sanitize_text((payload.get("content") or "").strip(), max_len=1000)
     if not content:
         return HttpResponseBadRequest("Message content is required")
+    # content already trimmed by sanitize_text
 
     message = Message.objects.create(thread=thread, sender=user, content=content)
 
     MessageThread.objects.filter(pk=thread.pk).update(last_message_at=timezone.now())
 
-    sender_identity = _build_user_identity(user, request=request)
     msg_json = {
         "id": message.id,
         "sender_id": message.sender_id,
-        "sender_username": sender_identity["username"],
-        "sender_display_name": sender_identity.get("display_name") or "",
-        "sender_avatar_url": sender_identity.get("avatar_url") or "",
+        "sender_username": getattr(user, "username", str(user)),
         "content": message.content,
         "created_at": message.created_at.isoformat(),
     }
