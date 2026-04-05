@@ -609,8 +609,17 @@ function ensureMeetupDetailsContainer(place, isoTime, tzName) {
   const timeEl = container.querySelector('#meetupTimeText'); const placeEl = container.querySelector('#meetupPlaceText'); const tzEl = container.querySelector('#meetupTimezoneText');
   if (timeEl) timeEl.textContent = formatLocalDateTime(isoTime); if (placeEl) placeEl.textContent = place; if (tzEl) tzEl.textContent = tzName || '';
 }
-async function submitFormJSON(formEl, submitBtn) {
-  if (!formEl || !submitBtn) return; submitBtn.disabled = true;
+async function submitFormJSON(formEl, submitBtn, options) {
+  if (!formEl || !submitBtn) return;
+  const opts = options || {};
+  const reloadOnSuccess = !!opts.reloadOnSuccess;
+  submitBtn.disabled = true;
+  let spinner = null;
+  try {
+    spinner = document.createElement('span');
+    spinner.className = 'loading loading-spinner loading-xs ml-2';
+    submitBtn.appendChild(spinner);
+  } catch (_) {}
   try {
     clearInlineErrors(formEl);
     const fd = new FormData(formEl); const url = formEl.getAttribute('action');
@@ -618,6 +627,7 @@ async function submitFormJSON(formEl, submitBtn) {
     let data = {}; try { data = await resp.json(); } catch (_) {}
     if (!resp.ok || data.status === 'error') { injectInlineErrors(formEl, data.field_errors || {}); showMarketplaceToast(data.message || 'Action failed', 'error'); return; }
     showMarketplaceToast(data.message || 'Success', 'success');
+    if (reloadOnSuccess) { location.reload(); return; }
     const tx = data.data && data.data.transaction ? data.data.transaction : null; if (tx) ensureMeetupDetailsContainer(tx.meetup_place, tx.meetup_time, tx.meetup_timezone);
     try {
       const u = (url || '').toLowerCase();
@@ -628,7 +638,10 @@ async function submitFormJSON(formEl, submitBtn) {
       }
     } catch (_) {}
   } catch (err) { console.error(err); showMarketplaceToast('Network error. Please try again.', 'error'); }
-  finally { submitBtn.disabled = false; }
+  finally {
+    submitBtn.disabled = false;
+    if (spinner && spinner.parentNode) spinner.parentNode.removeChild(spinner);
+  }
 }
 
 // Messages: polling, quick replies, draft persistence, auto-scroll
@@ -637,25 +650,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const confirmForm = document.getElementById('confirmForm'); const confirmBtn = document.getElementById('confirmSubmit');
   const paymentForm = document.getElementById('paymentForm'); const paymentBtn = document.getElementById('paymentSubmit');
   if (meetupForm && meetupBtn) meetupForm.addEventListener('submit', e => { e.preventDefault(); submitFormJSON(meetupForm, meetupBtn); });
-  if (confirmForm && confirmBtn) confirmForm.addEventListener('submit', async e => {
-    e.preventDefault();
-    confirmBtn.disabled = true;
-    try {
-      clearInlineErrors(confirmForm);
-      const fd = new FormData(confirmForm);
-      const url = confirmForm.getAttribute('action');
-      const resp = await fetch(url + '?format=json', { method: 'POST', headers: { 'X-CSRFToken': getCSRFToken() }, body: fd });
-      let data = {}; try { data = await resp.json(); } catch (_) {}
-      if (!resp.ok || data.status === 'error') { injectInlineErrors(confirmForm, data.field_errors || {}); showMarketplaceToast(data.message || 'Action failed', 'error'); return; }
-      showMarketplaceToast(data.message || 'Success', 'success');
-      if (data.data && data.data.both_confirmed) {
-        const pay = document.querySelector('#payment-actions'); if (pay) { pay.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-      }
-    } catch (err) { console.error(err); showMarketplaceToast('Network error. Please try again.', 'error'); }
-    finally { confirmBtn.disabled = false; }
-  });
+  if (confirmForm && confirmBtn) confirmForm.addEventListener('submit', e => { e.preventDefault(); submitFormJSON(confirmForm, confirmBtn, { reloadOnSuccess: true }); });
   if (paymentForm && paymentBtn) {
-    paymentForm.addEventListener('submit', e => { e.preventDefault(); submitFormJSON(paymentForm, paymentBtn); });
+    paymentForm.addEventListener('submit', e => { e.preventDefault(); submitFormJSON(paymentForm, paymentBtn, { reloadOnSuccess: true }); });
     const methodSel = document.getElementById('paymentMethod');
     const amountGroup = document.getElementById('amountGroup');
     const qrGroup = document.getElementById('qrGroup');
