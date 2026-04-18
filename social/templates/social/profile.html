@@ -1051,7 +1051,8 @@ function toggleFollow(userId) {
     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
     button.disabled = true;
 
-    const csrfToken = (document.cookie.match(/csrftoken=([^;]+)/) || [null, ''])[1];
+    const metaToken = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = metaToken ? metaToken.getAttribute('content') : (document.cookie.match(/csrftoken=([^;]+)/) || [null, ''])[1];
     const url = "{% url 'social:toggle_follow' profile_user.id %}";
 
     fetch(url, {
