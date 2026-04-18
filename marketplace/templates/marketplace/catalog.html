@@ -1,5 +1,5 @@
 {% extends "marketplace/base_marketplace.html" %}
-{% load static %}
+{% load static avatar %}
 
 {% block marketplace_header_section %}{% endblock %}
 {% block marketplace_title %}Browse Products{% endblock %}
@@ -193,9 +193,9 @@
                 <div class="text-xs sm:text-sm text-base-content/70">{{ item.quantity }} available</div>
             </div>
             <div class="seller-row flex items-center gap-2 mt-2 text-xs sm:text-sm text-base-content/70 whitespace-nowrap">
-                <div class="avatar placeholder">
-                    <div class="bg-neutral text-neutral-content rounded-full w-6">
-                        <span class="text-xs">{{ item.seller.username|first|upper }}</span>
+                <div class="avatar">
+                    <div class="w-6 h-6 rounded-full overflow-hidden">
+                        <img src="{% avatar_url item.seller 48 %}" alt="{{ item.seller.username }}" class="w-6 h-6 object-cover">
                     </div>
                 </div>
                 <span class="seller-name">@{{ item.seller.username }}</span>

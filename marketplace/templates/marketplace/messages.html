@@ -79,8 +79,9 @@
     <div class="p-4 border-b border-base-300" id="chatHeader">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="avatar placeholder">
-            <div class="bg-neutral text-neutral-content rounded-full w-9">
+          <div class="avatar">
+            <div class="rounded-full w-9 h-9 overflow-hidden bg-neutral text-neutral-content flex items-center justify-center">
+              <img id="headerAvatarImg" src="" alt="User avatar" class="w-9 h-9 object-cover hidden">
               <span id="headerAvatarChar" class="text-sm">?</span>
             </div>
           </div>
@@ -209,12 +210,18 @@ function renderMessageBubble(msg) {
   const pendingClass = msg.pending ? 'opacity-70' : '';
   const pendingSpinner = msg.pending ? '<span class="loading loading-spinner loading-xs ml-2" aria-label="Sending"></span>' : '';
   const avatarChar = (msg.sender_username || 'U')[0].toUpperCase();
+  const avatarUrl = msg.sender_avatar_url || null;
+  const avatarInner = avatarUrl
+    ? `<div class="w-8 h-8 rounded-full overflow-hidden">
+         <img src="${avatarUrl}" alt="${headerName}" class="w-8 h-8 object-cover">
+       </div>`
+    : `<div class="w-8 rounded-full ${avatarBg} flex items-center justify-center">
+         <span class="text-xs">${avatarChar}</span>
+       </div>`;
   return `
     <div class="chat ${sideClass}" data-temp-id="${msg.tempId || ''}" data-message-id="${msg.id || ''}">
       <div class="chat-image avatar">
-        <div class="w-8 rounded-full ${avatarBg} flex items-center justify-center">
-          <span class="text-xs">${avatarChar}</span>
-        </div>
+        ${avatarInner}
       </div>
       <div class="chat-header">${headerName}<time class="text-xs opacity-50 ml-2">${timeText}</time></div>
       <div class="chat-bubble ${bubbleClass} ${pendingClass} whitespace-pre-wrap break-words max-w-[85%] leading-relaxed text-sm px-4 py-3 shadow">${msg.content}${pendingSpinner}</div>
@@ -481,11 +488,24 @@ async function getListingTitle(listingId) {
 function updateChatHeader(thread) {
   const headerEl = document.getElementById('chatUsername');
   const avatarCharEl = document.getElementById('headerAvatarChar');
+  const avatarImgEl = document.getElementById('headerAvatarImg');
   if (!headerEl || !thread) return;
   const other = (thread.buyer && thread.buyer.id === currentUserId) ? thread.seller : thread.buyer;
   const name = other && other.username ? `@${other.username}` : 'Conversation';
   headerEl.textContent = name;
-  avatarCharEl.textContent = (other && other.username ? other.username[0] : '?').toUpperCase();
+  const avatarChar = (other && other.username ? other.username[0] : '?').toUpperCase();
+  const avatarUrl = other && other.avatar_url ? other.avatar_url : null;
+  if (avatarImgEl && avatarUrl) {
+    avatarImgEl.src = avatarUrl;
+    avatarImgEl.classList.remove('hidden');
+    if (avatarCharEl) avatarCharEl.classList.add('hidden');
+  } else {
+    if (avatarImgEl) avatarImgEl.classList.add('hidden');
+    if (avatarCharEl) {
+      avatarCharEl.textContent = avatarChar;
+      avatarCharEl.classList.remove('hidden');
+    }
+  }
 }
 
 /**
@@ -565,17 +585,27 @@ function renderConversations(threads) {
     const name = other && other.username ? `@${other.username}` : 'Conversation';
     const lastAt = t.last_message_at ? new Date(t.last_message_at).toLocaleString() : '';
     const avatarChar = (other && other.username ? other.username[0] : '?').toUpperCase();
+    const avatarUrl = other && other.avatar_url ? other.avatar_url : null;
     const recent = t.last_message_at ? (now - new Date(t.last_message_at).getTime()) < (5 * 60 * 1000) : false;
     const statusDot = recent ? 'bg-green-500' : 'bg-base-300';
-    html += `
-      <div class="p-3 border-b border-base-300 hover:bg-base-300 cursor-pointer" data-thread-id="${t.id}" onclick="openThreadFromList(${t.id})">
-        <div class="flex items-center gap-3">
-          <div class="avatar">
+    const avatarHtml = avatarUrl
+      ? `<div class="avatar">
+            <div class="w-8 h-8 rounded-full overflow-hidden relative">
+              <img src="${avatarUrl}" alt="${name}" class="w-8 h-8 object-cover">
+              <span class="absolute -bottom-0 -right-0 w-2 h-2 rounded-full ${statusDot}"></span>
+            </div>
+          </div>`
+      : `<div class="avatar">
             <div class="w-8 rounded-full bg-neutral text-neutral-content flex items-center justify-center relative">
               <span class="text-xs">${avatarChar}</span>
               <span class="absolute -bottom-0 -right-0 w-2 h-2 rounded-full ${statusDot}"></span>
             </div>
-          </div>
+          </div>`;
+
+    html += `
+      <div class="p-3 border-b border-base-300 hover:bg-base-300 cursor-pointer" data-thread-id="${t.id}" onclick="openThreadFromList(${t.id})">
+        <div class="flex items-center gap-3">
+          ${avatarHtml}
           <div class="flex-1">
             <div class="flex items-center justify-between">
               <div class="font-medium">${name}</div>
