@@ -6,16 +6,25 @@ endpoints while keeping relationships explicit and avoiding deep nesting by defa
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Category, Listing, MessageThread, Message, Transaction, Report
+from accounts.templatetags.avatar import avatar_url as avatar_for
 
 User = get_user_model()
 
 
 class UserSummarySerializer(serializers.ModelSerializer):
-    """Lightweight user serializer exposing id and username only."""
+    """Lightweight user serializer exposing id, username, and avatar URL."""
+
+    avatar_url = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["id", "username"]
+        fields = ["id", "username", "avatar_url"]
+
+    def get_avatar_url(self, obj):
+        try:
+            return avatar_for(obj, size=64)
+        except Exception:
+            return None
 
 
 class CategorySerializer(serializers.ModelSerializer):

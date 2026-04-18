@@ -11,6 +11,7 @@ from decimal import Decimal, InvalidOperation
 from django.conf import settings
 from django.utils.http import urlencode
 from django.core.paginator import Paginator
+from accounts.templatetags.avatar import avatar_url as avatar_for
 
 from .models import Listing, Category
 from .models import (
@@ -2716,16 +2717,22 @@ def api_fetch_messages(request, thread_id):
         qs = qs.filter(id__gt=after_id)
     qs = qs.select_related("sender").order_by("id")[:limit]
 
-    messages_list = [
-        {
-            "id": m.id,
-            "sender_id": m.sender_id,
-            "sender_username": getattr(m.sender, "username", str(m.sender)),
-            "content": m.content,
-            "created_at": m.created_at.isoformat(),
-        }
-        for m in qs
-    ]
+    messages_list = []
+    for m in qs:
+        try:
+            avatar = avatar_for(m.sender, size=64)
+        except Exception:
+            avatar = None
+        messages_list.append(
+            {
+                "id": m.id,
+                "sender_id": m.sender_id,
+                "sender_username": getattr(m.sender, "username", str(m.sender)),
+                "sender_avatar_url": avatar,
+                "content": m.content,
+                "created_at": m.created_at.isoformat(),
+            }
+        )
 
     # Lookup any related purchase request for this conversation participants/listing.
     try:
@@ -2791,10 +2798,15 @@ def api_post_message(request, thread_id):
 
     MessageThread.objects.filter(pk=thread.pk).update(last_message_at=timezone.now())
 
+    try:
+        avatar = avatar_for(user, size=64)
+    except Exception:
+        avatar = None
     msg_json = {
         "id": message.id,
         "sender_id": message.sender_id,
         "sender_username": getattr(user, "username", str(user)),
+        "sender_avatar_url": avatar,
         "content": message.content,
         "created_at": message.created_at.isoformat(),
     }
