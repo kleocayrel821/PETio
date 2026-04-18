@@ -15,20 +15,20 @@
     <div class="card-body">
       <div class="space-y-3">
         {% for u in friend_suggestions %}
-        <div class="grid grid-cols-[1fr_auto] items-center gap-3">
-          <div class="flex items-center gap-3 min-w-0">
+        <div class="flex items-center gap-3" style="min-width: 0;">
+          <div class="flex items-center gap-3 min-w-0 flex-1">
             <div class="avatar shrink-0">
               <div class="w-10 rounded-full">
                 <img src="{% avatar_url u 64 %}" alt="{{ u.username }}" />
               </div>
             </div>
-            <a href="{% url 'social:profile' u.username %}" class="min-w-0 group">
-              <div class="font-semibold group-hover:text-primary">{{ u.get_full_name|default:u.username }}</div>
-              <div class="text-xs text-base-content/60">@{{ u.username }}{% if u.followers_count %} • {{ u.followers_count }} followers{% endif %}{% if u.post_count %} • {{ u.post_count }} posts{% endif %}</div>
+            <a href="{% url 'social:profile' u.username %}" class="min-w-0 group block overflow-hidden">
+              <div class="font-semibold group-hover:text-primary truncate">{{ u.get_full_name|default:u.username }}</div>
+              <div class="text-xs text-base-content/60 truncate">@{{ u.username }}{% if u.followers_count %} • {{ u.followers_count }} followers{% endif %}{% if u.post_count %} • {{ u.post_count }} posts{% endif %}</div>
             </a>
           </div>
           {% if user.is_authenticated and user.id != u.id %}
-          <button class="btn btn-primary btn-sm rounded-full px-4 suggest-follow-btn justify-self-end" data-user-id="{{ u.id }}">Follow</button>
+          <button class="btn btn-primary btn-sm rounded-full px-4 suggest-follow-btn flex-shrink-0" data-user-id="{{ u.id }}">Follow</button>
           {% endif %}
         </div>
         {% endfor %}
@@ -67,4 +67,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
-
