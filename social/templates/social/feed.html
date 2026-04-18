@@ -190,7 +190,7 @@
                                         <img src="{{ img.image.url }}" alt="{{ post.title }}"
                                              loading="lazy"
                                              data-viewer="image" data-group="post-{{ post.pk }}"
-                                             class="rounded-lg w-full object-cover max-h-64 sm:max-h-72 md:max-h-80" />
+                                             class="rounded-lg w-full h-auto" />
                                     </a>
                                     {% endfor %}
                                 </div>
@@ -201,7 +201,7 @@
                                         <img src="{{ img.image.url }}" alt="{{ post.title }}"
                                              loading="lazy"
                                              data-viewer="image" data-group="post-{{ post.pk }}"
-                                             class="rounded-lg w-full object-cover max-h-64 sm:max-h-72 md:max-h-80" />
+                                             class="rounded-lg w-full h-auto" />
                                     </a>
                                     {% endfor %}
                                 </div>
@@ -211,7 +211,7 @@
                                         <img src="{{ post.image.url }}" alt="{{ post.title }}"
                                              loading="lazy"
                                              data-viewer="image" data-group="post-{{ post.pk }}"
-                                             class="rounded-lg w-full object-cover max-h-64 sm:max-h-72 md:max-h-80" />
+                                             class="rounded-lg w-full h-auto" />
                                     </a>
                                 </div>
                                 {% endif %}
@@ -222,7 +222,7 @@
                                     {% for v in vids %}
                                     <a href="{% url 'social:post_detail' post.pk %}" class="block">
                                         <video src="{{ v.file.url }}" preload="metadata" controls
-                                               class="rounded-lg w-full object-cover max-h-64 sm:max-h-72 md:max-h-80"></video>
+                                               class="rounded-lg w-full h-auto"></video>
                                     </a>
                                     {% endfor %}
                                 </div>
