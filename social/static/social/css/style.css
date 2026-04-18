@@ -3,36 +3,21 @@
 
 /* Base Styles */
 :root {
-  /* IOsocial design palette */
-  --primary-color: #7C3AED;           /* violet-600 */
-  --primary-hover: #6D28D9;
-  --secondary-color: #EC4899;         /* pink-500 */
-  --accent-color: #EC4899;
-  --page-bg: #F5F3FF;                 /* very light violet */
-  --text-primary: #1E1B4B;
-  --text-secondary: #6B7280;
-  --border-soft: rgba(124, 58, 237, 0.15);
-  --success-color: #10B981;
-  --warning-color: #F59E0B;
-  --error-color: #EF4444;
-
+  /* Soft social palette (purple/pink) */
+  --primary-color: #9370DB; /* Medium Purple */
+  --secondary-color: #F472B6; /* Pink accent */
+  --accent-color: #A78BFA; /* Soft violet */
+  --neutral-color: #6B7280;
   --base-100: #FFFFFF;
-  --base-200: #F5F3FF;
-  --base-300: #E5E7EB;
-  --base-content: #1E1B4B;
-
-  --shadow-card: 0 4px 20px rgba(124, 58, 237, 0.08);
-  --shadow-card-hover: 0 8px 32px rgba(124, 58, 237, 0.16);
-  --transition-fast: all 0.18s ease-out;
-  --transition-smooth: all 0.25s ease;
+  --base-200: #F6F7FB; /* lighter background */
+  --base-300: #E6E9F2;
+  --base-content: #1F2937;
 }
 
 /* Page background for Social */
 body {
-  background: var(--page-bg);
+  background: linear-gradient(180deg, #f6f7fb 0%, #eef1f7 100%);
   font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  font-size: 15px;
-  color: var(--text-primary);
 }
 body::before {
   content: "";
@@ -80,22 +65,6 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 }
 
 /* Custom Animations */
-@keyframes cardEntrance { 
-  from { opacity: 0; transform: translateY(8px); } 
-  to { opacity: 1; transform: translateY(0); } 
-}
-
-@keyframes heartPulse { 
-  0% { transform: scale(1); } 
-  50% { transform: scale(1.3); } 
-  100% { transform: scale(1); } 
-}
-
-@keyframes shimmer { 
-  0% { background-position: -200% 0; } 
-  100% { background-position: 200% 0; } 
-}
-
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -158,13 +127,12 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 /* Post Styles - aligned with enhanced card styling */
 .post-card {
   background: var(--bg-card);
-  border-radius: 20px;
-  box-shadow: var(--shadow-card);
+  border-radius: 22px;
+  box-shadow: 0 10px 24px rgba(17,24,39,0.06);
   margin-bottom: 1.5rem;
   overflow: hidden;
   transition: var(--transition-smooth);
-  border: 1px solid var(--border-soft);
-  animation: cardEntrance 0.3s ease-out;
+  border: 1px solid rgba(147,112,219,0.15);
 }
 
 .post-card:hover {
@@ -195,7 +163,7 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
   color: white;
   font-weight: 600;
   transition: var(--transition-fast);
-  border-radius: 12px;
+  border-radius: 14px;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -203,32 +171,23 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, var(--primary-hover), #db2777);
+  background: linear-gradient(135deg, #6d28d9, #db2777);
   transform: translateY(-1px);
   box-shadow: 0 10px 22px rgba(109,40,217,0.25);
 }
 
 .btn-secondary {
   background: rgba(255,255,255,0.86);
-  border: 1.5px solid var(--primary-color);
-  color: var(--primary-color);
+  border: 1px solid rgba(147,112,219,0.25);
+  color: var(--text-primary);
   transition: var(--transition-fast);
-  border-radius: 12px;
+  border-radius: 14px;
   backdrop-filter: saturate(160%) blur(6px);
 }
 
 .btn-secondary:hover {
   background: var(--bg-card-hover);
   transform: translateY(-1px);
-}
-
-.btn-ghost {
-  border-radius: 12px;
-  transition: var(--transition-fast);
-}
-
-.btn-ghost:hover {
-  background-color: rgba(124, 58, 237, 0.08);
 }
 
 /* Enhanced Form Styles - aligned with base template */
@@ -251,8 +210,8 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 /* Card Styles */
 .card {
   background: rgba(255,255,255,0.96);
-  border-radius: 20px;
-  box-shadow: var(--shadow-card);
+  border-radius: 24px;
+  box-shadow: 0 10px 24px rgba(17,24,39,0.06);
   overflow: hidden;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
   border: 1px solid rgba(147,112,219,0.12);
@@ -261,7 +220,7 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-card-hover);
+  box-shadow: 0 14px 28px rgba(17,24,39,0.08);
 }
 
 .card-body {
@@ -338,17 +297,17 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 }
 
 .badge-primary {
-  background: rgba(124, 58, 237, 0.12);
-  color: var(--primary-color);
+  background: var(--primary-color);
+  color: white;
 }
 
 .badge-secondary {
-  background: rgba(236, 72, 153, 0.12);
-  color: var(--secondary-color);
+  background: var(--base-200);
+  color: var(--base-content);
 }
 
 .badge-success {
-  background: rgba(16, 185, 129, 0.12);
+  background: var(--secondary-color);
   color: white;
 }
 
@@ -594,29 +553,7 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 
 @media (max-width: 640px) {
   .post-card {
-    margin-left: 0;
-    margin-right: 0;
-    border-radius: 16px;
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
   }
-}
-
-.glass-card {
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--border-soft);
-  border-radius: 20px;
-}
-
-.shimmer {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-.like-btn:active i {
-  animation: heartPulse 0.3s ease;
-}
-
-.btn:active {
-  transform: scale(0.97);
 }
