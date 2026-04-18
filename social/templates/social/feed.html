@@ -189,7 +189,6 @@
                                     <a href="{% url 'social:post_detail' post.pk %}" class="block">
                                         <img src="{{ img.image.url }}" alt="{{ post.title }}"
                                              loading="lazy"
-                                             data-viewer="image" data-group="post-{{ post.pk }}"
                                              class="post-media" />
                                     </a>
                                     {% endfor %}
@@ -200,7 +199,6 @@
                                     <a href="{% url 'social:post_detail' post.pk %}" class="block">
                                         <img src="{{ img.image.url }}" alt="{{ post.title }}"
                                              loading="lazy"
-                                             data-viewer="image" data-group="post-{{ post.pk }}"
                                              class="post-media" />
                                     </a>
                                     {% endfor %}
@@ -210,7 +208,6 @@
                                     <a href="{% url 'social:post_detail' post.pk %}" class="block">
                                         <img src="{{ post.image.url }}" alt="{{ post.title }}"
                                              loading="lazy"
-                                             data-viewer="image" data-group="post-{{ post.pk }}"
                                              class="post-media" />
                                     </a>
                                 </div>
