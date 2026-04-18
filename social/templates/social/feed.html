@@ -114,21 +114,21 @@
                     {% if user_results %}
                     <div class="space-y-3">
                         {% for u in user_results %}
-                        <div class="flex items-center gap-3" style="min-width: 0;">
-                          <div class="flex items-center gap-3 min-w-0 flex-1">
-                            <div class="avatar shrink-0">
-                              <div class="w-10 rounded-full">
-                                <img src="{% avatar_url u 64 %}" alt="{{ u.username }}" />
-                              </div>
+                        <div class="grid grid-cols-[1fr_auto] items-center gap-3">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="avatar shrink-0">
+                                    <div class="w-10 rounded-full">
+                                        <img src="{% avatar_url u 64 %}" alt="{{ u.username }}" />
+                                    </div>
+                                </div>
+                                <a href="{% url 'social:profile' u.username %}" class="min-w-0 group">
+                                    <div class="font-semibold group-hover:text-primary">{{ u.get_full_name|default:u.username }}</div>
+                                    <div class="text-xs text-base-content/60">@{{ u.username }} • {{ u.followers_count }} followers • {{ u.post_count }} posts</div>
+                                </a>
                             </div>
-                            <a href="{% url 'social:profile' u.username %}" class="min-w-0 group block overflow-hidden">
-                              <div class="font-semibold group-hover:text-primary truncate">{{ u.get_full_name|default:u.username }}</div>
-                              <div class="text-xs text-base-content/60 truncate">@{{ u.username }} • {{ u.followers_count }} followers • {{ u.post_count }} posts</div>
-                            </a>
-                          </div>
-                          {% if user.is_authenticated and user.id != u.id %}
-                          <button class="btn btn-primary btn-sm rounded-full px-4 suggest-follow-btn flex-shrink-0" data-user-id="{{ u.id }}">Follow</button>
-                          {% endif %}
+                            {% if user.is_authenticated and user.id != u.id %}
+                            <button class="btn btn-primary btn-sm rounded-full px-4 suggest-follow-btn justify-self-end" data-user-id="{{ u.id }}">Follow</button>
+                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>
@@ -381,19 +381,19 @@
                         {% if friend_suggestions %}
                         <div class="space-y-3">
                             {% for u in friend_suggestions %}
-                            <div class="flex items-center gap-3" style="min-width: 0;">
-                              <div class="flex items-center gap-3 min-w-0 flex-1">
-                                <div class="avatar shrink-0">
-                                  <div class="w-10 rounded-full">
-                                    <img src="{% avatar_url u 64 %}" alt="{{ u.username }}" />
-                                  </div>
+                            <div class="grid grid-cols-[1fr_auto] items-center gap-3">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <div class="avatar shrink-0">
+                                        <div class="w-10 rounded-full">
+                                            <img src="{% avatar_url u 64 %}" alt="{{ u.username }}" />
+                                        </div>
+                                    </div>
+                                    <a href="{% url 'social:profile' u.username %}" class="min-w-0 group">
+                                        <div class="font-semibold group-hover:text-primary">{{ u.get_full_name|default:u.username }}</div>
+                                        <div class="text-xs text-base-content/60">@{{ u.username }}</div>
+                                    </a>
                                 </div>
-                                <a href="{% url 'social:profile' u.username %}" class="min-w-0 group block overflow-hidden">
-                                  <div class="font-semibold group-hover:text-primary truncate">{{ u.get_full_name|default:u.username }}</div>
-                                  <div class="text-xs text-base-content/60 truncate">@{{ u.username }}</div>
-                                </a>
-                              </div>
-                              <button class="btn btn-primary btn-sm rounded-full px-4 suggest-follow-btn flex-shrink-0" data-user-id="{{ u.id }}">Follow</button>
+                                <button class="btn btn-primary btn-sm rounded-full px-4 suggest-follow-btn justify-self-end" data-user-id="{{ u.id }}">Follow</button>
                             </div>
                             {% endfor %}
                         </div>
