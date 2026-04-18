@@ -1,9 +1,9 @@
 /* ---------- gradient-mesh.css (paste as-is) ---------- */
 :root{ 
-  --mesh-1: rgba(246, 214, 231, 0.75); /* soft pink */ 
-  --mesh-2: rgba(221, 207, 255, 0.72); /* soft lavender */ 
-  --mesh-3: rgba(203, 246, 255, 0.58); /* soft aqua */ 
-  --mesh-4: rgba(255, 243, 230, 0.65); /* warm peach */ 
+  --mesh-1: rgba(196, 181, 253, 0.75); /* violet-200 */ 
+  --mesh-2: rgba(251, 207, 232, 0.72); /* pink-200 */ 
+  --mesh-3: rgba(221, 214, 254, 0.58); /* violet-100 */ 
+  --mesh-4: rgba(252, 231, 243, 0.65); /* pink-100 */ 
 } 
 
 .social-dashboard-bg { 
@@ -23,7 +23,7 @@
   filter: blur(96px); 
   transform: translate3d(0,0,0); 
   will-change: transform, opacity; 
-  opacity: 0.85; 
+  opacity: 0.9; 
   mix-blend-mode: screen; 
 } 
 
