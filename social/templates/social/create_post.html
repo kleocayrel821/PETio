@@ -36,14 +36,14 @@
 
                 
 
-                <!-- Title -->
+                <!-- Title (optional) -->
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text font-semibold">Post Title *</span>
+                        <span class="label-text font-semibold">Post Title (optional)</span>
                     </label>
                     <input type="text" name="title" placeholder="What's your post about?" 
                            class="input input-bordered w-full {% if form.title.errors %}input-error{% endif %}" 
-                           value="{{ form.title.value|default:'' }}" required>
+                           value="{{ form.title.value|default:'' }}">
                     {% if form.title.errors %}
                         <label class="label">
                             <span class="label-text-alt text-error">{{ form.title.errors.0 }}</span>
@@ -65,7 +65,7 @@
                         </label>
                     {% endif %}
                     <label class="label">
-                        <span class="label-text-alt">Minimum 10 characters</span>
+                        <span class="label-text-alt">0 characters</span>
                     </label>
                 </div>
 
@@ -141,12 +141,7 @@
                         <i class="fas fa-paper-plane"></i>
                         Publish Post
                     </button>
-                    
-                    <button type="button" class="btn btn-outline" onclick="saveDraft()">
-                        <i class="fas fa-save"></i>
-                        Save Draft
-                    </button>
-                    
+
                     <a href="{% url 'social:feed' %}" class="btn btn-ghost">
                         <i class="fas fa-times"></i>
                         Cancel
@@ -299,33 +294,6 @@ document.addEventListener('DOMContentLoaded', function() {
     updatePreview();
 });
 
-// Save draft functionality
-function saveDraft() {
-    const formData = new FormData(document.querySelector('form'));
-    formData.append('save_draft', 'true');
-    
-    fetch(window.location.href, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-        },
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Show success message
-            const alert = document.createElement('div');
-            alert.className = 'alert alert-success mb-4';
-            alert.innerHTML = '<i class="fas fa-check-circle"></i> Draft saved successfully!';
-            document.querySelector('.card-body').insertBefore(alert, document.querySelector('form'));
-            
-            setTimeout(() => alert.remove(), 3000);
-        }
-    })
-    .catch(error => console.error('Error saving draft:', error));
-}
-
 // Character counter for content
 document.addEventListener('DOMContentLoaded', function() {
     const contentTextarea = document.querySelector('textarea[name="content"]');
@@ -333,15 +301,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updateCharCount() {
         const count = contentTextarea.value.length;
-        const minCount = 10;
-        
-        if (count < minCount) {
-            label.textContent = `${minCount - count} more characters needed`;
-            label.classList.add('text-warning');
-        } else {
-            label.textContent = `${count} characters`;
-            label.classList.remove('text-warning');
-        }
+        label.textContent = `${count} characters`;
+        label.classList.remove('text-warning');
     }
     
     contentTextarea.addEventListener('input', updateCharCount);
