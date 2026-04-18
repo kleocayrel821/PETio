@@ -232,6 +232,16 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
   overflow-wrap: anywhere;
 }
 
+.post-media {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 0.75rem;
+}
+
 /* Stats Cards */
 .stats-card {
   background: linear-gradient(135deg, #6d28d9, #ec4899);
