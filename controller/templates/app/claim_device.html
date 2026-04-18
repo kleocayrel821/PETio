@@ -115,6 +115,16 @@
       else{ a.style.display=''; }
     });
   }
+  function applyMobileNavFilter(){
+    var nav=document.querySelector('.mobile-bottom-nav');
+    if(!nav) return;
+    var links=nav.querySelectorAll('a');
+    links.forEach(function(a){
+      var href=(a.getAttribute('href')||'').toLowerCase();
+      if(!hasDevices && href.indexOf('/devices/') === -1){ a.style.display='none'; }
+      else{ a.style.display=''; }
+    });
+  }
   const hardwareKey=document.getElementById('hardwareKey');
   const deviceId=document.getElementById('deviceId');
   const pin=document.getElementById('pin');
@@ -230,6 +240,7 @@
   });
   document.getElementById('claimForm').addEventListener('submit',submitClaim);
   applySidebarFilter();
+  applyMobileNavFilter();
   choose();
 </script>
 {% endblock %}
