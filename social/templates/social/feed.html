@@ -114,20 +114,18 @@
                     {% if user_results %}
                     <div class="space-y-3">
                         {% for u in user_results %}
-                        <div class="grid grid-cols-[1fr_auto] items-center gap-3">
-                            <div class="flex items-center gap-3 min-w-0">
-                                <div class="avatar shrink-0">
-                                    <div class="w-10 rounded-full">
-                                        <img src="{% avatar_url u 64 %}" alt="{{ u.username }}" />
-                                    </div>
+                        <div class="friend-suggestion-row">
+                            <div class="avatar">
+                                <div class="w-10 rounded-full">
+                                    <img src="{% avatar_url u 64 %}" alt="{{ u.username }}" />
                                 </div>
-                                <a href="{% url 'social:profile' u.username %}" class="min-w-0 group">
-                                    <div class="font-semibold group-hover:text-primary">{{ u.get_full_name|default:u.username }}</div>
-                                    <div class="text-xs text-base-content/60">@{{ u.username }} • {{ u.followers_count }} followers • {{ u.post_count }} posts</div>
-                                </a>
                             </div>
+                            <a href="{% url 'social:profile' u.username %}" class="friend-suggestion-text group">
+                                <div class="font-semibold group-hover:text-primary friend-name">{{ u.get_full_name|default:u.username }}</div>
+                                <div class="text-xs text-base-content/60 friend-handle">@{{ u.username }} • {{ u.followers_count }} followers • {{ u.post_count }} posts</div>
+                            </a>
                             {% if user.is_authenticated and user.id != u.id %}
-                            <button class="btn btn-primary btn-sm rounded-full px-4 suggest-follow-btn justify-self-end" data-user-id="{{ u.id }}">Follow</button>
+                            <button class="btn btn-primary btn-sm friend-suggestion-follow suggest-follow-btn" data-user-id="{{ u.id }}">Follow</button>
                             {% endif %}
                         </div>
                         {% endfor %}
@@ -381,19 +379,17 @@
                         {% if friend_suggestions %}
                         <div class="space-y-3">
                             {% for u in friend_suggestions %}
-                            <div class="grid grid-cols-[1fr_auto] items-center gap-3">
-                                <div class="flex items-center gap-3 min-w-0">
-                                    <div class="avatar shrink-0">
-                                        <div class="w-10 rounded-full">
-                                            <img src="{% avatar_url u 64 %}" alt="{{ u.username }}" />
-                                        </div>
+                            <div class="friend-suggestion-row">
+                                <div class="avatar">
+                                    <div class="w-10 rounded-full">
+                                        <img src="{% avatar_url u 64 %}" alt="{{ u.username }}" />
                                     </div>
-                                    <a href="{% url 'social:profile' u.username %}" class="min-w-0 group">
-                                        <div class="font-semibold group-hover:text-primary">{{ u.get_full_name|default:u.username }}</div>
-                                        <div class="text-xs text-base-content/60">@{{ u.username }}</div>
-                                    </a>
                                 </div>
-                                <button class="btn btn-primary btn-sm rounded-full px-4 suggest-follow-btn justify-self-end" data-user-id="{{ u.id }}">Follow</button>
+                                <a href="{% url 'social:profile' u.username %}" class="friend-suggestion-text group">
+                                    <div class="font-semibold group-hover:text-primary friend-name">{{ u.get_full_name|default:u.username }}</div>
+                                    <div class="text-xs text-base-content/60 friend-handle">@{{ u.username }}</div>
+                                </a>
+                                <button class="btn btn-primary btn-sm friend-suggestion-follow suggest-follow-btn" data-user-id="{{ u.id }}">Follow</button>
                             </div>
                             {% endfor %}
                         </div>
@@ -499,14 +495,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }).then(r => r.json()).then(data => {
                 if (data && data.following === true) {
-                    this.classList.remove('btn-primary');
-                    this.classList.add('btn-success');
+                    this.classList.add('is-following');
                     this.textContent = 'Following';
-                    this.disabled = true;
                     if (window.toastManager) toastManager.success('Following started');
                 } else if (data && data.following === false) {
-                    this.classList.remove('btn-success');
-                    this.classList.add('btn-primary');
+                    this.classList.remove('is-following');
                     this.textContent = 'Follow';
                     if (window.toastManager) toastManager.info('Unfollowed');
                 } else {
