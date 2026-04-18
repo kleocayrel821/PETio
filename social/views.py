@@ -444,17 +444,17 @@ def toggle_follow(request, user_id):
         following = False
     else:
         following = True
-        # Create notification
         Notification.objects.create(
             recipient=user_to_follow,
             sender=request.user,
             notification_type='follow',
             message=f'{request.user.username} started following you'
         )
-    
+
+    follower_count = Follow.objects.filter(following=user_to_follow).count()
     return JsonResponse({
         'following': following,
-        'follower_count': user_to_follow.social_profile.follower_count
+        'follower_count': follower_count,
     })
 
 
