@@ -121,6 +121,16 @@
       else{ a.style.display=''; }
     });
   }
+  function applyMobileNavFilter(){
+    var nav=document.querySelector('.mobile-bottom-nav');
+    if(!nav) return;
+    var links=nav.querySelectorAll('a');
+    links.forEach(function(a){
+      var href=(a.getAttribute('href')||'').toLowerCase();
+      if(!hasDevices && href.indexOf('/devices/') === -1){ a.style.display='none'; }
+      else{ a.style.display=''; }
+    });
+  }
   function toggleDevicesUI(){
     var grid=document.getElementById('devicesGrid');
     var empty=document.querySelector('.empty-card');
@@ -151,6 +161,7 @@
   } 
   document.addEventListener('DOMContentLoaded', function(){
     applySidebarFilter();
+    applyMobileNavFilter();
     toggleDevicesUI();
   });
 </script>
