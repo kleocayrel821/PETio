@@ -192,13 +192,16 @@
                 <div class="text-base sm:text-lg font-bold text-primary">₱{{ item.price }}</div>
                 <div class="text-xs sm:text-sm text-base-content/70">{{ item.quantity }} available</div>
             </div>
+            {% url 'marketplace:user_profile' item.seller.id as seller_profile_url %}
             <div class="seller-row flex items-center gap-2 mt-2 text-xs sm:text-sm text-base-content/70 whitespace-nowrap">
-                <div class="avatar placeholder">
-                    <div class="bg-neutral text-neutral-content rounded-full w-6">
-                        <span class="text-xs">{{ item.seller.username|first|upper }}</span>
+                <a href="{{ seller_profile_url }}" class="flex items-center gap-2">
+                    <div class="avatar placeholder">
+                        <div class="bg-neutral text-neutral-content rounded-full w-6">
+                            <span class="text-xs">{{ item.seller.username|first|upper }}</span>
+                        </div>
                     </div>
-                </div>
-                <span class="seller-name">@{{ item.seller.username }}</span>
+                    <span class="seller-name">@{{ item.seller.username }}</span>
+                </a>
                 {% if item.seller_rating_count %}
                 <span class="ml-auto flex items-center gap-1 seller-rating-text">
                     <i class="fas fa-star text-yellow-400"></i>

@@ -11,11 +11,32 @@ User = get_user_model()
 
 
 class UserSummarySerializer(serializers.ModelSerializer):
-    """Lightweight user serializer exposing id and username only."""
+    """Lightweight user serializer exposing id, username, and optional avatar URL."""
+
+    avatar_url = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["id", "username"]
+        fields = ["id", "username", "avatar_url"]
+
+    def get_avatar_url(self, obj):
+        try:
+            prof = getattr(obj, "profile", None)
+            if prof and getattr(prof, "avatar", None):
+                url = getattr(prof.avatar, "url", "")
+                if url:
+                    return url
+        except Exception:
+            pass
+        try:
+            mp = getattr(obj, "marketplace_profile", None)
+            if mp and getattr(mp, "avatar", None):
+                url = getattr(mp.avatar, "url", "")
+                if url:
+                    return url
+        except Exception:
+            pass
+        return ""
 
 
 class CategorySerializer(serializers.ModelSerializer):

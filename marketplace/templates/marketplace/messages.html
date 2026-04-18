@@ -79,8 +79,8 @@
     <div class="p-4 border-b border-base-300" id="chatHeader">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="avatar placeholder">
-            <div class="bg-neutral text-neutral-content rounded-full w-9">
+          <div class="avatar">
+            <div id="headerAvatar" class="bg-neutral text-neutral-content rounded-full w-9 flex items-center justify-center overflow-hidden">
               <span id="headerAvatarChar" class="text-sm">?</span>
             </div>
           </div>
@@ -481,11 +481,26 @@ async function getListingTitle(listingId) {
 function updateChatHeader(thread) {
   const headerEl = document.getElementById('chatUsername');
   const avatarCharEl = document.getElementById('headerAvatarChar');
+  const avatarEl = document.getElementById('headerAvatar');
   if (!headerEl || !thread) return;
   const other = (thread.buyer && thread.buyer.id === currentUserId) ? thread.seller : thread.buyer;
   const name = other && other.username ? `@${other.username}` : 'Conversation';
   headerEl.textContent = name;
-  avatarCharEl.textContent = (other && other.username ? other.username[0] : '?').toUpperCase();
+  const initial = (other && other.username ? other.username[0] : '?').toUpperCase();
+  const avatarUrl = other && other.avatar_url ? other.avatar_url : '';
+  if (avatarEl) {
+    if (avatarUrl) {
+      avatarEl.style.backgroundImage = `url(${avatarUrl})`;
+      avatarEl.style.backgroundSize = 'cover';
+      avatarEl.style.backgroundPosition = 'center';
+      avatarCharEl.textContent = '';
+    } else {
+      avatarEl.style.backgroundImage = '';
+      avatarCharEl.textContent = initial;
+    }
+  } else {
+    avatarCharEl.textContent = initial;
+  }
 }
 
 /**
