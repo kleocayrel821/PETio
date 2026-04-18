@@ -373,8 +373,8 @@
         <a href="/marketplace/messages/" class="{% if request.path == '/marketplace/messages/' %}active{% endif %}">
           <i class="fas fa-comments"></i><span>Messages</span>
         </a>
-        <a href="/" class="{% if request.path == '/' %}active{% endif %}">
-          <i class="fas fa-home"></i><span>Home</span>
+        <a href="/marketplace/listing/new/" class="{% if request.path == '/marketplace/listing/new/' %}active{% endif %}">
+          <i class="fas fa-plus-circle"></i><span>Create</span>
         </a>
       {% elif path == '/' or '/schedules-ui/' in path or '/history/' in path or '/pending-commands/' in path or '/bmi/' in path or '/control/' in path or '/test-base/' in path or '/devices/' in path %}
         <a href="/" class="{% if request.path == '/' %}active{% endif %}">
