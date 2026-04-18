@@ -14,6 +14,7 @@ urlpatterns = [
     path('feed/', views.feed, name='feed_page'),
     path('home/', views.home, name='home'),
     path('dashboard/', views.dashboard, name='dashboard'),
+    path('friends/', views.friend_suggestions_view, name='friend_suggestions'),
     
     # Post management
     path('create/', views.create_post, name='create_post'),
