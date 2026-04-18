@@ -545,9 +545,10 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 .friend-suggestion-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   width: 100%;
   box-sizing: border-box;
+  padding: 8px 10px;
 }
 .friend-suggestion-row .avatar {
   flex-shrink: 0;
@@ -563,12 +564,19 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.friend-suggestion-text .friend-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+.friend-suggestion-text .friend-handle {
+  font-size: 11px;
+}
 .friend-suggestion-follow {
   flex-shrink: 0;
   white-space: nowrap;
   border-radius: 9999px;
-  padding-left: 1rem;
-  padding-right: 1rem;
+  padding: 5px 10px;
+  font-size: 11px;
   background-image: linear-gradient(135deg, #a855f7, #ec4899);
   border: none;
   color: #ffffff;
