@@ -357,8 +357,8 @@
         <a href="/social/profile/" class="{% if request.path == '/social/profile/' %}active{% endif %}">
           <i class="fas fa-user"></i><span>My Profile</span>
         </a>
-        <a href="/" class="{% if request.path == '/' %}active{% endif %}">
-          <i class="fas fa-home"></i><span>Home</span>
+        <a href="/social/friends/" class="{% if request.path == '/social/friends/' %}active{% endif %}">
+          <i class="fas fa-user-plus"></i><span>Friends</span>
         </a>
       {% elif path|length >= 13 and path|slice:":13" == "/marketplace/" %}
         <a href="/marketplace/" class="{% if request.path == '/marketplace/' %}active{% endif %}">
