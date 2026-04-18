@@ -545,7 +545,7 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 .friend-suggestion-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
   width: 100%;
   box-sizing: border-box;
   padding: 8px 10px;
@@ -554,6 +554,9 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
   flex-shrink: 0;
 }
 .friend-suggestion-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -567,16 +570,21 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 .friend-suggestion-text .friend-name {
   font-size: 13px;
   font-weight: 500;
+  color: inherit;
 }
 .friend-suggestion-text .friend-handle {
   font-size: 11px;
+  color: #888;
 }
 .friend-suggestion-follow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   white-space: nowrap;
   border-radius: 9999px;
-  padding: 5px 10px;
-  font-size: 11px;
+  padding: 5px 12px;
+  font-size: 12px;
   background-image: linear-gradient(135deg, #a855f7, #ec4899);
   border: none;
   color: #ffffff;
