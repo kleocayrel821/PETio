@@ -3,6 +3,10 @@ from .models import Post, Comment, UserProfile, SocialReport
 
 
 class PostForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["title"].required = False
+
     class Meta:
         model = Post
         fields = ["title", "content", "image"]
@@ -23,15 +27,17 @@ class PostForm(forms.ModelForm):
         }
 
     def clean_title(self):
-        title = self.cleaned_data.get("title", "").strip()
+        title = (self.cleaned_data.get("title") or "").strip()
+        if not title:
+            return ""
         if len(title) < 3:
-            raise forms.ValidationError("Title must be at least 3 characters long.")
+            raise forms.ValidationError("Title must be at least 3 characters long when provided.")
         return title
 
     def clean_content(self):
-        content = self.cleaned_data.get("content", "").strip()
-        if len(content) < 10:
-            raise forms.ValidationError("Content must be at least 10 characters long.")
+        content = (self.cleaned_data.get("content") or "").strip()
+        if not content:
+            raise forms.ValidationError("Content is required.")
         return content
 
 
