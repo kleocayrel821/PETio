@@ -160,6 +160,31 @@ def feed(request):
 
 
 @login_required
+def friend_suggestions_view(request):
+    """Standalone page listing friend suggestions for the current user."""
+    friend_suggestions = []
+    if request.user.is_authenticated:
+        following_ids = Follow.objects.filter(follower=request.user).values_list('following_id', flat=True)
+        friend_suggestions = (
+            User.objects
+            .exclude(id__in=list(following_ids))
+            .exclude(id=request.user.id)
+            .exclude(username__startswith='smoke_')
+            .filter(is_staff=False, is_superuser=False)
+            .annotate(
+                followers_count=Count('social_followers_set'),
+                post_count=Count('social_posts'),
+            )
+            .order_by('-followers_count', '-post_count', '-date_joined')[:200]
+        )
+    context = {
+        'friend_suggestions': friend_suggestions,
+    }
+    context.update(get_moderation_context(request))
+    return render(request, 'social/friend_suggestions.html', context)
+
+
+@login_required
 def create_post(request):
     """Create a new post"""
     if request.method == 'POST':

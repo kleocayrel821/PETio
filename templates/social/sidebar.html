@@ -27,4 +27,8 @@ Expects: view_name set to one of: feed, dashboard, notifications, create_post
     <i class="fas fa-user"></i>
     <span>My Profile</span>
   </a>
+  <a href="{% url 'social:friend_suggestions' %}" class="sidebar-item {% if view_name == 'friend_suggestions' %}active{% endif %}">
+    <i class="fas fa-user-plus"></i>
+    <span>Friend Suggestions</span>
+  </a>
 </nav>
