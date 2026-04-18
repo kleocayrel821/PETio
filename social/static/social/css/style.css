@@ -540,3 +540,38 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 .shared-caption { background: rgba(147,112,219,0.12); border: 1px solid rgba(147,112,219,0.28); border-radius: 14px; padding: 0.6rem 0.9rem; font-weight: 600; }
 .social-page { overflow-x: hidden; }
 .social-page .container { max-width: 100%; padding-left: 1rem; padding-right: 1rem; }
+
+/* Friend Suggestions — overflow fix */
+.suggest-user-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.suggest-user-row .suggest-user-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.suggest-user-row .suggest-user-info .name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.suggest-user-row .suggest-user-info .handle {
+  font-size: 0.75rem;
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.suggest-user-row .follow-btn {
+  flex-shrink: 0;
+}
