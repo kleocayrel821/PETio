@@ -591,7 +591,6 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 
 .friend-suggestion-text {
   min-width: 0;
-  max-width: calc(100% - 72px);
 }
 
 .friend-suggestion-name {
@@ -603,8 +602,7 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 
 .friend-suggestion-username {
   white-space: normal;
-  font-size: 0.7rem;
-  line-height: 1.1;
+  font-size: 0.75rem;
 }
 .friend-suggestion-follow {
   flex-shrink: 0;
