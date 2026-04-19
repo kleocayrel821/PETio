@@ -601,8 +601,10 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 }
 
 .friend-suggestion-username {
-  white-space: normal;
-  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.7rem;
 }
 .friend-suggestion-follow {
   flex-shrink: 0;
