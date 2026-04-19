@@ -557,3 +557,14 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
     margin-right: 0.5rem;
   }
 }
+
+.social-main-grid {
+  align-items: flex-start;
+}
+
+.social-right-sidebar {
+  position: sticky;
+  top: 16px;
+  align-self: flex-start;
+  height: fit-content;
+}
