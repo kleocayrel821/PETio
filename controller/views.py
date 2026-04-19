@@ -85,9 +85,20 @@ def control_panel(request):
 
 # New Class-Based Views for split UI pages
 @method_decorator(ensure_csrf_cookie, name='dispatch')
-class HomeView(TemplateView):
-    """Landing page: marketing and login/signup."""
+class LandingView(TemplateView):
+    """Public marketing landing page."""
     template_name = 'landing.html'
+
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class HomeView(TemplateView):
+    """Root view: redirect authenticated users to controller, guests see landing."""
+    template_name = 'landing.html'
+
+    def get(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect('control_panel')
+        return super().get(request, *args, **kwargs)
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class SchedulesView(TemplateView):
