@@ -27,6 +27,12 @@
   .timeline-item { background: var(--surface-soft); border: 1px solid rgba(17,24,39,0.06); border-radius:14px; padding:10px 12px; box-shadow: 0 6px 16px rgba(17,24,39,0.06); }
   .timeline-title { font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:8px; }
   .timeline-meta { font-size:0.8rem; color:var(--text-secondary); }
+  @media (max-width:640px){
+    .profile-header-content .profile-name,
+    .profile-header-content .profile-username {
+      text-align:center;
+    }
+  }
 </style>
 {% endblock %}
 {% block title %}My Profile • PETio{% endblock %}
