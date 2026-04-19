@@ -12,9 +12,9 @@ router.register(r'commands', views.PendingCommandViewSet)
 
 urlpatterns = [
     # Web UI
-    # Serve marketing landing page at site root
+    # Root: send logged-in users to controller, guests see landing
     path('', views.HomeView.as_view(), name='home'),
-    path('landing/', views.HomeView.as_view(), name='landing'),
+    path('landing/', views.LandingView.as_view(), name='landing'),
     path('schedules-ui/', views.SchedulesView.as_view(), name='schedules_ui'),
     path('history/', views.HistoryView.as_view(), name='history'),
     path('bmi/', views.BMICalculatorView.as_view(), name='bmi_calculator'),
