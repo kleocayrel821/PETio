@@ -606,4 +606,7 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
 }
 .friend-suggestion-follow {
   flex-shrink: 0;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.75rem;
+  min-width: auto;
 }
