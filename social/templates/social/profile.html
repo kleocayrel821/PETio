@@ -459,7 +459,72 @@
             flex-wrap: wrap;
             gap: 15px;
             justify-content: center;
-            transform: none;
+            transform: none; /* remove desktop negative shift on mobile/tablet */
+        }
+    }
+
+    @media (max-width: 480px) {
+        .profile-cover {
+            height: 130px;
+        }
+
+        .profile-avatar-container {
+            top: -48px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+        }
+
+        .profile-header-content {
+            padding: 44px 12px 14px 12px;
+            margin-top: -20px;
+            text-align: center;
+        }
+
+        .profile-actions-header {
+            justify-content: center;
+        }
+
+        .profile-meta {
+            justify-content: center;
+        }
+
+        .profile-name {
+            font-size: 1.15rem;
+            text-align: center;
+        }
+
+        .profile-username {
+            text-align: center;
+        }
+
+        .profile-bio {
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .profile-stats {
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stat-item {
+            padding: 5px 8px;
+            font-size: 0.82rem;
+        }
+
+        .posts-section {
+            padding: 0 8px;
+            margin-top: 12px;
+        }
+
+        .post-item {
+            padding: 12px;
         }
     }
 
