@@ -349,9 +349,9 @@
           <i class="fas fa-rss"></i><span>Feed</span>
         </a>
         {# Dashboard temporarily hidden #}
-        {# <a href="/social/dashboard/" class="{% if request.path == '/social/dashboard/' %}active{% endif %}">
+        {% comment %} <a href="/social/dashboard/" class="{% if request.path == '/social/dashboard/' %}active{% endif %}">
           <i class="fas fa-tachometer-alt"></i><span>Dashboard</span>
-        </a> #}
+        </a> {% endcomment %}
         <a href="/social/notifications/" class="{% if request.path == '/social/notifications/' %}active{% endif %}">
           <i class="fas fa-bell"></i><span>Notifs</span>
         </a>
