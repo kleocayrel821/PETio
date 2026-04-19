@@ -28,8 +28,14 @@
   .timeline-title { font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:8px; }
   .timeline-meta { font-size:0.8rem; color:var(--text-secondary); }
   @media (max-width:640px){
+    .profile-header-row{
+      flex-direction:column;
+      align-items:center;
+      gap:0.35rem;
+    }
     .profile-header-content .profile-name,
-    .profile-header-content .profile-username {
+    .profile-header-content .profile-username,
+    .profile-header-content .text-gray-500{
       text-align:center;
     }
   }
@@ -49,7 +55,7 @@
       {% endif %}
     </div>
     <div class="profile-header-content">
-      <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center justify-between mb-2 profile-header-row">
         <div>
           <h1 class="profile-name">{{ user_obj.get_full_name|default:user_obj.username }}</h1>
           <div class="profile-username">@{{ user_obj.username }}</div>
