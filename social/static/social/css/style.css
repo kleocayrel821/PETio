@@ -568,3 +568,38 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
   align-self: flex-start;
   height: fit-content;
 }
+
+/* Friend suggestions layout */
+.friend-suggestion-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.friend-suggestion-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.friend-suggestion-info .avatar {
+  flex-shrink: 0;
+}
+
+.friend-suggestion-text {
+  min-width: 0;
+}
+
+.friend-suggestion-name,
+.friend-suggestion-username {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.friend-suggestion-follow {
+  flex-shrink: 0;
+}
