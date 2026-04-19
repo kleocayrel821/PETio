@@ -12,8 +12,8 @@ router.register(r'commands', views.PendingCommandViewSet)
 
 urlpatterns = [
     # Web UI
-    # Make the control panel the default landing page at site root
-    path('', views.control_panel, name='home'),
+    # Serve marketing landing page at site root
+    path('', views.HomeView.as_view(), name='home'),
     path('landing/', views.HomeView.as_view(), name='landing'),
     path('schedules-ui/', views.SchedulesView.as_view(), name='schedules_ui'),
     path('history/', views.HistoryView.as_view(), name='history'),
