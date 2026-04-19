@@ -593,13 +593,17 @@ body.social-no-gradient .max-w-7xl::after { display: none !important; }
   min-width: 0;
 }
 
-.friend-suggestion-name,
-.friend-suggestion-username {
+.friend-suggestion-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 0.85rem;
 }
 
+.friend-suggestion-username {
+  white-space: normal;
+  font-size: 0.75rem;
+}
 .friend-suggestion-follow {
   flex-shrink: 0;
 }
