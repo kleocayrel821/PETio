@@ -1,7 +1,7 @@
 <!-- Moderation Sidebar Navigation -->
 <div class="rounded-3xl bg-white/85 backdrop-blur border border-[#DDBA7D33] p-3 shadow-lg space-y-2 sticky top-4">
     <div class="px-4 py-3">
-        <div class="flex items-center gap-2 text-xs font-semibold text-base-content/60 uppercase tracking-wider">
+        <div class="flex gap-2 items-center text-xs font-semibold tracking-wider uppercase text-base-content/60">
             <i class="fas fa-shield-alt"></i>
             <span>Moderation</span>
         </div>
@@ -22,7 +22,7 @@
         <i class="fas fa-flag w-5 transition-colors group-hover:text-[#DDBA7D]"></i>
         <span>Reports</span>
         {% if pending_reports_count and pending_reports_count > 0 %}
-            <span class="badge badge-error badge-sm ml-auto">{{ pending_reports_count }}</span>
+            <span class="ml-auto badge badge-error badge-sm">{{ pending_reports_count }}</span>
         {% endif %}
     </a>
 
@@ -33,7 +33,7 @@
         <i class="fas fa-layer-group w-5 transition-colors group-hover:text-[#DDBA7D]"></i>
         <span>Queue</span>
         {% if flagged_posts_count or flagged_comments_count %}
-            <span class="badge badge-warning badge-sm ml-auto">{{ flagged_posts_count|default:0 }} / {{ flagged_comments_count|default:0 }}</span>
+            <span class="ml-auto badge badge-warning badge-sm">{{ flagged_posts_count|default:0 }} / {{ flagged_comments_count|default:0 }}</span>
         {% endif %}
     </a>
 
@@ -53,38 +53,23 @@
         <span>Logs</span>
     </a>
 
-    <div class="divider my-2"></div>
+    <div class="my-2 divider"></div>
 
     <div class="px-4 py-3">
-        <div class="flex items-center gap-2 text-xs font-semibold text-base-content/60 uppercase tracking-wider">
-            <i class="fas fa-cubes"></i>
-            <span>Admin Panels</span>
-        </div>
-    </div>
-
-    <a href="{% url 'marketplace_admin:listings' %}"
-       class="group flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200 hover:bg-white hover:shadow-sm hover:translate-x-0.5">
-        <i class="fas fa-store w-5 transition-colors group-hover:text-[#DDBA7D]"></i>
-        <span>Marketplace Admin</span>
-    </a>
-
-    <div class="divider my-2"></div>
-
-    <div class="px-4 py-3">
-        <div class="flex items-center gap-2 text-xs font-semibold text-base-content/60 uppercase tracking-wider">
+        <div class="flex gap-2 items-center text-xs font-semibold tracking-wider uppercase text-base-content/60">
             <i class="fas fa-stream"></i>
             <span>Social</span>
         </div>
     </div>
 
     <a href="{% url 'social:feed' %}"
-       class="group flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200 hover:bg-white hover:shadow-sm hover:translate-x-0.5">
+       class="flex gap-3 items-center px-4 py-3 rounded-2xl transition-all duration-200 group hover:bg-white hover:shadow-sm hover:translate-x-0.5">
         <i class="fas fa-home w-5 transition-colors group-hover:text-[#DDBA7D]"></i>
         <span>Back to Feed</span>
     </a>
 
     <a href="{% url 'social:dashboard' %}"
-       class="group flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200 hover:bg-white hover:shadow-sm hover:translate-x-0.5">
+       class="flex gap-3 items-center px-4 py-3 rounded-2xl transition-all duration-200 group hover:bg-white hover:shadow-sm hover:translate-x-0.5">
         <i class="fas fa-user w-5 transition-colors group-hover:text-[#DDBA7D]"></i>
         <span>My Dashboard</span>
     </a>

@@ -272,6 +272,16 @@
         </div>
         <i class="fas fa-chevron-right item-chevron"></i>
       </a>
+      {% if user.is_authenticated and user.is_staff %}
+      <a href="{% url 'social:moderation_dashboard' %}" class="app-dropdown__item" role="menuitem" style="margin-top:-2px; margin-left:28px; width:calc(100% - 36px); background:#f8fafc;">
+        <span class="app-dropdown__icon"><i class="fas fa-shield-alt"></i></span>
+        <div class="app-dropdown__meta">
+          <div class="app-dropdown__title">Social Admin</div>
+          <div class="app-dropdown__desc">Moderation Panel</div>
+        </div>
+        <i class="fas fa-arrow-up-right-from-square item-chevron"></i>
+      </a>
+      {% endif %}
       <a href="{% url 'marketplace:home' %}" class="app-dropdown__item {% if current_app == 'marketplace' %}active{% endif %}" role="menuitem">
         <span class="app-dropdown__icon"><i data-feather="shopping-cart"></i></span>
         <div class="app-dropdown__meta">
@@ -280,6 +290,16 @@
         </div>
         <i class="fas fa-chevron-right item-chevron"></i>
       </a>
+      {% if user.is_authenticated and user.is_staff %}
+      <a href="{% url 'marketplace_admin:listings' %}" class="app-dropdown__item" role="menuitem" style="margin-top:-2px; margin-left:28px; width:calc(100% - 36px); background:#f8fafc;">
+        <span class="app-dropdown__icon"><i class="fas fa-store"></i></span>
+        <div class="app-dropdown__meta">
+          <div class="app-dropdown__title">Marketplace Admin</div>
+          <div class="app-dropdown__desc">Listings & Reports</div>
+        </div>
+        <i class="fas fa-arrow-up-right-from-square item-chevron"></i>
+      </a>
+      {% endif %}
     </div>
   </div>
   <div id="globalMenuBackdrop" class="global-menu-backdrop"></div>
