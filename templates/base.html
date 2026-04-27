@@ -264,7 +264,7 @@
         </div>
         <i class="fas fa-chevron-right item-chevron"></i>
       </a>
-      <a href="{% url 'social:feed' %}" class="app-dropdown__item {% if current_app == 'social' %}active{% endif %}" role="menuitem">
+      <a href="{% url 'social:feed' %}" class="app-dropdown__item {% if current_app == 'social' and request.path|slice:':19' != '/social/moderation/' %}active{% endif %}" role="menuitem">
         <span class="app-dropdown__icon"><i data-feather="users"></i></span>
         <div class="app-dropdown__meta">
           <div class="app-dropdown__title">Social</div>
