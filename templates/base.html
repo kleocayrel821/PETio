@@ -256,7 +256,7 @@
       <img src="{% static 'images/PETiologo.png' %}" alt="PETio" />
     </div>
     <div class="global-app-menu__list">
-      <a href="{% url 'home' %}" class="app-dropdown__item {% if request.path|slice:':18' != '/admin/marketplace/' and request.path|slice:':19' != '/social/moderation/' and current_app != 'social' and current_app != 'marketplace' %}active{% endif %}" role="menuitem">
+      <a href="{% url 'home' %}" class="app-dropdown__item {% if request.path|slice:':19' != '/admin/marketplace/' and request.path|slice:':19' != '/social/moderation/' and current_app != 'social' and current_app != 'marketplace' %}active{% endif %}" role="menuitem">
         <span class="app-dropdown__icon"><i data-feather="sliders"></i></span>
         <div class="app-dropdown__meta">
           <div class="app-dropdown__title">Controller</div>
@@ -291,7 +291,7 @@
         <i class="fas fa-chevron-right item-chevron"></i>
       </a>
       {% if user.is_authenticated and user.is_staff %}
-      <a href="{% url 'marketplace_admin:listings' %}" class="app-dropdown__item {% if request.path|slice:':18' == '/admin/marketplace/' %}active{% endif %}" role="menuitem" style="margin-top:-2px; margin-left:28px; width:calc(100% - 36px); background:#f8fafc;">
+      <a href="{% url 'marketplace_admin:listings' %}" class="app-dropdown__item {% if request.path|slice:':19' == '/admin/marketplace/' %}active{% endif %}" role="menuitem" style="margin-top:-2px; margin-left:28px; width:calc(100% - 36px); background:#f8fafc;">
         <span class="app-dropdown__icon"><i class="fas fa-store"></i></span>
         <div class="app-dropdown__meta">
           <div class="app-dropdown__title">Marketplace Admin</div>
