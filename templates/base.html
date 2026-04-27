@@ -256,7 +256,7 @@
       <img src="{% static 'images/PETiologo.png' %}" alt="PETio" />
     </div>
     <div class="global-app-menu__list">
-      <a href="{% url 'home' %}" class="app-dropdown__item {% if current_app == 'controller' or current_app is None and request.path|slice:':8' != '/social/' and request.path|slice:':18' != '/admin/marketplace/' %}active{% endif %}" role="menuitem">
+      <a href="{% url 'home' %}" class="app-dropdown__item {% if request.path|slice:':18' != '/admin/marketplace/' and request.path|slice:':19' != '/social/moderation/' and current_app != 'social' and current_app != 'marketplace' %}active{% endif %}" role="menuitem">
         <span class="app-dropdown__icon"><i data-feather="sliders"></i></span>
         <div class="app-dropdown__meta">
           <div class="app-dropdown__title">Controller</div>
