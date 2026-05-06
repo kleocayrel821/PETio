@@ -13,7 +13,9 @@
 
   :root {
     --c-purple-dark: #2D3436;
-    --c-purple-mid: #6C5CE7;
+    --c-purple-mid: #7C5CFF;
+    --c-purple-deep: #6B46F2;
+    --c-purple-soft: #DCCEFF;
     --c-teal: #00B894;
     --c-mint: #F8F9FA;
     --c-white: #FFFFFF;
@@ -73,8 +75,8 @@
   .nav-links a:hover { color: var(--c-purple-dark); background: rgba(108, 92, 231, 0.08); }
   .nav-cta {
     color: #fff !important;
-    background: linear-gradient(135deg, var(--c-purple-mid), #5A4BD1) !important;
-    box-shadow: 0 8px 18px rgba(108, 92, 231, 0.25);
+    background: linear-gradient(135deg, var(--c-purple-mid), var(--c-purple-deep)) !important;
+    box-shadow: 0 8px 18px rgba(124, 92, 255, 0.28);
   }
   .nav-cta:hover { transform: translateY(-1px); filter: brightness(1.03); }
 
@@ -130,9 +132,9 @@
     font-size: 15px; font-weight: 700;
     text-decoration: none;
     color: #fff;
-    background: linear-gradient(140deg, var(--c-purple-mid), #5A4BD1);
+    background: linear-gradient(140deg, var(--c-purple-mid), var(--c-purple-deep));
     border: none;
-    box-shadow: 0 10px 22px rgba(108, 92, 231, 0.24);
+    box-shadow: 0 10px 22px rgba(124, 92, 255, 0.28);
     transition: .2s ease;
   }
   .btn-primary:hover, .btn-dark:hover { transform: translateY(-2px); filter: brightness(1.05); }
@@ -404,7 +406,7 @@
     padding: 48px 42px;
     background:
       radial-gradient(circle at 88% 12%, rgba(0, 184, 148, 0.16), transparent 36%),
-      linear-gradient(120deg, #6C5CE7 0%, #5A4BD1 100%);
+      linear-gradient(120deg, var(--c-purple-mid) 0%, var(--c-purple-deep) 100%);
     border: 1px solid rgba(255,255,255,0.22);
     box-shadow: 0 24px 58px rgba(108, 92, 231, 0.35);
   }
@@ -418,7 +420,7 @@
   }
   .cta-headline {
     margin-bottom: 8px;
-    color: #fff;
+    color: var(--c-purple-soft);
     font-family: 'Instrument Serif', Georgia, serif;
     font-size: clamp(34px, 4vw, 50px);
     line-height: 1.04;
