@@ -3405,7 +3405,31 @@ def transaction_detail(request, txn_id):
     allowed = request.user.id in {txn.buyer_id, txn.seller_id}
     if not allowed:
         return redirect_to_login(next=reverse("marketplace:transaction_detail", args=[txn_id]))
-    return render(request, "marketplace/transaction_detail.html", {"txn": txn})
+    buyer_profile = getattr(txn.buyer, "profile", None)
+    buyer_name = (txn.cod_name or "").strip()
+    if not buyer_name:
+        buyer_name = (
+            (getattr(buyer_profile, "display_name", "") or "").strip()
+            or (txn.buyer.get_full_name() or "").strip()
+            or (txn.buyer.username or "").strip()
+        )
+    buyer_contact = (txn.cod_contact or "").strip()
+    if not buyer_contact:
+        buyer_contact = (
+            (getattr(buyer_profile, "phone", "") or "").strip()
+            or (txn.buyer.email or "").strip()
+        )
+    buyer_address = (txn.cod_address or "").strip()
+    if not buyer_address:
+        buyer_address = (getattr(buyer_profile, "location", "") or "").strip()
+    context = {
+        "txn": txn,
+        "buyer_name_display": buyer_name,
+        "buyer_contact_display": buyer_contact,
+        "buyer_address_display": buyer_address,
+        "buyer_note_display": (txn.cod_note or "").strip(),
+    }
+    return render(request, "marketplace/transaction_detail.html", context)
 
 @login_required
 @require_POST
