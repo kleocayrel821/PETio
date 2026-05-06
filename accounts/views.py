@@ -20,6 +20,7 @@ from django.urls import reverse
 from django.views import View
 from django.views.generic import UpdateView
 from django.shortcuts import resolve_url
+from django.http import HttpResponseRedirect
 from .models import Profile
 try:
     # Local import; this file edit assumes forms.py will be created in the same app
@@ -92,8 +93,14 @@ class SignupView(CreateView):
                 # Ignore email rendering errors in development/testing
                 pass
 
-        messages.info(self.request, "Account created. " + ("Please check your email to activate your account." if activation_required else "You can now log in."))
-        return response
+        if activation_required:
+            messages.info(self.request, "Account created. Please check your email to activate your account.")
+            return response
+
+        # Activation not required: auto-login and send user directly to controller flow.
+        login(self.request, self.object)
+        messages.success(self.request, "Account created. Welcome to PETio!")
+        return HttpResponseRedirect(resolve_url("home"))
 
     def render_to_string(self, template_name, context):
         """Helper to render template as string for emails."""
