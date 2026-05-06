@@ -8,6 +8,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm, PasswordResetForm
 from django.template.loader import render_to_string
+import logging
 from .utils.email import send_brevo_email
 from .models import Profile
 
@@ -15,6 +16,7 @@ MAX_AVATAR_SIZE_MB = 5
 MAX_AVATAR_SIZE_BYTES = MAX_AVATAR_SIZE_MB * 1024 * 1024
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 class CustomUserCreationForm(UserCreationForm):
     """User creation form for the custom User model with extra fields.
@@ -176,8 +178,22 @@ class BrevoPasswordResetForm(PasswordResetForm):
     ):
         subject = "Reset your PETio password"
         html = render_to_string(html_email_template_name or email_template_name, context)
-        send_brevo_email(
+        try:
+            send_brevo_email(
+                to_email=to_email,
+                subject=subject,
+                html_content=html,
+            )
+            return
+        except Exception:
+            # Keep forgot-password functional by falling back to Django's
+            # configured email backend when Brevo API is unavailable/misconfigured.
+            logger.exception("Brevo password reset send failed; falling back to Django email backend.")
+        return super().send_mail(
+            subject_template_name=subject_template_name,
+            email_template_name=email_template_name,
+            context=context,
+            from_email=from_email,
             to_email=to_email,
-            subject=subject,
-            html_content=html,
+            html_email_template_name=html_email_template_name,
         )
