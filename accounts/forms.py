@@ -134,6 +134,27 @@ class ProfileForm(forms.ModelForm):
             "avatar": "Avatar (optional)",
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "phone" in self.fields:
+            self.fields["phone"].widget.attrs.update({
+                "maxlength": "11",
+                "inputmode": "numeric",
+                "autocomplete": "tel",
+                "placeholder": "09XXXXXXXXX",
+                "pattern": r"\d{0,11}",
+            })
+
+    def clean_phone(self):
+        phone = (self.cleaned_data.get("phone") or "").strip()
+        if not phone:
+            return phone
+        if not phone.isdigit():
+            raise forms.ValidationError("Phone number must contain numbers only.")
+        if len(phone) > 11:
+            raise forms.ValidationError("Phone number must not exceed 11 digits.")
+        return phone
+
     def clean_avatar(self):
         """Validate that avatar file size does not exceed MAX_AVATAR_SIZE_MB."""
         avatar = self.cleaned_data.get("avatar")
