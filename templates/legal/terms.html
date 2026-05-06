@@ -1,0 +1,93 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms and Conditions | PETio</title>
+  <style>
+    :root {
+      --text: #1f2937;
+      --muted: #6b7280;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --primary: #6C5CE7;
+      --border: #e5e7eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+    }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .brand img { height: 36px; width: auto; }
+    .back {
+      text-decoration: none;
+      color: var(--primary);
+      font-weight: 700;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    .updated { margin: 0 0 20px; color: var(--muted); font-size: 14px; }
+    h2 { margin: 20px 0 8px; font-size: 18px; }
+    p, li { font-size: 14px; }
+    ul { margin: 8px 0 0 20px; }
+    a { color: var(--primary); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <a class="brand" href="{% url 'landing' %}">
+        <img src="{% static 'images/PETiologo.png' %}" alt="PETio logo">
+      </a>
+      <a class="back" href="{% url 'landing' %}">Back to landing</a>
+    </div>
+
+    <main class="card">
+      <h1>Terms and Conditions</h1>
+      <p class="updated">Last updated: April 27, 2026</p>
+
+      <p>By using PETio, you agree to these Terms and Conditions. Please read them carefully before using the platform.</p>
+
+      <h2>1. Use of PETio</h2>
+      <ul>
+        <li>You agree to use PETio lawfully and responsibly.</li>
+        <li>You are responsible for maintaining the confidentiality of your account credentials.</li>
+        <li>You must provide accurate information when creating your account and pet profiles.</li>
+      </ul>
+
+      <h2>2. Community and Marketplace Conduct</h2>
+      <ul>
+        <li>Do not post harmful, abusive, fraudulent, or illegal content.</li>
+        <li>Respect other users in social interactions and marketplace transactions.</li>
+        <li>PETio may moderate or remove content that violates platform rules.</li>
+      </ul>
+
+      <h2>3. Device and Feature Availability</h2>
+      <p>PETio may update, improve, or discontinue features at any time. We do not guarantee uninterrupted availability of all services.</p>
+
+      <h2>4. Limitation of Liability</h2>
+      <p>PETio is provided on an "as is" basis. To the fullest extent permitted by law, PETio is not liable for indirect or consequential damages arising from platform use.</p>
+
+      <h2>5. Account Suspension or Termination</h2>
+      <p>We may suspend or terminate accounts that violate these terms, compromise platform safety, or engage in abusive behavior.</p>
+
+      <h2>6. Contact</h2>
+      <p>For questions about these terms, contact us at <a href="mailto:petio.ph@gmail.com">petio.ph@gmail.com</a>.</p>
+    </main>
+  </div>
+</body>
+</html>

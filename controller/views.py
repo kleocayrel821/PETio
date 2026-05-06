@@ -91,6 +91,18 @@ class LandingView(TemplateView):
 
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
+class PrivacyView(TemplateView):
+    """Public privacy policy page for PETio."""
+    template_name = 'legal/privacy.html'
+
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class TermsView(TemplateView):
+    """Public terms and conditions page for PETio."""
+    template_name = 'legal/terms.html'
+
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class HomeView(TemplateView):
     """Root view: redirect authenticated users to controller, guests see landing."""
     template_name = 'landing.html'
