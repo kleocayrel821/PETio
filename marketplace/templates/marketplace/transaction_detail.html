@@ -64,19 +64,19 @@
     <div class="grid gap-3 sm:grid-cols-2">
       <div>
         <div class="text-sm opacity-70">Name</div>
-        <div class="font-medium">{{ txn.cod_name }}</div>
+        <div class="font-medium">{{ buyer_name_display|default:"-" }}</div>
       </div>
       <div>
         <div class="text-sm opacity-70">Contact</div>
-        <div class="font-medium">{{ txn.cod_contact }}</div>
+        <div class="font-medium">{{ buyer_contact_display|default:"-" }}</div>
       </div>
       <div class="sm:col-span-2">
         <div class="text-sm opacity-70">Address</div>
-        <div class="font-medium break-words">{{ txn.cod_address }}</div>
+        <div class="font-medium break-words">{{ buyer_address_display|default:"-" }}</div>
       </div>
       <div class="sm:col-span-2">
         <div class="text-sm opacity-70">Note</div>
-        <div class="font-medium break-words">{{ txn.cod_note }}</div>
+        <div class="font-medium break-words">{{ buyer_note_display|default:"-" }}</div>
       </div>
       {% if txn.payment_method == 'gcash' %}
       <div>
