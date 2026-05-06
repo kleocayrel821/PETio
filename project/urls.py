@@ -7,11 +7,7 @@ from marketplace import views as marketplace_views
 from django.conf import settings
 from django.conf.urls.static import static
 
-password_reset_view = (
-    auth_views.PasswordResetView.as_view(form_class=BrevoPasswordResetForm)
-    if getattr(settings, "BREVO_API_KEY", None)
-    else auth_views.PasswordResetView.as_view()
-)
+password_reset_view = auth_views.PasswordResetView.as_view(form_class=BrevoPasswordResetForm)
 
 urlpatterns = [
     path('', include('controller.urls')),
