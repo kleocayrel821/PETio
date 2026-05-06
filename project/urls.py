@@ -7,6 +7,12 @@ from marketplace import views as marketplace_views
 from django.conf import settings
 from django.conf.urls.static import static
 
+password_reset_view = (
+    auth_views.PasswordResetView.as_view(form_class=BrevoPasswordResetForm)
+    if getattr(settings, "BREVO_API_KEY", None)
+    else auth_views.PasswordResetView.as_view()
+)
+
 urlpatterns = [
     path('', include('controller.urls')),
     path('marketplace/', include(('marketplace.urls', 'marketplace'), namespace='marketplace')),
@@ -21,11 +27,7 @@ urlpatterns = [
     # Override the default auth login to apply role-aware redirect
     path('accounts/login/', accounts_views.AdminAwareLoginView.as_view(), name='login'),
     path('accounts/', include(('accounts.urls', 'accounts'), namespace='accounts')),
-    path(
-        'accounts/password_reset/',
-        auth_views.PasswordResetView.as_view(form_class=BrevoPasswordResetForm if getattr(settings, "BREVO_API_KEY", None) else None),
-        name='password_reset',
-    ),
+    path('accounts/password_reset/', password_reset_view, name='password_reset'),
     path('accounts/', include('django.contrib.auth.urls')),  # Login, logout, password reset
     path('admin/', admin.site.urls),
 ]
