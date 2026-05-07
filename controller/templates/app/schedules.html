@@ -46,14 +46,13 @@
                         class="w-full form-control-enhanced"
                         required
                     >
-                        <option value="30">30g</option>
+                        <option value="40">40g</option>
                         <option value="60">60g</option>
-                        <option value="90">90g</option>
+                        <option value="80">80g</option>
+                        <option value="100">100g</option>
                         <option value="120">120g</option>
-                        <option value="150">150g</option>
-                        <option value="180">180g</option>
-                        <option value="210">210g</option>
-                        <option value="240">240g</option>
+                        <option value="140">140g</option>
+                        <option value="160">160g</option>
                     </select>
                 </div>
             </div>
@@ -292,8 +291,8 @@
                 </div>
                 <div>
                     <label class="subsection-title">Amount (grams)</label>
-                    <input type="number" id="editScheduleAmount" class="w-full form-control-enhanced" min="25" max="100" required aria-required="true" aria-describedby="editAmountHelp">
-                    <div id="editAmountHelp" class="mt-1 text-xs text-gray-500">Recommended: 25–100g. Adjust for your pet.</div>
+                    <input type="number" id="editScheduleAmount" class="w-full form-control-enhanced" min="40" max="160" step="20" required aria-required="true" aria-describedby="editAmountHelp">
+                    <div id="editAmountHelp" class="mt-1 text-xs text-gray-500">Valid amounts: 40–160g (step 20g).</div>
                 </div>
             </div>
 
@@ -996,9 +995,9 @@ document.getElementById('addScheduleForm').addEventListener('submit', async func
     }
 
     const portionVal = parseInt(formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value);
-    const allowed = [30,60,90,120,150,180,210,240];
+    const allowed = [40, 60, 80, 100, 120, 140, 160];
     if (isNaN(portionVal) || !allowed.includes(portionVal)) {
-        showToast('Select a valid amount: 30g, 60g, 90g, 120g, 150g, 180g, 210g, or 240g', 'warning');
+        showToast('Select a valid amount: 40g, 60g, 80g, 100g, 120g, 140g, or 160g', 'warning');
         return;
     }
     
@@ -1136,8 +1135,9 @@ document.getElementById('editScheduleForm').addEventListener('submit', async fun
     }
 
     const portionVal = parseInt(document.getElementById('editScheduleAmount').value);
-    if (isNaN(portionVal) || portionVal < 25 || portionVal > 100) {
-        showToast('Portion must be between 25 and 100 grams', 'warning');
+    const allowed = [40, 60, 80, 100, 120, 140, 160];
+    if (isNaN(portionVal) || !allowed.includes(portionVal)) {
+        showToast('Portion must be one of: 40g, 60g, 80g, 100g, 120g, 140g, or 160g', 'warning');
         return;
     }
     
