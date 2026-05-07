@@ -321,7 +321,7 @@ def feed_now(request):
         except Exception:
             return Response({"status": "error", "message": "Invalid portion size", "success": False, "error": "invalid_portion"}, status=status.HTTP_400_BAD_REQUEST)
 
-        COMP = 10.0
+        COMP =20.0
         MIN_P = 10.0
         MAX_P = 160.0
         if portion_size < MIN_P or portion_size > MAX_P:
