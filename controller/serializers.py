@@ -79,19 +79,20 @@ class FeedingScheduleSerializer(serializers.ModelSerializer):
     portion_size = serializers.FloatField(required=False)
 
     def validate_portion_size(self, value):
-        COMP = 30
-        MAX  = 240
+        COMP = 10
+        MIN  = 10
+        MAX  = 160
         try:
             v = float(value)
         except Exception:
             raise serializers.ValidationError("Invalid portion size.")
-        if v < COMP or v > MAX:
+        if v < MIN or v > MAX:
             raise serializers.ValidationError(
-                f"Portion must be between {COMP}g and {MAX}g "
-                f"(multiples of {COMP}g: 30, 60, 90 … 240)."
+                f"Portion must be between {MIN}g and {MAX}g "
+                f"(step {COMP}g: 10, 20, 30 … 160)."
             )
         snapped = round(v / COMP) * COMP
-        snapped = max(COMP, min(MAX, snapped))
+        snapped = max(MIN, min(MAX, snapped))
         return float(snapped)
     def to_representation(self, instance):
         rep = super().to_representation(instance)
@@ -161,16 +162,19 @@ class ControllerSettingsSerializer(serializers.ModelSerializer):
     def validate_portion_size(self, value):
         if value is None:
             return value
+        COMP = 10
+        MIN  = 10
+        MAX  = 160
         try:
             v = float(value)
         except Exception:
             raise serializers.ValidationError("Invalid portion size.")
-        if v < 30 or v > 240:
+        if v < MIN or v > MAX:
             raise serializers.ValidationError(
-                "Portion must be between 30g and 240g (multiples of 30g)."
+                f"Portion must be between {MIN}g and {MAX}g (step {COMP}g)."
             )
-        snapped = round(v / 30) * 30
-        snapped = max(30, min(240, snapped))
+        snapped = round(v / COMP) * COMP
+        snapped = max(MIN, min(MAX, snapped))
         return float(snapped)
 
 
