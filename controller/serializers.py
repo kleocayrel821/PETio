@@ -79,7 +79,7 @@ class FeedingScheduleSerializer(serializers.ModelSerializer):
     portion_size = serializers.FloatField(required=False)
 
     def validate_portion_size(self, value):
-        COMP = 10
+        COMP = 20
         MIN  = 10
         MAX  = 160
         try:
