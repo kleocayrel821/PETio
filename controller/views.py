@@ -299,7 +299,7 @@ def feed_now(request):
             return Response({"status": "error", "message": "Invalid portion size", "success": False, "error": "invalid_portion"}, status=status.HTTP_400_BAD_REQUEST)
 
         COMP =20.0
-        MIN_P = 10.0
+        MIN_P = 20.0
         MAX_P = 160.0
         if portion_size < MIN_P or portion_size > MAX_P:
             return Response({"status": "error", "message": "Portion must be between 10 and 160 grams", "success": False, "error": "portion_out_of_range"}, status=status.HTTP_400_BAD_REQUEST)
