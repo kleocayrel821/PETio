@@ -112,6 +112,10 @@ extern unsigned long lastFeedCompletionTime;
 #define WIFI_SSID_MAX_LEN 32
 #define WIFI_PASS_ADDR (WIFI_SSID_ADDR + WIFI_SSID_MAX_LEN)
 #define WIFI_PASS_MAX_LEN 64
+#define STOP_REVERSE1_ADDR 244
+#define STOP_PAUSE_ADDR 248
+#define STOP_REVERSE2_ADDR 252
+#define SETTLE_DELAY_ADDR 256
 
 // LED Blink Intervals (milliseconds)
 #define LED_BLINK_FAST 200
@@ -246,19 +250,24 @@ unsigned int g_feedPulse = SERVO_FEED_SPEED;
 #define LAST_SCHEDULE_IxD_ADDR 60
 #define SCHEDULE_ID_SIZE 4
 
-// EEPROM Addresses for Calibration
-#define CALIB_FLAG_ADDR 68
-#define MS_PER_GRAM_ADDR 69
-#define STARTUP_DELAY_ADDR 73
-
-
-#define WHEEL_COMPARTMENTS       8
+#define WHEEL_COMPARTMENTS       7
 #define MS_PER_COMP_DEFAULT      800UL
 #define GRAMS_PER_COMP_DEFAULT   10.0f
+#define STOP_REVERSE1_DEFAULT    0UL
+#define STOP_PAUSE_DEFAULT       200UL
+#define STOP_REVERSE2_DEFAULT    0UL
+#define SETTLE_DELAY_DEFAULT     300UL
+#define MAX_STOP_BEHAVIOR_MS     2000UL
 
 
 
 unsigned long calculateFeedingDuration(float targetGrams);
+unsigned long calculateOneCompartmentTime();
+unsigned long calculateSteppedFeedTime(int compartmentCount);
+int calculateCompartmentCount(float targetGrams);
+float actualPortionGrams(float targetGrams);
+void logFeedingOperation(float requestedGrams, int compartments,
+                         unsigned long totalTime, bool reverseUsed);
 void saveCalibration(float gramsPerComp, unsigned long msPerComp);
 void loadCalibration();
 void handleCalibrationCommands();
@@ -273,6 +282,10 @@ const float MANUAL_PORTION_MAX_GRAMS = 240.0f;
 // Calibration state (wheel-based)
 unsigned long g_msPerComp    = MS_PER_COMP_DEFAULT;
 float         g_gramsPerComp = GRAMS_PER_COMP_DEFAULT;
+unsigned long g_stopReverse1Ms = STOP_REVERSE1_DEFAULT;
+unsigned long g_stopPauseMs = STOP_PAUSE_DEFAULT;
+unsigned long g_stopReverse2Ms = STOP_REVERSE2_DEFAULT;
+unsigned long g_settleDelayMs = SETTLE_DELAY_DEFAULT;
 bool calibrationMode = false;
 float calibrationTestGrams = 0.0f;
 unsigned long calibrationStartTime = 0;
@@ -625,6 +638,24 @@ public:
 class MotorController {
 private:
   Servo feedingServo; bool servoAttached; bool feedingInProgress; unsigned long feedingStartTime; unsigned long feedingDuration; LedController* ledController; unsigned int lastPulse; unsigned int targetPulse;
+  void serviceDelay(unsigned long duration_ms) {
+    unsigned long start = millis();
+    while (millis() - start < duration_ms) {
+      if (ledController) ledController->update();
+      yield();
+      delay(10);
+    }
+  }
+  void writeNeutral() {
+    attachServo();
+    feedingServo.writeMicroseconds(SERVO_NEUTRAL);
+    lastPulse = SERVO_NEUTRAL;
+  }
+  void writeFeedPulse() {
+    attachServo();
+    feedingServo.writeMicroseconds(g_feedPulse);
+    lastPulse = g_feedPulse;
+  }
   void attachServo() { if (!servoAttached) { feedingServo.attach(SERVO_PIN); servoAttached = true; feedingServo.writeMicroseconds(SERVO_NEUTRAL); delay(100); } }
   void detachServo() { if (servoAttached) { feedingServo.detach(); servoAttached = false; Serial.println("Servo detached"); } }
   void startServo() { if (servoAttached) { lastPulse = SERVO_RAMP_START; feedingServo.writeMicroseconds(lastPulse); Serial.print("Servo started - Forward rotation ("); Serial.print(lastPulse); Serial.println(" µs)"); } }
@@ -639,12 +670,89 @@ public:
       delay(10);
     }
   }
+  void applyStopBehavior(bool finalStop) {
+    bool usedReverse = false;
+    if (g_stopReverse1Ms > 0) {
+      Serial.println(String(finalStop ? "Final" : "Inter-step") + " reverse 1: " + String(g_stopReverse1Ms) + "ms");
+      attachServo();
+      feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
+      serviceDelay(g_stopReverse1Ms);
+      writeNeutral();
+      usedReverse = true;
+    }
+    if (finalStop && g_stopReverse2Ms > 0 && g_stopPauseMs > 0) {
+      Serial.println("Stop pause: " + String(g_stopPauseMs) + "ms");
+      serviceDelay(g_stopPauseMs);
+    }
+    if (finalStop && g_stopReverse2Ms > 0) {
+      Serial.println("Final reverse 2: " + String(g_stopReverse2Ms) + "ms");
+      attachServo();
+      feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
+      serviceDelay(g_stopReverse2Ms);
+      writeNeutral();
+      usedReverse = true;
+    }
+    if (!usedReverse) {
+      writeNeutral();
+    }
+  }
+  void dispenseCompartments(int compartmentCount) {
+    if (feedingInProgress) {
+      Serial.println("Feeding already in progress");
+      return;
+    }
+    if (compartmentCount <= 0) {
+      Serial.println("dispenseCompartments ignored: no compartments requested");
+      return;
+    }
+
+    Serial.println("=== STEPPED COMPARTMENT DISPENSING ===");
+    Serial.println("Dispensing " + String(compartmentCount) + " compartments");
+
+    attachServo();
+    feedingInProgress = true;
+    feedingStartTime = millis();
+    feedingDuration = calculateSteppedFeedTime(compartmentCount);
+    if (ledController) ledController->showFeeding();
+
+    for (int i = 0; i < compartmentCount; i++) {
+      unsigned long compartmentTime = calculateOneCompartmentTime();
+      Serial.println("Compartment " + String(i + 1) + "/" + String(compartmentCount) + " -> " + String(compartmentTime) + "ms");
+      writeFeedPulse();
+      serviceDelay(compartmentTime);
+      writeNeutral();
+
+      if (g_settleDelayMs > 0) {
+        Serial.println("  Settling for " + String(g_settleDelayMs) + "ms");
+        serviceDelay(g_settleDelayMs);
+      }
+
+      if (i < compartmentCount - 1 && g_stopReverse1Ms > 0) {
+        applyStopBehavior(false);
+      }
+    }
+
+    applyStopBehavior(true);
+    feedingInProgress = false;
+    feedingStartTime = 0;
+    feedingDuration = 0;
+    lastFeedCompletionTime = millis();
+    if (ledController) ledController->showReady();
+    Serial.println("=== DISPENSING COMPLETE ===");
+  }
+  void dispenseWithAggressiveAntiClog(int compartmentCount) {
+    if (compartmentCount <= 0) return;
+    Serial.println("=== AGGRESSIVE ANTI-CLOG DISPENSE ===");
+    dispenseCompartments(compartmentCount);
+    runAgitationCycle();
+  }
   void startFeeding(unsigned long duration_ms) {
     if (feedingInProgress) {
       Serial.println("Feeding already in progress, ignoring request");
       return;
     }
     Serial.print("Starting feeding for "); Serial.print(duration_ms); Serial.println("ms");
+    attachServo();
     targetPulse       = g_feedPulse;
     lastPulse         = g_feedPulse;
     feedingInProgress = true;
@@ -655,6 +763,7 @@ public:
   void startCalibrationFeed(unsigned long duration_ms) {
     if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring request"); return; }
     Serial.print("Starting calibration feeding for "); Serial.print(duration_ms); Serial.println(" ms");
+    attachServo();
     feedingInProgress = true; 
     feedingStartTime = millis() - SERVO_RAMP_MS; 
     feedingDuration = duration_ms + SERVO_RAMP_MS; 
@@ -667,25 +776,11 @@ public:
   void stopFeeding() {
     if (!feedingInProgress) return;
     Serial.println("Stopping feeding operation");
-
-    feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
-    delay(50);
-    feedingServo.writeMicroseconds(SERVO_NEUTRAL);
-    lastPulse = SERVO_NEUTRAL;
-
+    applyStopBehavior(true);
     feedingInProgress = false;
     feedingStartTime = 0;
     feedingDuration = 0;
     lastFeedCompletionTime = millis();
-
-    delay(200);
-    feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
-    delay(120);
-    feedingServo.writeMicroseconds(SERVO_NEUTRAL);
-    lastPulse = SERVO_NEUTRAL;
-    Serial.println("Pinch-point clear complete");
-    
-
     if (ledController) ledController->showReady();
   }
   bool isFeedingInProgress() { return feedingInProgress; }
@@ -1958,22 +2053,68 @@ time_t parseISOTimestamp(const String& isoString) {
  */
 unsigned long calculateFeedingDuration(float targetGrams) {
   if (targetGrams <= 0.0f) return 0;
-  // Round to nearest whole compartment — fractional rotations not possible
-  int comps = max(1, (int)((targetGrams / g_gramsPerComp) + 0.5f));
-  // Servo runs exactly N compartment rotations — no settle bonus.
-  // The settle bonus was causing over-dispense because the servo
-  // keeps spinning during the bonus time, pushing the next compartment.
-  unsigned long duration = (unsigned long)comps * g_msPerComp;
-  duration = min(duration, MAX_DISPENSE_TIME_MS);
-  return duration;
+  return calculateSteppedFeedTime(calculateCompartmentCount(targetGrams));
+}
+
+/**
+ * Calculate how many wheel compartments are needed for the requested grams.
+ */
+int calculateCompartmentCount(float targetGrams) {
+  if (targetGrams <= 0.0f) return 0;
+  return max(1, (int)((targetGrams / g_gramsPerComp) + 0.5f));
+}
+
+/**
+ * Returns the calibrated forward time for one compartment.
+ */
+unsigned long calculateOneCompartmentTime() {
+  return g_msPerComp;
+}
+
+/**
+ * Calculate the total stepped feed time including settle delays and stop pulses.
+ */
+unsigned long calculateSteppedFeedTime(int compartmentCount) {
+  if (compartmentCount <= 0) return 0;
+  unsigned long total = (unsigned long)compartmentCount * calculateOneCompartmentTime();
+  if (compartmentCount > 0 && g_settleDelayMs > 0) {
+    total += (unsigned long)compartmentCount * g_settleDelayMs;
+  }
+  if (compartmentCount > 1 && g_stopReverse1Ms > 0) {
+    total += (unsigned long)(compartmentCount - 1) * g_stopReverse1Ms;
+  }
+  total += g_stopReverse1Ms;
+  if (g_stopReverse2Ms > 0) {
+    total += g_stopPauseMs + g_stopReverse2Ms;
+  }
+  return min(total, MAX_DISPENSE_TIME_MS);
 }
 
 // Returns the true dispensed grams after snapping to nearest compartment.
 // Always use this for display — never show raw manualPortionGrams directly.
 float actualPortionGrams(float targetGrams) {
   if (targetGrams <= 0.0f) return 0.0f;
-  int comps = max(1, (int)((targetGrams / g_gramsPerComp) + 0.5f));
+  int comps = calculateCompartmentCount(targetGrams);
   return (float)comps * g_gramsPerComp;
+}
+
+/**
+ * Log the exact dispense settings used for calibration and troubleshooting.
+ */
+void logFeedingOperation(float requestedGrams, int compartments,
+                         unsigned long totalTime, bool reverseUsed) {
+  Serial.println("=== FEED OPERATION LOG ===");
+  Serial.println("Requested: " + String(requestedGrams, 2) + "g");
+  Serial.println("Actual snapped: " + String(actualPortionGrams(requestedGrams), 2) + "g");
+  Serial.println("Compartments: " + String(compartments));
+  Serial.println("ms_per_comp: " + String(g_msPerComp));
+  Serial.println("grams_per_comp: " + String(g_gramsPerComp, 2));
+  Serial.println("Feed pulse: " + String(g_feedPulse) + "us");
+  Serial.println("Settle delay: " + String(g_settleDelayMs) + "ms");
+  Serial.println("Total forward time: " + String(totalTime) + "ms");
+  Serial.println("Reverse clear used: " + String(reverseUsed ? "YES" : "NO"));
+  Serial.println("Hopper level: [manual observation needed]");
+  Serial.println("=========================");
 }
 
 /**
@@ -1984,9 +2125,15 @@ void saveCalibration(float gramsPerComp, unsigned long msPerComp) {
   g_msPerComp    = msPerComp;
   EEPROM.put(MS_PER_GRAM_ADDR,   g_msPerComp);
   EEPROM.put(STARTUP_DELAY_ADDR, g_gramsPerComp);
+  EEPROM.put(STOP_REVERSE1_ADDR, g_stopReverse1Ms);
+  EEPROM.put(STOP_PAUSE_ADDR,    g_stopPauseMs);
+  EEPROM.put(STOP_REVERSE2_ADDR, g_stopReverse2Ms);
+  EEPROM.put(SETTLE_DELAY_ADDR,  g_settleDelayMs);
   EEPROM.write(CALIB_FLAG_ADDR, 0xCC);
   EEPROM.commit();
   Serial.println("Calibration saved: grams/comp=" + String(g_gramsPerComp, 2) + "  ms/comp=" + String(g_msPerComp));
+  Serial.println("Stop behavior saved: stop1=" + String(g_stopReverse1Ms) + "ms pause=" + String(g_stopPauseMs)
+    + "ms stop2=" + String(g_stopReverse2Ms) + "ms settle=" + String(g_settleDelayMs) + "ms");
 }
 
 /**
@@ -1995,19 +2142,37 @@ void saveCalibration(float gramsPerComp, unsigned long msPerComp) {
 void loadCalibration() {
   unsigned long ms;
   float gpc;
+  unsigned long stop1;
+  unsigned long pauseMs;
+  unsigned long stop2;
+  unsigned long settleMs;
   byte flag = EEPROM.read(CALIB_FLAG_ADDR);
   EEPROM.get(MS_PER_GRAM_ADDR,   ms);
   EEPROM.get(STARTUP_DELAY_ADDR, gpc);
+  EEPROM.get(STOP_REVERSE1_ADDR, stop1);
+  EEPROM.get(STOP_PAUSE_ADDR,    pauseMs);
+  EEPROM.get(STOP_REVERSE2_ADDR, stop2);
+  EEPROM.get(SETTLE_DELAY_ADDR,  settleMs);
   if (flag != 0xCC || ms < 200 || ms > 5000 || isnan(gpc) || gpc < 1.0f || gpc > 100.0f) {
     g_msPerComp    = MS_PER_COMP_DEFAULT;
     g_gramsPerComp = GRAMS_PER_COMP_DEFAULT;
+    g_stopReverse1Ms = STOP_REVERSE1_DEFAULT;
+    g_stopPauseMs = STOP_PAUSE_DEFAULT;
+    g_stopReverse2Ms = STOP_REVERSE2_DEFAULT;
+    g_settleDelayMs = SETTLE_DELAY_DEFAULT;
     saveCalibration(g_gramsPerComp, g_msPerComp);
     Serial.println("Calibration reset to defaults");
     return;
   }
   g_msPerComp    = ms;
   g_gramsPerComp = gpc;
+  g_stopReverse1Ms = (stop1 <= MAX_STOP_BEHAVIOR_MS) ? stop1 : STOP_REVERSE1_DEFAULT;
+  g_stopPauseMs = (pauseMs <= MAX_STOP_BEHAVIOR_MS) ? pauseMs : STOP_PAUSE_DEFAULT;
+  g_stopReverse2Ms = (stop2 <= MAX_STOP_BEHAVIOR_MS) ? stop2 : STOP_REVERSE2_DEFAULT;
+  g_settleDelayMs = (settleMs <= MAX_STOP_BEHAVIOR_MS) ? settleMs : SETTLE_DELAY_DEFAULT;
   Serial.println("Calibration loaded: grams/comp=" + String(g_gramsPerComp, 2) + "  ms/comp=" + String(g_msPerComp));
+  Serial.println("Stop behavior loaded: stop1=" + String(g_stopReverse1Ms) + "ms pause=" + String(g_stopPauseMs)
+    + "ms stop2=" + String(g_stopReverse2Ms) + "ms settle=" + String(g_settleDelayMs) + "ms");
 }
 
 /**
@@ -2031,11 +2196,17 @@ void handleCalibrationCommands() {
         Serial.println("=== WHEEL CAL COMMANDS ===");
         Serial.println("  CAL STATUS          - Show current calibration + portion table");
         Serial.println("  CAL FILL <g>        - Set grams per compartment");
-        Serial.println("                        Measure: fill all 8, weigh total, divide by 8");
-        Serial.println("  CAL COMP <ms>       - Set ms per compartment (one 45deg rotation)");
+        Serial.println("                        Measure: fill all 7, weigh total, divide by 7");
+        Serial.println("  CAL COMP <ms>       - Set ms per compartment (one wheel step)");
         Serial.println("  CAL START           - Spin 1 compartment for timing check");
         Serial.println("  CAL RESULT <g>      - Record actual grams from 1 compartment");
         Serial.println("  CAL SPEED <us>      - Set servo pulse width (1400..1700 µs)");
+        Serial.println("  CAL STOP1 <ms>      - Set first reverse pulse duration (0 disables)");
+        Serial.println("  CAL STOP2 <ms>      - Set second reverse pulse duration (0 disables)");
+        Serial.println("  CAL PAUSE <ms>      - Set pause between stop pulses");
+        Serial.println("  CAL SETTLE <ms>     - Set settle delay after each compartment");
+        Serial.println("  CAL STOPINFO        - Show current stop behavior settings");
+        Serial.println("  CAL TEST <count>    - Dispense exact compartment count for testing");
         Serial.println("  CAL RESET           - Reset all calibration to defaults");
         Serial.println("==========================");
         return;
@@ -2045,14 +2216,27 @@ void handleCalibrationCommands() {
         Serial.println("  grams/comp = " + String(g_gramsPerComp, 2) + "g");
         Serial.println("  ms/comp    = " + String(g_msPerComp) + "ms");
         Serial.println("  feed pulse = " + String(g_feedPulse) + " µs");
+        Serial.println("  stop1      = " + String(g_stopReverse1Ms) + "ms");
+        Serial.println("  pause      = " + String(g_stopPauseMs) + "ms");
+        Serial.println("  stop2      = " + String(g_stopReverse2Ms) + "ms");
+        Serial.println("  settle     = " + String(g_settleDelayMs) + "ms");
         Serial.println("  Portion table:");
         for (int c = 1; c <= WHEEL_COMPARTMENTS; c++) {
-          unsigned long totalMs = (unsigned long)c * g_msPerComp;
+          unsigned long totalMs = calculateSteppedFeedTime(c);
           Serial.println("  " + String(c) + " comp → " 
             + String((float)c * g_gramsPerComp, 1) + "g  " 
             + String(totalMs) + "ms");
         }
         Serial.println("================================");
+        return;
+      }
+      if (line.startsWith("CAL STOPINFO")) {
+        Serial.println("=== STOP BEHAVIOR ===");
+        Serial.println("  stop1  = " + String(g_stopReverse1Ms) + "ms");
+        Serial.println("  pause  = " + String(g_stopPauseMs) + "ms");
+        Serial.println("  stop2  = " + String(g_stopReverse2Ms) + "ms");
+        Serial.println("  settle = " + String(g_settleDelayMs) + "ms");
+        Serial.println("=====================");
         return;
       }
       if (line == "PORTION" || line == "PORTION STATUS") {
@@ -2135,6 +2319,55 @@ void handleCalibrationCommands() {
         }
         return;
       }
+      if (line.startsWith("CAL STOP1")) {
+        String rest = line.substring(9); rest.trim();
+        unsigned long value = (unsigned long)rest.toInt();
+        if (value <= MAX_STOP_BEHAVIOR_MS) {
+          g_stopReverse1Ms = value;
+          saveCalibration(g_gramsPerComp, g_msPerComp);
+          Serial.println("stop1 set to " + String(g_stopReverse1Ms) + "ms");
+        } else {
+          Serial.println("Invalid value - use 0.." + String(MAX_STOP_BEHAVIOR_MS) + " ms");
+        }
+        return;
+      }
+      if (line.startsWith("CAL STOP2")) {
+        String rest = line.substring(9); rest.trim();
+        unsigned long value = (unsigned long)rest.toInt();
+        if (value <= MAX_STOP_BEHAVIOR_MS) {
+          g_stopReverse2Ms = value;
+          saveCalibration(g_gramsPerComp, g_msPerComp);
+          Serial.println("stop2 set to " + String(g_stopReverse2Ms) + "ms");
+        } else {
+          Serial.println("Invalid value - use 0.." + String(MAX_STOP_BEHAVIOR_MS) + " ms");
+        }
+        return;
+      }
+      if (line.startsWith("CAL PAUSE")) {
+        String rest = line.substring(9); rest.trim();
+        unsigned long value = (unsigned long)rest.toInt();
+        if (value <= MAX_STOP_BEHAVIOR_MS) {
+          g_stopPauseMs = value;
+          saveCalibration(g_gramsPerComp, g_msPerComp);
+          Serial.println("pause set to " + String(g_stopPauseMs) + "ms");
+        } else {
+          Serial.println("Invalid value - use 0.." + String(MAX_STOP_BEHAVIOR_MS) + " ms");
+        }
+        return;
+      }
+      if (line.startsWith("CAL SETTLE")) {
+        String rest = line.substring(10); rest.trim();
+        unsigned long value = (unsigned long)rest.toInt();
+        if (value <= MAX_STOP_BEHAVIOR_MS) {
+          g_settleDelayMs = value;
+          saveCalibration(g_gramsPerComp, g_msPerComp);
+          manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
+          Serial.println("settle delay set to " + String(g_settleDelayMs) + "ms");
+        } else {
+          Serial.println("Invalid value - use 0.." + String(MAX_STOP_BEHAVIOR_MS) + " ms");
+        }
+        return;
+      }
       if (line.startsWith("CAL START")) {
         Serial.println("Spinning 1 compartment for timing verification...");
         calibrationLastDuration = g_msPerComp;
@@ -2157,6 +2390,30 @@ void handleCalibrationCommands() {
         calibrationMode = false;
         return;
       }
+      if (line.startsWith("CAL TEST")) {
+        String rest = line.substring(8);
+        rest.trim();
+        int comps = rest.toInt();
+        if (comps >= 1 && comps <= WHEEL_COMPARTMENTS) {
+          Serial.println("\n=== CALIBRATION TEST ===");
+          Serial.println("Dispensing " + String(comps) + " compartments");
+          Serial.println("Expected: ~" + String(comps * g_gramsPerComp, 1) + "g");
+          Serial.println("Please weigh result and report back");
+          Serial.println("========================");
+          logFeedingOperation((float)comps * g_gramsPerComp, comps,
+            (unsigned long)comps * calculateOneCompartmentTime(),
+            (g_stopReverse1Ms > 0 || g_stopReverse2Ms > 0));
+          motorController.dispenseCompartments(comps);
+          Serial.println("\nTest complete. Weigh the kibble.");
+          Serial.println("If result differs, adjust:");
+          Serial.println("  - CAL COMP for timing");
+          Serial.println("  - CAL FILL for grams per compartment");
+          Serial.println("  - CAL STOP1/STOP2 for stop behavior");
+        } else {
+          Serial.println("Invalid compartment count (use 1-" + String(WHEEL_COMPARTMENTS) + ")");
+        }
+        return;
+      }
       Serial.println("Unknown CAL command. Type CAL HELP.");
       return;
     } else {
@@ -2171,10 +2428,10 @@ void handleCalibrationCommands() {
 void executeScheduledFeeding(uint32_t scheduleId, float portionGrams) {
   Serial.println("Executing scheduled feeding - Schedule ID: " + String(scheduleId));
   Serial.println("Portion: " + String(portionGrams) + "g");
-  
-  // Calculate feeding duration based on portion size
-  unsigned long feedingDuration = calculateFeedingDuration(portionGrams);
-  Serial.println("Feeding duration: " + String(feedingDuration) + "ms");
+  int compartments = calculateCompartmentCount(portionGrams);
+  unsigned long feedingDuration = calculateSteppedFeedTime(compartments);
+  Serial.println("Compartments: " + String(compartments));
+  Serial.println("Stepped feed duration: " + String(feedingDuration) + "ms");
   if (firmwareBootMs != 0 && (millis() - firmwareBootMs) < BUTTON_BOOT_IGNORE_MS) {
     Serial.println("Scheduled feed skipped: boot mute");
     return;
@@ -2189,18 +2446,12 @@ void executeScheduledFeeding(uint32_t scheduleId, float portionGrams) {
   }
   activeFeedPortionGrams = portionGrams;
   Serial.println("Scheduled feed: " + String(actualPortionGrams(portionGrams), 1)
-    + "g (" + String(max(1,(int)((portionGrams / g_gramsPerComp) + 0.5f)))
+    + "g (" + String(compartments)
     + " comp) " + String(feedingDuration) + "ms");
-  motorController.startFeeding(feedingDuration);
-  ledController.showFeeding();  // Blue LED during feeding
-  
-  // Wait for feeding to complete
-  while (motorController.isFeedingInProgress()) {
-    motorController.update();
-    ledController.update();
-    oledDisplay.update(network.isConnected(), network.getSSID(), activeFeedPortionGrams, motorController.isDispensePhaseActive());
-    delay(100);
-  }
+  logFeedingOperation(portionGrams, compartments,
+    (unsigned long)compartments * calculateOneCompartmentTime(),
+    (g_stopReverse1Ms > 0 || g_stopReverse2Ms > 0));
+  motorController.dispenseCompartments(compartments);
   
   // Send feeding log to backend
   bool logSuccess = httpClient.sendFeedingLogWithSchedule(
@@ -2299,13 +2550,15 @@ void handleManualFeeding() {
         return;
       }
     }
-    // CRITICAL FIX: Portion wheel → single continuous feed only
-    // Replaced reverse-clear/chunked logic with simple anti-clog feed
+    int compartments = calculateCompartmentCount(manualPortionGrams);
     activeFeedPortionGrams = manualPortionGrams;
     Serial.println("Manual feed: " + String(actualPortionGrams(manualPortionGrams), 1)
-      + "g (" + String(max(1,(int)((manualPortionGrams / g_gramsPerComp) + 0.5f)))
+      + "g (" + String(compartments)
       + " comp) " + String(manualFeedDurationMs) + "ms");
-    motorController.startFeeding(manualFeedDurationMs);
+    logFeedingOperation(manualPortionGrams, compartments,
+      (unsigned long)compartments * calculateOneCompartmentTime(),
+      (g_stopReverse1Ms > 0 || g_stopReverse2Ms > 0));
+    motorController.dispenseCompartments(compartments);
     manualLogPending = true;
     manualLogPortion = (int)actualPortionGrams(manualPortionGrams);
     dailyFeeds++;
@@ -2368,20 +2621,24 @@ void handleManualFeeding() {
           return;
         }
       }
-    // CRITICAL FIX: Portion wheel → single continuous feed only
-    activeFeedPortionGrams = manualPortionGrams;
+      int compartments = calculateCompartmentCount(manualPortionGrams);
+      activeFeedPortionGrams = manualPortionGrams;
       Serial.println("Manual feed: " + String(actualPortionGrams(manualPortionGrams), 1)
-        + "g (" + String(max(1,(int)((manualPortionGrams / g_gramsPerComp) + 0.5f)))
+        + "g (" + String(compartments)
         + " comp) " + String(manualFeedDurationMs) + "ms");
-      motorController.startFeeding(manualFeedDurationMs);
-    manualSuppressUntil = millis() + 800;
-    armed = false;
-    manualLogPending = true;
+      logFeedingOperation(manualPortionGrams, compartments,
+        (unsigned long)compartments * calculateOneCompartmentTime(),
+        (g_stopReverse1Ms > 0 || g_stopReverse2Ms > 0));
+      motorController.dispenseCompartments(compartments);
+      manualSuppressUntil = millis() + 800;
+      armed = false;
+      manualLogPending = true;
       manualLogPortion = (int)actualPortionGrams(manualPortionGrams);
-    dailyFeeds++;
-    lastFeedIso = nowUtcIso();
+      dailyFeeds++;
+      lastFeedIso = nowUtcIso();
+      return;
+    }
   }
-}
 }
 
 void handlePortionAdjustButtons() {
@@ -2538,20 +2795,16 @@ void executeRemoteFeeding(uint32_t commandId, float portionGrams) {
   if (motorController.isFeedingInProgress()) { httpClient.sendAcknowledge(commandId, "busy"); return; }
   if (firmwareBootMs != 0 && (millis() - firmwareBootMs) < BUTTON_BOOT_IGNORE_MS) { httpClient.sendAcknowledge(commandId, "boot_mute"); return; }
   if (lastFeedCompletionTime > 0 && (millis() - lastFeedCompletionTime) < COOLDOWN_PERIOD_MS) { httpClient.sendAcknowledge(commandId, "cooldown"); return; }
-  unsigned long feedingDuration = calculateFeedingDuration(portionGrams);
+  int compartments = calculateCompartmentCount(portionGrams);
+  unsigned long feedingDuration = calculateSteppedFeedTime(compartments);
   activeFeedPortionGrams = portionGrams;
   Serial.println("Remote feed: " + String(actualPortionGrams(portionGrams), 1)
-    + "g (" + String(max(1,(int)((portionGrams / g_gramsPerComp) + 0.5f)))
+    + "g (" + String(compartments)
     + " comp) " + String(feedingDuration) + "ms");
-  motorController.startFeeding(feedingDuration);
-  ledController.showFeeding();
-  
-  while (motorController.isFeedingInProgress()) {
-    motorController.update();
-    ledController.update();
-    oledDisplay.update(network.isConnected(), network.getSSID(), activeFeedPortionGrams, motorController.isDispensePhaseActive());
-    delay(100);
-  }
+  logFeedingOperation(portionGrams, compartments,
+    (unsigned long)compartments * calculateOneCompartmentTime(),
+    (g_stopReverse1Ms > 0 || g_stopReverse2Ms > 0));
+  motorController.dispenseCompartments(compartments);
   
   bool logOk = httpClient.sendFeedingLog((int)portionGrams, "remote_command", "Remote command feed");
   dailyFeeds++;
