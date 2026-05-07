@@ -53,23 +53,23 @@
                 <div>
                     <label class="subsection-title flex items-center gap-2">
                         <i class="fas fa-balance-scale text-teal-400"></i>
-                        Portion Size: <span id="portionDisplay" class="text-[#1f456e] font-bold">40 grams</span>
+                        Portion Size: <span id="portionDisplay" class="text-[#1f456e] font-bold">10 grams</span>
                     </label>
                     <div class="range-wrap">
                         <input 
                             type="range" 
                             id="portionSlider" 
                             class="range-modern w-full" 
-                            min="40" 
+                            min="10" 
                             max="160" 
-                            step="20" 
-                            value="40" 
+                            step="10" 
+                            value="10" 
                             oninput="updatePortionDisplay(this.value)"
                         >
-                        <span id="portionBubble" class="range-bubble">40g</span>
+                        <span id="portionBubble" class="range-bubble">10g</span>
                         <div class="range-ticks">
-                            <span>40g</span>
-                            <span>100g</span>
+                            <span>10g</span>
+                            <span>80g</span>
                             <span>160g</span>
                         </div>
                     </div>
@@ -125,12 +125,21 @@
                         class="form-control-enhanced w-full" 
                         required 
                     > 
+                        <option value="10">10g</option>
+                        <option value="20">20g</option>
+                        <option value="30">30g</option>
                         <option value="40">40g</option>
+                        <option value="50">50g</option>
                         <option value="60">60g</option>
+                        <option value="70">70g</option>
                         <option value="80">80g</option>
+                        <option value="90">90g</option>
                         <option value="100">100g</option>
+                        <option value="110">110g</option>
                         <option value="120">120g</option>
+                        <option value="130">130g</option>
                         <option value="140">140g</option>
+                        <option value="150">150g</option>
                         <option value="160">160g</option>
                     </select>
                 </div>
@@ -487,8 +496,8 @@ async function parseJsonSafe(response) {
 }
 // Portion size display update
 function updatePortionDisplay(value) {
-    const COMP = 20;
-    const MIN  = 40;
+    const COMP = 10;
+    const MIN  = 10;
     const MAX  = 160;
     let snapped = Math.round(parseFloat(value) / COMP) * COMP;
     snapped = Math.max(MIN, Math.min(MAX, snapped));
@@ -567,7 +576,7 @@ document.getElementById('quickScheduleForm').addEventListener('submit', async fu
     const rawPortion = parseInt(
         formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value
     );
-    const snappedPortion = Math.max(40, Math.min(160, Math.round(rawPortion / 20) * 20));
+    const snappedPortion = Math.max(10, Math.min(160, Math.round(rawPortion / 10) * 10));
 
     if (!document.getElementById('scheduleTime').value) {
         showToast('Please set a feeding time', 'warning');
