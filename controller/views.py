@@ -320,15 +320,16 @@ def feed_now(request):
             portion_size = float(portion_size)
         except Exception:
             return Response({"status": "error", "message": "Invalid portion size", "success": False, "error": "invalid_portion"}, status=status.HTTP_400_BAD_REQUEST)
+        if portion_size <= 0 or portion_size > 100:
+            return Response({"status": "error", "message": "Portion must be between 1 and 100 grams", "success": False, "error": "portion_out_of_range"}, status=status.HTTP_400_BAD_REQUEST)
+        # COMP =20.0
+        # MIN_P = 10.0
+        # MAX_P = 160.0
+        # if portion_size < MIN_P or portion_size > MAX_P:
+        #     return Response({"status": "error", "message": "Portion must be between 10 and 160 grams", "success": False, "error": "portion_out_of_range"}, status=status.HTTP_400_BAD_REQUEST)
 
-        COMP =20.0
-        MIN_P = 10.0
-        MAX_P = 160.0
-        if portion_size < MIN_P or portion_size > MAX_P:
-            return Response({"status": "error", "message": "Portion must be between 10 and 160 grams", "success": False, "error": "portion_out_of_range"}, status=status.HTTP_400_BAD_REQUEST)
-
-        portion_size = round(portion_size / COMP) * COMP
-        portion_size = max(MIN_P, min(MAX_P, portion_size))
+        # portion_size = round(portion_size / COMP) * COMP
+        # portion_size = max(MIN_P, min(MAX_P, portion_size))
 
         device_id = request.data.get("device_id")
         if not device_id:
