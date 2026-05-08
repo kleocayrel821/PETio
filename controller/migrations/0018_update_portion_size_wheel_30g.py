@@ -34,12 +34,12 @@ class Migration(migrations.Migration):
                 migrations.AlterField(
                     model_name='feedingschedule',
                     name='portion_size',
-                    field=models.FloatField(default=30, validators=[django.core.validators.MinValueValidator(30), django.core.validators.MaxValueValidator(240)]),
+                    field=models.FloatField(default=10, validators=[django.core.validators.MinValueValidator(10), django.core.validators.MaxValueValidator(160)]),
                 ),
                 migrations.AlterField(
                     model_name='petprofile',
                     name='portion_size',
-                    field=models.FloatField(validators=[django.core.validators.MinValueValidator(30), django.core.validators.MaxValueValidator(240)]),
+                    field=models.FloatField(validators=[django.core.validators.MinValueValidator(10), django.core.validators.MaxValueValidator(160)]),
                 ),
             ],
         ),

@@ -53,24 +53,24 @@
                 <div>
                     <label class="subsection-title flex items-center gap-2">
                         <i class="fas fa-balance-scale text-teal-400"></i>
-                        Portion Size: <span id="portionDisplay" class="text-[#1f456e] font-bold">30 grams</span>
+                        Portion Size: <span id="portionDisplay" class="text-[#1f456e] font-bold">10 grams</span>
                     </label>
                     <div class="range-wrap">
                         <input 
                             type="range" 
                             id="portionSlider" 
                             class="range-modern w-full" 
-                            min="30" 
-                            max="240" 
-                            step="30" 
-                            value="30" 
+                            min="10" 
+                            max="160" 
+                            step="10" 
+                            value="10" 
                             oninput="updatePortionDisplay(this.value)"
                         >
-                        <span id="portionBubble" class="range-bubble">30g</span>
+                        <span id="portionBubble" class="range-bubble">10g</span>
                         <div class="range-ticks">
-                            <span>30g</span>
-                            <span>120g</span>
-                            <span>240g</span>
+                            <span>10g</span>
+                            <span>80g</span>
+                            <span>160g</span>
                         </div>
                     </div>
                 </div>
@@ -517,7 +517,9 @@ function updatePortionDisplay(value) {
 // Feed Now function
 async function feedNow() {
     const button = document.getElementById('feedNowBtn');
-    const portionSize = document.getElementById('portionSlider').value;
+    const portionSlider = document.getElementById('portionSlider');
+    const raw = parseInt(portionSlider.value, 10);
+    const snapped = Math.round(raw / 10) * 10;
     
     setButtonLoading(button, true);
     
@@ -531,7 +533,7 @@ async function feedNow() {
             },
             credentials: 'same-origin',
             body: JSON.stringify({
-                portion_size: parseInt(portionSize),
+                portion_size: snapped,
                 device_id: (window.DEVICE_ID || '{{ DEVICE_ID }}'),
                 device_ip: (window.DEVICE_IP || '{{ DEVICE_IP|default:"" }}')
             })
@@ -541,7 +543,7 @@ async function feedNow() {
         if (response.ok || response.status === 409) {
             const msg = (response.status === 409)
               ? `Feed command already queued${data && data.command_id ? ` (#${data.command_id})` : ''}.`
-              : `Fed ${portionSize}g successfully!`;
+              : `Fed ${snapped}g successfully!`;
             showToast(msg, 'success');
             loadRecentActivity();
             loadStats();
