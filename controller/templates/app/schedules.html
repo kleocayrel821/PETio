@@ -45,16 +45,7 @@
                         id="scheduleAmount" 
                         class="w-full form-control-enhanced"
                         required
-                    >
-                        <option value="30">30g</option>
-                        <option value="60">60g</option>
-                        <option value="90">90g</option>
-                        <option value="120">120g</option>
-                        <option value="150">150g</option>
-                        <option value="180">180g</option>
-                        <option value="210">210g</option>
-                        <option value="240">240g</option>
-                    </select>
+                    ></select>
                 </div>
             </div>
 
@@ -1359,6 +1350,14 @@ function teardownConfirmModalA11y(modal) {
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
+    const scheduleAmount = document.getElementById('scheduleAmount');
+    if (scheduleAmount) {
+        scheduleAmount.innerHTML = '';
+        for (let i = 10; i <= 160; i += 10) {
+            scheduleAmount.append(new Option(`${i} g`, i));
+        }
+    }
+
     const sortSel = document.getElementById('scheduleSort');
     const showDis = document.getElementById('showDisabledSchedules');
     if (sortSel) sortSel.addEventListener('change', () => loadSchedules(1));

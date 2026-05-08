@@ -250,7 +250,7 @@ unsigned int g_feedPulse = SERVO_FEED_SPEED;
 #define LAST_SCHEDULE_IxD_ADDR 60
 #define SCHEDULE_ID_SIZE 4
 
-#define WHEEL_COMPARTMENTS       7
+#define WHEEL_COMPARTMENTS       8
 #define MS_PER_COMP_DEFAULT      800UL
 #define GRAMS_PER_COMP_DEFAULT   10.0f
 #define STOP_REVERSE1_DEFAULT    0UL
@@ -273,11 +273,11 @@ void loadCalibration();
 void handleCalibrationCommands();
 
 // Manual portion configuration
-float manualPortionGrams = 25.0f;
+float manualPortionGrams = 10.0f;
 unsigned long manualFeedDurationMs = 0;
-const float PORTION_STEP_GRAMS = 5.0f;
-const float MANUAL_PORTION_MIN_GRAMS = 5.0f;
-const float MANUAL_PORTION_MAX_GRAMS = 240.0f;
+const float PORTION_STEP_GRAMS = 10.0f;
+const float MANUAL_PORTION_MIN_GRAMS = 10.0f;
+const float MANUAL_PORTION_MAX_GRAMS = 160.0f;
 
 // Calibration state (wheel-based)
 unsigned long g_msPerComp    = MS_PER_COMP_DEFAULT;
@@ -2196,7 +2196,7 @@ void handleCalibrationCommands() {
         Serial.println("=== WHEEL CAL COMMANDS ===");
         Serial.println("  CAL STATUS          - Show current calibration + portion table");
         Serial.println("  CAL FILL <g>        - Set grams per compartment");
-        Serial.println("                        Measure: fill all 7, weigh total, divide by 7");
+        Serial.println("                        Measure: fill all 8, weigh total, divide by 8");
         Serial.println("  CAL COMP <ms>       - Set ms per compartment (one wheel step)");
         Serial.println("  CAL START           - Spin 1 compartment for timing check");
         Serial.println("  CAL RESULT <g>      - Record actual grams from 1 compartment");
