@@ -53,24 +53,24 @@
                 <div>
                     <label class="subsection-title flex items-center gap-2">
                         <i class="fas fa-balance-scale text-teal-400"></i>
-                        Portion Size: <span id="portionDisplay" class="text-[#1f456e] font-bold">10 grams</span>
+                        Portion Size: <span id="portionDisplay" class="text-[#1f456e] font-bold">30 grams</span>
                     </label>
                     <div class="range-wrap">
                         <input 
                             type="range" 
                             id="portionSlider" 
                             class="range-modern w-full" 
-                            min="10" 
-                            max="160" 
-                            step="10" 
-                            value="10" 
+                            min="30" 
+                            max="240" 
+                            step="30" 
+                            value="30" 
                             oninput="updatePortionDisplay(this.value)"
                         >
-                        <span id="portionBubble" class="range-bubble">10g</span>
+                        <span id="portionBubble" class="range-bubble">30g</span>
                         <div class="range-ticks">
-                            <span>10g</span>
-                            <span>80g</span>
-                            <span>160g</span>
+                            <span>30g</span>
+                            <span>120g</span>
+                            <span>240g</span>
                         </div>
                     </div>
                 </div>

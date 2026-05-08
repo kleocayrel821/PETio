@@ -79,7 +79,7 @@ class FeedingScheduleSerializer(serializers.ModelSerializer):
     portion_size = serializers.FloatField(required=False)
 
     def validate_portion_size(self, value):
-        COMP = 20
+        COMP = 10
         MIN  = 10
         MAX  = 160
         try:
@@ -91,7 +91,7 @@ class FeedingScheduleSerializer(serializers.ModelSerializer):
                 f"Portion must be between {MIN}g and {MAX}g "
                 f"(step {COMP}g: 10, 20, 30 … 160)."
             )
-        snapped = round(v / COMP) * COMP
+        snapped = int((v / COMP) + 0.5) * COMP
         snapped = max(MIN, min(MAX, snapped))
         return float(snapped)
     def to_representation(self, instance):
@@ -173,7 +173,7 @@ class ControllerSettingsSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 f"Portion must be between {MIN}g and {MAX}g (step {COMP}g)."
             )
-        snapped = round(v / COMP) * COMP
+        snapped = int((v / COMP) + 0.5) * COMP
         snapped = max(MIN, min(MAX, snapped))
         return float(snapped)
 
