@@ -320,21 +320,29 @@ function validate() {
   return { valid: errors.length === 0, errors, data: { type, name, birthday, gender, breed, weight, height } };
 }
 
+function normalizeCategory(cat) {
+  const c = String(cat || '').toLowerCase();
+  if (c.startsWith('under')) return 'underweight';
+  if (c.startsWith('ideal')) return 'ideal';
+  if (c.startsWith('over')) return 'overweight';
+  if (c.startsWith('obese')) return 'obese';
+  return 'ideal';
+}
+
+// Derives BMI category from the index so all UI/state uses one source of truth.
+function getCategoryFromBMIIndex(index) {
+  if (index < 180) return 'Underweight';
+  if (index < 260) return 'Ideal';
+  if (index < 320) return 'Overweight';
+  return 'Obese';
+}
+
 function calcBMI(type, weight, height) {
-  const bmi = (weight / (height * height)) * 10000;
-  let category = 'ideal';
-  if (type === 'dog') {
-    if (bmi < 15) category = 'underweight';
-    else if (bmi <= 25) category = 'ideal';
-    else if (bmi <= 35) category = 'overweight';
-    else category = 'obese';
-  } else {
-    if (bmi < 18) category = 'underweight';
-    else if (bmi <= 30) category = 'ideal';
-    else if (bmi <= 40) category = 'overweight';
-    else category = 'obese';
-  }
-  return { bmi: Number(bmi.toFixed(1)), category };
+  const heightM = height / 100;
+  const index = weight / Math.pow(heightM, 3);
+  const category = getCategoryFromBMIIndex(index);
+
+  return { bmi: Number(index.toFixed(1)), category };
 }
 
 const RECS = {
@@ -363,32 +371,39 @@ const RECS = {
 function setCategoryBadge(cat) {
   const el = document.getElementById('bmiCategory');
   el.className = 'bmi-category status-badge';
-  if (cat === 'underweight') el.classList.add('status-underweight');
-  if (cat === 'ideal') el.classList.add('status-ideal');
-  if (cat === 'overweight') el.classList.add('status-overweight');
-  if (cat === 'obese') el.classList.add('status-obese');
-  el.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+  if (!cat) {
+    el.textContent = '--';
+    return;
+  }
+  const key = normalizeCategory(cat);
+  if (key === 'underweight') el.classList.add('status-underweight');
+  if (key === 'ideal') el.classList.add('status-ideal');
+  if (key === 'overweight') el.classList.add('status-overweight');
+  if (key === 'obese') el.classList.add('status-obese');
+  el.textContent = String(cat || '');
 }
 
 function setGaugeTheme(cat) {
+  const key = normalizeCategory(cat);
   const g = document.querySelector('.bmi-gauge');
   if (!g) return;
   g.classList.remove('ideal','overweight','obese');
-  if (cat === 'ideal') g.classList.add('ideal');
-  if (cat === 'overweight') g.classList.add('overweight');
-  if (cat === 'obese') g.classList.add('obese');
+  if (key === 'ideal') g.classList.add('ideal');
+  if (key === 'overweight') g.classList.add('overweight');
+  if (key === 'obese') g.classList.add('obese');
 }
 
-function setNeedle(type, bmi) {
-  const max = type === 'dog' ? 40 : 45;
-  const clamped = Math.max(0, Math.min(max, bmi));
+function setNeedle(index) {
+  const max = 400;
+  const clamped = Math.max(0, Math.min(max, index));
   const angle = -90 + (clamped / max) * 180;
   document.getElementById('needle').setAttribute('transform', `rotate(${angle},110,120)`);
 }
 
 function renderRecs(cat, breedOpt) {
+  const key = normalizeCategory(cat);
   const el = document.getElementById('bmiRecommendations');
-  const base = RECS[cat];
+  const base = RECS[key] || RECS.ideal;
   const breedText = breedOpt ? `Ideal weight for breed: ${breedOpt.dataset.min}-${breedOpt.dataset.max} kg.` : '';
   el.innerHTML = `
     <div class="space-y-2">
@@ -500,16 +515,17 @@ function calcAndRender() {
   err.textContent = '';
   if (!v.valid) { err.textContent = v.errors[0]; err.classList.add('shake'); setTimeout(()=>err.classList.remove('shake'),300); return; }
   const res = calcBMI(v.data.type, v.data.weight, v.data.height);
+  const category = getCategoryFromBMIIndex(res.bmi);
   document.getElementById('bmiScore').textContent = String(res.bmi);
-  setCategoryBadge(res.category);
-  setGaugeTheme(res.category);
-  setNeedle(v.data.type, res.bmi);
+  setCategoryBadge(category);
+  setGaugeTheme(category);
+  setNeedle(res.bmi);
   const breedOpt = document.querySelector(`#breedSelect option[value="${v.data.breed}"]`);
-  renderRecs(res.category, breedOpt);
+  renderRecs(category, breedOpt);
   document.getElementById('saveProfileBtn').disabled = false;
   document.getElementById('saveProfileBtn').setAttribute('aria-disabled', 'false');
   document.getElementById('lastCalcAt').textContent = `Last calculated ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
-  return { ...v.data, ...res };
+  return { ...v.data, ...res, category };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -566,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('resetBtn').addEventListener('click', () => {
     document.getElementById('bmiScore').textContent = '--';
-    document.getElementById('bmiCategory').textContent = '--';
+    setCategoryBadge(null);
     document.getElementById('needle').setAttribute('transform', 'rotate(0,110,120)');
     document.getElementById('saveProfileBtn').disabled = true;
     document.getElementById('saveProfileBtn').setAttribute('aria-disabled', 'true');
