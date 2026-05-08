@@ -1,200 +1,633 @@
-// ============================================
-// SIGNUP FORM ENHANCEMENTS
-// ============================================
+{% extends "base.html" %}
+{% load static %}
 
-document.addEventListener('DOMContentLoaded', function() {
-  const signupForm = document.querySelector('.signup-form');
+{% block title %}Pet BMI Calculator{% endblock %}
 
-  if (signupForm) {
-    // Password Toggle
-    const togglePasswordBtns = document.querySelectorAll('.toggle-password');
-    togglePasswordBtns.forEach(btn => {
-      btn.addEventListener('click', function() {
-        const input = this.closest('.input-wrapper').querySelector('input');
-        const type = input.type === 'password' ? 'text' : 'password';
-        input.type = type;
-        const eye = this.querySelector('.eye-icon');
-        if (eye) eye.textContent = type === 'password' ? '👁️' : '👁️‍🗨️';
-      });
-    });
+{% block sidebar %}
+  {% include "controller/sidebar.html" with view_name="bmi_calculator" %}
+{% endblock %}
 
-    // Password Strength Checker
-    const passwordInput = signupForm.querySelector('input[name="password1"]');
-    const strengthBar = document.querySelector('.strength-bar');
+{% block content %}
+<div class="enhanced-card slide-in-up">
+  <h2 class="section-title items-center justify-between">
+    <i class="fas fa-heartbeat text-[#1f456e]"></i>
+    Pet BMI Calculator
+  </h2>
+  <p class="text-sm text-gray-500 mt-1">Estimate your pet’s BMI for guidance only. Always consult your veterinarian for medical advice.</p>
 
-    if (passwordInput && strengthBar) {
-      passwordInput.addEventListener('input', function() {
-        const password = this.value;
-        const strength = calculatePasswordStrength(password);
+  <div class="responsive-grid">
+    <div role="form" aria-label="Pet BMI form">
+      <div class="subsection-title flex items-center justify-between">
+        <span>Pet Type</span>
+        <span class="text-xs text-gray-400">Choose the pet you’re calculating for</span>
+      </div>
+      <div class="pet-type-toggle flex gap-2 mb-4" role="radiogroup" aria-label="Pet type">
+        <label class="toggle-option">
+          <input type="radio" name="petType" value="dog" checked aria-label="Dog">
+          <span class="toggle-label btn btn-sm btn-enhanced"> <i class="fas fa-dog"></i> Dog</span>
+        </label>
+        <label class="toggle-option">
+          <input type="radio" name="petType" value="cat" aria-label="Cat">
+          <span class="toggle-label btn btn-sm btn-enhanced"> <i class="fas fa-cat"></i> Cat</span>
+        </label>
+      </div>
 
-        strengthBar.className = 'strength-bar';
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="subsection-title" for="petName">Your pet's name*</label>
+          <input id="petName" class="form-control-enhanced w-full" type="text" inputmode="text" placeholder="e.g., Luna" required aria-required="true" />
+        </div>
+        <div>
+          <label class="subsection-title" for="petBirthday">Birthday*</label>
+          <input id="petBirthday" class="form-control-enhanced w-full" type="date" required aria-required="true" />
+        </div>
+        <div>
+          <label class="subsection-title" for="petGender">Gender*</label>
+          <select id="petGender" class="form-control-enhanced w-full" required aria-required="true">
+            <option value="">Select gender...</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </div>
+        <div>
+          <label class="subsection-title" for="breedSelect">
+            <i class="fas fa-paw text-[#1f456e]"></i>
+            Breed*
+          </label>
+          <select id="breedSelect" class="form-control-enhanced w-full" required aria-required="true">
+            <option value="">Select breed...</option>
+            <optgroup id="nativeBreeds" label="Native Breeds"></optgroup>
+            <optgroup id="popularBreeds" label="Popular Breeds"></optgroup>
+          </select>
+          <div class="text-xs text-gray-400 mt-1">Selecting a breed shows its typical ideal weight range in results.</div>
+        </div>
+        <div>
+          <label class="subsection-title" for="weightKg">Weight* (kg)</label>
+          <div class="input-with-unit">
+            <button type="button" class="stepper-btn" data-target="weightKg" data-step="-0.1" aria-label="Decrease weight"><i class="fas fa-minus"></i></button>
+            <input id="weightKg" class="form-control-enhanced w-full" type="number" inputmode="decimal" step="0.1" min="0.5" max="100" required aria-required="true" aria-describedby="weightHelp" placeholder="e.g., 7.5" />
+            <span class="unit">kg</span>
+            <button type="button" class="stepper-btn" data-target="weightKg" data-step="0.1" aria-label="Increase weight"><i class="fas fa-plus"></i></button>
+          </div>
+          <div id="weightHelp" class="text-xs text-gray-400 mt-1">Typical range: 0.5–100 kg for dogs, 0.5–20 kg for cats.</div>
+        </div>
+        <div>
+          <label class="subsection-title" for="heightCm">Height to Shoulder* (cm)</label>
+          <div class="input-with-unit">
+            <button type="button" class="stepper-btn" data-target="heightCm" data-step="-0.5" aria-label="Decrease height"><i class="fas fa-minus"></i></button>
+            <input id="heightCm" class="form-control-enhanced w-full" type="number" inputmode="decimal" step="0.1" min="10" max="100" required aria-required="true" aria-describedby="heightHelp" placeholder="e.g., 35.0" />
+            <span class="unit">cm</span>
+            <button type="button" class="stepper-btn" data-target="heightCm" data-step="0.5" aria-label="Increase height"><i class="fas fa-plus"></i></button>
+          </div>
+          <div id="heightHelp" class="text-xs text-gray-400 mt-1">Measure floor to shoulder blade with the pet standing upright.</div>
+        </div>
+      </div>
 
-        if (strength.score === 0) {
-          strengthBar.style.width = '0%';
-        } else if (strength.score <= 2) {
-          strengthBar.classList.add('weak');
-        } else if (strength.score === 3) {
-          strengthBar.classList.add('medium');
-        } else {
-          strengthBar.classList.add('strong');
-        }
-      });
-    }
+      <div class="mt-6">
+        <div class="grid grid-cols-2 gap-3">
+          <button id="calcBtn" class="btn btn-primary btn-enhanced w-full" aria-label="Calculate BMI">Calculate BMI</button>
+          <button id="resetBtn" class="btn btn-enhanced btn-ghost w-full" type="button">Reset</button>
+        </div>
+      </div>
+      <div id="formErrors" class="mt-3 text-red-400" aria-live="assertive"></div>
+      <details class="help-details mt-4">
+        <summary class="text-sm text-gray-500 cursor-pointer">How to measure and about BMI</summary>
+        <div class="text-sm text-gray-400 mt-2 space-y-1">
+          <div>Use a soft tape and measure height to the shoulder while your pet stands naturally.</div>
+          <div>BMI is an estimate for monitoring trends; it is not a diagnostic tool.</div>
+          <div>Your data is stored only in this browser unless you choose to save.</div>
+        </div>
+      </details>
+    </div>
 
-    // Password Match Validation
-    const confirmPassword = signupForm.querySelector('input[name="password2"]');
-    if (confirmPassword && passwordInput) {
-      const validateMatch = function() {
-        if (confirmPassword.value !== passwordInput.value) {
-          confirmPassword.setCustomValidity('Passwords do not match');
-        } else {
-          confirmPassword.setCustomValidity('');
-        }
-      };
-      confirmPassword.addEventListener('input', validateMatch);
-      passwordInput.addEventListener('input', validateMatch);
-    }
+    <div>
+      <div class="bmi-result-card enhanced-card fade-in" aria-live="polite" role="status">
+        <div class="flex items-center gap-3">
+          <div class="bmi-score text-4xl font-bold" id="bmiScore">--</div>
+          <div class="bmi-category status-badge" id="bmiCategory">--</div>
+        </div>
 
-    // Terms acceptance check
-    signupForm.addEventListener('submit', function(e) {
-      const termsCheckbox = document.getElementById('terms');
-      if (termsCheckbox && !termsCheckbox.checked) {
-        e.preventDefault();
-        alert('Please accept the Terms of Service and Privacy Policy to continue.');
-        termsCheckbox.focus();
-      }
-    });
+        <div class="bmi-gauge mt-4">
+          <svg viewBox="0 0 220 140" width="100%" height="140" aria-hidden="true">
+            <defs>
+              <linearGradient id="grad-ideal" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#22c55e" />
+                <stop offset="100%" stop-color="#16a34a" />
+              </linearGradient>
+              <linearGradient id="grad-over" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#f59e0b" />
+                <stop offset="100%" stop-color="#f97316" />
+              </linearGradient>
+              <linearGradient id="grad-obese" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#ef4444" />
+                <stop offset="100%" stop-color="#dc2626" />
+              </linearGradient>
+            </defs>
+            <path d="M20,120 A100,100 0 0,1 200,120" fill="none" stroke="#334155" stroke-width="10" opacity="0.15" />
+            <path d="M40,120 A80,80 0 0,1 180,120" fill="none" stroke="url(#grad-ideal)" stroke-width="12" stroke-linecap="round" />
+            <path d="M30,120 A90,90 0 0,1 60,120" fill="none" stroke="#ef4444" stroke-width="12" stroke-linecap="round" opacity="0.6" />
+            <path d="M160,120 A90,90 0 0,1 190,120" fill="none" stroke="url(#grad-obese)" stroke-width="12" stroke-linecap="round" opacity="0.8" />
+            <path d="M60,120 A80,80 0 0,1 160,120" fill="none" stroke="url(#grad-over)" stroke-width="12" stroke-linecap="round" opacity="0.6" />
+            <g id="ticks" transform="translate(0,0)" stroke="#64748b" opacity="0.7">
+              <line x1="20" y1="120" x2="28" y2="120" />
+              <line x1="60" y1="120" x2="68" y2="120" />
+              <line x1="100" y1="120" x2="108" y2="120" />
+              <line x1="140" y1="120" x2="148" y2="120" />
+              <line x1="180" y1="120" x2="188" y2="120" />
+            </g>
+            <g id="needle" transform="rotate(0,110,120)">
+              <rect x="108" y="70" width="4" height="50" fill="#1f456e" />
+              <circle cx="110" cy="120" r="7" fill="#1f456e" />
+            </g>
+            <g font-size="10" fill="#94a3b8">
+              <text x="30" y="135">Under</text>
+              <text x="95" y="135">Ideal</text>
+              <text x="156" y="135">Over</text>
+            </g>
+          </svg>
+        </div>
 
-    // Real-time Username Validation (placeholder)
-    const usernameInput = document.getElementById('username');
-    if (usernameInput) {
-      let debounceTimer;
-      usernameInput.addEventListener('input', function() {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          validateUsername(this.value);
-        }, 500);
-      });
-    }
+        <div class="bmi-recommendations mt-4" id="bmiRecommendations"></div>
+        <div class="mt-4">
+          <button id="saveProfileBtn" class="btn btn-accent btn-enhanced" disabled aria-disabled="true">Save Profile</button>
+          <span id="lastCalcAt" class="text-xs text-gray-400 ml-2"></span>
+        </div>
+      </div>
+
+      <div class="mt-6 enhanced-card">
+        <div class="subsection-title">Saved Profiles</div>
+        <ul id="savedProfiles" class="space-y-2"></ul>
+        <div class="mt-3 text-xs text-gray-400">Profiles are stored locally on this device.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.pet-type-toggle input[type="radio"] { display:none; }
+.pet-type-toggle .toggle-option { display:inline-flex; align-items:center; gap:.6rem; cursor:pointer; }
+.pet-type-toggle .toggle-option .toggle-label { border:1px solid rgba(31,69,110,.3); background:#f1f5f9; color:#1e293b; border-radius:9999px; padding:.7rem 1.2rem; font-size:1rem; line-height:1.25rem; transition: all .22s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(31,69,110,.08); }
+.pet-type-toggle .toggle-option:hover .toggle-label { background: rgba(31,69,110,.12); box-shadow: 0 12px 28px rgba(31,69,110,.18); transform: translateY(-2px) scale(1.03); }
+.pet-type-toggle .toggle-option:active .toggle-label { transform: scale(0.98); box-shadow: 0 6px 16px rgba(31,69,110,.14); }
+.pet-type-toggle input[type="radio"]:focus + .toggle-label { outline:2px solid #1f456e; outline-offset:2px; }
+.pet-type-toggle input[type="radio"]:checked + .toggle-label { background:#1f456e; color:#fff; border-color:#1f456e; box-shadow: 0 8px 20px rgba(31,69,110,.35); }
+.input-with-unit { display:flex; align-items:center; gap:.5rem; }
+.input-with-unit .unit { min-width:2.5rem; text-align:center; color:#64748b; background: var(--bg-secondary); border:1px solid var(--border-color); border-radius:.5rem; padding:.4rem .5rem; }
+.form-control-enhanced:focus { border-color:#1f456e; box-shadow: 0 0 0 4px rgba(31,69,110,.15); outline: none; }
+.stepper-btn { border:1px solid var(--border-color); background: var(--bg-secondary); color:#64748b; border-radius:.5rem; padding:.4rem .5rem; transition: var(--transition-fast); }
+.stepper-btn:hover { background: var(--bg-card-hover); color:#1f456e; }
+.status-underweight { background: rgba(239,68,68,.15); color:#ef4444; border:1px solid rgba(239,68,68,.3); }
+.status-ideal { background: rgba(34,197,94,.15); color:#22c55e; border:1px solid rgba(34,197,94,.3); }
+.status-overweight { background: rgba(245,158,11,.15); color:#f59e0b; border:1px solid rgba(245,158,11,.3); }
+.status-obese { background: rgba(239,68,68,.25); color:#ef4444; border:1px solid rgba(239,68,68,.4); }
+.shake { animation: shake .4s; }
+@keyframes shake {0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
+.bmi-gauge #needle { transition: transform .4s cubic-bezier(0.22, 1, 0.36, 1); }
+.help-details summary::-webkit-details-marker { display:none; }
+.help-details summary::after { content:'?'; display:inline-flex; align-items:center; justify-content:center; width:1rem; height:1rem; margin-left:.25rem; border-radius:9999px; background:#e2e8f0; color:#334155; font-size:.75rem; }
+.bmi-gauge { --gauge-glow: rgba(31,69,110,.18); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 1rem; padding: .75rem; }
+.bmi-gauge svg { display:block; margin:0 auto; filter: drop-shadow(0 8px 22px var(--gauge-glow)); }
+.bmi-gauge.ideal { --gauge-glow: rgba(34,197,94,.22); }
+.bmi-gauge.overweight { --gauge-glow: rgba(245,158,11,.22); }
+.bmi-gauge.obese { --gauge-glow: rgba(239,68,68,.22); }
+.btn-primary.btn-enhanced { background: linear-gradient(135deg, #1f456e, #245c8d); border: none; color: #fff; }
+.btn-primary.btn-enhanced:hover { filter: brightness(1.05); }
+.enhanced-card .section-title i { background: rgba(31,69,110,.12); color: #1f456e; }
+.saved-profile-item { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.5rem .75rem; border:1px solid var(--border-color); border-radius:.5rem; background: var(--bg-secondary); }
+.saved-profile-title { font-weight:600; color:#0f172a; }
+.saved-profile-meta { font-size:.75rem; color:#64748b; }
+</style>
+
+<script>
+const DOG_BREEDS = [
+  { v:'shih_tzu', n:'Shih Tzu', min:4, max:7 },
+  { v:'chihuahua', n:'Chihuahua', min:1.5, max:3 },
+  { v:'pomeranian', n:'Pomeranian', min:1.8, max:3.5 },
+  { v:'beagle', n:'Beagle', min:9, max:11 },
+  { v:'labrador', n:'Labrador Retriever', min:25, max:36 },
+  { v:'golden_retriever', n:'Golden Retriever', min:25, max:34 },
+  { v:'german_shepherd', n:'German Shepherd', min:30, max:40 },
+  { v:'siberian_husky', n:'Siberian Husky', min:16, max:27 },
+  { v:'poodle_toy', n:'Poodle (Toy)', min:2, max:3 },
+  { v:'poodle_mini', n:'Poodle (Miniature)', min:6, max:7 },
+  { v:'poodle_std', n:'Poodle (Standard)', min:20, max:32 },
+  { v:'aspin_small', n:'Aspin (Small)', min:8, max:15 },
+  { v:'aspin_medium', n:'Aspin (Medium)', min:15, max:25 },
+  { v:'aspin_large', n:'Aspin (Large)', min:25, max:35 },
+  { v:'french_bulldog', n:'French Bulldog', min:9, max:13 },
+  { v:'pug', n:'Pug', min:6, max:8 },
+  { v:'dachshund', n:'Dachshund', min:7, max:15 },
+  { v:'corgi', n:'Pembroke Welsh Corgi', min:10, max:14 },
+  { v:'rottweiler', n:'Rottweiler', min:35, max:60 },
+  { v:'pit_bull', n:'American Pit Bull Terrier', min:14, max:27 },
+  { v:'boxer', n:'Boxer', min:25, max:32 },
+  { v:'doberman', n:'Doberman Pinscher', min:27, max:45 },
+  { v:'dalmatian', n:'Dalmatian', min:20, max:32 },
+  { v:'great_dane', n:'Great Dane', min:45, max:90 },
+  { v:'shiba_inu', n:'Shiba Inu', min:8, max:11 },
+  { v:'chow_chow', n:'Chow Chow', min:20, max:32 },
+  { v:'cavalier', n:'Cavalier King Charles Spaniel', min:5, max:8 },
+  { v:'yorkshire_terrier', n:'Yorkshire Terrier', min:2, max:3.2 },
+  { v:'maltese', n:'Maltese', min:3, max:4 },
+  { v:'bulldog', n:'English Bulldog', min:18, max:23 },
+  { v:'border_collie', n:'Border Collie', min:14, max:20 },
+  { v:'australian_shepherd', n:'Australian Shepherd', min:16, max:29 },
+];
+const CAT_BREEDS = [
+  { v:'persian', n:'Persian', min:3.5, max:5.5 },
+  { v:'siamese', n:'Siamese', min:2.5, max:5.5 },
+  { v:'maine_coon', n:'Maine Coon', min:5.5, max:8 },
+  { v:'british_shorthair', n:'British Shorthair', min:4, max:8 },
+  { v:'ragdoll', n:'Ragdoll', min:4.5, max:9 },
+  { v:'bengal', n:'Bengal', min:4.5, max:7 },
+  { v:'scottish_fold', n:'Scottish Fold', min:2.7, max:6 },
+  { v:'puspin', n:'Puspin (Native)', min:3, max:5 },
+  { v:'american_shorthair', n:'American Shorthair', min:3, max:5.5 },
+  { v:'russian_blue', n:'Russian Blue', min:3, max:5.5 },
+  { v:'sphynx', n:'Sphynx', min:3, max:5.5 },
+  { v:'norwegian_forest', n:'Norwegian Forest', min:4.5, max:9 },
+  { v:'exotic_shorthair', n:'Exotic Shorthair', min:3, max:6 },
+  { v:'burmese', n:'Burmese', min:3, max:5 },
+  { v:'abyssinian', n:'Abyssinian', min:2.5, max:4.5 },
+  { v:'oriental_shorthair', n:'Oriental Shorthair', min:3, max:4.5 },
+  { v:'turkish_angora', n:'Turkish Angora', min:3, max:5.5 },
+  { v:'tonkinese', n:'Tonkinese', min:3, max:5.5 }
+];
+
+const DOG_NATIVE = [
+  { v:'aspin_small', n:'Aspin (Small)', min:8, max:15 },
+  { v:'aspin_medium', n:'Aspin (Medium)', min:15, max:25 },
+  { v:'aspin_large', n:'Aspin (Large)', min:25, max:35 }
+];
+const CAT_NATIVE = [
+  { v:'puspin', n:'Puspin (Native)', min:3, max:5 }
+];
+
+function setBreeds(type) {
+  const nativeGrp = document.getElementById('nativeBreeds');
+  const popularGrp = document.getElementById('popularBreeds');
+  nativeGrp.innerHTML = '';
+  popularGrp.innerHTML = '';
+  const natives = type === 'dog' ? DOG_NATIVE : CAT_NATIVE;
+  const list = type === 'dog' ? DOG_BREEDS : CAT_BREEDS;
+  const nativeCodes = new Set(natives.map(b => b.v));
+  for (const b of natives) {
+    const opt = document.createElement('option');
+    opt.value = b.v;
+    opt.textContent = b.n;
+    opt.dataset.min = b.min;
+    opt.dataset.max = b.max;
+    nativeGrp.appendChild(opt);
   }
-});
-
-function calculatePasswordStrength(password) {
-  let score = 0;
-  if (!password) return { score: 0 };
-  if (password.length >= 8) score++;
-  if (password.length >= 12) score++;
-  if (/[a-z]/.test(password)) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/\d/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
-  return { score: Math.min(score, 4) };
-}
-
-function validateUsername(username) {
-  if (username.length < 3) {
-    return false;
+  for (const b of list) {
+    if (nativeCodes.has(b.v)) continue; // avoid duplicate entries between groups
+    const opt = document.createElement('option');
+    opt.value = b.v;
+    opt.textContent = b.n;
+    opt.dataset.min = b.min;
+    opt.dataset.max = b.max;
+    popularGrp.appendChild(opt);
   }
-  return true;
+  document.getElementById('breedSelect').value = '';
 }
 
-// ============================================
-// PROFILE PAGE ENHANCEMENTS
-// ============================================
-
-// Tab Navigation
-const profileTabs = document.querySelectorAll('.tab-item');
-profileTabs.forEach(tab => {
-  tab.addEventListener('click', function(e) {
-    e.preventDefault();
-    profileTabs.forEach(t => t.classList.remove('active'));
-    this.classList.add('active');
-    const tabHref = this.getAttribute('href').substring(1);
-    loadTabContent(tabHref);
-  });
-});
-
-function loadTabContent(tabName) {
-  // Placeholder: integrate AJAX views for tab content as needed
-  console.log('Loading tab:', tabName);
+function getPetType() {
+  const el = document.querySelector('input[name="petType"]:checked');
+  return el ? el.value : 'dog';
 }
 
-// Avatar Upload Preview
-const avatarUploadBtn = document.querySelector('.avatar-upload-btn');
-if (avatarUploadBtn) {
-  avatarUploadBtn.addEventListener('click', function() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-          const avatar = document.querySelector('.profile-avatar');
-          if (avatar) {
-            avatar.src = evt.target.result;
-          }
-          uploadAvatar(file);
-        };
-        reader.readAsDataURL(file);
-      }
+function validate() {
+  const errors = [];
+  const type = getPetType();
+  const name = document.getElementById('petName').value.trim();
+  const birthday = document.getElementById('petBirthday').value;
+  const gender = document.getElementById('petGender').value;
+  const breed = document.getElementById('breedSelect').value;
+  const weight = parseFloat(document.getElementById('weightKg').value);
+  const height = parseFloat(document.getElementById('heightCm').value);
+  const today = new Date();
+  const bday = birthday ? new Date(birthday) : null;
+
+  const wMax = type === 'dog' ? 100 : 20;
+  const hMax = type === 'dog' ? 100 : 60;
+  if (!name) errors.push('Name is required');
+  if (!bday) errors.push('Birthday is required');
+  if (bday && bday > today) errors.push('Birthday cannot be in the future');
+  if (!gender) errors.push('Gender is required');
+  if (!breed) errors.push('Breed is required');
+  if (!(weight >= 0.5 && weight <= wMax)) errors.push('Please enter a valid weight');
+  if (!(height >= 10 && height <= hMax)) errors.push('Please enter a valid height');
+  return { valid: errors.length === 0, errors, data: { type, name, birthday, gender, breed, weight, height } };
+}
+
+function calcBMI(type, weight, height) {
+  const bmi = (weight / (height * height)) * 10000;
+  let category = 'ideal';
+  if (type === 'dog') {
+    if (bmi < 15) category = 'underweight';
+    else if (bmi <= 25) category = 'ideal';
+    else if (bmi <= 35) category = 'overweight';
+    else category = 'obese';
+  } else {
+    if (bmi < 18) category = 'underweight';
+    else if (bmi <= 30) category = 'ideal';
+    else if (bmi <= 40) category = 'overweight';
+    else category = 'obese';
+  }
+  return { bmi: Number(bmi.toFixed(1)), category };
+}
+
+const RECS = {
+  underweight: {
+    feeding: 'Increase daily portions by 10-15%. Feed high-quality protein.',
+    exercise: 'Gentle activity, avoid overexertion.',
+    checkup: 'Consult vet to rule out health issues.'
+  },
+  ideal: {
+    feeding: 'Maintain current portions. Great job!',
+    exercise: 'Continue regular activity.',
+    checkup: 'Annual checkups recommended.'
+  },
+  overweight: {
+    feeding: 'Reduce portions by 10%. Limit treats.',
+    exercise: 'Increase activity gradually.',
+    checkup: 'Schedule vet consultation for weight plan.'
+  },
+  obese: {
+    feeding: 'Reduce portions by 20%. Strict treat limits.',
+    exercise: 'Start low-impact activities.',
+    checkup: 'Immediate vet consultation recommended.'
+  }
+};
+
+function setCategoryBadge(cat) {
+  const el = document.getElementById('bmiCategory');
+  el.className = 'bmi-category status-badge';
+  if (cat === 'underweight') el.classList.add('status-underweight');
+  if (cat === 'ideal') el.classList.add('status-ideal');
+  if (cat === 'overweight') el.classList.add('status-overweight');
+  if (cat === 'obese') el.classList.add('status-obese');
+  el.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+}
+
+function setGaugeTheme(cat) {
+  const g = document.querySelector('.bmi-gauge');
+  if (!g) return;
+  g.classList.remove('ideal','overweight','obese');
+  if (cat === 'ideal') g.classList.add('ideal');
+  if (cat === 'overweight') g.classList.add('overweight');
+  if (cat === 'obese') g.classList.add('obese');
+}
+
+function setNeedle(type, bmi) {
+  const max = type === 'dog' ? 40 : 45;
+  const clamped = Math.max(0, Math.min(max, bmi));
+  const angle = -90 + (clamped / max) * 180;
+  document.getElementById('needle').setAttribute('transform', `rotate(${angle},110,120)`);
+}
+
+function renderRecs(cat, breedOpt) {
+  const el = document.getElementById('bmiRecommendations');
+  const base = RECS[cat];
+  const breedText = breedOpt ? `Ideal weight for breed: ${breedOpt.dataset.min}-${breedOpt.dataset.max} kg.` : '';
+  el.innerHTML = `
+    <div class="space-y-2">
+      <div class="status-badge">${breedText}</div>
+      <ul class="list-disc ml-5 text-sm">
+        <li>${base.feeding}</li>
+        <li>${base.exercise}</li>
+        <li>${base.checkup}</li>
+      </ul>
+    </div>
+  `;
+}
+
+const storage = {
+  async set(key, val) { localStorage.setItem(key, val); },
+  async get(key) { return localStorage.getItem(key); },
+  async list(prefix) {
+    const keys = [];
+    for (let i=0; i<localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(prefix)) keys.push(k);
+    }
+    return keys;
+  }
+};
+
+let currentProfileKey = null;
+
+function listProfiles() {
+  storage.list('pet-profile:').then(keys => {
+    const ul = document.getElementById('savedProfiles');
+    ul.innerHTML = '';
+    keys.sort().forEach(k => {
+      const raw = localStorage.getItem(k);
+      let obj = null;
+      try { obj = JSON.parse(raw); } catch {}
+      const li = document.createElement('li');
+      li.className = 'saved-profile-item';
+      const title = document.createElement('div');
+      title.innerHTML = `<div class="saved-profile-title">${obj?.name || 'Unnamed'}</div><div class="saved-profile-meta">${obj?.type || '-'} • BMI ${obj?.bmi ?? '--'}</div>`;
+      const actions = document.createElement('div');
+      actions.className = 'profile-menu';
+      const toggle = document.createElement('button');
+      toggle.className = 'icon-btn profile-btn';
+      toggle.setAttribute('aria-haspopup','true');
+      toggle.setAttribute('aria-expanded','false');
+      toggle.setAttribute('data-key', k);
+      toggle.innerHTML = '<i class="fas fa-ellipsis-h"></i>';
+      const dropdown = document.createElement('div');
+      dropdown.className = 'profile-dropdown';
+      const loadItem = document.createElement('a');
+      loadItem.href = '#';
+      loadItem.className = 'profile-item action-load';
+      loadItem.setAttribute('role','menuitem');
+      loadItem.setAttribute('data-key', k);
+      loadItem.innerHTML = '<i class="fas fa-download"></i><span>Load Profile</span>';
+      const deleteItem = document.createElement('a');
+      deleteItem.href = '#';
+      deleteItem.className = 'profile-item action-delete';
+      deleteItem.setAttribute('role','menuitem');
+      deleteItem.setAttribute('data-key', k);
+      deleteItem.innerHTML = '<i class="fas fa-trash"></i><span>Delete</span>';
+      dropdown.appendChild(loadItem);
+      dropdown.appendChild(deleteItem);
+      actions.appendChild(toggle);
+      actions.appendChild(dropdown);
+      li.appendChild(title);
+      li.appendChild(actions);
+      ul.appendChild(li);
     });
-    input.click();
   });
 }
 
-function uploadAvatar(file) {
-  const formData = new FormData();
-  formData.append('avatar', file);
-  // Example AJAX endpoint; integrate with existing profile edit view or a dedicated endpoint
-  /*
-  fetch('/accounts/profile/edit/', {
-    method: 'POST',
-    body: formData,
-    headers: { 'X-CSRFToken': getCookie('csrftoken') }
-  }).then(r => r.json()).then(d => console.log('Avatar uploaded:', d));
-  */
+function loadProfile(key) {
+  const raw = localStorage.getItem(key);
+  if (!raw) return;
+  let obj = null;
+  try { obj = JSON.parse(raw); } catch {}
+  if (!obj) return;
+  const petType = obj.type === 'cat' ? 'cat' : 'dog';
+  document.querySelector(`input[name="petType"][value="${petType}"]`).checked = true;
+  setBreeds(petType);
+  document.getElementById('petName').value = obj.name || '';
+  document.getElementById('petBirthday').value = obj.birthday || '';
+  document.getElementById('petGender').value = obj.gender || '';
+  document.getElementById('breedSelect').value = obj.breed || '';
+  document.getElementById('weightKg').value = obj.weight ?? '';
+  document.getElementById('heightCm').value = obj.height ?? '';
+  currentProfileKey = key;
+  document.getElementById('saveProfileBtn').textContent = 'Update Profile';
+  calcAndRender();
 }
 
-// Follow/Unfollow Button (placeholder wiring)
-const followBtn = document.querySelector('[data-action="follow"]');
-if (followBtn) {
-  followBtn.addEventListener('click', function() {
-    const userId = this.dataset.userId;
-    const isFollowing = this.classList.contains('following');
-    if (isFollowing) {
-      unfollowUser(userId);
-      this.classList.remove('following');
-      this.textContent = '➕ Follow';
+function deleteProfile(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch {}
+  if (currentProfileKey === key) {
+    currentProfileKey = null;
+    document.getElementById('saveProfileBtn').textContent = 'Save Profile';
+  }
+  listProfiles();
+  if (window.toastManager && window.toastManager.success) window.toastManager.success('Profile deleted');
+}
+
+function calcAndRender() {
+  const v = validate();
+  const err = document.getElementById('formErrors');
+  err.textContent = '';
+  if (!v.valid) { err.textContent = v.errors[0]; err.classList.add('shake'); setTimeout(()=>err.classList.remove('shake'),300); return; }
+  const res = calcBMI(v.data.type, v.data.weight, v.data.height);
+  document.getElementById('bmiScore').textContent = String(res.bmi);
+  setCategoryBadge(res.category);
+  setGaugeTheme(res.category);
+  setNeedle(v.data.type, res.bmi);
+  const breedOpt = document.querySelector(`#breedSelect option[value="${v.data.breed}"]`);
+  renderRecs(res.category, breedOpt);
+  document.getElementById('saveProfileBtn').disabled = false;
+  document.getElementById('saveProfileBtn').setAttribute('aria-disabled', 'false');
+  document.getElementById('lastCalcAt').textContent = `Last calculated ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+  return { ...v.data, ...res };
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setBreeds(getPetType());
+  const updateTypeHelp = () => {
+    const type = getPetType();
+    const wHelp = document.getElementById('weightHelp');
+    const hHelp = document.getElementById('heightHelp');
+    if (type === 'dog') {
+      wHelp.textContent = 'Typical range: 0.5–100 kg for dogs.';
+      hHelp.textContent = 'Measure floor to shoulder blade; usual range 10–100 cm.';
+      document.getElementById('weightKg').max = 100;
+      document.getElementById('heightCm').max = 100;
     } else {
-      followUser(userId);
-      this.classList.add('following');
-      this.textContent = '✓ Following';
+      wHelp.textContent = 'Typical range: 0.5–20 kg for cats.';
+      hHelp.textContent = 'Measure floor to shoulder blade; usual range 10–60 cm.';
+      document.getElementById('weightKg').max = 20;
+      document.getElementById('heightCm').max = 60;
+    }
+  };
+  document.querySelectorAll('input[name="petType"]').forEach(r => {
+    r.addEventListener('change', () => {
+      setBreeds(getPetType());
+      updateTypeHelp();
+    });
+  });
+  updateTypeHelp();
+  document.querySelectorAll('.stepper-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.dataset.target;
+      const step = parseFloat(btn.dataset.step || '1');
+      const input = document.getElementById(targetId);
+      if (!input) return;
+      const min = parseFloat(input.min || '0');
+      const max = parseFloat(input.max || '100000');
+      let val = parseFloat(input.value || '0');
+      val = isNaN(val) ? 0 : val;
+      const next = Math.min(max, Math.max(min, parseFloat((val + step).toFixed(2))));
+      input.value = String(next);
+    });
+  });
+  document.getElementById('calcBtn').addEventListener('click', () => {
+    const data = calcAndRender();
+    if (data) {
+      try {
+        fetch('/api/client-errors/', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ type:'bmi_calculation', ...data, timestamp: new Date().toISOString() }),
+          keepalive: true
+        }).catch(()=>{});
+      } catch {}
     }
   });
-}
-
-function followUser(userId) {
-  console.log('Following user:', userId);
-  // Optionally: call existing social toggle_follow endpoint
-}
-function unfollowUser(userId) {
-  console.log('Unfollowing user:', userId);
-}
-
-// Helper function to get CSRF token
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    document.getElementById('bmiScore').textContent = '--';
+    document.getElementById('bmiCategory').textContent = '--';
+    document.getElementById('needle').setAttribute('transform', 'rotate(0,110,120)');
+    document.getElementById('saveProfileBtn').disabled = true;
+    document.getElementById('saveProfileBtn').setAttribute('aria-disabled', 'true');
+    document.getElementById('lastCalcAt').textContent = '';
+    document.getElementById('formErrors').textContent = '';
+    currentProfileKey = null;
+    document.getElementById('saveProfileBtn').textContent = 'Save Profile';
+  });
+  document.getElementById('saveProfileBtn').addEventListener('click', async () => {
+    const data = calcAndRender();
+    if (!data) return;
+    const now = Date.now();
+    if (currentProfileKey) {
+      await storage.set(currentProfileKey, JSON.stringify({ ...data, savedAt: now }));
+      if (window.toastManager && window.toastManager.success) window.toastManager.success('Profile updated');
+    } else {
+      const id = `${data.name.toLowerCase().replace(/\\s+/g,'_')}:${now}`;
+      await storage.set(`pet-profile:${id}`, JSON.stringify({ ...data, savedAt: now }));
+      if (window.toastManager && window.toastManager.success) window.toastManager.success('Profile saved');
     }
-  }
-  return cookieValue;
-}
+    listProfiles();
+  });
+  document.getElementById('savedProfiles').addEventListener('click', (e) => {
+    const t = e.target;
+    const toggleBtn = t.closest('.profile-btn');
+    if (toggleBtn) {
+      const menu = toggleBtn.nextElementSibling;
+      const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+      toggleBtn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      if (menu) menu.classList.toggle('show', !expanded);
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    const loadEl = t.closest('.action-load');
+    const delEl = t.closest('.action-delete');
+    if (loadEl) {
+      const key = loadEl.dataset.key;
+      loadProfile(key);
+      e.preventDefault();
+      return;
+    }
+    if (delEl) {
+      const key = delEl.dataset.key;
+      deleteProfile(key);
+      e.preventDefault();
+      return;
+    }
+  });
+  document.addEventListener('click', function(ev){
+    const openMenus = document.querySelectorAll('#savedProfiles .profile-dropdown.show');
+    openMenus.forEach(function(menu){
+      const btn = menu.previousElementSibling;
+      const within = menu.contains(ev.target) || (btn && btn.contains(ev.target));
+      if (!within) {
+        menu.classList.remove('show');
+        if (btn) btn.setAttribute('aria-expanded','false');
+      }
+    });
+  });
+  listProfiles();
+});
+</script>
+{% endblock %}
