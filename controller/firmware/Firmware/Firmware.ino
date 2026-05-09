@@ -17,105 +17,44 @@
 #include <EEPROM.h>
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <DNSServer.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <Servo.h>
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-#include <ESP8266WebServer.h>
-#include <DNSServer.h>
 
 String nowUtcIso();
 extern unsigned long lastFeedCompletionTime;
 
 // Inlined config.h (undo modularization)
 // Hardware Pin Definitions - RGB LEDs (D7/D0)
-#define RED_LED_PIN 2
+#define RED_LED_PIN 13
 #define BLUE_LED_PIN 16
 
 // Hardware Pin Definitions - Servo and Buttons
 #define SERVO_PIN 14
-#define FEED_NOW_PIN 0
-#define ADD_PORTION_PIN 13
+#define FEED_NOW_PIN 5
+#define ADD_PORTION_PIN 4
 #define REDUCE_PORTION_PIN 12
 #define BUTTON_PIN FEED_NOW_PIN
 
 // Legacy LED pin for compatibility
 #define LED_PIN 2
-#define OLED_SDA_PIN 4
-#define OLED_SCL_PIN 5
-#define OLED_ADDR 0x3C
-#define OLED_WIDTH 128
-#define OLED_HEIGHT 64
-#define OLED_RESET -1
-#define OLED_UPDATE_INTERVAL_MS 500
-
-// ═══════════════════════════════════════════════════════════
-// DEV / PRODUCTION TOGGLE
-// Set DEV_MODE 1 for local development
-// Set DEV_MODE 0 before flashing to production device
-// ═══════════════════════════════════════════════════════════
-#define DEV_MODE 0
-// LOCAL DEV SETUP CHECKLIST:
-// 1. Set DEV_MODE 1
-// 2. Find your PC IP: ipconfig (Windows) / ifconfig (Mac/Linux)
-// 3. Update DEFAULT_SERVER_URL with your PC IP
-// 4. Run Django: python manage.py runserver 0.0.0.0:8000
-// 5. Add to your Django env:
-//      DEVICE_LEGACY_KEY_ENABLED=true
-//      PETIO_DEVICE_API_KEY=petio-local-dev
-// 6. Ensure PC firewall allows port 8000
-// 7. ESP8266 and PC must be on the same WiFi network
-//
-// PRODUCTION DEPLOYMENT STEPS:
-// 1. Set DEV_MODE 0 and flash to device
-// 2. Device boots → connects to saved WiFi automatically
-// 3. If no saved WiFi → connect to "PETio-Setup-XXXX" AP
-//    → open browser → 192.168.4.1 → enter home WiFi credentials
-// 4. Device restarts → connects to home WiFi
-// 5. OLED shows pairing screen with 6-digit PIN and Device ID
-// 6. Go to https://petio.site/devices/claim/
-// 7. Enter Device ID (ESP-0081CA63) and PIN from OLED
-// 8. Click Claim Device
-// 9. Device receives provisioned key → saves to EEPROM
-// 10. Device exits pairing → OLED shows normal screen
-// 11. All features active:
-//     - Feed button from UI works
-//     - Schedules execute
-//     - History records
-//     - Device shows online
-//
-// FUTURE REBOOTS: Device auto-connects and resumes — no re-pairing
-// NETWORK CHANGE: Hold FEED button 5s → clears credentials → re-setup
-// ACCOUNT CHANGE: Hold FEED button 5s → forces re-pairing
-// ═══════════════════════════════════════════════════════════
 
 // Wi-Fi Configuration Settings
 #define WIFI_TIMEOUT_MS 30000
-#define WIFI_SSID ""
-#define WIFI_PASSWORD ""
-#define FORCE_PAIR_ON_BOOT 0
+#define CONFIG_TIMEOUT_MS 300000
 
 // EEPROM Configuration
 #define EEPROM_SIZE 512
-#define LAST_SCHEDULE_ID_ADDR 60
-#define CALIB_FLAG_ADDR 68
-#define MS_PER_GRAM_ADDR 69
-#define STARTUP_DELAY_ADDR 73
-#define API_KEY_FLAG_ADDR 80
-#define API_KEY_ADDR 81
-#define API_KEY_MAX_LEN 64
-#define WIFI_FLAG_ADDR 146
-#define WIFI_SSID_ADDR 147
-#define WIFI_SSID_MAX_LEN 32
-#define WIFI_PASS_ADDR (WIFI_SSID_ADDR + WIFI_SSID_MAX_LEN)
-#define WIFI_PASS_MAX_LEN 64
-#define STOP_REVERSE1_ADDR 244
-#define STOP_PAUSE_ADDR 248
-#define STOP_REVERSE2_ADDR 252
-#define SETTLE_DELAY_ADDR 256
+#define CONFIG_FLAG_ADDR 0
+#define WIFI_SSID_ADDR 1
+#define WIFI_PASS_ADDR 33
+
+// Wi-Fi Credential Limits
+#define MAX_SSID_LENGTH 32
+#define MAX_PASS_LENGTH 64
 
 // LED Blink Intervals (milliseconds)
 #define LED_BLINK_FAST 200
@@ -156,6 +95,8 @@ extern unsigned long lastFeedCompletionTime;
   #define SERVO_ANTI_CLOG_REVERSE 1400
 #endif
 
+#define ANTI_JAM_INTERVAL_MS 2000
+#define ANTI_JAM_REVERSE_MS 200
 #define REVERSE_CLEAR_FORWARD_MS 800
 #define REVERSE_CLEAR_REVERSE_MS 300
 #define REVERSE_CLEAR_PAUSE_MS 200
@@ -175,117 +116,53 @@ extern unsigned long lastFeedCompletionTime;
 unsigned int g_feedPulse = SERVO_FEED_SPEED;
 
 // HTTP Communication Constants
-// ── Server URL (controlled by DEV_MODE) ──────────────────
-#if DEV_MODE
-  // TODO: Update this IP to match your PC's local IP address
-  // Run: ipconfig (Windows) or ifconfig (Mac/Linux) to find it
-  // Run Django with: python manage.py runserver 0.0.0.0:8000
-  #define DEFAULT_SERVER_URL "http://192.168.18.9:8000"
-#else
-  #define DEFAULT_SERVER_URL "https://petio.site"
-#endif
-// ─────────────────────────────────────────────────────────
-#define DEFAULT_DEVICE_ID "ESP-0081CA63"
-// ── API Key (controlled by DEV_MODE) ─────────────────────
-#if DEV_MODE
-  // Must match PETIO_DEVICE_API_KEY env var on local Django server
-  // In your shell: DEVICE_LEGACY_KEY_ENABLED=true
-  //                PETIO_DEVICE_API_KEY=petio-local-dev
-  #define DEFAULT_API_KEY "petio-local-dev"
-#else
-  #define DEFAULT_API_KEY "51c1ebc55900af5273e5a43c2ba0c140"
-#endif
-// ─────────────────────────────────────────────────────────
-// ── HTTP Timeout (controlled by DEV_MODE) ────────────────
-// Local HTTP needs only 3s — no TLS handshake overhead
-// Production HTTPS to petio.site needs more time due to
-// TLS handshake latency from Philippines to US servers
-#if DEV_MODE
-  #define HTTP_TIMEOUT_MS 3000
-#else
-  #define HTTP_TIMEOUT_MS 8000
-#endif
-// ─────────────────────────────────────────────────────────
-// ── HTTP Max Retries (controlled by DEV_MODE) ────────────
-// Local dev: 2 retries is enough — fast local network
-// Production: 3 retries handles transient mobile network drops
-#if DEV_MODE
-  #define HTTP_MAX_RETRIES 2
-#else
-  #define HTTP_MAX_RETRIES 3
-#endif
-// ─────────────────────────────────────────────────────────
-// ── Legacy auth fallback (controlled by DEV_MODE) ────────
-// In DEV_MODE, allows polling without a provisioned device key
-// so you can test schedules and commands before pairing.
-// In production, device MUST be paired first — no fallback.
-#if DEV_MODE
-  #define DEV_ALLOW_LEGACY_FOR_POLL 1
-#else
-  #define DEV_ALLOW_LEGACY_FOR_POLL 0
-#endif
-// ─────────────────────────────────────────────────────────
+#define DEFAULT_SERVER_URL "https://petio.site"
+#define DEFAULT_DEVICE_ID "feeder-1"
+#define DEFAULT_API_KEY "51c1ebc55900af5273e5a43c2ba0c140"
+#define HTTP_TIMEOUT_MS 3000
+#define HTTP_MAX_RETRIES 2
 
 // NTP and Time Synchronization Constants
 #define NTP_SERVER "pool.ntp.org"
-#define NTP_TIMEZONE_OFFSET 0
+#define NTP_TIMEZONE_OFFSET (8*3600)
 #define NTP_UPDATE_INTERVAL 3600000
-
-// Wi-Fi Fallback Portal Timing
-#define FALLBACK_AP_AFTER_MS 300000
 
 // Schedule Polling Constants
 #define SCHEDULE_POLL_INTERVAL 45000
 #define SCHEDULE_GRACE_PERIOD 120
 #define MS_PER_GRAM 20
-// Remote command polling
-#define COMMAND_POLL_INTERVAL 10000
 
 // Calibrated dispensing constants
 #define STARTUP_DELAY_MS 100
+#define MS_PER_GRAM_CALIBRATED 24.5f
 #define MIN_DISPENSE_TIME_MS 50UL
 #define MAX_DISPENSE_TIME_MS 30000UL
 
 // EEPROM Addresses for Schedule Tracking
-#define LAST_SCHEDULE_IxD_ADDR 60
+#define LAST_SCHEDULE_ID_ADDR 65
 #define SCHEDULE_ID_SIZE 4
 
-#define WHEEL_COMPARTMENTS       8
-#define MS_PER_COMP_DEFAULT      800UL
-#define GRAMS_PER_COMP_DEFAULT   10.0f
-#define STOP_REVERSE1_DEFAULT    0UL
-#define STOP_PAUSE_DEFAULT       200UL
-#define STOP_REVERSE2_DEFAULT    0UL
-#define SETTLE_DELAY_DEFAULT     300UL
-#define MAX_STOP_BEHAVIOR_MS     2000UL
+// EEPROM Addresses for Calibration
+#define CALIB_FLAG_ADDR 68
+#define MS_PER_GRAM_ADDR 69
+#define STARTUP_DELAY_ADDR 73
 
-
-
+// Calibrated duration API
 unsigned long calculateFeedingDuration(float targetGrams);
-unsigned long calculateOneCompartmentTime();
-unsigned long calculateSteppedFeedTime(int compartmentCount);
-int calculateCompartmentCount(float targetGrams);
-float actualPortionGrams(float targetGrams);
-void logFeedingOperation(float requestedGrams, int compartments,
-                         unsigned long totalTime, bool reverseUsed);
-void saveCalibration(float gramsPerComp, unsigned long msPerComp);
+void saveCalibration(float msPerGram, unsigned long startupDelay);
 void loadCalibration();
 void handleCalibrationCommands();
 
 // Manual portion configuration
-float manualPortionGrams = 10.0f;
+float manualPortionGrams = 25.0f;
 unsigned long manualFeedDurationMs = 0;
-const float PORTION_STEP_GRAMS = 10.0f;
-const float MANUAL_PORTION_MIN_GRAMS = 10.0f;
-const float MANUAL_PORTION_MAX_GRAMS = 160.0f;
+const float PORTION_STEP_GRAMS = 5.0f;
+const float MANUAL_PORTION_MIN_GRAMS = 5.0f;
+const float MANUAL_PORTION_MAX_GRAMS = 100.0f;
 
-// Calibration state (wheel-based)
-unsigned long g_msPerComp    = MS_PER_COMP_DEFAULT;
-float         g_gramsPerComp = GRAMS_PER_COMP_DEFAULT;
-unsigned long g_stopReverse1Ms = STOP_REVERSE1_DEFAULT;
-unsigned long g_stopPauseMs = STOP_PAUSE_DEFAULT;
-unsigned long g_stopReverse2Ms = STOP_REVERSE2_DEFAULT;
-unsigned long g_settleDelayMs = SETTLE_DELAY_DEFAULT;
+// Calibration state
+float g_msPerGram = MS_PER_GRAM_CALIBRATED;
+unsigned long g_startupDelay = STARTUP_DELAY_MS;
 bool calibrationMode = false;
 float calibrationTestGrams = 0.0f;
 unsigned long calibrationStartTime = 0;
@@ -321,7 +198,7 @@ private:
 
 public:
   LedController() : currentState(LED_OFF), blinkState(false), lastBlinkTime(0), overlayActive(false), overlayBlue(false), overlayLastToggle(0), overlayInterval(0), overlayOn(false), overlayCycles(0), overlayCompleted(0), overlayRestore(LED_OFF) {}
-  void init() { pinMode(RED_LED_PIN, OUTPUT); pinMode(BLUE_LED_PIN, OUTPUT); turnOffAllLEDs(); }
+  void init() { pinMode(RED_LED_PIN, OUTPUT); pinMode(BLUE_LED_PIN, OUTPUT); turnOffAllLEDs(); Serial.println("LED Controller initialized"); }
   void setState(LedState state) {
     currentState = state; resetBlinkTimer();
     switch (currentState) {
@@ -379,290 +256,18 @@ public:
   void startFeedbackBlinkRed(int cycles, unsigned long interval_ms) { overlayRestore = currentState; overlayActive = true; overlayBlue = false; overlayInterval = interval_ms; overlayCycles = cycles; overlayCompleted = 0; overlayOn = false; overlayLastToggle = millis(); }
 };
 
-
-
-class OledDisplay {
-private:
-  Adafruit_SSD1306 display;
-  unsigned long lastUpdate;
-  uint8_t      animFrame;
-  bool         initialized;
-
-  void scanI2C() {
-    int found = 0;
-    for (int addr = 1; addr < 127; addr++) {
-      Wire.beginTransmission(addr);
-      if (Wire.endTransmission() == 0) {
-        found++;
-      }
-    }
-  }
-
-  /** Small WiFi "fan" icon at (x, y). Shows X when disconnected. */
-  void drawWifiIcon(int x, int y, bool connected) {
-    if (!connected) {
-      display.drawLine(x,     y,     x + 9, y + 9, SSD1306_WHITE);
-      display.drawLine(x + 9, y,     x,     y + 9, SSD1306_WHITE);
-      return;
-    }
-    for (int r = 8; r >= 2; r -= 3) {
-      display.drawCircle(x + 5, y + 10, r, SSD1306_WHITE);
-      display.fillRect(x, y + 10, 11, 8, SSD1306_BLACK);
-    }
-    display.fillCircle(x + 5, y + 10, 1, SSD1306_WHITE);
-  }
-
-  /** Horizontal progress bar. pct = 0–100 */
-  void drawProgressBar(int x, int y, int w, int h, int pct) {
-    display.drawRect(x, y, w, h, SSD1306_WHITE);
-    int fill = (int)((w - 2) * pct / 100);
-    if (fill > 0)
-      display.fillRect(x + 1, y + 1, fill, h - 2, SSD1306_WHITE);
-  }
-
-  void drawNormalScreen(bool wifiConnected, float portionGrams) {
-    // ── Top bar: WiFi icon + time ─────────────────────────────────────────
-    drawWifiIcon(1, 1, wifiConnected);
-
-    time_t nowTs = time(nullptr);
-    struct tm* t = localtime(&nowTs);
-    int hour24 = t ? t->tm_hour : 0;
-    int hour12 = hour24 % 12;
-    if (hour12 == 0) hour12 = 12;
-    const char* meridiem = hour24 >= 12 ? "PM" : "AM";
-    char timeBuf[12];
-    snprintf(timeBuf, sizeof(timeBuf), "%d:%02d:%02d %s",
-             hour12, t ? t->tm_min : 0, t ? t->tm_sec : 0, meridiem);
-
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    int timeX = OLED_WIDTH - (int)strlen(timeBuf) * 6 - 1;
-    display.setCursor(timeX, 3);
-    display.print(timeBuf);
-
-    // ── Divider ───────────────────────────────────────────────────────────
-    display.drawLine(0, 14, OLED_WIDTH - 1, 14, SSD1306_WHITE);
-
-    // ── "PORTION" label ───────────────────────────────────────────────────
-    display.setTextSize(1);
-    display.setCursor(2, 16);
-    display.print("Portion:");
-
-    // ── Big number + unit ─────────────────────────────────────────────────
-    int portionInt = (int)(portionGrams + 0.5f);
-    char numBuf[6];
-    snprintf(numBuf, sizeof(numBuf), "%d", portionInt);
-
-    display.setTextSize(3);
-    int numW = (int)strlen(numBuf) * 18 + 12;
-    int numX = (OLED_WIDTH - numW) / 2;
-    display.setCursor(numX, 20);
-    display.print(numBuf);
-
-    display.setTextSize(2);
-    display.setCursor(numX + (int)strlen(numBuf) * 18 + 2, 26);
-    display.print("g");
-
-    // ── Progress bar + RDY ────────────────────────────────────────────────
-    int pct = (int)(portionGrams / MANUAL_PORTION_MAX_GRAMS * 100.0f);
-    pct = constrain(pct, 0, 100);
-    drawProgressBar(0, 53, OLED_WIDTH - 30, 8, pct);
-
-    display.setTextSize(1);
-    display.setCursor(OLED_WIDTH - 28, 54);
-    display.print("RDY");
-  }
-
-  void drawDispensingScreen(float portionGrams) {
-    // ── Marching-block animation ──────────────────────────────────────────
-    const int BLOCK_W   = 12;
-    const int BLOCK_H   = 7;
-    const int BLOCK_GAP = 3;
-    const int NUM_BLOCKS = OLED_WIDTH / (BLOCK_W + BLOCK_GAP);
-    int offset = (animFrame * 3) % (BLOCK_W + BLOCK_GAP);
-
-    for (int i = 0; i < NUM_BLOCKS + 1; i++) {
-      int bx = i * (BLOCK_W + BLOCK_GAP) - offset;
-      if (bx + BLOCK_W > 0 && bx < OLED_WIDTH) {
-        if (i % 3 != 2)
-          display.fillRect(bx, 1, BLOCK_W, BLOCK_H, SSD1306_WHITE);
-        else
-          display.drawRect(bx, 1, BLOCK_W, BLOCK_H, SSD1306_WHITE);
-      }
-    }
-
-    // ── "DISPENSING" text ─────────────────────────────────────────────────
-    display.setTextSize(2);
-    int textW = 10 * 12;
-    int textX = (OLED_WIDTH - textW) / 2;
-    display.setCursor(textX, 18);
-    display.print("DISPENSING");
-
-    // ── Scrolling dot animation ───────────────────────────────────────────
-    const int DOT_R    = 3;
-    const int DOT_GAPS = 12;
-    const int NUM_DOTS = 5;
-    int dotStartX = (OLED_WIDTH - (NUM_DOTS * DOT_GAPS)) / 2;
-    for (int i = 0; i < NUM_DOTS; i++) {
-      int dx  = dotStartX + i * DOT_GAPS;
-      bool lit = ((int)(animFrame % NUM_DOTS) == i);
-      if (lit)
-        display.fillCircle(dx, 43, DOT_R, SSD1306_WHITE);
-      else
-        display.drawCircle(dx, 43, DOT_R - 1, SSD1306_WHITE);
-    }
-
-    // ── Divider + portion reminder ────────────────────────────────────────
-    display.drawLine(0, 54, OLED_WIDTH - 1, 54, SSD1306_WHITE);
-
-    int portionInt = (int)(portionGrams + 0.5f);
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%dg", portionInt);
-
-    display.setTextSize(1);
-    int labelW = (int)strlen(buf) * 6;
-    display.setCursor((OLED_WIDTH - labelW) / 2, 56);
-    display.print(buf);
-  }
-
-  void drawPairingScreen(const String& pin, int secondsLeft, const String& devId) {
-    display.fillRect(0, 0, OLED_WIDTH, 13, SSD1306_WHITE);
-    display.setTextColor(SSD1306_BLACK);
-    display.setTextSize(1);
-    const char* header = "* PAIRING MODE *";
-    int hW = strlen(header) * 6;
-    display.setCursor((OLED_WIDTH - hW) / 2, 3);
-    display.print(header);
-
-    display.setTextColor(SSD1306_WHITE);
-    display.setTextSize(1);
-    const char* label = "Enter in app:";
-    int lW = strlen(label) * 6;
-    display.setCursor((OLED_WIDTH - lW) / 2, 17);
-    display.print(label);
-
-    display.setTextSize(2);
-    String formatted = pin.substring(0, 3) + String(" ") + pin.substring(3);
-    int pW = formatted.length() * 12;
-    display.setCursor((OLED_WIDTH - pW) / 2, 27);
-    display.print(formatted);
-
-    display.drawLine(10, 47, OLED_WIDTH - 10, 47, SSD1306_WHITE);
-
-    display.setTextSize(1);
-    display.setCursor(2, 52);
-    display.print("ID:");
-    display.print(devId);
-
-    String cStr = String(secondsLeft) + "s";
-    int cX = OLED_WIDTH - (int)cStr.length() * 6 - 2;
-    display.setCursor(cX, 52);
-    display.print(cStr);
-
-    int pct = (secondsLeft * 100) / 300; // 300s TTL
-    pct = constrain(pct, 0, 100);
-    int barW = OLED_WIDTH - 4;
-    display.drawRect(2, 59, barW, 4, SSD1306_WHITE);
-    int fill = (barW - 2) * pct / 100;
-    if (fill > 0) display.fillRect(3, 60, fill, 2, SSD1306_WHITE);
-  }
-
-public:
-  OledDisplay()
-    : display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RESET),
-      lastUpdate(0), animFrame(0), initialized(false) {}
-
-  void init() {
-    Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
-    Wire.setClock(400000);
-
-    bool ok = display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
-    if (!ok) {
-      uint8_t alt = (OLED_ADDR == 0x3C) ? 0x3D : 0x3C;
-      ok = display.begin(SSD1306_SWITCHCAPVCC, alt);
-    }
-    if (!ok) {
-      initialized = false;
-      return;
-    }
-
-    display.clearDisplay();
-    display.setTextColor(SSD1306_WHITE);
-    display.setTextSize(2);
-    display.setCursor(20, 20);
-    display.print("PETio");
-    display.setTextSize(1);
-    display.setCursor(28, 40);
-    display.print("Booting...");
-    display.display();
-
-    lastUpdate  = millis();
-    initialized = true;
-  }
-
-  /**
-   * Call every loop() iteration.
-   * Signature is unchanged from the original — drop-in compatible.
-   */
-  void update(bool wifiConnected, const String& /*ssid*/,
-              float portionGrams, bool isFeeding) {
-    if (!initialized) return;
-    unsigned long now = millis();
-    if (now - lastUpdate < OLED_UPDATE_INTERVAL_MS) return;
-    lastUpdate = now;
-    animFrame++;
-
-    display.clearDisplay();
-    display.setTextColor(SSD1306_WHITE);
-
-    if (isFeeding)
-      drawDispensingScreen(portionGrams);
-    else
-      drawNormalScreen(wifiConnected, portionGrams);
-
-    display.display();
-  }
-
-  void updatePairing(const String& pin, int secondsLeft, const String& devId) {
-    unsigned long now = millis();
-    if (now - lastUpdate < OLED_UPDATE_INTERVAL_MS) return;
-    lastUpdate = now;
-    display.clearDisplay();
-    display.setTextColor(SSD1306_WHITE);
-    drawPairingScreen(pin, secondsLeft, devId);
-    display.display();
-  }
-};
-
 // Inlined motorcontrol.h/.cpp
 class MotorController {
 private:
-  Servo feedingServo; bool servoAttached; bool feedingInProgress; unsigned long feedingStartTime; unsigned long feedingDuration; LedController* ledController; unsigned int lastPulse; unsigned int targetPulse;
-  void serviceDelay(unsigned long duration_ms) {
-    unsigned long start = millis();
-    while (millis() - start < duration_ms) {
-      if (ledController) ledController->update();
-      yield();
-      delay(10);
-    }
-  }
-  void writeNeutral() {
-    attachServo();
-    feedingServo.writeMicroseconds(SERVO_NEUTRAL);
-    lastPulse = SERVO_NEUTRAL;
-  }
-  void writeFeedPulse() {
-    attachServo();
-    feedingServo.writeMicroseconds(g_feedPulse);
-    lastPulse = g_feedPulse;
-  }
-  void attachServo() { if (!servoAttached) { feedingServo.attach(SERVO_PIN); servoAttached = true; feedingServo.writeMicroseconds(SERVO_NEUTRAL); delay(100); } }
+  Servo feedingServo; bool servoAttached; bool feedingInProgress; unsigned long feedingStartTime; unsigned long feedingDuration; LedController* ledController; unsigned int lastPulse; unsigned int targetPulse; bool antiClogMode; bool clogDetected;
+  unsigned long lastAntiJamTs; bool antiJamActive; unsigned long antiJamStart; int retryAttempts;
+  void attachServo() { if (!servoAttached) { feedingServo.attach(SERVO_PIN); servoAttached = true; feedingServo.writeMicroseconds(SERVO_NEUTRAL); delay(100); Serial.println("Servo attached and set to neutral"); } }
   void detachServo() { if (servoAttached) { feedingServo.detach(); servoAttached = false; Serial.println("Servo detached"); } }
   void startServo() { if (servoAttached) { lastPulse = SERVO_RAMP_START; feedingServo.writeMicroseconds(lastPulse); Serial.print("Servo started - Forward rotation ("); Serial.print(lastPulse); Serial.println(" µs)"); } }
   void stopServo() { if (servoAttached) { feedingServo.writeMicroseconds(SERVO_NEUTRAL); lastPulse = SERVO_NEUTRAL; Serial.print("Servo stopped - Neutral position ("); Serial.print(SERVO_NEUTRAL); Serial.println(" µs)"); } }
 public:
-  MotorController() : servoAttached(false), feedingInProgress(false), feedingStartTime(0), feedingDuration(0), ledController(nullptr), lastPulse(SERVO_NEUTRAL), targetPulse(SERVO_FORWARD) {}
-  void init(LedController* ledCtrl) { ledController = ledCtrl; attachServo(); }
+  MotorController() : servoAttached(false), feedingInProgress(false), feedingStartTime(0), feedingDuration(0), ledController(nullptr), lastPulse(SERVO_NEUTRAL), targetPulse(SERVO_FORWARD), antiClogMode(false), clogDetected(false), lastAntiJamTs(0), antiJamActive(false), antiJamStart(0), retryAttempts(0) {}
+  void init(LedController* ledCtrl) { ledController = ledCtrl; attachServo(); Serial.println("Motor Controller initialized"); Serial.print("Servo pin: "); Serial.println(SERVO_PIN); }
   void waitWithLED(unsigned long duration_ms) {
     unsigned long start = millis();
     while (millis() - start < duration_ms) {
@@ -670,142 +275,90 @@ public:
       delay(10);
     }
   }
-  void applyStopBehavior(bool finalStop) {
-    bool usedReverse = false;
-    if (g_stopReverse1Ms > 0) {
-      Serial.println(String(finalStop ? "Final" : "Inter-step") + " reverse 1: " + String(g_stopReverse1Ms) + "ms");
-      attachServo();
-      feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
-      serviceDelay(g_stopReverse1Ms);
-      writeNeutral();
-      usedReverse = true;
-    }
-    if (finalStop && g_stopReverse2Ms > 0 && g_stopPauseMs > 0) {
-      Serial.println("Stop pause: " + String(g_stopPauseMs) + "ms");
-      serviceDelay(g_stopPauseMs);
-    }
-    if (finalStop && g_stopReverse2Ms > 0) {
-      Serial.println("Final reverse 2: " + String(g_stopReverse2Ms) + "ms");
-      attachServo();
-      feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
-      serviceDelay(g_stopReverse2Ms);
-      writeNeutral();
-      usedReverse = true;
-    }
-    if (!usedReverse) {
-      writeNeutral();
-    }
-  }
-  void dispenseCompartments(int compartmentCount) {
-    if (feedingInProgress) {
-      Serial.println("Feeding already in progress");
-      return;
-    }
-    if (compartmentCount <= 0) {
-      Serial.println("dispenseCompartments ignored: no compartments requested");
-      return;
-    }
-
-    Serial.println("=== STEPPED COMPARTMENT DISPENSING ===");
-    Serial.println("Dispensing " + String(compartmentCount) + " compartments");
-
-    attachServo();
-    feedingInProgress = true;
-    feedingStartTime = millis();
-    feedingDuration = calculateSteppedFeedTime(compartmentCount);
-    if (ledController) ledController->showFeeding();
-
-    for (int i = 0; i < compartmentCount; i++) {
-      unsigned long compartmentTime = calculateOneCompartmentTime();
-      Serial.println("Compartment " + String(i + 1) + "/" + String(compartmentCount) + " -> " + String(compartmentTime) + "ms");
-      writeFeedPulse();
-      serviceDelay(compartmentTime);
-      writeNeutral();
-
-      if (g_settleDelayMs > 0) {
-        Serial.println("  Settling for " + String(g_settleDelayMs) + "ms");
-        serviceDelay(g_settleDelayMs);
-      }
-
-      if (i < compartmentCount - 1 && g_stopReverse1Ms > 0) {
-        applyStopBehavior(false);
-      }
-    }
-
-    applyStopBehavior(true);
-    feedingInProgress = false;
-    feedingStartTime = 0;
-    feedingDuration = 0;
-    lastFeedCompletionTime = millis();
-    if (ledController) ledController->showReady();
-    Serial.println("=== DISPENSING COMPLETE ===");
-  }
-  void dispenseWithAggressiveAntiClog(int compartmentCount) {
-    if (compartmentCount <= 0) return;
-    Serial.println("=== AGGRESSIVE ANTI-CLOG DISPENSE ===");
-    dispenseCompartments(compartmentCount);
-    runAgitationCycle();
-  }
   void startFeeding(unsigned long duration_ms) {
-    if (feedingInProgress) {
-      Serial.println("Feeding already in progress, ignoring request");
-      return;
-    }
-    Serial.print("Starting feeding for "); Serial.print(duration_ms); Serial.println("ms");
-    attachServo();
-    targetPulse       = g_feedPulse;
-    lastPulse         = g_feedPulse;
-    feedingInProgress = true;
-    feedingStartTime  = millis() - SERVO_RAMP_MS;
-    feedingDuration   = duration_ms + SERVO_RAMP_MS;
-    feedingServo.writeMicroseconds(g_feedPulse);
+    if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring request"); return; }
+    Serial.print("Starting feeding for "); Serial.print(duration_ms); Serial.println(" ms");
+    antiClogMode = false;
+    feedingInProgress = true; feedingStartTime = millis(); feedingDuration = duration_ms; if (duration_ms < 2000UL) targetPulse = 1680; else targetPulse = SERVO_FORWARD; if (ledController) ledController->showFeeding(); startServo(); lastAntiJamTs = millis(); antiJamActive = false; retryAttempts = 0;
   }
   void startCalibrationFeed(unsigned long duration_ms) {
     if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring request"); return; }
     Serial.print("Starting calibration feeding for "); Serial.print(duration_ms); Serial.println(" ms");
-    attachServo();
+    antiClogMode = false;
     feedingInProgress = true; 
     feedingStartTime = millis() - SERVO_RAMP_MS; 
     feedingDuration = duration_ms + SERVO_RAMP_MS; 
     targetPulse = g_feedPulse;
     if (ledController) ledController->showFeeding(); 
     feedingServo.writeMicroseconds(targetPulse);
-    lastPulse = targetPulse;
+    lastPulse = targetPulse; lastAntiJamTs = millis(); antiJamActive = false; retryAttempts = 0;
     Serial.print("Calibration feed pulse: "); Serial.println(targetPulse);
   }
-  void stopFeeding() {
-    if (!feedingInProgress) return;
-    Serial.println("Stopping feeding operation");
-    applyStopBehavior(true);
-    feedingInProgress = false;
-    feedingStartTime = 0;
-    feedingDuration = 0;
-    lastFeedCompletionTime = millis();
-    if (ledController) ledController->showReady();
-  }
+  void stopFeeding() { if (!feedingInProgress) return; Serial.println("Stopping feeding operation"); stopServo(); feedingInProgress = false; feedingStartTime = 0; feedingDuration = 0; lastFeedCompletionTime = millis(); if (ledController) ledController->showReady(); }
   bool isFeedingInProgress() { return feedingInProgress; }
   void update() { 
     if (feedingInProgress) { 
       unsigned long now = millis(); 
       unsigned long elapsed = now - feedingStartTime; 
-      unsigned long rampMs = SERVO_RAMP_MS;
-      if (elapsed < rampMs) { 
+      unsigned long rampMs = antiClogMode ? SERVO_RAMP_FAST_MS : SERVO_RAMP_MS;
+      if (antiJamActive) {
+        if ((now - antiJamStart) >= ANTI_JAM_REVERSE_MS) {
+          feedingServo.writeMicroseconds(targetPulse); lastPulse = targetPulse; antiJamActive = false;
+        }
+      } else if (elapsed < rampMs) { 
         unsigned int rampPulse = SERVO_RAMP_START + (unsigned int)((long)(targetPulse - SERVO_RAMP_START) * (long)elapsed / (long)rampMs); 
         if (rampPulse != lastPulse) { feedingServo.writeMicroseconds(rampPulse); lastPulse = rampPulse; } 
       } else if (lastPulse != targetPulse) { 
         feedingServo.writeMicroseconds(targetPulse); lastPulse = targetPulse; 
       } 
+      // Only apply anti-jam to feeds longer than the interval to avoid triggering on short feeds
+      if (!antiJamActive &&
+          feedingDuration > ANTI_JAM_INTERVAL_MS &&
+          (now - lastAntiJamTs) >= ANTI_JAM_INTERVAL_MS) {
+        performAntiJamPulse();
+        // Removed feedingStartTime += ANTI_JAM_REVERSE_MS; - This was causing the over-dispensing bug
+      }
+      if (!clogDetected && elapsed > (feedingDuration + 2000UL)) { 
+        clogDetected = true; Serial.println("WARNING: Possible clog detected - feeding taking too long"); 
+      }
       if (elapsed >= feedingDuration) { 
-        Serial.println("Feeding duration completed"); 
-        stopFeeding(); 
+        if (antiClogMode) { Serial.println("Feeding duration completed, starting clearing phase"); completeFeedingWithClear(); clogDetected = false; } 
+        else { Serial.println("Feeding duration completed"); stopFeeding(); } 
       } 
     } 
   }
   void emergencyStop() { Serial.println("EMERGENCY STOP activated"); stopFeeding(); detachServo(); }
   unsigned long getRemainingFeedTime() { if (!feedingInProgress) return 0; unsigned long elapsed = millis() - feedingStartTime; if (elapsed >= feedingDuration) return 0; return feedingDuration - elapsed; }
-  // startFeedingWithAntiClog removed
-  // Anti-jam/anti-clog helpers removed
-  // Reverse-clear removed
+  void startFeedingWithAntiClog(unsigned long duration_ms) {
+    if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring request"); return; }
+    Serial.print("Starting normal feeding for "); Serial.print(duration_ms); Serial.println(" ms");
+    antiClogMode = false;
+    feedingInProgress = true; 
+    feedingStartTime = millis() - SERVO_RAMP_MS; 
+    feedingDuration = duration_ms + SERVO_RAMP_MS; 
+    targetPulse = g_feedPulse;
+    if (ledController) ledController->showFeeding();
+    feedingServo.writeMicroseconds(targetPulse);
+    lastPulse = targetPulse; lastAntiJamTs = millis(); antiJamActive = false; retryAttempts = 0;
+    Serial.print("Normal feed pulse: "); Serial.println(targetPulse);
+  }
+  void runMiniAgitation() {
+    Serial.println("Mini-agitation disabled");
+  }
+  bool checkForClog() { return clogDetected; }
+  void performAntiJamPulse() {
+    Serial.print("Anti-jam pulse at "); Serial.print((float)ANTI_JAM_INTERVAL_MS / 1000.0f, 1); Serial.println("s...");
+    feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
+    antiJamActive = true;
+    antiJamStart = millis();
+    lastAntiJamTs = antiJamStart;
+  }
+  void startReverseClearFeeding(float totalGrams) {
+    if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring reverse-clear request"); return; }
+    unsigned long totalDuration = calculateFeedingDuration(totalGrams);
+    Serial.println("Reverse-clear disabled; performing single continuous feed");
+    startFeedingWithAntiClog(totalDuration);
+  }
   void testReverseMotion(unsigned long test_ms) {
     Serial.print("Testing reverse motion for "); Serial.print(test_ms); Serial.println(" ms...");
     feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_REVERSE);
@@ -820,8 +373,22 @@ public:
     feedingServo.writeMicroseconds(SERVO_NEUTRAL);
     Serial.println("Forward test complete");
   }
-  // Chunked feeding removed
-  // Clearing phase removed
+  void startChunkedFeeding(float totalGrams) {
+    if (feedingInProgress) { Serial.println("Feeding already in progress, ignoring chunked request"); return; }
+    unsigned long totalDuration = calculateFeedingDuration(totalGrams);
+    Serial.println("Chunked feeding disabled; performing single continuous feed");
+    startFeedingWithAntiClog(totalDuration);
+  }
+  void completeFeedingWithClear() {
+    if (!feedingInProgress) return;
+    Serial.println("Phase 3: Post-dispense clearing");
+    if (servoAttached) { feedingServo.writeMicroseconds(SERVO_ANTI_CLOG_SPEED); delay(ANTI_CLOG_POST_CLEAR_MS); }
+    stopServo(); feedingInProgress = false; feedingStartTime = 0; feedingDuration = 0; lastFeedCompletionTime = millis(); antiClogMode = false;
+    if (ledController) ledController->showReady();
+    Serial.println("╔════════════════════════════════════╗");
+    Serial.println("║   FEEDING COMPLETE                ║");
+    Serial.println("╚════════════════════════════════════╝\n");
+  }
   void runAgitationCycle() {
     Serial.println("=== AGITATION CYCLE START (FORWARD ONLY) ===");
     for (int i = 0; i < 5; i++) {
@@ -830,331 +397,54 @@ public:
     }
     Serial.println("=== AGITATION CYCLE COMPLETE ===");
   }
-  bool isDispensePhaseActive() {
-    if (!feedingInProgress) return false;
-    unsigned long elapsed = millis() - feedingStartTime;
-    return elapsed < feedingDuration;
-  }
 };
 
-bool loadWifiCredentials(String& ssidOut, String& passOut);
-void saveWifiCredentials(const String& ssid, const String& pass);
-void clearWifiCredentials();
-
+// Inlined NetworkingModule.h/.cpp with wrappers for firmware method names
 class NetworkingManager {
 private:
-  String deviceID;
-  bool wifiConnected;
-  unsigned long lastConnectionAttempt;
-  unsigned long lastStatusPrint;
-  int lastStatusSeen;
-  LedController* ledController;
-  bool configMode;
-  bool hasCredentialsVal;
-  String storedSsid;
-  String storedPass;
-  ESP8266WebServer* configServer;
-  String apSsid;
-  unsigned long offlineSince;
-  DNSServer* dnsServer;
-  IPAddress apIp;
-  IPAddress apGw;
-  IPAddress apMask;
+  ESP8266WebServer webServer; DNSServer dnsServer; String wifiSSID; String wifiPassword; String deviceID; bool configurationMode; bool wifiConnected; unsigned long lastConnectionAttempt; unsigned long configModeStartTime; LedController* ledController;
+public:
+  NetworkingManager() : webServer(80), dnsServer(), wifiSSID(""), wifiPassword(""), deviceID(""), configurationMode(false), wifiConnected(false), lastConnectionAttempt(0), configModeStartTime(0), ledController(nullptr) {}
+  void init(LedController* ledCtrl) { Serial.println("Initializing Wi-Fi Configuration Manager..."); ledController = ledCtrl; EEPROM.begin(EEPROM_SIZE); generateDeviceID(); WiFi.mode(WIFI_STA); Serial.print("Device ID: "); Serial.println(deviceID); Serial.println("Wi-Fi Configuration Manager initialized"); }
+  void loadConfiguration() { Serial.println("Loading Wi-Fi configuration..."); byte configFlag = EEPROM.read(CONFIG_FLAG_ADDR); if (configFlag != 0xAA) { Serial.println("No saved configuration found"); return; } char ssidBuffer[MAX_SSID_LENGTH + 1]; for (int i = 0; i < MAX_SSID_LENGTH; i++) { ssidBuffer[i] = EEPROM.read(WIFI_SSID_ADDR + i); if (ssidBuffer[i] == 0) break; } ssidBuffer[MAX_SSID_LENGTH] = 0; wifiSSID = String(ssidBuffer); char passBuffer[MAX_PASS_LENGTH + 1]; for (int i = 0; i < MAX_PASS_LENGTH; i++) { passBuffer[i] = EEPROM.read(WIFI_PASS_ADDR + i); if (passBuffer[i] == 0) break; } passBuffer[MAX_PASS_LENGTH] = 0; wifiPassword = String(passBuffer); Serial.print("Loaded SSID: "); Serial.println(wifiSSID); }
+  void saveConfiguration() { Serial.println("Saving Wi-Fi configuration..."); for (int i = 0; i < MAX_SSID_LENGTH; i++) { if (i < wifiSSID.length()) EEPROM.write(WIFI_SSID_ADDR + i, wifiSSID[i]); else EEPROM.write(WIFI_SSID_ADDR + i, 0); } for (int i = 0; i < MAX_PASS_LENGTH; i++) { if (i < wifiPassword.length()) EEPROM.write(WIFI_PASS_ADDR + i, wifiPassword[i]); else EEPROM.write(WIFI_PASS_ADDR + i, 0); } EEPROM.write(CONFIG_FLAG_ADDR, 0xAA); EEPROM.commit(); Serial.println("Configuration saved to EEPROM"); }
+  bool isConfigured() { return (wifiSSID.length() > 0 && wifiPassword.length() > 0); }
+  void connectToWiFi() { Serial.print("Connecting to Wi-Fi: "); Serial.println(wifiSSID); WiFi.mode(WIFI_STA); WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str()); lastConnectionAttempt = millis(); wifiConnected = false; }
+  void handleWiFiConnection() { if (WiFi.status() == WL_CONNECTED && !wifiConnected) { wifiConnected = true; Serial.println("Wi-Fi connected successfully!"); Serial.print("IP address: "); Serial.println(WiFi.localIP()); if (ledController) ledController->showReady(); } else if (WiFi.status() != WL_CONNECTED && wifiConnected) { wifiConnected = false; Serial.println("Wi-Fi connection lost"); if (ledController) ledController->showConnecting(); }
+    if (!wifiConnected && (millis() - lastConnectionAttempt > WIFI_TIMEOUT_MS)) { Serial.println("Wi-Fi connection timeout, starting configuration mode"); startConfigMode(); }
+  }
+  bool isConnected() { return wifiConnected; }
+  void startConfigMode() { Serial.println("Starting Wi-Fi configuration mode..."); configurationMode = true; configModeStartTime = millis(); WiFi.disconnect(); String apName = String("ESP8266-Config-") + deviceID.substring(0, 6); WiFi.mode(WIFI_AP); WiFi.softAP(apName.c_str()); Serial.print("Configuration AP started: "); Serial.println(apName); Serial.print("AP IP address: "); Serial.println(WiFi.softAPIP()); setupConfigServer(); dnsServer.start(53, "*", WiFi.softAPIP()); Serial.println("Configuration portal ready"); if (ledController) ledController->showConfigMode(); }
+  void handleConfigMode() { dnsServer.processNextRequest(); webServer.handleClient(); if (millis() - configModeStartTime > CONFIG_TIMEOUT_MS) { Serial.println("Configuration mode timeout, restarting..."); ESP.restart(); } }
+  bool isConfigMode() { return configurationMode; }
+  String getDeviceID() { return deviceID; }
 
+  // Wrappers to match firmware.ino usage
+  void startConfigurationMode() { startConfigMode(); }
+  void handleConfigurationMode() { handleConfigMode(); }
+  bool connect() { connectToWiFi(); unsigned long start = millis(); while (millis() - start < WIFI_TIMEOUT_MS) { handleWiFiConnection(); if (isConnected()) return true; delay(100); } return false; }
+  void update() { if (isConfigMode()) handleConfigMode(); else handleWiFiConnection(); }
+
+private:
+  void setupConfigServer() { webServer.on("/", [this]() { handleConfigRoot(); }); webServer.on("/save", HTTP_POST, [this]() { handleConfigSave(); }); webServer.on("/ping", HTTP_GET, [this]() { webServer.send(200, "text/plain", "OK"); }); webServer.onNotFound([this]() { handleConfigRoot(); }); webServer.begin(); }
+  void handleConfigRoot() { webServer.send(200, "text/html", getConfigPage()); }
+  void handleConfigSave() { if (webServer.hasArg("ssid") && webServer.hasArg("password")) { wifiSSID = webServer.arg("ssid"); wifiPassword = webServer.arg("password"); Serial.print("Received SSID: "); Serial.println(wifiSSID); saveConfiguration(); webServer.send(200, "text/html", "Configuration saved! Device will restart..."); delay(2000); ESP.restart(); } else { webServer.send(400, "text/plain", "Missing parameters"); } }
+  String getConfigPage() {
+    String page = "<html><head><title>ESP8266 Config</title></head><body>";
+    page += "<h1>ESP8266 Pet Feeder Configuration</h1>";
+    page += "<form method=\"POST\" action=\"/save\">";
+    page += "SSID: <input type=\"text\" name=\"ssid\"><br>";
+    page += "Password: <input type=\"password\" name=\"password\"><br>";
+    page += "<input type=\"submit\" value=\"Save\"></form>";
+    page += "</body></html>";
+    return page;
+  }
   void generateDeviceID() {
     uint32_t chipId = ESP.getChipId();
     char id[16];
     sprintf(id, "%08X", chipId);
     deviceID = String(id);
-    Serial.print("Device ID: ");
-    Serial.println(deviceID);
   }
-
-  static String htmlEscape(const String& in) {
-    String out;
-    out.reserve(in.length() + 8);
-    for (size_t i = 0; i < in.length(); i++) {
-      char c = in[i];
-      if (c == '&') out += "&amp;";
-      else if (c == '<') out += "&lt;";
-      else if (c == '>') out += "&gt;";
-      else if (c == '\"') out += "&quot;";
-      else out += c;
-    }
-    return out;
-  }
-
-  static String urlEncode(const String& in) {
-    const char* hex = "0123456789ABCDEF";
-    String out;
-    for (size_t i = 0; i < in.length(); i++) {
-      uint8_t c = (uint8_t)in[i];
-      bool safe = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-                  (c >= '0' && c <= '9') || c == '-' || c == '_' ||
-                  c == '.' || c == '~';
-      if (safe) out += (char)c;
-      else {
-        out += '%';
-        out += hex[(c >> 4) & 0x0F];
-        out += hex[c & 0x0F];
-      }
-    }
-    return out;
-  }
-
-  static const char* encTypeStr(uint8_t e) {
-    switch (e) {
-      case ENC_TYPE_NONE: return "OPEN";
-      case ENC_TYPE_WEP: return "WEP";
-      case ENC_TYPE_TKIP: return "WPA/TKIP";
-      case ENC_TYPE_CCMP: return "WPA2/CCMP";
-      case ENC_TYPE_AUTO: return "AUTO";
-      default: return "?";
-    }
-  }
-
-  void startConfigPortal() {
-    if (configServer) return;
-    configMode = true;
-    WiFi.mode(WIFI_OFF);
-    delay(100);
-    WiFi.mode(WIFI_AP);
-    delay(200);
-    // Explicit AP IP configuration for better client compatibility
-    WiFi.softAPConfig(apIp, apGw, apMask);
-    String suffix = deviceID;
-    if (suffix.length() > 4) suffix = suffix.substring(suffix.length() - 4);
-    apSsid = String("PETio-Setup-") + suffix;
-    WiFi.softAP(apSsid.c_str());
-    // Start DNS server to capture all hostnames and resolve to our AP IP
-    if (!dnsServer) dnsServer = new DNSServer();
-    dnsServer->setErrorReplyCode(DNSReplyCode::NoError);
-    dnsServer->start(53, "*", apIp);
-    configServer = new ESP8266WebServer(80);
-    configServer->on("/", [this]() {
-      String ssidPref = "";
-      if (configServer->hasArg("ssid")) ssidPref = configServer->arg("ssid");
-      String ssidVal = htmlEscape(ssidPref);
-      String html =
-        "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'/>"
-        "<title>WiFi Setup</title><style>body{font-family:Arial;margin:20px}input{padding:8px;margin:6px 0;width:100%}"
-        "button{padding:10px 14px}</style></head><body>"
-        "<h2>WiFi Setup</h2>"
-        "<p><a href='/scan'>Scan for networks</a></p>"
-        "<form method='POST' action='/save'>"
-        "<label>SSID</label><input name='ssid' value='" + ssidVal + "' maxlength='" + String(WIFI_SSID_MAX_LEN - 1) + "' required/>"
-        "<label>Password</label><input name='pass' type='password' maxlength='" + String(WIFI_PASS_MAX_LEN - 1) + "'/>"
-        "<button type='submit'>Save</button></form>"
-        "</body></html>";
-      configServer->send(200, "text/html", html);
-    });
-    // Captive portal helpers for common OS probes
-    configServer->on("/generate_204", [this]() {
-      String loc = String("http://") + apIp.toString() + String("/");
-      configServer->sendHeader("Cache-Control", "no-cache");
-      configServer->sendHeader("Location", loc, true);
-      configServer->send(302, "text/plain", "");
-    });
-    configServer->on("/hotspot-detect.html", [this]() {
-      configServer->send(200, "text/html", "<html><head><meta http-equiv='refresh' content='0; url=/' /></head><body>OK</body></html>");
-    });
-    configServer->on("/ncsi.txt", [this]() {
-      configServer->send(200, "text/plain", "Microsoft NCSI");
-    });
-    configServer->on("/connecttest.txt", [this]() {
-      configServer->send(200, "text/plain", "OK");
-    });
-    configServer->onNotFound([this]() {
-      String loc = String("http://") + apIp.toString() + String("/");
-      configServer->sendHeader("Cache-Control", "no-cache");
-      configServer->sendHeader("Location", loc, true);
-      configServer->send(302, "text/plain", "");
-    });
-    configServer->on("/scan", [this]() {
-      Serial.println("Scanning for networks...");
-      int n = WiFi.scanNetworks();
-      String html =
-        "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'/>"
-        "<title>Network Scan</title><style>body{font-family:Arial;margin:20px}table{border-collapse:collapse;width:100%}"
-        "th,td{border:1px solid #ccc;padding:6px;text-align:left}</style></head><body>"
-        "<h2>Nearby Networks</h2>"
-        "<p><a href='/'>&larr; Back to setup</a> | <a href='/scan'>Refresh</a></p>"
-        "<table><tr><th>SSID</th><th>RSSI</th><th>Security</th><th></th></tr>";
-      for (int i = 0; i < n; i++) {
-        String ssid = WiFi.SSID(i);
-        if (ssid.length() == 0) continue;
-        long rssi = WiFi.RSSI(i);
-        uint8_t enc = WiFi.encryptionType(i);
-        String esc = htmlEscape(ssid);
-        String link = String("/?ssid=") + urlEncode(ssid);
-        html += "<tr><td>" + esc + "</td><td>" + String(rssi) + " dBm</td><td>" + String(encTypeStr(enc)) + "</td>"
-                "<td><a href='" + link + "'>Use</a></td></tr>";
-      }
-      html += "</table></body></html>";
-      configServer->send(200, "text/html", html);
-    });
-    configServer->on("/save", [this]() {
-      if (!configServer->hasArg("ssid")) { configServer->send(400, "text/plain", "Missing ssid"); return; }
-      String ssid = configServer->arg("ssid");
-      String pass = configServer->arg("pass");
-      saveWifiCredentials(ssid, pass);
-      storedSsid = ssid;
-      storedPass = pass;
-      hasCredentialsVal = true;
-      String resp = String("Saved. Connecting to ") + ssid + String(" ...");
-      configServer->send(200, "text/plain", resp);
-      delay(200);
-      stopConfigPortal();
-      connect();
-    });
-    configServer->begin();
-    if (ledController) ledController->showError();
-    Serial.print("AP started: ");
-    Serial.println(apSsid);
-  }
-
-  void stopConfigPortal() {
-    if (configServer) {
-      configServer->stop();
-      delete configServer;
-      configServer = nullptr;
-    }
-    if (dnsServer) {
-      dnsServer->stop();
-      delete dnsServer;
-      dnsServer = nullptr;
-    }
-    WiFi.softAPdisconnect(true);
-    configMode = false;
-  }
-
-public:
-  NetworkingManager()
-    : deviceID(""), wifiConnected(false),
-      lastConnectionAttempt(0), lastStatusPrint(0), lastStatusSeen(-1), ledController(nullptr),
-      configMode(false), hasCredentialsVal(false), storedSsid(""), storedPass(""), configServer(nullptr), apSsid(""), offlineSince(0),
-      dnsServer(nullptr), apIp(192,168,4,1), apGw(192,168,4,1), apMask(255,255,255,0) {}
-
-  void init(LedController* ledCtrl) {
-    ledController = ledCtrl;
-    WiFi.persistent(false);
-    WiFi.setAutoConnect(false);
-    WiFi.setAutoReconnect(true);
-    WiFi.mode(WIFI_OFF);
-    delay(100);
-    generateDeviceID();
-    Serial.println("Networking initialized");
-    String ssid, pass;
-    if (loadWifiCredentials(ssid, pass)) {
-      storedSsid = ssid;
-      storedPass = pass;
-      hasCredentialsVal = true;
-    } else {
-      hasCredentialsVal = false;
-    }
-  }
-
-  void begin() {
-    if (hasCredentialsVal) {
-      connect();
-    } else {
-      startConfigPortal();
-    }
-  }
-
-  void connect() {
-    if (!hasCredentialsVal) {
-      startConfigPortal();
-      return;
-    }
-    Serial.print("Connecting to saved WiFi: ");
-    Serial.println(storedSsid);
-    // Ensure any AP is fully shut down before switching to STA-only
-    WiFi.softAPdisconnect(true);
-    delay(100);
-    WiFi.mode(WIFI_STA);  // STA only — never AP/AP_STA here
-    delay(100);
-    WiFi.disconnect();
-    delay(50);
-    WiFi.begin(storedSsid.c_str(), storedPass.length() > 0 ? storedPass.c_str() : nullptr);
-    lastConnectionAttempt = millis();
-    lastStatusPrint = 0;
-    lastStatusSeen = -1;
-    wifiConnected = false;
-  }
-
-  void reconnectNonBlocking() {
-    if (!hasCredentialsVal) return;
-    Serial.println("Reconnecting to WiFi");
-    WiFi.mode(WIFI_STA);
-    delay(100);
-    WiFi.disconnect();
-    delay(50);
-    WiFi.begin(storedSsid.c_str(), storedPass.length() > 0 ? storedPass.c_str() : nullptr);
-    lastConnectionAttempt = millis();
-    lastStatusPrint = 0;
-    lastStatusSeen = -1;
-    wifiConnected = false;
-  }
-
-  void update() {
-    if (configMode && configServer) {
-      if (dnsServer) dnsServer->processNextRequest();
-      configServer->handleClient();
-    }
-    if (WiFi.status() == WL_CONNECTED && !wifiConnected) {
-      wifiConnected = true;
-      offlineSince = 0;
-      Serial.println("WiFi connected!");
-      Serial.print("IP address: ");
-      Serial.println(WiFi.localIP());
-      if (ledController) ledController->showReady();
-      if (configMode) stopConfigPortal();
-    } else if (WiFi.status() != WL_CONNECTED && wifiConnected) {
-      wifiConnected = false;
-      offlineSince = millis();
-      Serial.println("WiFi connection lost");
-      if (ledController) ledController->showConnecting();
-    } else if (WiFi.status() != WL_CONNECTED) {
-      unsigned long now = millis();
-      int s = WiFi.status();
-      if (s != lastStatusSeen || (now - lastStatusPrint) > 3000) {
-        lastStatusSeen = s;
-        lastStatusPrint = now;
-        Serial.print("WiFi status: ");
-        switch (s) {
-          case WL_CONNECT_FAILED:
-            Serial.println("WRONG PASSWORD");
-            if (!configMode && hasCredentialsVal) {
-              Serial.println("Starting configuration portal due to wrong WiFi password");
-              startConfigPortal();
-            }
-            break;
-          case WL_NO_SSID_AVAIL: Serial.println("SSID NOT FOUND"); break;
-          case WL_IDLE_STATUS: Serial.println("CONNECTING..."); break;
-          case WL_DISCONNECTED: Serial.println("DISCONNECTED"); break;
-          default: Serial.println("CODE " + String(s)); break;
-        }
-      }
-      if (!configMode && hasCredentialsVal && (now - lastConnectionAttempt) > WIFI_TIMEOUT_MS) {
-        reconnectNonBlocking();
-      }
-      if (!configMode && hasCredentialsVal && offlineSince != 0) {
-        if ((now - offlineSince) > FALLBACK_AP_AFTER_MS) {
-          startConfigPortal();
-        }
-      }
-    }
-  }
-
-  bool isConnected() { return wifiConnected; }
-  bool isConfigured() { return hasCredentialsVal; }
-  bool isConfigMode() { return configMode; }
-  String getDeviceID() { return deviceID; }
-  String getSSID() { return storedSsid; }
-  void enterConfigMode() { startConfigPortal(); }
-  void clearCredentials() { clearWifiCredentials(); hasCredentialsVal = false; storedSsid = ""; storedPass = ""; }
-  int getLastConnectionStatus() { return WiFi.status(); }
 };
 
 extern int dailyFeeds;
@@ -1163,7 +453,7 @@ extern String lastFeedIso;
 // Inlined httpclient.h/.cpp
 class HTTPClientManager {
 private:
-  HTTPClient http; WiFiClient wifiClientPlain; WiFiClientSecure wifiClientTLS; String serverURL; String deviceID; unsigned long requestTimeout; int maxRetries; String lastError; String apiKey; String deviceKey;
+  HTTPClient http; WiFiClient wifiClientPlain; WiFiClientSecure wifiClientTLS; String serverURL; String deviceID; unsigned long requestTimeout; int maxRetries; String lastError; String apiKey;
   String canonicalize(const String& input) { String s = input; s.trim(); return s; }
   bool makeRequest(const String& endpoint, const String& method, const String& payload, String& response) {
     if (!WiFi.isConnected()) { lastError = "WiFi not connected"; return false; }
@@ -1178,14 +468,12 @@ private:
       } else {
         http.begin(wifiClientPlain, fullURL);
       }
-      http.setTimeout(requestTimeout); http.addHeader("Content-Type", "application/json"); http.addHeader("User-Agent", "ESP8266-PetFeeder/1.0"); http.addHeader("Connection", "close"); http.useHTTP10(true); http.setReuse(false);
-      if (deviceID.length() > 0) { http.addHeader("Device-ID", deviceID); }
-      if (deviceKey.length() > 0) { http.addHeader("X-Device-Key", deviceKey); }
+      http.setTimeout(requestTimeout); http.addHeader("Content-Type", "application/json"); http.addHeader("User-Agent", "ESP8266-PetFeeder/1.0");
       if (apiKey.length() > 0) { http.addHeader("X-API-Key", apiKey); }
       int httpCode = -1; if (method == "POST") httpCode = http.POST(payload); else if (method == "GET") httpCode = http.GET();
       if (httpCode > 0) { response = http.getString(); http.end(); if (httpCode >= 200 && httpCode < 300) { lastError = ""; return true; } else { lastError = "HTTP " + String(httpCode) + ": " + response; } }
-      else { lastError = "HTTP request failed: " + String(http.errorToString(httpCode)); }
-      http.end(); if (attempt < maxRetries - 1) { Serial.println("Request failed, retrying shortly..."); delay(250); }
+      else { lastError = "HTTP request failed: " + String(httpCode); }
+      http.end(); if (attempt < maxRetries - 1) { Serial.println("Request failed, retrying shortly..."); delay(100); }
     }
     return false;
   }
@@ -1201,35 +489,15 @@ private:
     }
   }
   String createFeedingPayload(int portionSize, const String& feedType, const String& notes = "") {
-    DynamicJsonDocument doc(512);
-    doc["device_id"] = deviceID;
-    doc["timestamp"] = nowUtcIso();
-    doc["portion_dispensed"] = portionSize;
-    doc["source"] = feedType;
-    if (notes.length() > 0) doc["notes"] = notes;
-    String payload; serializeJson(doc, payload); return payload;
+    DynamicJsonDocument doc(512); doc["timestamp"] = nowUtcIso(); doc["portion_dispensed"] = portionSize; doc["source"] = feedType; String payload; serializeJson(doc, payload); return payload;
   }
   String createScheduledFeedingPayload(int portionSize, const String& feedType, uint32_t /*scheduleId*/, const String& /*notes*/ = "") {
-    DynamicJsonDocument doc(256);
-    doc["device_id"] = deviceID;
-    doc["timestamp"] = nowUtcIso();
-    doc["portion_dispensed"] = portionSize;
-    doc["source"] = "scheduled";
-    String payload; serializeJson(doc, payload); return payload;
+    DynamicJsonDocument doc(256); doc["timestamp"] = nowUtcIso(); doc["portion_dispensed"] = portionSize; doc["source"] = "scheduled"; String payload; serializeJson(doc, payload); return payload;
   }
 public:
   HTTPClientManager() : requestTimeout(HTTP_TIMEOUT_MS), maxRetries(HTTP_MAX_RETRIES), lastError("") {}
   void init(const String& serverUrl, const String& devID) { serverURL = canonicalize(serverUrl); deviceID = devID; if (!serverURL.endsWith("/api")) { if (!serverURL.endsWith("/")) serverURL += "/"; serverURL += "api"; } wifiClientTLS.setInsecure(); Serial.println("HTTP Client initialized:"); Serial.println("Server URL: " + serverURL); Serial.println("Device ID: " + deviceID); }
   void setApiKey(const String& key) { apiKey = key; Serial.println("API key configured (length): " + String(apiKey.length())); }
-  void setDeviceKey(const String& key) { deviceKey = key; Serial.println("Device key configured (length): " + String(deviceKey.length())); }
-  bool hasApiKey() const { return apiKey.length() > 0; }
-  bool deviceUnpairSelf() {
-    DynamicJsonDocument doc(128);
-    doc["device_id"] = deviceID;
-    String payload; serializeJson(doc, payload);
-    String resp;
-    return makeRequest("/device/unpair/", "POST", payload, resp);
-  }
   bool sendFeedingLog(int portionSize, const String& feedType, const String& notes = "") { String payload = createFeedingPayload(portionSize, feedType, notes); String response; Serial.println("Sending feeding log to server..."); printPretty(payload); return makeRequest("/device/logs/", "POST", payload, response); }
   bool sendDeviceStatus(const String& /*status*/, int /*batteryLevel*/ = 100, int wifiSignal = -50) { DynamicJsonDocument doc(512); doc["device_id"] = deviceID; doc["wifi_rssi"] = wifiSignal; doc["uptime"] = (int)(millis()/1000); doc["daily_feeds"] = dailyFeeds; if (lastFeedIso.length() > 0) doc["last_feed"] = lastFeedIso; doc["error_message"] = ""; String payload; serializeJson(doc, payload); String response; bool success = makeRequest("/device/status/", "POST", payload, response); if (success) { Serial.println("Device status sent successfully"); return true; } else { Serial.println("Failed to send device status: " + lastError); return false; } }
   bool getDeviceConfig(String& configResponse) { String endpoint = String("/device/config/?device_id=") + deviceID; Serial.println("Requesting device configuration..."); bool success = makeRequest(endpoint, "GET", "", configResponse); if (success) { Serial.println("Device configuration retrieved successfully"); return true; } else { Serial.println("Failed to get device configuration: " + lastError); return false; } }
@@ -1256,35 +524,12 @@ public:
     if (makeRequest("/device/command/ack/", "POST", payload, response)) return true; 
     return makeRequest("/device/acknowledge/", "POST", payload, response); 
   }
-  bool pairRegister(const String& pin, int ttl_seconds) {
-    DynamicJsonDocument doc(256);
-    doc["device_id"] = deviceID;
-    doc["pin"] = pin;
-    doc["ttl_seconds"] = ttl_seconds;
-    String payload; serializeJson(doc, payload);
-    String resp;
-    bool ok = makeRequest("/device/pair/register/", "POST", payload, resp);
-    if (!ok && lastError.indexOf("409") >= 0) {
-      Serial.println("Device already paired on server (409) - skipping to claim poll");
-      return true;
-    }
-    return ok;
-  }
-  bool pairClaimed(const String& pin, String& keyOut) {
-    String endpoint = String("/device/pair/claimed/?device_id=") + deviceID + String("&pin=") + pin;
-    String resp; if (!makeRequest(endpoint, "GET", "", resp)) return false;
-    DynamicJsonDocument doc(256);
-    if (deserializeJson(doc, resp)) return false;
-    keyOut = String((const char*)doc["api_key"]);
-    return keyOut.length() > 0;
-  }
 };
 
 // Global objects
 NetworkingManager network;
 LedController ledController;
 MotorController motorController;
-OledDisplay oledDisplay;
 HTTPClientManager httpClient;  // Added HTTP client for backend communication
 
 // NTP Client for time synchronization
@@ -1295,7 +540,6 @@ HTTPClientManager httpClient;  // Added HTTP client for backend communication
 unsigned long lastStatusUpdate = 0;
 unsigned long lastSchedulePoll = 0;
 unsigned long lastNTPUpdate = 0;
-bool ntpSynced = false;
 uint32_t lastExecutedScheduleId = 0;
 int dailyFeeds = 0;
 String lastFeedIso = "";
@@ -1305,13 +549,8 @@ unsigned long manualSuppressUntil = 0;
 unsigned long networkBackoffUntil = 0;
 bool manualLogPending = false;
 int manualLogPortion = 0;
-unsigned long networkBackoffMs = 60000;
-const unsigned long MIN_NETWORK_BACKOFF_MS = 60000;
-const unsigned long MAX_NETWORK_BACKOFF_MS = 300000;
-unsigned long lastCommandPoll = 0;
-unsigned long lastReconnectAttempt = 0;
-const unsigned long RECONNECT_INTERVAL_MS = 30000;
-float activeFeedPortionGrams = 0.0f;
+unsigned long lastButtonActivityMs = 0;
+const unsigned long NETWORK_BACKOFF_MS = 60000;
 
 // Error handling and retry logic
 int consecutiveNetworkErrors = 0;
@@ -1321,123 +560,16 @@ const unsigned long STATUS_UPDATE_INTERVAL = 60000;  // Send status every 60 sec
 const unsigned long CONFIG_SYNC_INTERVAL = 300000;   // Sync config every 5 minutes
 
 
-String g_deviceKey = "";
-bool g_pairingActive = false;
-String g_pairPin = "";
-unsigned long g_pairExpireMs = 0;
-unsigned long g_lastPairPoll = 0;
-bool g_pairRegistered = false;
-
-static inline bool hasDeviceAuth() {
-  // Always accept provisioned device key (paired device)
-  if (g_deviceKey.length() > 0) return true;
-  // In DEV_MODE only: fall back to legacy API key so you can
-  // test polling endpoints without completing the pairing flow
-  #if DEV_ALLOW_LEGACY_FOR_POLL
-    if (httpClient.hasApiKey()) {
-      return true;
-    }
-  #endif
-  // Production: no device key = not authorized
-  return false;
-}
-
-String loadDeviceKey() {
-  if (EEPROM.read(API_KEY_FLAG_ADDR) != 0xDA) return "";
-  char buf[API_KEY_MAX_LEN + 1];
-  for (int i = 0; i < API_KEY_MAX_LEN; i++) {
-    buf[i] = (char)EEPROM.read(API_KEY_ADDR + i);
-  }
-  buf[API_KEY_MAX_LEN] = 0;
-  String s = String(buf); s.trim(); return s;
-}
-void saveDeviceKey(const String& key) {
-  int n = min((int)key.length(), API_KEY_MAX_LEN - 1);
-  for (int i = 0; i < API_KEY_MAX_LEN; i++) {
-    char c = (i < n) ? key[i] : 0;
-    EEPROM.write(API_KEY_ADDR + i, c);
-  }
-  EEPROM.write(API_KEY_FLAG_ADDR, 0xDA);
-  EEPROM.commit();
-}
-void clearDeviceKey() {
-  for (int i = 0; i < API_KEY_MAX_LEN; i++) EEPROM.write(API_KEY_ADDR + i, 0);
-  EEPROM.write(API_KEY_FLAG_ADDR, 0x00);
-  EEPROM.commit();
-}
-String genPin6() {
-  unsigned long r = ((unsigned long)ESP.getChipId() ^ micros()) ^ random(0xFFFFFF);
-  int v = (int)(r % 1000000UL);
-  char b[7]; snprintf(b, sizeof(b), "%06d", v);
-  return String(b);
-}
-
-String eepromReadString(int baseAddr, int maxLen) {
-  char buf[128];
-  int n = maxLen;
-  if (n > (int)sizeof(buf) - 1) n = sizeof(buf) - 1;
-  for (int i = 0; i < n; i++) {
-    buf[i] = (char)EEPROM.read(baseAddr + i);
-  }
-  buf[n] = 0;
-  String s = String(buf);
-  s.trim();
-  return s;
-}
-
-void eepromWriteString(int baseAddr, int maxLen, const String& value) {
-  int n = min((int)value.length(), maxLen - 1);
-  for (int i = 0; i < maxLen; i++) {
-    char c = (i < n) ? value[i] : 0;
-    EEPROM.write(baseAddr + i, c);
-  }
-  EEPROM.commit();
-}
-
-bool loadWifiCredentials(String& ssidOut, String& passOut) {
-  if (EEPROM.read(WIFI_FLAG_ADDR) != 0xA5) return false;
-  String ssid = eepromReadString(WIFI_SSID_ADDR, WIFI_SSID_MAX_LEN);
-  String pass = eepromReadString(WIFI_PASS_ADDR, WIFI_PASS_MAX_LEN);
-  if (ssid.length() == 0) return false;
-  ssidOut = ssid;
-  passOut = pass;
-  return true;
-}
-
-void saveWifiCredentials(const String& ssid, const String& pass) {
-  eepromWriteString(WIFI_SSID_ADDR, WIFI_SSID_MAX_LEN, ssid);
-  eepromWriteString(WIFI_PASS_ADDR, WIFI_PASS_MAX_LEN, pass);
-  EEPROM.write(WIFI_FLAG_ADDR, 0xA5);
-  EEPROM.commit();
-}
-
-void clearWifiCredentials() {
-  for (int i = 0; i < WIFI_SSID_MAX_LEN; i++) EEPROM.write(WIFI_SSID_ADDR + i, 0);
-  for (int i = 0; i < WIFI_PASS_MAX_LEN; i++) EEPROM.write(WIFI_PASS_ADDR + i, 0);
-  EEPROM.write(WIFI_FLAG_ADDR, 0x00);
-  EEPROM.commit();
-}
-
 void setup() {
   Serial.begin(115200);
   Serial.println("ESP8266 Pet Feeder Starting with Step D Features...");
-  #if DEV_MODE
-    Serial.println("*** DEV MODE ACTIVE ***");
-    Serial.println("Server: " DEFAULT_SERVER_URL);
-    Serial.println("Legacy auth: ENABLED");
-    Serial.println("To switch to production: set DEV_MODE 0 and reflash");
-  #else
-    Serial.println("*** PRODUCTION MODE ***");
-    Serial.println("Server: " DEFAULT_SERVER_URL);
-    Serial.println("Auth: device key only");
-  #endif
 
   // Initialize EEPROM for schedule tracking
   EEPROM.begin(EEPROM_SIZE);
   loadCalibration();
-  if (g_msPerComp < 200 || g_msPerComp > 5000 || isnan(g_gramsPerComp) || g_gramsPerComp < 1.0f || g_gramsPerComp > 100.0f) {
+  if (isnan(g_msPerGram) || g_msPerGram < 10.0f || g_msPerGram > 200.0f || g_startupDelay > 1000) {
     Serial.println("Auto-resetting calibration to defaults due to unreasonable values");
-    saveCalibration(GRAMS_PER_COMP_DEFAULT, MS_PER_COMP_DEFAULT);
+    saveCalibration(MS_PER_GRAM_CALIBRATED, STARTUP_DELAY_MS);
   }
   // Optional: direction test during development
   #define SERVO_DIRECTION_TEST 0
@@ -1451,16 +583,7 @@ void setup() {
 
   // Initialize motor controller with LED reference
   motorController.init(&ledController);
-  oledDisplay.init();
-  // Enforce minimum of exactly one compartment (runtime value)
-  float effectiveMin = max(MANUAL_PORTION_MIN_GRAMS, g_gramsPerComp);
-  manualPortionGrams = actualPortionGrams(manualPortionGrams);
-  manualPortionGrams = constrain(manualPortionGrams, 
-    effectiveMin, MANUAL_PORTION_MAX_GRAMS);
   manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
-  Serial.println("Boot portion: " + String(manualPortionGrams, 1) + "g"
-    + " (" + String(max(1,(int)((manualPortionGrams/g_gramsPerComp)+0.5f)))
-    + " comp) " + String(manualFeedDurationMs) + "ms");
   #if SERVO_DIRECTION_TEST
     motorController.runAgitationCycle(); // Light motion test; replace with dedicated direction test if needed
   #endif
@@ -1472,75 +595,36 @@ void setup() {
 
   // Initialize networking with LED reference
   network.init(&ledController);
+  network.loadConfiguration();
 
   // Initialize HTTP client for Django backend communication
-  {
-    String devId = network.getDeviceID();
-    if (!devId.startsWith("ESP-")) {
-      devId = String("ESP-") + devId;
-    }
-    httpClient.init(DEFAULT_SERVER_URL, devId);
-  }
+  httpClient.init(DEFAULT_SERVER_URL, DEFAULT_DEVICE_ID);
   httpClient.setApiKey(DEFAULT_API_KEY);
 
-  network.begin();
-
-  // Wait up to 30 seconds for initial connection
-  unsigned long connectStart = millis();
-  while (!network.isConfigMode() && WiFi.status() != WL_CONNECTED &&
-         millis() - connectStart < WIFI_TIMEOUT_MS) {
-    network.update();
-    delay(100);
+  if (!network.isConfigured()) {
+    Serial.println("No Wi-Fi credentials found, starting configuration mode");
+    network.startConfigurationMode();
+    
+    while (!network.isConfigured()) {
+      network.handleConfigurationMode();
+      delay(100);
+    }
   }
 
-  if (network.isConnected()) {
-    Serial.println("WiFi connected successfully");
+  // Connect to Wi-Fi
+  Serial.println("Connecting to Wi-Fi...");
+  ledController.showConnecting();
+  
+  if (network.connect()) {
+    Serial.println("Wi-Fi connected successfully");
     ledController.showReady();
+    
+    // Initialize NTP time synchronization
     initializeNTP();
-    lastSchedulePoll = millis() - SCHEDULE_POLL_INTERVAL;
-    lastCommandPoll = millis() - COMMAND_POLL_INTERVAL;
-    lastStatusUpdate = millis() - STATUS_UPDATE_INTERVAL;
-#if FORCE_PAIR_ON_BOOT
-    clearDeviceKey();
-#endif
-    g_deviceKey = loadDeviceKey();
-    if (g_deviceKey.length() > 0) {
-      httpClient.setDeviceKey(g_deviceKey);
-      Serial.println("Loaded device key");
-    } else {
-      g_pairingActive = true;
-      g_pairPin = genPin6();
-      g_pairExpireMs = millis() + 300000UL;
-      g_lastPairPoll = 0;
-      g_pairRegistered = false;
-      Serial.println("Pairing mode active");
-    }
-    String cfg;
-    bool cfgOk = httpClient.getDeviceConfig(cfg);
-    if (cfgOk) {
-      Serial.println("Startup HTTP check OK");
-    } else {
-      Serial.println("Startup HTTP check failed: " + httpClient.getLastError());
-      if (g_deviceKey.length() > 0 && httpClient.getLastError().indexOf("HTTP 403") >= 0) {
-        Serial.println("Saved device key rejected by server - clearing key and entering pairing mode");
-        clearDeviceKey();
-        g_deviceKey = "";
-        httpClient.setDeviceKey("");
-        g_pairingActive = true;
-        g_pairPin = genPin6();
-        g_pairExpireMs = millis() + 300000UL;
-        g_lastPairPoll = 0;
-        g_pairRegistered = false;
-        Serial.println("Pairing mode active");
-      }
-    }
-  } else if (!network.isConfigMode()) {
-    Serial.println("WiFi unavailable at boot - will retry in background");
-    ledController.showError();
-    consecutiveNetworkErrors = 0;
-    lastReconnectAttempt = 0;
+    
   } else {
-    Serial.println("WiFi credentials not set - configuration AP active");
+    Serial.println("Failed to connect to Wi-Fi");
+    ledController.showError();
   }
 
   Serial.println("Setup complete - entering main loop");
@@ -1548,170 +632,12 @@ void setup() {
 }
 
 void loop() {
-  // Long-press FEED button (5s) to clear device key and force pairing mode
-  {
-    if (millis() < BUTTON_BOOT_IGNORE_MS) {
-      // Ignore long-press logic during boot grace period to prevent accidental resets
-      goto after_long_press_block;
-    }
-    static unsigned long holdStart = 0;
-    static bool acted = false;
-    bool down = (digitalRead(FEED_NOW_PIN) == LOW);
-    if (down) {
-      if (holdStart == 0) holdStart = millis();
-      unsigned long held = millis() - holdStart;
-      if (held > 1000 && held < 5000) {
-        ledController.startFeedbackBlinkRed(1, 150);
-      }
-      if (held >= 5000 && !acted) {
-        acted = true;
-        Serial.println("=== BUTTON HOLD DETECTED - FORCING PAIRING MODE ===");
-        if (network.isConnected() && g_deviceKey.length() > 0) {
-          Serial.println("Attempting server-side unpair before local reset...");
-          bool up = httpClient.deviceUnpairSelf();
-          Serial.println(String("Unpair request result: ") + (up ? "OK" : "FAILED"));
-          delay(150);
-        }
-        clearDeviceKey();
-        g_deviceKey = "";
-        httpClient.setDeviceKey("");
-        clearWifiCredentials();
-        network.clearCredentials();
-        network.enterConfigMode();
-        g_pairingActive = true;
-        g_pairPin = genPin6();
-        g_pairExpireMs = millis() + 300000UL;
-        g_lastPairPoll = 0;
-        g_pairRegistered = false;
-        Serial.print("Pairing PIN: ");
-        Serial.println(g_pairPin);
-      }
-    } else {
-      holdStart = 0;
-      acted = false;
-    }
-  }
-after_long_press_block:
-  if (g_pairingActive) {
-    int secsLeft = (g_pairExpireMs > millis()) ? (int)((g_pairExpireMs - millis()) / 1000UL) : 0;
-    {
-      String devId = network.getDeviceID();
-      if (!devId.startsWith("ESP-")) {
-        devId = String("ESP-") + devId;
-      }
-      oledDisplay.updatePairing(g_pairPin, secsLeft, devId);
-    }
-    if (network.isConnected()) {
-      if (!g_pairRegistered) {
-        bool ok = httpClient.pairRegister(g_pairPin, 300);
-        if (ok) {
-          g_pairRegistered = true;
-          g_lastPairPoll = 0;
-          Serial.println("Pairing registered - waiting for app claim");
-        } else {
-          Serial.println("Pairing registration failed - backing off 10s before retry");
-          delay(10000);
-        }
-      } else {
-        if (millis() - g_lastPairPoll > 4000UL) {
-          String k;
-          bool claimed = httpClient.pairClaimed(g_pairPin, k);
-          g_lastPairPoll = millis();
-          if (claimed && k.length() > 0) {
-            g_deviceKey = k;
-            saveDeviceKey(k);
-            String verify = loadDeviceKey();
-            if (verify == k) {
-              httpClient.setDeviceKey(g_deviceKey);
-              g_pairingActive = false;
-              ledController.showReady();
-              Serial.println("Device key saved and verified — pairing complete");
-              Serial.println("OLED switching to normal screen");
-            } else {
-              Serial.println("ERROR: EEPROM key write verification failed");
-              Serial.println("Will retry saving on next claim poll");
-            }
-          }
-        }
-      }
-      if (millis() >= g_pairExpireMs) {
-        if (!g_pairRegistered) {
-          Serial.println("Pairing timed out with no server registration - exiting pairing mode");
-          g_pairingActive = false;
-          g_deviceKey = loadDeviceKey();
-          if (g_deviceKey.length() > 0) {
-            httpClient.setDeviceKey(g_deviceKey);
-            ledController.showReady();
-            Serial.println("Found saved device key - resuming normal operation");
-          } else {
-            Serial.println("No key found - device needs re-pairing from the app");
-            ledController.showError();
-          }
-          return;
-        }
-        g_pairPin = genPin6();
-        g_pairExpireMs = millis() + 300000UL;
-        g_pairRegistered = false;
-      }
-    }
-    // Ensure captive portal and DNS keep responding while pairing is active
-    network.update();
-    delay(50);
-    return;
-  }
   handleCalibrationCommands();
   // Update all controllers
   handleManualFeeding();
   handlePortionAdjustButtons();
   network.update();
-  if (network.isConnected() && !ntpSynced) {
-    Serial.println("WiFi connected - performing initial NTP sync...");
-    initializeNTP();
-  }
-  // Deferred post-connect initialization (if WiFi came up after boot)
-  {
-    static bool postConnectInitDone = false;
-    if (network.isConnected() && !postConnectInitDone) {
-      postConnectInitDone = true;
-      if (!ntpSynced) {
-        Serial.println("WiFi connected - performing deferred NTP sync");
-        initializeNTP();
-        lastSchedulePoll = millis() - SCHEDULE_POLL_INTERVAL;
-        lastCommandPoll  = millis() - COMMAND_POLL_INTERVAL;
-        lastStatusUpdate = millis() - STATUS_UPDATE_INTERVAL;
-      }
-      String freshKey = loadDeviceKey();
-      if (freshKey.length() > 0 && g_deviceKey != freshKey) {
-        g_deviceKey = freshKey;
-        httpClient.setDeviceKey(g_deviceKey);
-        Serial.println("Device key loaded from EEPROM");
-        if (g_pairingActive) {
-          g_pairingActive = false;
-          ledController.showReady();
-          Serial.println("Pairing cancelled - valid key found in EEPROM");
-        }
-      } else if (freshKey.length() == 0 && !g_pairingActive) {
-        Serial.println("No device key — entering pairing mode");
-        g_pairingActive = true;
-        g_pairPin = genPin6();
-        g_pairExpireMs = millis() + 300000UL;
-        g_lastPairPoll = 0;
-        g_pairRegistered = false;
-      }
-    }
-    if (!network.isConnected()) {
-      postConnectInitDone = false;
-    }
-  }
-  if (network.isConfigured() && !network.isConnected() && !network.isConfigMode()) {
-    ledController.showConnecting();
-  }
   motorController.update();
-  if (activeFeedPortionGrams > 0.0f && !motorController.isFeedingInProgress()) {
-    activeFeedPortionGrams = 0.0f;
-  }
-  float displayPortion = activeFeedPortionGrams > 0.0f ? activeFeedPortionGrams : actualPortionGrams(manualPortionGrams);
-  oledDisplay.update(network.isConnected(), network.getSSID(), displayPortion, motorController.isDispensePhaseActive());
   if (manualLogPending && !motorController.isFeedingInProgress()) {
     if (network.isConnected()) {
       bool success = httpClient.sendFeedingLog(manualLogPortion, "manual", "Button press feeding");
@@ -1720,7 +646,7 @@ after_long_press_block:
     manualLogPending = false;
   }
   ledController.update();
-  bool allowNetworkWork = !motorController.isFeedingInProgress();
+  bool allowNetworkWork = (millis() - lastButtonActivityMs > 500) && !motorController.isFeedingInProgress();
   #if DEBUG_BUTTONS
   static unsigned long lastDebug = 0;
   if (millis() - lastDebug > 500) {
@@ -1744,26 +670,16 @@ after_long_press_block:
   // Step D: Schedule polling and execution
   if (allowNetworkWork) {
     if (network.isConnected()) {
-      // Connected — run normal operations and reset all error state
       pollAndExecuteSchedules();
       pollAndExecuteRemoteCommands();
       consecutiveNetworkErrors = 0;
-      networkBackoffUntil = 0;
-      lastReconnectAttempt = 0;
-    } else if (!network.isConfigMode() && network.isConfigured()) {
-      // Not connected, not in AP mode, credentials exist — retry on cooldown
-      unsigned long now = millis();
-      if (lastReconnectAttempt == 0 ||
-          (now - lastReconnectAttempt) >= RECONNECT_INTERVAL_MS) {
-        lastReconnectAttempt = now;
-        Serial.println("Network unavailable - attempting reconnect...");
-        Serial.print("Next retry in ");
-        Serial.print(RECONNECT_INTERVAL_MS / 1000);
-        Serial.println("s if this fails");
-        network.reconnectNonBlocking();
+    } else {
+      consecutiveNetworkErrors++;
+      if (consecutiveNetworkErrors > MAX_CONSECUTIVE_ERRORS) {
+        Serial.println("Too many consecutive network errors, attempting reconnection...");
+        network.connect();
+        consecutiveNetworkErrors = 0;
       }
-      // Do NOT increment consecutiveNetworkErrors here —
-      // that counter is only for HTTP operation failures, not WiFi state
     }
   }
 
@@ -1797,19 +713,12 @@ void initializeNTP() {
   
   if (retries < 10) {
     Serial.println("NTP time synchronized successfully");
-    Serial.println("Current UTC time (NTP): " + timeClient.getFormattedTime());
+    Serial.println("Current UTC time: " + timeClient.getFormattedTime());
     
     // Set system time for time() functions
     time_t epochTime = timeClient.getEpochTime();
     struct timeval tv = { epochTime, 0 };
     settimeofday(&tv, NULL);
-    setenv("TZ", "PHT-8", 1);
-    tzset();
-    time_t nowLocal = time(nullptr);
-    struct tm* lt = localtime(&nowLocal);
-    char buf[9]; snprintf(buf, sizeof(buf), "%02d:%02d:%02d", lt->tm_hour, lt->tm_min, lt->tm_sec);
-    Serial.println("Local time (PHT): " + String(buf));
-    ntpSynced = true;
     
   } else {
     Serial.println("Failed to synchronize with NTP server");
@@ -1827,18 +736,12 @@ void updateNTPTime() {
       Serial.println("Updating NTP time...");
       
       if (timeClient.update()) {
-        Serial.println("NTP time updated (UTC): " + timeClient.getFormattedTime());
+        Serial.println("NTP time updated: " + timeClient.getFormattedTime());
         
         // Update system time
         time_t epochTime = timeClient.getEpochTime();
         struct timeval tv = { epochTime, 0 };
         settimeofday(&tv, NULL);
-        setenv("TZ", "PHT-8", 1);
-        tzset();
-        time_t nowLocal = time(nullptr);
-        struct tm* lt = localtime(&nowLocal);
-        char buf[9]; snprintf(buf, sizeof(buf), "%02d:%02d:%02d", lt->tm_hour, lt->tm_min, lt->tm_sec);
-        Serial.println("Local time (PHT): " + String(buf));
         
       } else {
         Serial.println("Failed to update NTP time");
@@ -1855,11 +758,6 @@ void pollAndExecuteSchedules() {
   unsigned long currentTime = millis();
   
   if (currentTime - lastSchedulePoll > SCHEDULE_POLL_INTERVAL) {
-    if (!hasDeviceAuth()) {
-      Serial.println("Skipping schedule poll: device not paired yet (no device key)");
-      lastSchedulePoll = currentTime;
-      return;
-    }
     if (millis() < networkBackoffUntil) {
       Serial.println("Network backoff active; skipping schedule poll");
       lastSchedulePoll = currentTime;
@@ -1872,13 +770,10 @@ void pollAndExecuteSchedules() {
     
     if (success) {
       processScheduleResponse(scheduleResponse);
-      networkBackoffMs = MIN_NETWORK_BACKOFF_MS;
-      networkBackoffUntil = 0;
     } else {
       Serial.println("Failed to poll schedules: " + httpClient.getLastError());
-      networkBackoffMs = min(networkBackoffMs * 2, MAX_NETWORK_BACKOFF_MS);
-      networkBackoffUntil = millis() + networkBackoffMs;
-      Serial.println("Entering network backoff for " + String(networkBackoffMs / 1000) + "s");
+      networkBackoffUntil = millis() + NETWORK_BACKOFF_MS;
+      Serial.println("Entering network backoff for 60s");
     }
     
     lastSchedulePoll = currentTime;
@@ -2049,130 +944,55 @@ time_t parseISOTimestamp(const String& isoString) {
 }
 
 /**
- * Wheel-based duration calculation: whole compartments only
+ * Calibrated duration calculation accounting for startup delay
  */
 unsigned long calculateFeedingDuration(float targetGrams) {
-  if (targetGrams <= 0.0f) return 0;
-  return calculateSteppedFeedTime(calculateCompartmentCount(targetGrams));
+  if (targetGrams < 0.0f) targetGrams = 0.0f;
+  unsigned long duration = g_startupDelay + (unsigned long)(targetGrams * g_msPerGram);
+  duration = max(duration, MIN_DISPENSE_TIME_MS);
+  duration = min(duration, MAX_DISPENSE_TIME_MS);
+  return duration;
 }
 
 /**
- * Calculate how many wheel compartments are needed for the requested grams.
+ * Persist calibration values (ms/gram and startup delay) to EEPROM
  */
-int calculateCompartmentCount(float targetGrams) {
-  if (targetGrams <= 0.0f) return 0;
-  return max(1, (int)((targetGrams / g_gramsPerComp) + 0.5f));
-}
-
-/**
- * Returns the calibrated forward time for one compartment.
- */
-unsigned long calculateOneCompartmentTime() {
-  return g_msPerComp;
-}
-
-/**
- * Calculate the total stepped feed time including settle delays and stop pulses.
- */
-unsigned long calculateSteppedFeedTime(int compartmentCount) {
-  if (compartmentCount <= 0) return 0;
-  unsigned long total = (unsigned long)compartmentCount * calculateOneCompartmentTime();
-  if (compartmentCount > 0 && g_settleDelayMs > 0) {
-    total += (unsigned long)compartmentCount * g_settleDelayMs;
-  }
-  if (compartmentCount > 1 && g_stopReverse1Ms > 0) {
-    total += (unsigned long)(compartmentCount - 1) * g_stopReverse1Ms;
-  }
-  total += g_stopReverse1Ms;
-  if (g_stopReverse2Ms > 0) {
-    total += g_stopPauseMs + g_stopReverse2Ms;
-  }
-  return min(total, MAX_DISPENSE_TIME_MS);
-}
-
-// Returns the true dispensed grams after snapping to nearest compartment.
-// Always use this for display — never show raw manualPortionGrams directly.
-float actualPortionGrams(float targetGrams) {
-  if (targetGrams <= 0.0f) return 0.0f;
-  int comps = calculateCompartmentCount(targetGrams);
-  return (float)comps * g_gramsPerComp;
-}
-
-/**
- * Log the exact dispense settings used for calibration and troubleshooting.
- */
-void logFeedingOperation(float requestedGrams, int compartments,
-                         unsigned long totalTime, bool reverseUsed) {
-  Serial.println("=== FEED OPERATION LOG ===");
-  Serial.println("Requested: " + String(requestedGrams, 2) + "g");
-  Serial.println("Actual snapped: " + String(actualPortionGrams(requestedGrams), 2) + "g");
-  Serial.println("Compartments: " + String(compartments));
-  Serial.println("ms_per_comp: " + String(g_msPerComp));
-  Serial.println("grams_per_comp: " + String(g_gramsPerComp, 2));
-  Serial.println("Feed pulse: " + String(g_feedPulse) + "us");
-  Serial.println("Settle delay: " + String(g_settleDelayMs) + "ms");
-  Serial.println("Total forward time: " + String(totalTime) + "ms");
-  Serial.println("Reverse clear used: " + String(reverseUsed ? "YES" : "NO"));
-  Serial.println("Hopper level: [manual observation needed]");
-  Serial.println("=========================");
-}
-
-/**
- * Persist wheel calibration values to EEPROM
- */
-void saveCalibration(float gramsPerComp, unsigned long msPerComp) {
-  g_gramsPerComp = gramsPerComp;
-  g_msPerComp    = msPerComp;
-  EEPROM.put(MS_PER_GRAM_ADDR,   g_msPerComp);
-  EEPROM.put(STARTUP_DELAY_ADDR, g_gramsPerComp);
-  EEPROM.put(STOP_REVERSE1_ADDR, g_stopReverse1Ms);
-  EEPROM.put(STOP_PAUSE_ADDR,    g_stopPauseMs);
-  EEPROM.put(STOP_REVERSE2_ADDR, g_stopReverse2Ms);
-  EEPROM.put(SETTLE_DELAY_ADDR,  g_settleDelayMs);
-  EEPROM.write(CALIB_FLAG_ADDR, 0xCC);
+void saveCalibration(float msPerGram, unsigned long startupDelay) {
+  g_msPerGram = msPerGram;
+  g_startupDelay = startupDelay;
+  EEPROM.put(MS_PER_GRAM_ADDR, g_msPerGram);
+  EEPROM.put(STARTUP_DELAY_ADDR, g_startupDelay);
   EEPROM.commit();
-  Serial.println("Calibration saved: grams/comp=" + String(g_gramsPerComp, 2) + "  ms/comp=" + String(g_msPerComp));
-  Serial.println("Stop behavior saved: stop1=" + String(g_stopReverse1Ms) + "ms pause=" + String(g_stopPauseMs)
-    + "ms stop2=" + String(g_stopReverse2Ms) + "ms settle=" + String(g_settleDelayMs) + "ms");
+  Serial.println("Calibration saved: ms_per_g=" + String(g_msPerGram, 4) + " startup_delay_ms=" + String(g_startupDelay));
 }
 
 /**
- * Load wheel calibration values from EEPROM, with sane defaults if uninitialized
+ * Load calibration values from EEPROM, with sane defaults if uninitialized
  */
 void loadCalibration() {
-  unsigned long ms;
-  float gpc;
-  unsigned long stop1;
-  unsigned long pauseMs;
-  unsigned long stop2;
-  unsigned long settleMs;
+  float ms;
+  unsigned long sd;
   byte flag = EEPROM.read(CALIB_FLAG_ADDR);
-  EEPROM.get(MS_PER_GRAM_ADDR,   ms);
-  EEPROM.get(STARTUP_DELAY_ADDR, gpc);
-  EEPROM.get(STOP_REVERSE1_ADDR, stop1);
-  EEPROM.get(STOP_PAUSE_ADDR,    pauseMs);
-  EEPROM.get(STOP_REVERSE2_ADDR, stop2);
-  EEPROM.get(SETTLE_DELAY_ADDR,  settleMs);
-  if (flag != 0xCC || ms < 200 || ms > 5000 || isnan(gpc) || gpc < 1.0f || gpc > 100.0f) {
-    g_msPerComp    = MS_PER_COMP_DEFAULT;
-    g_gramsPerComp = GRAMS_PER_COMP_DEFAULT;
-    g_stopReverse1Ms = STOP_REVERSE1_DEFAULT;
-    g_stopPauseMs = STOP_PAUSE_DEFAULT;
-    g_stopReverse2Ms = STOP_REVERSE2_DEFAULT;
-    g_settleDelayMs = SETTLE_DELAY_DEFAULT;
-    saveCalibration(g_gramsPerComp, g_msPerComp);
-    Serial.println("Calibration reset to defaults");
+  EEPROM.get(MS_PER_GRAM_ADDR, ms);
+  EEPROM.get(STARTUP_DELAY_ADDR, sd);
+  if (flag != 0xCC) {
+    g_msPerGram = MS_PER_GRAM_CALIBRATED;
+    g_startupDelay = STARTUP_DELAY_MS;
+    EEPROM.put(MS_PER_GRAM_ADDR, g_msPerGram);
+    EEPROM.put(STARTUP_DELAY_ADDR, g_startupDelay);
+    EEPROM.write(CALIB_FLAG_ADDR, 0xCC);
+    EEPROM.commit();
+    Serial.println("Calibration initialized with defaults and saved to EEPROM");
     return;
   }
-  g_msPerComp    = ms;
-  g_gramsPerComp = gpc;
-  g_stopReverse1Ms = (stop1 <= MAX_STOP_BEHAVIOR_MS) ? stop1 : STOP_REVERSE1_DEFAULT;
-  g_stopPauseMs = (pauseMs <= MAX_STOP_BEHAVIOR_MS) ? pauseMs : STOP_PAUSE_DEFAULT;
-  g_stopReverse2Ms = (stop2 <= MAX_STOP_BEHAVIOR_MS) ? stop2 : STOP_REVERSE2_DEFAULT;
-  g_settleDelayMs = (settleMs <= MAX_STOP_BEHAVIOR_MS) ? settleMs : SETTLE_DELAY_DEFAULT;
-  Serial.println("Calibration loaded: grams/comp=" + String(g_gramsPerComp, 2) + "  ms/comp=" + String(g_msPerComp));
-  Serial.println("Stop behavior loaded: stop1=" + String(g_stopReverse1Ms) + "ms pause=" + String(g_stopPauseMs)
-    + "ms stop2=" + String(g_stopReverse2Ms) + "ms settle=" + String(g_settleDelayMs) + "ms");
+  if (isnan(ms) || ms < 10.0f || ms > 200.0f || sd > 1000) {
+    Serial.println("Calibration values unreasonable, resetting to defaults");
+    saveCalibration(MS_PER_GRAM_CALIBRATED, STARTUP_DELAY_MS);
+  } else {
+    g_msPerGram = ms;
+    g_startupDelay = sd;
+    Serial.println("Calibration loaded: ms_per_g=" + String(g_msPerGram, 4) + " startup_delay_ms=" + String(g_startupDelay));
+  }
 }
 
 /**
@@ -2193,58 +1013,29 @@ void handleCalibrationCommands() {
       if (line.length() == 0) return;
       line.toUpperCase();
       if (line.startsWith("CAL HELP")) {
-        Serial.println("=== WHEEL CAL COMMANDS ===");
-        Serial.println("  CAL STATUS          - Show current calibration + portion table");
-        Serial.println("  CAL FILL <g>        - Set grams per compartment");
-        Serial.println("                        Measure: fill all 8, weigh total, divide by 8");
-        Serial.println("  CAL COMP <ms>       - Set ms per compartment (one wheel step)");
-        Serial.println("  CAL START           - Spin 1 compartment for timing check");
-        Serial.println("  CAL RESULT <g>      - Record actual grams from 1 compartment");
-        Serial.println("  CAL SPEED <us>      - Set servo pulse width (1400..1700 µs)");
-        Serial.println("  CAL STOP1 <ms>      - Set first reverse pulse duration (0 disables)");
-        Serial.println("  CAL STOP2 <ms>      - Set second reverse pulse duration (0 disables)");
-        Serial.println("  CAL PAUSE <ms>      - Set pause between stop pulses");
-        Serial.println("  CAL SETTLE <ms>     - Set settle delay after each compartment");
-        Serial.println("  CAL STOPINFO        - Show current stop behavior settings");
-        Serial.println("  CAL TEST <count>    - Dispense exact compartment count for testing");
-        Serial.println("  CAL RESET           - Reset all calibration to defaults");
-        Serial.println("==========================");
+        Serial.println("CAL Commands:");
+        Serial.println("  CAL START <grams>   - Start calibration feed for given grams");
+        Serial.println("  CAL RESULT <grams>  - Record actual grams; suggests ms_per_g");
+        Serial.println("  CAL SET <ms_per_g>  - Set ms_per_g and save");
+        Serial.println("  CAL STATUS          - Show calibration and sample durations");
         return;
       }
       if (line.startsWith("CAL STATUS")) {
-        Serial.println("=== WHEEL CALIBRATION STATUS ===");
-        Serial.println("  grams/comp = " + String(g_gramsPerComp, 2) + "g");
-        Serial.println("  ms/comp    = " + String(g_msPerComp) + "ms");
-        Serial.println("  feed pulse = " + String(g_feedPulse) + " µs");
-        Serial.println("  stop1      = " + String(g_stopReverse1Ms) + "ms");
-        Serial.println("  pause      = " + String(g_stopPauseMs) + "ms");
-        Serial.println("  stop2      = " + String(g_stopReverse2Ms) + "ms");
-        Serial.println("  settle     = " + String(g_settleDelayMs) + "ms");
-        Serial.println("  Portion table:");
-        for (int c = 1; c <= WHEEL_COMPARTMENTS; c++) {
-          unsigned long totalMs = calculateSteppedFeedTime(c);
-          Serial.println("  " + String(c) + " comp → " 
-            + String((float)c * g_gramsPerComp, 1) + "g  " 
-            + String(totalMs) + "ms");
+        Serial.println("Calibration Status:");
+        Serial.println("  ms_per_g=" + String(g_msPerGram, 4) + " startup_delay_ms=" + String(g_startupDelay));
+        Serial.println("  feed_pulse_us=" + String(g_feedPulse));
+        for (int g = 5; g <= 500; g += 5) {
+          unsigned long d = calculateFeedingDuration((float)g);
+          Serial.println("  " + String(g) + "g -> " + String(d) + " ms");
         }
-        Serial.println("================================");
-        return;
-      }
-      if (line.startsWith("CAL STOPINFO")) {
-        Serial.println("=== STOP BEHAVIOR ===");
-        Serial.println("  stop1  = " + String(g_stopReverse1Ms) + "ms");
-        Serial.println("  pause  = " + String(g_stopPauseMs) + "ms");
-        Serial.println("  stop2  = " + String(g_stopReverse2Ms) + "ms");
-        Serial.println("  settle = " + String(g_settleDelayMs) + "ms");
-        Serial.println("=====================");
         return;
       }
       if (line == "PORTION" || line == "PORTION STATUS") {
         Serial.println("\n=== MANUAL PORTION STATUS ===");
         Serial.print("Current portion: "); Serial.print(manualPortionGrams); Serial.println("g");
         Serial.print("Calculated duration: "); Serial.print(manualFeedDurationMs); Serial.println("ms");
-        Serial.print("grams/comp: "); Serial.println(g_gramsPerComp, 2);
-        Serial.print("ms/comp: "); Serial.println(g_msPerComp);
+        Serial.print("Startup delay: "); Serial.print(g_startupDelay); Serial.println("ms");
+        Serial.print("MS per gram: "); Serial.println(g_msPerGram);
         Serial.print("Expected duration: "); Serial.print(calculateFeedingDuration(manualPortionGrams)); Serial.println("ms");
         if (manualFeedDurationMs != calculateFeedingDuration(manualPortionGrams)) {
           Serial.println("WARNING: Stored duration doesn't match calculation!");
@@ -2264,49 +1055,23 @@ void handleCalibrationCommands() {
         motorController.testForwardMotion(2000);
         return;
       }
-      if (line.startsWith("CAL COMP")) {
-        // Usage: CAL COMP 750   → sets ms per compartment
-        String rest = line.substring(8); rest.trim();
-        unsigned long ms = (unsigned long)rest.toInt();
-        if (ms >= 200 && ms <= 5000) {
-          saveCalibration(g_gramsPerComp, ms);
-          Serial.println("ms/comp set to " + String(ms));
-          manualPortionGrams = actualPortionGrams(manualPortionGrams);
-          manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
-          Serial.println("manualFeedDurationMs updated to " + String(manualFeedDurationMs) + "ms");
-        } else {
-          Serial.println("Invalid value — use 200..5000 ms");
-        }
-        return;
-      }
-      if (line.startsWith("CAL FILL")) {
-        // Usage: CAL FILL 10.5  → sets grams per compartment
-        String rest = line.substring(8); rest.trim();
-        float gpc = rest.toFloat();
-        if (gpc > 1.0f && gpc < 100.0f) {
-          saveCalibration(gpc, g_msPerComp);
-          Serial.println("grams/comp set to " + String(gpc, 2));
-          manualPortionGrams = actualPortionGrams(manualPortionGrams);
-          manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
-          Serial.println("manualPortionGrams snapped to " + String(manualPortionGrams, 1) + "g");
-          Serial.println("manualFeedDurationMs updated to " + String(manualFeedDurationMs) + "ms");
-        } else {
-          Serial.println("Invalid value — use 1..100 g");
-        }
-        return;
-      }
-      if (line.startsWith("CAL RESET")) {
-        saveCalibration(GRAMS_PER_COMP_DEFAULT, MS_PER_COMP_DEFAULT);
-        g_feedPulse = SERVO_FEED_SPEED;
-        manualPortionGrams = actualPortionGrams(manualPortionGrams);
-        manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
-        Serial.println("Calibration reset to defaults");
-        Serial.println("  grams/comp = " + String(GRAMS_PER_COMP_DEFAULT, 2));
-        Serial.println("  ms/comp    = " + String(MS_PER_COMP_DEFAULT));
-        Serial.println("  manualPortionGrams snapped to " + String(manualPortionGrams, 1) + "g");
-        Serial.println("  manualFeedDurationMs = " + String(manualFeedDurationMs) + "ms");
-        return;
-      }
+  if (line.startsWith("CAL SET")) {
+    String rest = line.substring(8);  // Skip past "CAL SET "
+    rest.trim();
+    float val = rest.toFloat();
+    if (val > 0.0f && val < 500.0f) {
+      saveCalibration(val, g_startupDelay);
+    } else {
+      Serial.println("Invalid ms_per_g");
+    }
+    return;
+  }
+  if (line.startsWith("CAL RESET")) {
+    saveCalibration(MS_PER_GRAM_CALIBRATED, STARTUP_DELAY_MS);
+    g_feedPulse = SERVO_FEED_SPEED;
+    Serial.println("Calibration reset to defaults and feed pulse set to " + String(g_feedPulse) + " µs");
+    return;
+  }
       if (line.startsWith("CAL SPEED")) {
         String rest = line.substring(10);  // Skip past "CAL SPEED "
         rest.trim();
@@ -2319,62 +1084,15 @@ void handleCalibrationCommands() {
         }
         return;
       }
-      if (line.startsWith("CAL STOP1")) {
-        String rest = line.substring(9); rest.trim();
-        unsigned long value = (unsigned long)rest.toInt();
-        if (value <= MAX_STOP_BEHAVIOR_MS) {
-          g_stopReverse1Ms = value;
-          saveCalibration(g_gramsPerComp, g_msPerComp);
-          Serial.println("stop1 set to " + String(g_stopReverse1Ms) + "ms");
-        } else {
-          Serial.println("Invalid value - use 0.." + String(MAX_STOP_BEHAVIOR_MS) + " ms");
-        }
-        return;
-      }
-      if (line.startsWith("CAL STOP2")) {
-        String rest = line.substring(9); rest.trim();
-        unsigned long value = (unsigned long)rest.toInt();
-        if (value <= MAX_STOP_BEHAVIOR_MS) {
-          g_stopReverse2Ms = value;
-          saveCalibration(g_gramsPerComp, g_msPerComp);
-          Serial.println("stop2 set to " + String(g_stopReverse2Ms) + "ms");
-        } else {
-          Serial.println("Invalid value - use 0.." + String(MAX_STOP_BEHAVIOR_MS) + " ms");
-        }
-        return;
-      }
-      if (line.startsWith("CAL PAUSE")) {
-        String rest = line.substring(9); rest.trim();
-        unsigned long value = (unsigned long)rest.toInt();
-        if (value <= MAX_STOP_BEHAVIOR_MS) {
-          g_stopPauseMs = value;
-          saveCalibration(g_gramsPerComp, g_msPerComp);
-          Serial.println("pause set to " + String(g_stopPauseMs) + "ms");
-        } else {
-          Serial.println("Invalid value - use 0.." + String(MAX_STOP_BEHAVIOR_MS) + " ms");
-        }
-        return;
-      }
-      if (line.startsWith("CAL SETTLE")) {
-        String rest = line.substring(10); rest.trim();
-        unsigned long value = (unsigned long)rest.toInt();
-        if (value <= MAX_STOP_BEHAVIOR_MS) {
-          g_settleDelayMs = value;
-          saveCalibration(g_gramsPerComp, g_msPerComp);
-          manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
-          Serial.println("settle delay set to " + String(g_settleDelayMs) + "ms");
-        } else {
-          Serial.println("Invalid value - use 0.." + String(MAX_STOP_BEHAVIOR_MS) + " ms");
-        }
-        return;
-      }
       if (line.startsWith("CAL START")) {
-        Serial.println("Spinning 1 compartment for timing verification...");
-        calibrationLastDuration = g_msPerComp;
+        String rest = line.substring(10);  // Skip past "CAL START "
+        rest.trim();
+        calibrationTestGrams = rest.toFloat();
+        calibrationLastDuration = calculateFeedingDuration(calibrationTestGrams);
         calibrationStartTime = millis();
         calibrationMode = true;
-        if (!motorController.isFeedingInProgress())
-          motorController.startCalibrationFeed(g_msPerComp);
+        Serial.println("Calibration START: grams=" + String(calibrationTestGrams) + " duration=" + String(calibrationLastDuration) + " ms");
+        if (!motorController.isFeedingInProgress()) motorController.startCalibrationFeed(calibrationLastDuration);
         return;
       }
       if (line.startsWith("CAL RESULT")) {
@@ -2382,36 +1100,15 @@ void handleCalibrationCommands() {
         rest.trim();
         float actual = rest.toFloat();
         if (actual > 0.0f) {
-          saveCalibration(actual, g_msPerComp);
-          Serial.println("grams/comp updated to " + String(actual, 2) + "g");
+          float suggested = (float)(calibrationLastDuration > g_startupDelay ? (calibrationLastDuration - g_startupDelay) : 0UL) / actual;
+          float errorPct = calibrationTestGrams > 0.0f ? ((actual - calibrationTestGrams) / calibrationTestGrams) * 100.0f : 0.0f;
+          Serial.println("Calibration RESULT: actual=" + String(actual, 3) + "g error=" + String(errorPct, 2) + "%");
+          saveCalibration(suggested, g_startupDelay);
+          Serial.println("Applied ms_per_g=" + String(suggested, 4));
         } else {
-          Serial.println("Invalid grams");
+          Serial.println("Invalid actual grams");
         }
         calibrationMode = false;
-        return;
-      }
-      if (line.startsWith("CAL TEST")) {
-        String rest = line.substring(8);
-        rest.trim();
-        int comps = rest.toInt();
-        if (comps >= 1 && comps <= WHEEL_COMPARTMENTS) {
-          Serial.println("\n=== CALIBRATION TEST ===");
-          Serial.println("Dispensing " + String(comps) + " compartments");
-          Serial.println("Expected: ~" + String(comps * g_gramsPerComp, 1) + "g");
-          Serial.println("Please weigh result and report back");
-          Serial.println("========================");
-          logFeedingOperation((float)comps * g_gramsPerComp, comps,
-            (unsigned long)comps * calculateOneCompartmentTime(),
-            (g_stopReverse1Ms > 0 || g_stopReverse2Ms > 0));
-          motorController.dispenseCompartments(comps);
-          Serial.println("\nTest complete. Weigh the kibble.");
-          Serial.println("If result differs, adjust:");
-          Serial.println("  - CAL COMP for timing");
-          Serial.println("  - CAL FILL for grams per compartment");
-          Serial.println("  - CAL STOP1/STOP2 for stop behavior");
-        } else {
-          Serial.println("Invalid compartment count (use 1-" + String(WHEEL_COMPARTMENTS) + ")");
-        }
         return;
       }
       Serial.println("Unknown CAL command. Type CAL HELP.");
@@ -2428,10 +1125,10 @@ void handleCalibrationCommands() {
 void executeScheduledFeeding(uint32_t scheduleId, float portionGrams) {
   Serial.println("Executing scheduled feeding - Schedule ID: " + String(scheduleId));
   Serial.println("Portion: " + String(portionGrams) + "g");
-  int compartments = calculateCompartmentCount(portionGrams);
-  unsigned long feedingDuration = calculateSteppedFeedTime(compartments);
-  Serial.println("Compartments: " + String(compartments));
-  Serial.println("Stepped feed duration: " + String(feedingDuration) + "ms");
+  
+  // Calculate feeding duration based on portion size
+  unsigned long feedingDuration = calculateFeedingDuration(portionGrams);
+  Serial.println("Feeding duration: " + String(feedingDuration) + "ms");
   if (firmwareBootMs != 0 && (millis() - firmwareBootMs) < BUTTON_BOOT_IGNORE_MS) {
     Serial.println("Scheduled feed skipped: boot mute");
     return;
@@ -2444,14 +1141,16 @@ void executeScheduledFeeding(uint32_t scheduleId, float portionGrams) {
     Serial.println("Scheduled feed rejected: cooldown");
     return;
   }
-  activeFeedPortionGrams = portionGrams;
-  Serial.println("Scheduled feed: " + String(actualPortionGrams(portionGrams), 1)
-    + "g (" + String(compartments)
-    + " comp) " + String(feedingDuration) + "ms");
-  logFeedingOperation(portionGrams, compartments,
-    (unsigned long)compartments * calculateOneCompartmentTime(),
-    (g_stopReverse1Ms > 0 || g_stopReverse2Ms > 0));
-  motorController.dispenseCompartments(compartments);
+  // CRITICAL FIX: Portion wheel → single continuous feed only
+  motorController.startFeedingWithAntiClog(feedingDuration);
+  ledController.showFeeding();  // Blue LED during feeding
+  
+  // Wait for feeding to complete
+  while (motorController.isFeedingInProgress()) {
+    motorController.update();
+    ledController.update();
+    delay(100);
+  }
   
   // Send feeding log to backend
   bool logSuccess = httpClient.sendFeedingLogWithSchedule(
@@ -2535,6 +1234,7 @@ void handleManualFeeding() {
     manualSuppressUntil = 0;
   }
   bool currentButtonState = (digitalRead(FEED_NOW_PIN) == LOW);
+  if (currentButtonState) lastButtonActivityMs = millis();
   #if SIMPLE_BUTTON_MODE
   if (currentButtonState && !buttonPressed && (millis() - lastButtonEvent > BUTTON_DEBOUNCE_MS)) {
     buttonPressed = true;
@@ -2550,17 +1250,11 @@ void handleManualFeeding() {
         return;
       }
     }
-    int compartments = calculateCompartmentCount(manualPortionGrams);
-    activeFeedPortionGrams = manualPortionGrams;
-    Serial.println("Manual feed: " + String(actualPortionGrams(manualPortionGrams), 1)
-      + "g (" + String(compartments)
-      + " comp) " + String(manualFeedDurationMs) + "ms");
-    logFeedingOperation(manualPortionGrams, compartments,
-      (unsigned long)compartments * calculateOneCompartmentTime(),
-      (g_stopReverse1Ms > 0 || g_stopReverse2Ms > 0));
-    motorController.dispenseCompartments(compartments);
+    // CRITICAL FIX: Portion wheel → single continuous feed only
+    // Replaced reverse-clear/chunked logic with simple anti-clog feed
+    motorController.startFeedingWithAntiClog(manualFeedDurationMs);
     manualLogPending = true;
-    manualLogPortion = (int)actualPortionGrams(manualPortionGrams);
+    manualLogPortion = (int)manualPortionGrams;
     dailyFeeds++;
     lastFeedIso = nowUtcIso();
     return;
@@ -2621,24 +1315,16 @@ void handleManualFeeding() {
           return;
         }
       }
-      int compartments = calculateCompartmentCount(manualPortionGrams);
-      activeFeedPortionGrams = manualPortionGrams;
-      Serial.println("Manual feed: " + String(actualPortionGrams(manualPortionGrams), 1)
-        + "g (" + String(compartments)
-        + " comp) " + String(manualFeedDurationMs) + "ms");
-      logFeedingOperation(manualPortionGrams, compartments,
-        (unsigned long)compartments * calculateOneCompartmentTime(),
-        (g_stopReverse1Ms > 0 || g_stopReverse2Ms > 0));
-      motorController.dispenseCompartments(compartments);
-      manualSuppressUntil = millis() + 800;
-      armed = false;
-      manualLogPending = true;
-      manualLogPortion = (int)actualPortionGrams(manualPortionGrams);
-      dailyFeeds++;
-      lastFeedIso = nowUtcIso();
-      return;
-    }
+    // CRITICAL FIX: Portion wheel → single continuous feed only
+    motorController.startFeedingWithAntiClog(manualFeedDurationMs);
+    manualSuppressUntil = millis() + 800;
+    armed = false;
+    manualLogPending = true;
+    manualLogPortion = (int)manualPortionGrams;
+    dailyFeeds++;
+    lastFeedIso = nowUtcIso();
   }
+}
 }
 
 void handlePortionAdjustButtons() {
@@ -2649,28 +1335,22 @@ void handlePortionAdjustButtons() {
 
   bool addStatePressed = (digitalRead(ADD_PORTION_PIN) == LOW);
   bool reduceStatePressed = (digitalRead(REDUCE_PORTION_PIN) == LOW);
+  if (addStatePressed || reduceStatePressed) lastButtonActivityMs = millis();
 
   if (addStatePressed && !addPressed && (millis() - lastAddPress > BUTTON_DEBOUNCE_MS)) {
     addPressed = true;
     lastAddPress = millis();
     manualSuppressUntil = millis() + 800;
-    // Step up by exactly one compartment
-    manualPortionGrams += g_gramsPerComp;
+    manualPortionGrams += PORTION_STEP_GRAMS;
     if (manualPortionGrams > MANUAL_PORTION_MAX_GRAMS) manualPortionGrams = MANUAL_PORTION_MAX_GRAMS;
-    // Snap to clean compartment multiple
-    manualPortionGrams = actualPortionGrams(manualPortionGrams);
     manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
     Serial.println("\n╔═══════════════════════════╗");
     Serial.println("║   PORTION INCREASED      ║");
     Serial.println("╚═══════════════════════════╝");
-    Serial.print("Portion target: "); Serial.print(manualPortionGrams, 1); Serial.println("g");
-    Serial.print("Actual output:  "); Serial.print(actualPortionGrams(manualPortionGrams), 1); Serial.println("g");
-    Serial.print("Compartments:   "); Serial.println(max(1,(int)((manualPortionGrams / g_gramsPerComp) + 0.5f)));
-    Serial.print("Duration:       "); Serial.print(manualFeedDurationMs); Serial.println("ms");
-    int compsInc = max(1, (int)((manualPortionGrams / g_gramsPerComp) + 0.5f));
-    Serial.print("Wheel: "); Serial.print(compsInc); Serial.print(" comp → ");
-    Serial.print((float)compsInc * g_gramsPerComp, 1); Serial.print("g  ");
-    Serial.print(compsInc * (unsigned long)g_msPerComp); Serial.println("ms");
+    Serial.print("Portion: "); Serial.print(manualPortionGrams); Serial.println("g");
+    Serial.print("Duration: "); Serial.print(manualFeedDurationMs); Serial.println("ms");
+    Serial.print("Formula: "); Serial.print(g_startupDelay); Serial.print("ms + (");
+    Serial.print(manualPortionGrams); Serial.print("g × "); Serial.print(g_msPerGram); Serial.println("ms/g)");
     Serial.println();
     ledController.startFeedbackBlinkBlue(3, 80);
   } else if (!addStatePressed && addPressed) {
@@ -2681,22 +1361,16 @@ void handlePortionAdjustButtons() {
     reducePressed = true;
     lastReducePress = millis();
     manualSuppressUntil = millis() + 800;
-    float effectiveMin = max(MANUAL_PORTION_MIN_GRAMS, g_gramsPerComp);
-    manualPortionGrams -= g_gramsPerComp;
-    if (manualPortionGrams < effectiveMin) manualPortionGrams = effectiveMin;
-    manualPortionGrams = actualPortionGrams(manualPortionGrams);
+    manualPortionGrams -= PORTION_STEP_GRAMS;
+    if (manualPortionGrams < MANUAL_PORTION_MIN_GRAMS) manualPortionGrams = MANUAL_PORTION_MIN_GRAMS;
     manualFeedDurationMs = calculateFeedingDuration(manualPortionGrams);
     Serial.println("\n╔═══════════════════════════╗");
     Serial.println("║   PORTION DECREASED      ║");
     Serial.println("╚═══════════════════════════╝");
-    Serial.print("Portion target: "); Serial.print(manualPortionGrams, 1); Serial.println("g");
-    Serial.print("Actual output:  "); Serial.print(actualPortionGrams(manualPortionGrams), 1); Serial.println("g");
-    Serial.print("Compartments:   "); Serial.println(max(1,(int)((manualPortionGrams / g_gramsPerComp) + 0.5f)));
-    Serial.print("Duration:       "); Serial.print(manualFeedDurationMs); Serial.println("ms");
-    int compsDec = max(1, (int)((manualPortionGrams / g_gramsPerComp) + 0.5f));
-    Serial.print("Wheel: "); Serial.print(compsDec); Serial.print(" comp → ");
-    Serial.print((float)compsDec * g_gramsPerComp, 1); Serial.print("g  ");
-    Serial.print(compsDec * (unsigned long)g_msPerComp); Serial.println("ms");
+    Serial.print("Portion: "); Serial.print(manualPortionGrams); Serial.println("g");
+    Serial.print("Duration: "); Serial.print(manualFeedDurationMs); Serial.println("ms");
+    Serial.print("Formula: "); Serial.print(g_startupDelay); Serial.print("ms + (");
+    Serial.print(manualPortionGrams); Serial.print("g × "); Serial.print(g_msPerGram); Serial.println("ms/g)");
     Serial.println();
     ledController.startFeedbackBlinkRed(3, 80);
   } else if (!reduceStatePressed && reducePressed) {
@@ -2712,10 +1386,6 @@ void sendDeviceStatus() {
   int wifiSignal = WiFi.RSSI();
   int batteryLevel = 100;  // Placeholder - implement actual battery reading if available
   
-  if (!hasDeviceAuth()) {
-    Serial.println("Skipping status send: device not paired yet (no device key)");
-    return;
-  }
   bool success = httpClient.sendDeviceStatus("online", batteryLevel, wifiSignal);
   if (success) {
     Serial.println("Device status sent to server successfully");
@@ -2745,16 +1415,12 @@ void syncDeviceConfiguration() {
 }
 
 // Remote command polling and execution
+#define COMMAND_POLL_INTERVAL 10000
+unsigned long lastCommandPoll = 0;
 
 void pollAndExecuteRemoteCommands() {
   unsigned long currentTime = millis();
   if (currentTime - lastCommandPoll > COMMAND_POLL_INTERVAL) {
-    if (!hasDeviceAuth()) {
-      // Avoid hammering auth-protected endpoints before pairing
-      lastCommandPoll = currentTime;
-      Serial.println("Skipping command poll: device not paired yet (no device key)");
-      return;
-    }
     if (millis() < networkBackoffUntil) {
       Serial.println("Network backoff active; skipping command poll");
       lastCommandPoll = currentTime;
@@ -2779,13 +1445,10 @@ void pollAndExecuteRemoteCommands() {
           }
         }
       }
-      networkBackoffMs = MIN_NETWORK_BACKOFF_MS;
-      networkBackoffUntil = 0;
     } else {
       Serial.println("Failed to poll commands: " + httpClient.getLastError());
-      networkBackoffMs = min(networkBackoffMs * 2, MAX_NETWORK_BACKOFF_MS);
-      networkBackoffUntil = millis() + networkBackoffMs;
-      Serial.println("Entering network backoff for " + String(networkBackoffMs / 1000) + "s");
+      networkBackoffUntil = millis() + NETWORK_BACKOFF_MS;
+      Serial.println("Entering network backoff for 60s");
     }
     lastCommandPoll = currentTime;
   }
@@ -2795,16 +1458,16 @@ void executeRemoteFeeding(uint32_t commandId, float portionGrams) {
   if (motorController.isFeedingInProgress()) { httpClient.sendAcknowledge(commandId, "busy"); return; }
   if (firmwareBootMs != 0 && (millis() - firmwareBootMs) < BUTTON_BOOT_IGNORE_MS) { httpClient.sendAcknowledge(commandId, "boot_mute"); return; }
   if (lastFeedCompletionTime > 0 && (millis() - lastFeedCompletionTime) < COOLDOWN_PERIOD_MS) { httpClient.sendAcknowledge(commandId, "cooldown"); return; }
-  int compartments = calculateCompartmentCount(portionGrams);
-  unsigned long feedingDuration = calculateSteppedFeedTime(compartments);
-  activeFeedPortionGrams = portionGrams;
-  Serial.println("Remote feed: " + String(actualPortionGrams(portionGrams), 1)
-    + "g (" + String(compartments)
-    + " comp) " + String(feedingDuration) + "ms");
-  logFeedingOperation(portionGrams, compartments,
-    (unsigned long)compartments * calculateOneCompartmentTime(),
-    (g_stopReverse1Ms > 0 || g_stopReverse2Ms > 0));
-  motorController.dispenseCompartments(compartments);
+  unsigned long feedingDuration = calculateFeedingDuration(portionGrams);
+  // CRITICAL FIX: Portion wheel → single continuous feed only
+  motorController.startFeedingWithAntiClog(feedingDuration);
+  ledController.showFeeding();
+  
+  while (motorController.isFeedingInProgress()) {
+    motorController.update();
+    ledController.update();
+    delay(100);
+  }
   
   bool logOk = httpClient.sendFeedingLog((int)portionGrams, "remote_command", "Remote command feed");
   dailyFeeds++;

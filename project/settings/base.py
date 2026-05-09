@@ -159,6 +159,7 @@ CELERY_TASK_ROUTES = {
 }
 # Device/API settings
 PETIO_DEVICE_API_KEY = os.getenv('PETIO_DEVICE_API_KEY')
+BREVO_API_KEY = os.getenv('BREVO_API_KEY')
 DEVICE_ID = os.getenv('DEVICE_ID', 'feeder-1')
 DEVICE_HEARTBEAT_TTL = int(os.getenv('DEVICE_HEARTBEAT_TTL', '90'))
 

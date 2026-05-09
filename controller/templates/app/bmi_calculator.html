@@ -254,39 +254,33 @@ const CAT_BREEDS = [
   { v:'tonkinese', n:'Tonkinese', min:3, max:5.5 }
 ];
 
-const DOG_NATIVE = [
-  { v:'aspin_small', n:'Aspin (Small)', min:8, max:15 },
-  { v:'aspin_medium', n:'Aspin (Medium)', min:15, max:25 },
-  { v:'aspin_large', n:'Aspin (Large)', min:25, max:35 }
-];
-const CAT_NATIVE = [
-  { v:'puspin', n:'Puspin (Native)', min:3, max:5 }
-];
+const BREED_INDEX = Object.freeze({ dog: DOG_BREEDS, cat: CAT_BREEDS });
+const NATIVE_CODES = Object.freeze({
+  dog: new Set(['aspin_small', 'aspin_medium', 'aspin_large']),
+  cat: new Set(['puspin'])
+});
+const SPECIES_POLICY = Object.freeze({
+  dog: { weightMax: 100, heightMax: 100, needleMax: 40, deviationBands: [-15, 15, 30], bmiBands: [15, 25, 30] },
+  cat: { weightMax: 20, heightMax: 60, needleMax: 30, deviationBands: [-10, 10, 25], bmiBands: [12, 20, 26] }
+});
+
+function getPolicy(type) {
+  return SPECIES_POLICY[type === 'cat' ? 'cat' : 'dog'];
+}
 
 function setBreeds(type) {
+  const species = type === 'cat' ? 'cat' : 'dog';
   const nativeGrp = document.getElementById('nativeBreeds');
   const popularGrp = document.getElementById('popularBreeds');
   nativeGrp.innerHTML = '';
   popularGrp.innerHTML = '';
-  const natives = type === 'dog' ? DOG_NATIVE : CAT_NATIVE;
-  const list = type === 'dog' ? DOG_BREEDS : CAT_BREEDS;
-  const nativeCodes = new Set(natives.map(b => b.v));
-  for (const b of natives) {
+  for (const b of BREED_INDEX[species]) {
     const opt = document.createElement('option');
     opt.value = b.v;
     opt.textContent = b.n;
     opt.dataset.min = b.min;
     opt.dataset.max = b.max;
-    nativeGrp.appendChild(opt);
-  }
-  for (const b of list) {
-    if (nativeCodes.has(b.v)) continue; // avoid duplicate entries between groups
-    const opt = document.createElement('option');
-    opt.value = b.v;
-    opt.textContent = b.n;
-    opt.dataset.min = b.min;
-    opt.dataset.max = b.max;
-    popularGrp.appendChild(opt);
+    (NATIVE_CODES[species].has(b.v) ? nativeGrp : popularGrp).appendChild(opt);
   }
   document.getElementById('breedSelect').value = '';
 }
@@ -308,8 +302,9 @@ function validate() {
   const today = new Date();
   const bday = birthday ? new Date(birthday) : null;
 
-  const wMax = type === 'dog' ? 100 : 20;
-  const hMax = type === 'dog' ? 100 : 60;
+  const policy = getPolicy(type);
+  const wMax = policy.weightMax;
+  const hMax = policy.heightMax;
   if (!name) errors.push('Name is required');
   if (!bday) errors.push('Birthday is required');
   if (bday && bday > today) errors.push('Birthday cannot be in the future');
@@ -338,55 +333,54 @@ function getBreedIdealMidpoint(breedOpt) {
   return (min + max) / 2;
 }
 
-// CHANGED: dog BMI uses weight / height(m)^2.
-function calcDogBMI(weight, height) {
+function calcPetBMI(weight, height) {
   const heightM = height / 100;
   const bmi = weight / Math.pow(heightM, 2);
   return Number(bmi.toFixed(1));
 }
 
-// CHANGED: cat BMI uses the same formula as dogs.
-function calcCatBMI(weight, height) {
-  const heightM = height / 100;
-  const bmi = weight / Math.pow(heightM, 2);
-  return Number(bmi.toFixed(1));
+function classifyByBands(value, bands) {
+  if (value < bands[0]) return 'Underweight';
+  if (value <= bands[1]) return 'Ideal';
+  if (value <= bands[2]) return 'Overweight';
+  return 'Obese';
 }
 
-// CHANGED: derives category from breed deviation when available, otherwise BMI fallback bands.
 function getCategoryFromBMI(type, bmi, weight, breedIdeal) {
-  const t = type === 'cat' ? 'cat' : 'dog';
+  const policy = getPolicy(type);
   if (Number.isFinite(breedIdeal) && breedIdeal > 0) {
-    const deviation = ((weight - breedIdeal) / breedIdeal) * 100;
-    if (t === 'dog') {
-      if (deviation < -15) return { category: 'Underweight', deviation: Number(deviation.toFixed(1)) };
-      if (deviation <= 15) return { category: 'Ideal', deviation: Number(deviation.toFixed(1)) };
-      if (deviation <= 30) return { category: 'Overweight', deviation: Number(deviation.toFixed(1)) };
-      return { category: 'Obese', deviation: Number(deviation.toFixed(1)) };
-    }
-    if (deviation < -10) return { category: 'Underweight', deviation: Number(deviation.toFixed(1)) };
-    if (deviation <= 10) return { category: 'Ideal', deviation: Number(deviation.toFixed(1)) };
-    if (deviation <= 25) return { category: 'Overweight', deviation: Number(deviation.toFixed(1)) };
-    return { category: 'Obese', deviation: Number(deviation.toFixed(1)) };
+    const deviation = Number((((weight - breedIdeal) / breedIdeal) * 100).toFixed(1));
+    return { category: classifyByBands(deviation, policy.deviationBands), deviation };
   }
-  if (t === 'dog') {
-    if (bmi < 15) return { category: 'Underweight', deviation: null };
-    if (bmi <= 25) return { category: 'Ideal', deviation: null };
-    if (bmi <= 30) return { category: 'Overweight', deviation: null };
-    return { category: 'Obese', deviation: null };
-  }
-  if (bmi < 12) return { category: 'Underweight', deviation: null };
-  if (bmi <= 20) return { category: 'Ideal', deviation: null };
-  if (bmi <= 26) return { category: 'Overweight', deviation: null };
-  return { category: 'Obese', deviation: null };
+  return { category: classifyByBands(bmi, policy.bmiBands), deviation: null };
 }
 
-// CHANGED: main BMI entry now accepts breed option and returns deviation as well.
 function calcBMI(type, weight, height, breedOpt) {
-  const bmi = (type === 'cat') ? calcCatBMI(weight, height) : calcDogBMI(weight, height);
+  const bmi = calcPetBMI(weight, height);
   const breedIdeal = getBreedIdealMidpoint(breedOpt);
   const outcome = getCategoryFromBMI(type, bmi, weight, breedIdeal);
   return { bmi, category: outcome.category, deviation: outcome.deviation };
 }
+
+const SSOTState = (() => {
+  const state = { version: 0, syncedAt: null, syncLatencyMs: 0, form: null, result: null, breed: null };
+  const consumers = new Set();
+  const clone = () => JSON.parse(JSON.stringify(state));
+  return {
+    getSnapshot: () => clone(),
+    subscribe(fn) { consumers.add(fn); return () => consumers.delete(fn); },
+    publish(nextState, source = 'ui') {
+      const t0 = performance.now();
+      Object.assign(state, nextState);
+      state.version += 1;
+      state.syncedAt = new Date().toISOString();
+      const snapshot = clone();
+      consumers.forEach(fn => fn(snapshot, source));
+      state.syncLatencyMs = Number((performance.now() - t0).toFixed(2));
+      return clone();
+    }
+  };
+})();
 
 const RECS = {
   underweight: {
@@ -693,6 +687,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+  if (new URLSearchParams(window.location.search).get('ssot_test') === '1') {
+    const result = runSSOTIntegrationTests();
+    console.info('SSOT integration test', result);
+  }
   listProfiles();
 });
 </script>
