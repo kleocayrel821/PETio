@@ -5,7 +5,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { computeCbmi, computeFelineCbmi, getConditionBand, getBreedParameters, DEFAULT_RATIO } = require("./cbmi.js");
+const { computeCbmi, calculateBodyIndex, getConditionBand, getBreedParameters, DEFAULT_RATIO } = require("./cbmi.js");
 
 /**
  * Helper for approximate numeric assertions.
@@ -53,16 +53,17 @@ function testValidationErrors() {
 }
 
 function testFelineVerificationCases() {
-  const persian = computeFelineCbmi(4.5, 23, "persian");
-  const maineCoon = computeFelineCbmi(7.5, 28, "maine_coon");
-  const puspin = computeFelineCbmi(4.2, 22, "puspin");
-  const siamese = computeFelineCbmi(5.5, 21, "siamese");
+  const beagle = calculateBodyIndex(12.8, 38, "beagle", "dog");
+  const dachshund = calculateBodyIndex(9, 22, "dachshund", "dog");
+  const persian = calculateBodyIndex(4.5, 23, "persian", "cat");
+  const siamese = calculateBodyIndex(5.5, 21, "siamese", "cat");
 
-  assertApprox(persian.cbmi, 38.4, 0.4, "Persian CBMI");
-  assert.equal(persian.conditionBand, "Ideal");
-  assert.equal(maineCoon.conditionBand, "Ideal");
-  assert.equal(puspin.conditionBand, "Ideal");
-  assert.equal(siamese.conditionBand, "Overweight");
+  assertApprox(beagle.index, 56.7, 0.5, "Beagle index");
+  assert.equal(beagle.band.label, "Ideal");
+  assert.equal(dachshund.band.label, "Ideal");
+  assertApprox(persian.index, 38.6, 0.5, "Persian index");
+  assert.equal(persian.band.label, "Ideal");
+  assert.equal(siamese.band.label, "Overweight");
 }
 
 function run() {

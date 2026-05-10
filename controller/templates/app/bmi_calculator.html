@@ -330,15 +330,23 @@ function mapBreedIdForCbmi(breedId) {
 }
 
 /**
- * Replacement for old BMI flow. Uses CBMI from breed-estimated body length.
+ * Replacement for old BMI flow. Uses species-aware body geometry index.
  */
-function calculateBodyIndex(weightKg, heightCm, breedId) {
-  const type = getPetType();
-  if (type === 'cat') {
-    return window.CBMI.computeFelineCbmi(weightKg, heightCm, breedId);
-  }
-  const resolvedBreedId = mapBreedIdForCbmi(breedId);
-  return window.CBMI.computeCbmi(weightKg, heightCm, resolvedBreedId);
+function calculateBodyIndex(weightKg, heightCm, breedId, petType) {
+  const type = petType === 'cat' ? 'cat' : 'dog';
+  const resolvedBreedId = type === 'dog' ? mapBreedIdForCbmi(breedId) : breedId;
+  const result = window.CBMI.calculateBodyIndex(weightKg, heightCm, resolvedBreedId, type);
+  const portionPercent = Math.round(result.band.portion * 100);
+  return {
+    cbmi: result.index,
+    conditionBand: result.band.label,
+    portionAdjustment: portionPercent === 0 ? 'Maintain' : `${portionPercent > 0 ? '+' : ''}${portionPercent}%`,
+    estimatedLengthCm: result.estLengthCm,
+    lengthHeightRatio: result.ratio,
+    idealWeightMin: null,
+    idealWeightMax: null,
+    warning: ''
+  };
 }
 
 const RECS = {
@@ -519,7 +527,7 @@ function calcAndRender() {
   const err = document.getElementById('formErrors');
   err.textContent = '';
   if (!v.valid) { err.textContent = v.errors[0]; err.classList.add('shake'); setTimeout(()=>err.classList.remove('shake'),300); return; }
-  const result = calculateBodyIndex(v.data.weight, v.data.height, v.data.breed);
+  const result = calculateBodyIndex(v.data.weight, v.data.height, v.data.breed, v.data.type);
   document.getElementById('bmiScore').textContent = String(result.cbmi);
   setCategoryBadge(result.conditionBand);
   setGaugeTheme(result.conditionBand);
