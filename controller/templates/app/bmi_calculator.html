@@ -65,21 +65,21 @@
           <label class="subsection-title" for="weightKg">Weight* (kg)</label>
           <div class="input-with-unit">
             <button type="button" class="stepper-btn" data-target="weightKg" data-step="-0.1" aria-label="Decrease weight"><i class="fas fa-minus"></i></button>
-            <input id="weightKg" class="form-control-enhanced w-full" type="number" inputmode="decimal" step="0.1" min="0.5" max="100" required aria-required="true" aria-describedby="weightHelp" placeholder="e.g., 7.5" />
+            <input id="weightKg" class="form-control-enhanced w-full" type="number" inputmode="decimal" step="0.1" min="0.5" max="120" required aria-required="true" aria-describedby="weightHelp" placeholder="e.g., 7.5" />
             <span class="unit">kg</span>
             <button type="button" class="stepper-btn" data-target="weightKg" data-step="0.1" aria-label="Increase weight"><i class="fas fa-plus"></i></button>
           </div>
-          <div id="weightHelp" class="text-xs text-gray-400 mt-1">Typical range: 0.5–100 kg for dogs, 0.5–20 kg for cats.</div>
+          <div id="weightHelp" class="text-xs text-gray-400 mt-1">Valid range: 0.5–120 kg.</div>
         </div>
         <div>
-          <label class="subsection-title" for="heightCm">Height to Shoulder* (cm)</label>
+          <label class="subsection-title" for="heightCm">Height to Shoulder* (cm) - Used with breed proportions to estimate body length</label>
           <div class="input-with-unit">
             <button type="button" class="stepper-btn" data-target="heightCm" data-step="-0.5" aria-label="Decrease height"><i class="fas fa-minus"></i></button>
-            <input id="heightCm" class="form-control-enhanced w-full" type="number" inputmode="decimal" step="0.1" min="10" max="100" required aria-required="true" aria-describedby="heightHelp" placeholder="e.g., 35.0" />
+            <input id="heightCm" class="form-control-enhanced w-full" type="number" inputmode="decimal" step="0.1" min="10" max="110" required aria-required="true" aria-describedby="heightHelp" placeholder="e.g., 35.0" />
             <span class="unit">cm</span>
             <button type="button" class="stepper-btn" data-target="heightCm" data-step="0.5" aria-label="Increase height"><i class="fas fa-plus"></i></button>
           </div>
-          <div id="heightHelp" class="text-xs text-gray-400 mt-1">Measure floor to shoulder blade with the pet standing upright.</div>
+          <div id="heightHelp" class="text-xs text-gray-400 mt-1">Used with breed proportions to estimate body length.</div>
         </div>
       </div>
 
@@ -198,6 +198,7 @@
 .saved-profile-meta { font-size:.75rem; color:#64748b; }
 </style>
 
+<script src="{% static 'js/cbmi.js' %}"></script>
 <script>
 const DOG_BREEDS = [
   { v:'shih_tzu', n:'Shih Tzu', min:4, max:7 },
@@ -259,14 +260,11 @@ const NATIVE_CODES = Object.freeze({
   dog: new Set(['aspin_small', 'aspin_medium', 'aspin_large']),
   cat: new Set(['puspin'])
 });
-const SPECIES_POLICY = Object.freeze({
-  dog: { weightMax: 100, heightMax: 100, needleMax: 40, deviationBands: [-15, 15, 30], bmiBands: [15, 25, 30] },
-  cat: { weightMax: 20, heightMax: 60, needleMax: 30, deviationBands: [-10, 10, 25], bmiBands: [12, 20, 26] }
-});
-
-function getPolicy(type) {
-  return SPECIES_POLICY[type === 'cat' ? 'cat' : 'dog'];
-}
+const WEIGHT_MIN_KG = 0.5;
+const WEIGHT_MAX_KG = 120;
+const HEIGHT_MIN_CM = 10;
+const HEIGHT_MAX_CM = 110;
+const NEEDLE_MAX_CBMI = 100;
 
 function setBreeds(type) {
   const species = type === 'cat' ? 'cat' : 'dog';
@@ -302,16 +300,13 @@ function validate() {
   const today = new Date();
   const bday = birthday ? new Date(birthday) : null;
 
-  const policy = getPolicy(type);
-  const wMax = policy.weightMax;
-  const hMax = policy.heightMax;
   if (!name) errors.push('Name is required');
   if (!bday) errors.push('Birthday is required');
   if (bday && bday > today) errors.push('Birthday cannot be in the future');
   if (!gender) errors.push('Gender is required');
   if (!breed) errors.push('Breed is required');
-  if (!(weight >= 0.5 && weight <= wMax)) errors.push('Please enter a valid weight');
-  if (!(height >= 10 && height <= hMax)) errors.push('Please enter a valid height');
+  if (!(weight >= WEIGHT_MIN_KG && weight <= WEIGHT_MAX_KG)) errors.push('Please enter a valid weight');
+  if (!(height >= HEIGHT_MIN_CM && height <= HEIGHT_MAX_CM)) errors.push('Please enter a valid height');
   return { valid: errors.length === 0, errors, data: { type, name, birthday, gender, breed, weight, height } };
 }
 
@@ -324,82 +319,42 @@ function normalizeCategory(cat) {
   return 'ideal';
 }
 
-// CHANGED: returns breed ideal midpoint from option dataset min/max.
-function getBreedIdealMidpoint(breedOpt) {
-  if (!breedOpt) return null;
-  const min = parseFloat(breedOpt.dataset.min || '');
-  const max = parseFloat(breedOpt.dataset.max || '');
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
-  return (min + max) / 2;
+/**
+ * The UI breed IDs are reused for cats and many dog breeds.
+ * Only selected breeds are parameterized in the CBMI table, so unknown IDs
+ * intentionally fall back to default geometric ratio inside `computeCbmi`.
+ */
+function mapBreedIdForCbmi(breedId) {
+  if (breedId === 'labrador') return 'labrador_retriever';
+  return breedId;
 }
 
-function calcPetBMI(weight, height) {
-  const heightM = height / 100;
-  const bmi = weight / Math.pow(heightM, 2);
-  return Number(bmi.toFixed(1));
+/**
+ * Replacement for old BMI flow. Uses CBMI from breed-estimated body length.
+ */
+function calculateBodyIndex(weightKg, heightCm, breedId) {
+  const resolvedBreedId = mapBreedIdForCbmi(breedId);
+  return window.CBMI.computeCbmi(weightKg, heightCm, resolvedBreedId);
 }
-
-function classifyByBands(value, bands) {
-  if (value < bands[0]) return 'Underweight';
-  if (value <= bands[1]) return 'Ideal';
-  if (value <= bands[2]) return 'Overweight';
-  return 'Obese';
-}
-
-function getCategoryFromBMI(type, bmi, weight, breedIdeal) {
-  const policy = getPolicy(type);
-  if (Number.isFinite(breedIdeal) && breedIdeal > 0) {
-    const deviation = Number((((weight - breedIdeal) / breedIdeal) * 100).toFixed(1));
-    return { category: classifyByBands(deviation, policy.deviationBands), deviation };
-  }
-  return { category: classifyByBands(bmi, policy.bmiBands), deviation: null };
-}
-
-function calcBMI(type, weight, height, breedOpt) {
-  const bmi = calcPetBMI(weight, height);
-  const breedIdeal = getBreedIdealMidpoint(breedOpt);
-  const outcome = getCategoryFromBMI(type, bmi, weight, breedIdeal);
-  return { bmi, category: outcome.category, deviation: outcome.deviation };
-}
-
-const SSOTState = (() => {
-  const state = { version: 0, syncedAt: null, syncLatencyMs: 0, form: null, result: null, breed: null };
-  const consumers = new Set();
-  const clone = () => JSON.parse(JSON.stringify(state));
-  return {
-    getSnapshot: () => clone(),
-    subscribe(fn) { consumers.add(fn); return () => consumers.delete(fn); },
-    publish(nextState, source = 'ui') {
-      const t0 = performance.now();
-      Object.assign(state, nextState);
-      state.version += 1;
-      state.syncedAt = new Date().toISOString();
-      const snapshot = clone();
-      consumers.forEach(fn => fn(snapshot, source));
-      state.syncLatencyMs = Number((performance.now() - t0).toFixed(2));
-      return clone();
-    }
-  };
-})();
 
 const RECS = {
   underweight: {
-    feeding: 'Increase daily portions by 10-15%. Feed high-quality protein.',
+    feeding: 'Increase daily portions by 10% (+10%).',
     exercise: 'Gentle activity, avoid overexertion.',
     checkup: 'Consult vet to rule out health issues.'
   },
   ideal: {
-    feeding: 'Maintain current portions. Great job!',
+    feeding: 'Maintain current portions.',
     exercise: 'Continue regular activity.',
     checkup: 'Annual checkups recommended.'
   },
   overweight: {
-    feeding: 'Reduce portions by 10%. Limit treats.',
+    feeding: 'Reduce portions by 10% (-10%).',
     exercise: 'Increase activity gradually.',
     checkup: 'Schedule vet consultation for weight plan.'
   },
   obese: {
-    feeding: 'Reduce portions by 20%. Strict treat limits.',
+    feeding: 'Reduce portions by 20% (-20%). Strict treat limits.',
     exercise: 'Start low-impact activities.',
     checkup: 'Immediate vet consultation recommended.'
   }
@@ -431,26 +386,28 @@ function setGaugeTheme(cat) {
 }
 
 // CHANGED: needle scale is type-aware through needleMax (dog=40, cat=30).
-function setNeedle(bmi, needleMax = 40) {
-  const max = Number.isFinite(needleMax) && needleMax > 0 ? needleMax : 40;
-  const clamped = Math.max(0, Math.min(max, bmi));
+function setNeedle(cbmi, needleMax = NEEDLE_MAX_CBMI) {
+  const max = Number.isFinite(needleMax) && needleMax > 0 ? needleMax : NEEDLE_MAX_CBMI;
+  const clamped = Math.max(0, Math.min(max, cbmi));
   const angle = -90 + (clamped / max) * 180;
   document.getElementById('needle').setAttribute('transform', `rotate(${angle},110,120)`);
 }
 
-// CHANGED: includes breed ideal range and deviation percentage details.
-function renderRecs(cat, breedOpt, deviation) {
+function renderRecs(cat, cbmiDetails) {
   const key = normalizeCategory(cat);
   const el = document.getElementById('bmiRecommendations');
   const base = RECS[key] || RECS.ideal;
-  const breedText = breedOpt ? `Ideal weight for breed: ${breedOpt.dataset.min}-${breedOpt.dataset.max} kg.` : 'Ideal weight range unavailable.';
-  const devText = Number.isFinite(deviation)
-    ? `Deviation from ideal midpoint: ${deviation > 0 ? '+' : ''}${deviation.toFixed(1)}%.`
-    : 'Deviation from ideal midpoint: unavailable.';
+  const hasIdealRange = Number.isFinite(cbmiDetails.idealWeightMin) && Number.isFinite(cbmiDetails.idealWeightMax);
+  const breedText = hasIdealRange
+    ? `Ideal weight for breed: ${cbmiDetails.idealWeightMin}-${cbmiDetails.idealWeightMax} kg.`
+    : 'Ideal weight range unavailable for this breed; default geometric ratio applied.';
+  const detailsText = `Estimated body length: ${cbmiDetails.estimatedLengthCm} cm (ratio ${cbmiDetails.lengthHeightRatio.toFixed(2)}). Portion adjustment: ${cbmiDetails.portionAdjustment}.`;
+  const warnText = cbmiDetails.warning ? `<div class="text-xs text-amber-500">${cbmiDetails.warning}</div>` : '';
   el.innerHTML = `
     <div class="space-y-2">
       <div class="status-badge">${breedText}</div>
-      <div class="text-xs text-gray-400">${devText}</div>
+      <div class="text-xs text-gray-400">${detailsText}</div>
+      ${warnText}
       <ul class="list-disc ml-5 text-sm">
         <li>${base.feeding}</li>
         <li>${base.exercise}</li>
@@ -486,7 +443,7 @@ function listProfiles() {
       const li = document.createElement('li');
       li.className = 'saved-profile-item';
       const title = document.createElement('div');
-      title.innerHTML = `<div class="saved-profile-title">${obj?.name || 'Unnamed'}</div><div class="saved-profile-meta">${obj?.type || '-'} • BMI ${obj?.bmi ?? '--'}</div>`;
+      title.innerHTML = `<div class="saved-profile-title">${obj?.name || 'Unnamed'}</div><div class="saved-profile-meta">${obj?.type || '-'} • CBMI ${obj?.cbmi ?? '--'}</div>`;
       const actions = document.createElement('div');
       actions.className = 'profile-menu';
       const toggle = document.createElement('button');
@@ -552,43 +509,33 @@ function deleteProfile(key) {
   if (window.toastManager && window.toastManager.success) window.toastManager.success('Profile deleted');
 }
 
-// CHANGED: reads breed option first, passes it to calcBMI, and sets needleMax by pet type.
+// Replacement of the old BMI flow with breed-aware CBMI.
 function calcAndRender() {
   const v = validate();
   const err = document.getElementById('formErrors');
   err.textContent = '';
   if (!v.valid) { err.textContent = v.errors[0]; err.classList.add('shake'); setTimeout(()=>err.classList.remove('shake'),300); return; }
-  const breedOpt = document.querySelector(`#breedSelect option[value="${v.data.breed}"]`);
-  const res = calcBMI(v.data.type, v.data.weight, v.data.height, breedOpt);
-  const needleMax = v.data.type === 'cat' ? 30 : 40;
-  document.getElementById('bmiScore').textContent = String(res.bmi);
-  setCategoryBadge(res.category);
-  setGaugeTheme(res.category);
-  setNeedle(res.bmi, needleMax);
-  renderRecs(res.category, breedOpt, res.deviation);
+  const result = calculateBodyIndex(v.data.weight, v.data.height, v.data.breed);
+  document.getElementById('bmiScore').textContent = String(result.cbmi);
+  setCategoryBadge(result.conditionBand);
+  setGaugeTheme(result.conditionBand);
+  setNeedle(result.cbmi, NEEDLE_MAX_CBMI);
+  renderRecs(result.conditionBand, result);
   document.getElementById('saveProfileBtn').disabled = false;
   document.getElementById('saveProfileBtn').setAttribute('aria-disabled', 'false');
   document.getElementById('lastCalcAt').textContent = `Last calculated ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
-  return { ...v.data, ...res };
+  return { ...v.data, ...result };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   setBreeds(getPetType());
   const updateTypeHelp = () => {
-    const type = getPetType();
     const wHelp = document.getElementById('weightHelp');
     const hHelp = document.getElementById('heightHelp');
-    if (type === 'dog') {
-      wHelp.textContent = 'Typical range: 0.5–100 kg for dogs.';
-      hHelp.textContent = 'Measure floor to shoulder blade; usual range 10–100 cm.';
-      document.getElementById('weightKg').max = 100;
-      document.getElementById('heightCm').max = 100;
-    } else {
-      wHelp.textContent = 'Typical range: 0.5–20 kg for cats.';
-      hHelp.textContent = 'Measure floor to shoulder blade; usual range 10–60 cm.';
-      document.getElementById('weightKg').max = 20;
-      document.getElementById('heightCm').max = 60;
-    }
+    wHelp.textContent = `Valid range: ${WEIGHT_MIN_KG}-${WEIGHT_MAX_KG} kg.`;
+    hHelp.textContent = 'Used with breed proportions to estimate body length.';
+    document.getElementById('weightKg').max = WEIGHT_MAX_KG;
+    document.getElementById('heightCm').max = HEIGHT_MAX_CM;
   };
   document.querySelectorAll('input[name="petType"]').forEach(r => {
     r.addEventListener('change', () => {
@@ -618,7 +565,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch('/api/client-errors/', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ type:'bmi_calculation', ...data, timestamp: new Date().toISOString() }),
+          body: JSON.stringify({ type:'cbmi_calculation', ...data, timestamp: new Date().toISOString() }),
           keepalive: true
         }).catch(()=>{});
       } catch {}
@@ -687,10 +634,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
-  if (new URLSearchParams(window.location.search).get('ssot_test') === '1') {
-    const result = runSSOTIntegrationTests();
-    console.info('SSOT integration test', result);
-  }
   listProfiles();
 });
 </script>
