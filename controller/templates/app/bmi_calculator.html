@@ -333,6 +333,10 @@ function mapBreedIdForCbmi(breedId) {
  * Replacement for old BMI flow. Uses CBMI from breed-estimated body length.
  */
 function calculateBodyIndex(weightKg, heightCm, breedId) {
+  const type = getPetType();
+  if (type === 'cat') {
+    return window.CBMI.computeFelineCbmi(weightKg, heightCm, breedId);
+  }
   const resolvedBreedId = mapBreedIdForCbmi(breedId);
   return window.CBMI.computeCbmi(weightKg, heightCm, resolvedBreedId);
 }

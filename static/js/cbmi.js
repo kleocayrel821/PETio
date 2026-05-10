@@ -24,6 +24,36 @@
     labrador: "labrador_retriever",
   });
 
+  const FELINE_MODEL = Object.freeze({
+    default: Object.freeze({ lengthHeightRatio: 1.10 }),
+    breeds: Object.freeze({
+      persian: Object.freeze({ ratio: 1.05, idealMin: 3.5, idealMax: 5.5 }),
+      siamese: Object.freeze({ ratio: 1.15, idealMin: 2.5, idealMax: 5.5 }),
+      maine_coon: Object.freeze({ ratio: 1.20, idealMin: 5.5, idealMax: 8.5 }),
+      british_shorthair: Object.freeze({ ratio: 1.10, idealMin: 4, idealMax: 8 }),
+      ragdoll: Object.freeze({ ratio: 1.18, idealMin: 4.5, idealMax: 9 }),
+      bengal: Object.freeze({ ratio: 1.16, idealMin: 4.5, idealMax: 7 }),
+      scottish_fold: Object.freeze({ ratio: 1.08, idealMin: 2.7, idealMax: 6 }),
+      puspin: Object.freeze({ ratio: 1.10, idealMin: 3, idealMax: 5 }),
+      american_shorthair: Object.freeze({ ratio: 1.12, idealMin: 3, idealMax: 5.5 }),
+      russian_blue: Object.freeze({ ratio: 1.12, idealMin: 3, idealMax: 5.5 }),
+      sphynx: Object.freeze({ ratio: 1.10, idealMin: 3, idealMax: 5.5 }),
+      norwegian_forest: Object.freeze({ ratio: 1.22, idealMin: 4.5, idealMax: 9 }),
+      exotic_shorthair: Object.freeze({ ratio: 1.08, idealMin: 3, idealMax: 6 }),
+      burmese: Object.freeze({ ratio: 1.10, idealMin: 3, idealMax: 5 }),
+      abyssinian: Object.freeze({ ratio: 1.15, idealMin: 2.5, idealMax: 4.5 }),
+      oriental_shorthair: Object.freeze({ ratio: 1.15, idealMin: 3, idealMax: 4.5 }),
+      turkish_angora: Object.freeze({ ratio: 1.14, idealMin: 3, idealMax: 5.5 }),
+      tonkinese: Object.freeze({ ratio: 1.14, idealMin: 3, idealMax: 5.5 }),
+    }),
+    bands: Object.freeze([
+      Object.freeze({ max: 30, label: "Underweight", portion: "+10%" }),
+      Object.freeze({ max: 45, label: "Ideal", portion: "0%" }),
+      Object.freeze({ max: 60, label: "Overweight", portion: "-10%" }),
+      Object.freeze({ max: 999, label: "Obese", portion: "-20%" }),
+    ]),
+  });
+
   /**
    * Maps a CBMI value to condition and feeding adjustment.
    */
@@ -116,16 +146,51 @@
     };
   }
 
-  const api = Object.freeze({
+  /**
+   * Feline CBMI based on cat-specific body geometry.
+   */
+  function computeFelineCbmi(weightKg, heightCm, breedId) {
+    const b = FELINE_MODEL.breeds[breedId] || {};
+    const ratio = b.ratio || FELINE_MODEL.default.lengthHeightRatio;
+
+    const estimatedLengthCm = heightCm * ratio;
+    const lengthM = estimatedLengthCm / 100;
+    // Cat calibration coefficient keeps feline CBMI bands aligned with expected clinical ranges.
+    const felineNormalization = 2;
+    const cbmi = +(weightKg / (lengthM * lengthM * felineNormalization)).toFixed(1);
+
+    const band = FELINE_MODEL.bands.find((x) => cbmi <= x.max);
+
+    let warning = "";
+    if (b.idealMin && (weightKg < b.idealMin || weightKg > b.idealMax)) {
+      warning = "Weight is outside typical breed range.";
+    }
+
+    return {
+      cbmi,
+      conditionBand: band.label,
+      portionAdjustment: band.portion,
+      estimatedLengthCm: Math.round(estimatedLengthCm),
+      lengthHeightRatio: ratio,
+      idealWeightMin: b.idealMin ?? null,
+      idealWeightMax: b.idealMax ?? null,
+      warning,
+    };
+  }
+
+  const api = {
     DEFAULT_RATIO,
     BREED_PARAMETERS,
+    FELINE_MODEL,
     getBreedParameters,
     getConditionBand,
     computeCbmi,
-  });
+    computeFelineCbmi,
+  };
 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;
   }
   globalScope.CBMI = api;
+  globalScope.CBMI.computeFelineCbmi = computeFelineCbmi;
 })(typeof globalThis !== "undefined" ? globalThis : window);

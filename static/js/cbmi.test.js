@@ -5,7 +5,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { computeCbmi, getConditionBand, getBreedParameters, DEFAULT_RATIO } = require("./cbmi.js");
+const { computeCbmi, computeFelineCbmi, getConditionBand, getBreedParameters, DEFAULT_RATIO } = require("./cbmi.js");
 
 /**
  * Helper for approximate numeric assertions.
@@ -52,12 +52,26 @@ function testValidationErrors() {
   assert.throws(() => computeCbmi(10, 9, "beagle"), /Height to shoulder must be between/);
 }
 
+function testFelineVerificationCases() {
+  const persian = computeFelineCbmi(4.5, 23, "persian");
+  const maineCoon = computeFelineCbmi(7.5, 28, "maine_coon");
+  const puspin = computeFelineCbmi(4.2, 22, "puspin");
+  const siamese = computeFelineCbmi(5.5, 21, "siamese");
+
+  assertApprox(persian.cbmi, 38.4, 0.4, "Persian CBMI");
+  assert.equal(persian.conditionBand, "Ideal");
+  assert.equal(maineCoon.conditionBand, "Ideal");
+  assert.equal(puspin.conditionBand, "Ideal");
+  assert.equal(siamese.conditionBand, "Overweight");
+}
+
 function run() {
   testBeagleExpectedOutcome();
   testBreedSpecificRatios();
   testUnknownBreedFallback();
   testBands();
   testValidationErrors();
+  testFelineVerificationCases();
   console.log("All CBMI unit tests passed.");
 }
 
