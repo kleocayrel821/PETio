@@ -819,7 +819,170 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Print receipt button
-  const printBtn = document.getElementById('printReceiptBtn'); if (printBtn) printBtn.addEventListener('click', () => window.print());
+  function escapeHtml(input) {
+    return String(input ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  function formatMoneyPHP(value) {
+    const v = Number(value || 0);
+    try {
+      return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'PHP', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    } catch (_) {
+      return `₱${v.toFixed(2)}`;
+    }
+  }
+
+  function buildReceiptDocument(data) {
+    const title = `PETio Receipt - Request ${data.requestId}${data.transactionId ? ` - TX ${data.transactionId}` : ''}`;
+    const itemTitle = escapeHtml(data.itemTitle || 'Item');
+    const buyer = escapeHtml(data.buyer || '');
+    const seller = escapeHtml(data.seller || '');
+    const payment = escapeHtml(data.paymentMethod || '');
+    const status = escapeHtml(data.status || '');
+    const meetupPlace = escapeHtml(data.meetupPlace || '');
+    const meetupTime = escapeHtml(data.meetupTime || '');
+    const gcashRef = escapeHtml(data.gcashRef || '');
+    const qty = Number(data.quantity || 1);
+    const total = Number(data.total || 0);
+    const unit = qty > 0 ? (total / qty) : total;
+    const receiptNo = escapeHtml(data.receiptNo || '');
+    const printedAt = escapeHtml(data.printedAt || '');
+
+    return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(title)}</title>
+  <style>
+    @page { size: 80mm 200mm; margin: 4mm; }
+    html, body { padding: 0; margin: 0; }
+    body {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+      line-height: 1.35;
+      color: #111827;
+      width: 72mm;
+    }
+    .center { text-align: center; }
+    .muted { color: #6b7280; }
+    .hr { border-top: 1px dashed #9ca3af; margin: 8px 0; }
+    .row { display: flex; justify-content: space-between; gap: 8px; }
+    .row > div:first-child { flex: 1 1 auto; }
+    .row > div:last-child { flex: 0 0 auto; text-align: right; }
+    .mono { font-variant-numeric: tabular-nums; }
+    .bold { font-weight: 700; }
+    .tiny { font-size: 10px; }
+    .wrap { word-break: break-word; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <div class="center">
+    <div class="bold" style="font-size: 13px;">PETio Marketplace</div>
+    <div class="tiny muted">Receipt</div>
+  </div>
+
+  <div class="hr"></div>
+
+  <div class="row tiny"><div>Printed</div><div class="mono">${printedAt}</div></div>
+  <div class="row tiny"><div>Receipt No.</div><div class="mono">${receiptNo}</div></div>
+  <div class="row tiny"><div>Request</div><div class="mono">#${escapeHtml(data.requestId)}</div></div>
+  ${data.transactionId ? `<div class="row tiny"><div>Transaction</div><div class="mono">#${escapeHtml(data.transactionId)}</div></div>` : ``}
+  ${status ? `<div class="row tiny"><div>Status</div><div class="mono">${status}</div></div>` : ``}
+
+  <div class="hr"></div>
+
+  <div class="bold tiny">ITEM</div>
+  <div class="wrap">${itemTitle}</div>
+  <div class="row">
+    <div class="mono">${qty} × ${formatMoneyPHP(unit)}</div>
+    <div class="mono">${formatMoneyPHP(total)}</div>
+  </div>
+
+  <div class="hr"></div>
+
+  <div class="row"><div class="bold">TOTAL</div><div class="bold mono">${formatMoneyPHP(total)}</div></div>
+  ${payment ? `<div class="row tiny"><div>Payment</div><div class="mono">${payment}</div></div>` : ``}
+  ${gcashRef ? `<div class="row tiny"><div>GCash Ref</div><div class="mono">${gcashRef}</div></div>` : ``}
+
+  <div class="hr"></div>
+
+  ${buyer ? `<div class="tiny"><span class="bold">Buyer:</span> @${buyer}</div>` : ``}
+  ${seller ? `<div class="tiny"><span class="bold">Seller:</span> @${seller}</div>` : ``}
+  ${(meetupPlace || meetupTime) ? `<div class="hr"></div>` : ``}
+  ${meetupTime ? `<div class="tiny"><span class="bold">Meetup Time:</span> <span class="mono">${meetupTime}</span></div>` : ``}
+  ${meetupPlace ? `<div class="tiny"><span class="bold">Meetup Place:</span> <span class="wrap">${meetupPlace}</span></div>` : ``}
+
+  <div class="hr"></div>
+
+  <div class="center tiny muted">
+    Thank you for using PETio.
+    <div class="mono">petio.site</div>
+  </div>
+</body>
+</html>`;
+  }
+
+  function printReceipt() {
+    const requestId = '{{ request_obj.id }}';
+    const transactionId = '{% if request_obj.transaction %}{{ request_obj.transaction.id }}{% endif %}';
+    const itemTitle = `{{ request_obj.listing.title|escapejs }}`;
+    const buyer = `{{ request_obj.buyer.username|escapejs }}`;
+    const seller = `{{ request_obj.seller.username|escapejs }}`;
+    const status = `{% if request_obj.transaction %}{{ request_obj.transaction.get_status_display|escapejs }}{% endif %}`;
+    const paymentMethod = `{% if request_obj.transaction and request_obj.transaction.payment_method %}{% if request_obj.transaction.payment_method == 'gcash' %}GCash{% elif request_obj.transaction.payment_method == 'cod' %}Cash{% else %}{{ request_obj.transaction.payment_method|capfirst|escapejs }}{% endif %}{% endif %}`;
+    const qty = Number(`{% if request_obj.quantity %}{{ request_obj.quantity }}{% else %}{% if current_quantity %}{{ current_quantity }}{% else %}1{% endif %}{% endif %}`) || 1;
+    const total = Number(`{% if request_obj.transaction and request_obj.transaction.amount_paid %}{{ request_obj.transaction.amount_paid }}{% else %}0{% endif %}`) || 0;
+    const meetupPlace = `{% if request_obj.transaction and request_obj.transaction.meetup_place %}{{ request_obj.transaction.meetup_place|escapejs }}{% endif %}`;
+    const meetupTime = `{% if request_obj.transaction and request_obj.transaction.meetup_time %}{{ request_obj.transaction.meetup_time|date:'Y-m-d H:i'|escapejs }}{% endif %}`;
+    const gcashRef = `{% if request_obj.transaction and request_obj.transaction.gcash_ref %}{{ request_obj.transaction.gcash_ref|escapejs }}{% endif %}`;
+    const printedAt = new Date().toLocaleString();
+    const receiptNo = transactionId ? `TX-${transactionId}` : `REQ-${requestId}`;
+
+    const doc = buildReceiptDocument({
+      requestId,
+      transactionId,
+      itemTitle,
+      buyer,
+      seller,
+      status,
+      paymentMethod,
+      quantity: qty,
+      total,
+      meetupPlace,
+      meetupTime,
+      gcashRef,
+      receiptNo,
+      printedAt,
+    });
+
+    const w = window.open('', '_blank', 'noopener,noreferrer,width=440,height=720');
+    if (!w) {
+      showMarketplaceToast('Popup blocked. Allow popups to print the receipt.', 'error');
+      return;
+    }
+    try {
+      w.document.open();
+      w.document.write(doc);
+      w.document.close();
+      w.focus();
+      const doPrint = () => { try { w.print(); } catch (_) {} };
+      w.addEventListener('load', () => setTimeout(doPrint, 150));
+      setTimeout(doPrint, 250);
+      w.onafterprint = () => { try { w.close(); } catch (_) {} };
+    } catch (err) {
+      try { w.close(); } catch (_) {}
+      showMarketplaceToast('Failed to open receipt printer.', 'error');
+    }
+  }
+
+  const printBtn = document.getElementById('printReceiptBtn');
+  if (printBtn) printBtn.addEventListener('click', printReceipt);
 });
 
 // Respond action toggle restored for seller form
