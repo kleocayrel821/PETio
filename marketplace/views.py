@@ -4640,7 +4640,7 @@ def buyer_submit_gcash_payment(request, request_id):
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import TemplateView
 from django.db.models import Sum, Count
-from django.db.models.functions import TruncDate
+from django.db.models.functions import TruncDate, TruncMonth
 
 # -----------------------------
 # Marketplace Admin role helpers
@@ -4791,10 +4791,21 @@ class AdminAnalyticsView(LoginRequiredMixin, MarketplaceAdminPermRequiredMixin, 
 
         from .models import Transaction, Category, Listing
         from django.contrib.auth import get_user_model
+        from datetime import timedelta
+
+        today = timezone.localdate()
+        start = today - timedelta(days=30)
+        end = today
+
+        tx_base_filter = Q(status__in=[TransactionStatus.PAID, TransactionStatus.COMPLETED]) & Q(
+            created_at__date__gte=start, created_at__date__lte=end
+        )
 
         # Revenue trends (daily) from paid or completed transactions
         revenue_qs = (
-            Transaction.objects.filter(status__in=[TransactionStatus.PAID, TransactionStatus.COMPLETED])
+            Transaction.objects.filter(tx_base_filter)
+            .exclude(buyer__username__startswith="smoke_")
+            .exclude(seller__username__startswith="smoke_")
             .annotate(day=TruncDate("created_at"))
             .values("day")
             .annotate(total=Sum("amount_paid"))
@@ -4805,7 +4816,9 @@ class AdminAnalyticsView(LoginRequiredMixin, MarketplaceAdminPermRequiredMixin, 
 
         # Top categories by total sales amount
         top_categories_sales = (
-            Transaction.objects.filter(status__in=[TransactionStatus.PAID, TransactionStatus.COMPLETED])
+            Transaction.objects.filter(tx_base_filter)
+            .exclude(buyer__username__startswith="smoke_")
+            .exclude(seller__username__startswith="smoke_")
             .values("listing__category__name")
             .annotate(total_sales=Sum("amount_paid"))
             .order_by("-total_sales")[:10]
@@ -4816,6 +4829,10 @@ class AdminAnalyticsView(LoginRequiredMixin, MarketplaceAdminPermRequiredMixin, 
         # Top categories by active listings
         active_by_category = (
             Listing.objects.filter(status=ListingStatus.ACTIVE)
+            .exclude(seller__username__startswith="smoke_")
+            .exclude(title__startswith="Messaging Smoke Listing @")
+            .exclude(title__startswith="FBV Smoke Listing @")
+            .exclude(title__startswith="DRF Smoke Listing @")
             .values("category__name")
             .annotate(count=Count("id"))
             .order_by("-count")[:10]
@@ -4826,7 +4843,8 @@ class AdminAnalyticsView(LoginRequiredMixin, MarketplaceAdminPermRequiredMixin, 
         # User growth by date joined
         User = get_user_model()
         user_growth = (
-            User.objects.all()
+            User.objects.filter(date_joined__date__gte=start, date_joined__date__lte=end)
+            .exclude(username__startswith="smoke_")
             .annotate(day=TruncDate("date_joined"))
             .values("day")
             .annotate(count=Count("id"))
@@ -4835,9 +4853,34 @@ class AdminAnalyticsView(LoginRequiredMixin, MarketplaceAdminPermRequiredMixin, 
         user_labels = [u["day"].strftime("%Y-%m-%d") for u in user_growth]
         user_data = [int(u["count"] or 0) for u in user_growth]
 
+        tx_month_qs = (
+            Transaction.objects.filter(tx_base_filter)
+            .exclude(buyer__username__startswith="smoke_")
+            .exclude(seller__username__startswith="smoke_")
+            .annotate(month=TruncMonth("created_at"))
+            .values("month")
+            .annotate(count=Count("id"))
+            .order_by("month")
+        )
+        tx_month_labels = [t["month"].strftime("%Y-%m") for t in tx_month_qs]
+        tx_month_data = [int(t["count"] or 0) for t in tx_month_qs]
+
+        user_month_qs = (
+            User.objects.filter(date_joined__date__gte=start, date_joined__date__lte=end)
+            .exclude(username__startswith="smoke_")
+            .annotate(month=TruncMonth("date_joined"))
+            .values("month")
+            .annotate(count=Count("id"))
+            .order_by("month")
+        )
+        user_month_labels = [u["month"].strftime("%Y-%m") for u in user_month_qs]
+        user_month_data = [int(u["count"] or 0) for u in user_month_qs]
+
         # Recent transactions for quick actions table
         recent_transactions = (
-            Transaction.objects.filter(status__in=[TransactionStatus.PAID, TransactionStatus.COMPLETED])
+            Transaction.objects.filter(tx_base_filter)
+            .exclude(buyer__username__startswith="smoke_")
+            .exclude(seller__username__startswith="smoke_")
             .select_related("listing", "buyer", "seller")
             .order_by("-created_at")[:10]
         )
@@ -4849,8 +4892,13 @@ class AdminAnalyticsView(LoginRequiredMixin, MarketplaceAdminPermRequiredMixin, 
         total_listings = Listing.objects.count()
         approved_listings = Listing.objects.filter(status__in=[ListingStatus.ACTIVE, ListingStatus.SOLD, ListingStatus.RESERVED]).count()
         rejected_listings = Listing.objects.filter(status=ListingStatus.REJECTED).count()
-        active_users = User.objects.filter(is_active=True).count()
-        transactions_completed = Transaction.objects.filter(status=TransactionStatus.COMPLETED).count()
+        active_users = User.objects.filter(is_active=True).exclude(username__startswith="smoke_").count()
+        transactions_completed = (
+            Transaction.objects.filter(status=TransactionStatus.COMPLETED)
+            .exclude(buyer__username__startswith="smoke_")
+            .exclude(seller__username__startswith="smoke_")
+            .count()
+        )
 
         ctx.update(
             {
@@ -4862,6 +4910,10 @@ class AdminAnalyticsView(LoginRequiredMixin, MarketplaceAdminPermRequiredMixin, 
                 "active_cat_data_json": json.dumps(active_cat_data),
                 "user_labels_json": json.dumps(user_labels),
                 "user_data_json": json.dumps(user_data),
+                "tx_month_labels_json": json.dumps(tx_month_labels),
+                "tx_month_data_json": json.dumps(tx_month_data),
+                "user_month_labels_json": json.dumps(user_month_labels),
+                "user_month_data_json": json.dumps(user_month_data),
                 "recent_transactions": recent_transactions,
                 "categories": categories,
                 "kpi_total_listings": total_listings,
@@ -4869,6 +4921,8 @@ class AdminAnalyticsView(LoginRequiredMixin, MarketplaceAdminPermRequiredMixin, 
                 "kpi_rejected_listings": rejected_listings,
                 "kpi_active_users": active_users,
                 "kpi_transactions_completed": transactions_completed,
+                "analytics_default_start": start.strftime("%Y-%m-%d"),
+                "analytics_default_end": end.strftime("%Y-%m-%d"),
             }
         )
         return ctx
@@ -5069,6 +5123,29 @@ def admin_analytics_data(request):
     user_labels = [u["day"].strftime("%Y-%m-%d") for u in user_qs]
     user_data = [int(u["count"] or 0) for u in user_qs]
 
+    tx_month_qs = (
+        Transaction.objects.filter(tx_base_filter)
+        .exclude(buyer__username__startswith="smoke_")
+        .exclude(seller__username__startswith="smoke_")
+        .annotate(month=TruncMonth("created_at"))
+        .values("month")
+        .annotate(count=Count("id"))
+        .order_by("month")
+    )
+    tx_month_labels = [t["month"].strftime("%Y-%m") for t in tx_month_qs]
+    tx_month_data = [int(t["count"] or 0) for t in tx_month_qs]
+
+    user_month_qs = (
+        User.objects.filter(date_joined__date__gte=start, date_joined__date__lte=end)
+        .exclude(username__startswith="smoke_")
+        .annotate(month=TruncMonth("date_joined"))
+        .values("month")
+        .annotate(count=Count("id"))
+        .order_by("month")
+    )
+    user_month_labels = [u["month"].strftime("%Y-%m") for u in user_month_qs]
+    user_month_data = [int(u["count"] or 0) for u in user_month_qs]
+
     # Recent transactions list
     recent_qs = (
         Transaction.objects.filter(tx_base_filter)
@@ -5134,6 +5211,10 @@ def admin_analytics_data(request):
             "active_cat_data": active_cat_data,
             "user_labels": user_labels,
             "user_data": user_data,
+            "tx_month_labels": tx_month_labels,
+            "tx_month_data": tx_month_data,
+            "user_month_labels": user_month_labels,
+            "user_month_data": user_month_data,
             "recent_transactions": recent_transactions,
             "kpi": {
                 "total_listings": total_listings,
