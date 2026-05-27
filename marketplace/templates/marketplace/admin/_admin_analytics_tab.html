@@ -1,13 +1,13 @@
 {% comment %}Analytics tab partial: unified design; expects labels/data JSON, categories, recent_transactions{% endcomment %}
 
 <!-- Header -->
-<div class="flex items-center justify-between mb-4">
+<div class="flex justify-between items-center mb-4">
   <div>
     <h3 class="text-2xl font-semibold text-base-content">Analytics Overview</h3>
-    <p class="text-sm text-base-content/60 mt-1">Monitor performance across listings, users, and transactions</p>
+    <p class="mt-1 text-sm text-base-content/60">Monitor performance across listings, users, and transactions</p>
   </div>
   <div class="badge badge-lg badge-info">
-    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg class="mr-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m4 4V8a4 4 0 10-8 0v8a4 4 0 108 0z"/>
     </svg>
     Real-time
@@ -15,7 +15,7 @@
   </div>
 
 <!-- KPI Cards -->
-<div id="kpiCards" class="kpi-grid mb-6">
+<div id="kpiCards" class="mb-6 kpi-grid">
   <div class="card kpi-card">
     <div class="card-body kpi-content">
       <div class="kpi-icon kpi-icon-blue"><i data-lucide="files"></i></div>
@@ -64,12 +64,12 @@
 </div>
 
 <!-- Filters -->
-<div class="card bg-base-100 shadow-sm border border-base-200 mb-6">
-  <div class="card-body p-4">
-    <form id="analyticsFilterForm" class="flex flex-wrap items-center gap-2">
-      <input id="filterStart" type="date" class="input input-bordered input-sm" />
+<div class="mb-6 border shadow-sm card bg-base-100 border-base-200">
+  <div class="p-4 card-body">
+    <form id="analyticsFilterForm" class="flex flex-wrap gap-2 items-center">
+      <input id="filterStart" type="date" class="input input-bordered input-sm" value="{{ analytics_default_start|default:'' }}" />
       <span>to</span>
-      <input id="filterEnd" type="date" class="input input-bordered input-sm" />
+      <input id="filterEnd" type="date" class="input input-bordered input-sm" value="{{ analytics_default_end|default:'' }}" />
       <select id="filterCategory" class="select select-bordered select-sm">
         <option value="">All Categories</option>
         {% for c in categories %}
@@ -82,41 +82,55 @@
 </div>
 
 <!-- Charts -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-  <div class="card bg-base-100 shadow-md">
+<div class="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2">
+  <div class="shadow-md card bg-base-100">
     <div class="card-body">
       <h3 class="card-title">Revenue (Daily)</h3>
       <canvas id="chartRevenue" height="120"></canvas>
     </div>
   </div>
-  <div class="card bg-base-100 shadow-md">
+  <div class="shadow-md card bg-base-100">
     <div class="card-body">
       <h3 class="card-title">Active Listings by Category</h3>
       <canvas id="chartActiveCat" height="120"></canvas>
     </div>
   </div>
 </div>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-  <div class="card bg-base-100 shadow-md">
+<div class="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2">
+  <div class="shadow-md card bg-base-100">
     <div class="card-body">
       <h3 class="card-title">Top Categories (Sales)</h3>
       <canvas id="chartCategories" height="120"></canvas>
     </div>
   </div>
-  <div class="card bg-base-100 shadow-md">
+  <div class="shadow-md card bg-base-100">
     <div class="card-body">
       <h3 class="card-title">User Growth</h3>
       <canvas id="chartUsers" height="120"></canvas>
     </div>
   </div>
 </div>
+<div class="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2">
+  <div class="shadow-md card bg-base-100">
+    <div class="card-body">
+      <h3 class="card-title">Transactions (Monthly)</h3>
+      <canvas id="chartTxMonth" height="120"></canvas>
+    </div>
+  </div>
+  <div class="shadow-md card bg-base-100">
+    <div class="card-body">
+      <h3 class="card-title">New Users (Monthly)</h3>
+      <canvas id="chartUsersMonth" height="120"></canvas>
+    </div>
+  </div>
+</div>
 
 <!-- Recent Transactions -->
-<div class="card bg-base-100 shadow-md">
+<div class="shadow-md card bg-base-100">
   <div class="card-body">
     <h3 class="card-title">Recent Transactions</h3>
     <div class="overflow-x-auto">
-      <table class="table table-compact w-full">
+      <table class="table w-full table-compact">
         <thead class="sticky top-0 bg-base-200">
           <tr>
             <th>ID</th><th>Listing</th><th>Buyer</th><th>Seller</th><th>Status</th><th>Amount</th><th>Created</th><th>Actions</th>
@@ -171,36 +185,52 @@
   const activeCatData = {{ active_cat_data_json|default:'[]'|safe }};
   const userLabels = {{ user_labels_json|default:'[]'|safe }};
   const userData = {{ user_data_json|default:'[]'|safe }};
+  const txMonthLabels = {{ tx_month_labels_json|default:'[]'|safe }};
+  const txMonthData = {{ tx_month_data_json|default:'[]'|safe }};
+  const userMonthLabels = {{ user_month_labels_json|default:'[]'|safe }};
+  const userMonthData = {{ user_month_data_json|default:'[]'|safe }};
   const dataUrl = "{% url 'marketplace_admin:analytics_data' %}";
 
-  function makeLineChart(ctx, labels, data, label) {
+  function numberFormat(value) {
+    const v = Number(value || 0);
+    try { return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(v); } catch { return String(Math.round(v)); }
+  }
+
+  function makeLineChart(ctx, labels, data, label, opts) {
+    const tick = (opts && opts.currency) ? currencyFormat : numberFormat;
+    const yTitle = (opts && opts.yTitle) ? opts.yTitle : '';
     return new Chart(ctx, {
       type: 'line',
       data: { labels, datasets: [{ label, data, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.15)', tension: 0.3 }] },
       options: {
-        scales: { x: { ticks: { maxRotation: 0, autoSkip: true } }, y: { beginAtZero: true, ticks: { callback: currencyFormat }, title: { display: true, text: 'Amount' } } },
-        plugins: { legend: { display: true }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${currencyFormat(ctx.parsed.y)}` } } }
+        scales: { x: { ticks: { maxRotation: 0, autoSkip: true } }, y: { beginAtZero: true, ticks: { callback: tick }, title: { display: Boolean(yTitle), text: yTitle } } },
+        plugins: { legend: { display: true }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${tick(ctx.parsed.y)}` } } }
       }
     });
   }
-  function makeBarChart(ctx, labels, data, label) {
+  function makeBarChart(ctx, labels, data, label, opts) {
+    const tick = (opts && opts.currency) ? currencyFormat : numberFormat;
+    const yTitle = (opts && opts.yTitle) ? opts.yTitle : '';
     return new Chart(ctx, {
       type: 'bar',
       data: { labels, datasets: [{ label, data, backgroundColor: '#10b981' }] },
       options: {
-        scales: { y: { beginAtZero: true, ticks: { callback: currencyFormat }, title: { display: true, text: 'Amount' } } },
-        plugins: { legend: { display: true }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${currencyFormat(ctx.parsed.y)}` } } }
+        scales: { y: { beginAtZero: true, ticks: { callback: tick }, title: { display: Boolean(yTitle), text: yTitle } } },
+        plugins: { legend: { display: true }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${tick(ctx.parsed.y)}` } } }
       }
     });
   }
 
-  let chartRevenue, chartCategories, chartActiveCat, chartUsers;
+  let chartRevenue, chartCategories, chartActiveCat, chartUsers, chartTxMonth, chartUsersMonth;
+  let lastParams = {};
 
   function initCharts() {
-    chartRevenue = makeLineChart(document.getElementById('chartRevenue').getContext('2d'), revenueLabels, revenueData, 'Revenue');
-    chartCategories = makeBarChart(document.getElementById('chartCategories').getContext('2d'), catLabels, catData, 'Sales');
-    chartActiveCat = makeBarChart(document.getElementById('chartActiveCat').getContext('2d'), activeCatLabels, activeCatData, 'Active Listings');
-    chartUsers = makeLineChart(document.getElementById('chartUsers').getContext('2d'), userLabels, userData, 'New Users');
+    chartRevenue = makeLineChart(document.getElementById('chartRevenue').getContext('2d'), revenueLabels, revenueData, 'Revenue', { currency: true, yTitle: 'Amount' });
+    chartCategories = makeBarChart(document.getElementById('chartCategories').getContext('2d'), catLabels, catData, 'Sales', { currency: true, yTitle: 'Amount' });
+    chartActiveCat = makeBarChart(document.getElementById('chartActiveCat').getContext('2d'), activeCatLabels, activeCatData, 'Active Listings', { currency: false, yTitle: 'Count' });
+    chartUsers = makeLineChart(document.getElementById('chartUsers').getContext('2d'), userLabels, userData, 'New Users', { currency: false, yTitle: 'Users' });
+    chartTxMonth = makeBarChart(document.getElementById('chartTxMonth').getContext('2d'), txMonthLabels, txMonthData, 'Transactions', { currency: false, yTitle: 'Count' });
+    chartUsersMonth = makeBarChart(document.getElementById('chartUsersMonth').getContext('2d'), userMonthLabels, userMonthData, 'New Users', { currency: false, yTitle: 'Count' });
   }
 
   function refreshAnalytics(params) {
@@ -217,10 +247,12 @@
         setText('kpiActiveUsers', kpi.active_users);
         setText('kpiTransactionsCompleted', kpi.transactions_completed);
 
-        chartRevenue.data.labels = json.revenue_labels; chartRevenue.data.datasets[0].data = json.revenue_data; chartRevenue.update();
-        chartCategories.data.labels = json.categories_labels; chartCategories.data.datasets[0].data = json.categories_data; chartCategories.update();
-        chartActiveCat.data.labels = json.active_cat_labels; chartActiveCat.data.datasets[0].data = json.active_cat_data; chartActiveCat.update();
-        chartUsers.data.labels = json.user_labels; chartUsers.data.datasets[0].data = json.user_data; chartUsers.update();
+        if (chartRevenue) { chartRevenue.data.labels = json.revenue_labels; chartRevenue.data.datasets[0].data = json.revenue_data; chartRevenue.update(); }
+        if (chartCategories) { chartCategories.data.labels = json.categories_labels; chartCategories.data.datasets[0].data = json.categories_data; chartCategories.update(); }
+        if (chartActiveCat) { chartActiveCat.data.labels = json.active_cat_labels; chartActiveCat.data.datasets[0].data = json.active_cat_data; chartActiveCat.update(); }
+        if (chartUsers) { chartUsers.data.labels = json.user_labels; chartUsers.data.datasets[0].data = json.user_data; chartUsers.update(); }
+        if (chartTxMonth) { chartTxMonth.data.labels = json.tx_month_labels; chartTxMonth.data.datasets[0].data = json.tx_month_data; chartTxMonth.update(); }
+        if (chartUsersMonth) { chartUsersMonth.data.labels = json.user_month_labels; chartUsersMonth.data.datasets[0].data = json.user_month_data; chartUsersMonth.update(); }
 
         const tbody = document.getElementById('recentTxBody');
         if (tbody) {
@@ -244,6 +276,33 @@
       .catch(err => console.error('Analytics refresh error:', err));
   }
 
+  function loadChartJsFallback() {
+    if (window.Chart) return Promise.resolve();
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        s.crossOrigin = 'anonymous';
+        s.referrerPolicy = 'no-referrer';
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('Failed to load ' + src));
+        document.head.appendChild(s);
+      });
+    }
+    const candidates = [
+      'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+      'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js',
+      'https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js',
+      'https://unpkg.com/chart.js@4.4.1/dist/chart.umd.js'
+    ];
+    let chain = Promise.reject();
+    for (const url of candidates) {
+      chain = chain.catch(() => loadScript(url).then(() => { if (!window.Chart) throw new Error('Chart.js loaded but global Chart missing'); }));
+    }
+    return chain.then(() => { if (!window.Chart) throw new Error('Chart.js unavailable'); });
+  }
+
   document.getElementById('analyticsFilterForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const params = {
@@ -251,15 +310,25 @@
       end: document.getElementById('filterEnd').value,
       category: document.getElementById('filterCategory').value,
     };
+    lastParams = params;
     refreshAnalytics(params);
   });
 
   // Lazy-load Chart.js via AdminUtils
-  (window.AdminUtils && typeof window.AdminUtils.loadChartJs === 'function' ? window.AdminUtils.loadChartJs() : Promise.resolve())
-    .then(() => { if (!window.Chart) throw new Error('Chart.js unavailable'); initCharts(); })
+  (window.AdminUtils && typeof window.AdminUtils.loadChartJs === 'function' ? window.AdminUtils.loadChartJs() : loadChartJsFallback())
+    .then(() => {
+      if (!window.Chart) throw new Error('Chart.js unavailable');
+      initCharts();
+      const initialParams = {
+        start: document.getElementById('filterStart')?.value,
+        end: document.getElementById('filterEnd')?.value,
+        category: document.getElementById('filterCategory')?.value,
+      };
+      lastParams = initialParams;
+      refreshAnalytics(initialParams);
+    })
     .catch(err => console.error('Chart.js load error:', err));
 
   // Auto-refresh every 60 seconds
-  let lastParams = {};
-  setInterval(() => { refreshAnalytics(lastParams); }, 60000);
+  setInterval(() => { if (chartRevenue) refreshAnalytics(lastParams); }, 60000);
 </script>
