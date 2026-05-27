@@ -1,5 +1,5 @@
 {% extends "marketplace/base_marketplace.html" %}
-{% load tz %}
+{% load tz static %}
 
 {#
   Purchase Request Detail Template
@@ -76,12 +76,101 @@
           <li><a href="#summary-card" id="copyTxId" role="menuitem"><i class="mr-2 fas fa-copy"></i>Copy Transaction ID</a></li>
           {% endif %}
           <li><a href="{% url 'marketplace:report_listing' request_obj.listing.id %}" role="menuitem"><i class="mr-2 fas fa-exclamation-triangle"></i>Report Issue</a></li>
+          {% if request_obj.transaction %}
           <li><button type="button" class="btn btn-ghost" id="printReceiptBtn" role="menuitem"><i class="mr-2 fas fa-print"></i>Print Receipt</button></li>
+          {% else %}
+          <li><button type="button" class="btn btn-ghost" disabled role="menuitem"><i class="mr-2 fas fa-print"></i>Print Receipt</button></li>
+          {% endif %}
         </ul>
       </div>
       </div>
     </div>
   </div>
+
+  {% if request_obj.transaction %}
+  <div id="receipt-print" aria-hidden="true">
+    <div class="receipt-paper">
+      <div class="receipt-header">
+        <div class="receipt-brand">
+          <img src="{% static 'images/PETiologo.png' %}" alt="PETio" class="receipt-logo" />
+          <div class="receipt-brand-text">
+            <div class="receipt-title">PETio Marketplace</div>
+            <div class="receipt-subtitle">Transaction Receipt</div>
+          </div>
+        </div>
+        <div class="receipt-meta">
+          <div><span class="k">Receipt</span> #{{ request_obj.transaction.id }}</div>
+          <div><span class="k">Request</span> #{{ request_obj.id }}</div>
+          <div><span class="k">Date</span> {{ request_obj.transaction.created_at|date:"Y-m-d H:i" }}</div>
+          <div><span class="k">Status</span> {{ request_obj.transaction.get_status_display }}</div>
+        </div>
+      </div>
+
+      <div class="receipt-divider"></div>
+
+      <div class="receipt-section">
+        <div class="receipt-row">
+          <div class="label">Item</div>
+          <div class="value">{{ request_obj.listing.title }}</div>
+        </div>
+        <div class="receipt-row">
+          <div class="label">Buyer</div>
+          <div class="value">@{{ request_obj.buyer.username }}</div>
+        </div>
+        <div class="receipt-row">
+          <div class="label">Seller</div>
+          <div class="value">@{{ request_obj.seller.username }}</div>
+        </div>
+        <div class="receipt-row">
+          <div class="label">Qty</div>
+          <div class="value">{{ request_obj.quantity|default:1 }}</div>
+        </div>
+        <div class="receipt-row">
+          <div class="label">Payment</div>
+          <div class="value">
+            {% if request_obj.transaction.payment_method %}
+              {{ request_obj.transaction.get_payment_method_display }}
+            {% else %}
+              —
+            {% endif %}
+          </div>
+        </div>
+        {% if request_obj.transaction.payment_method == 'gcash' and request_obj.transaction.gcash_ref %}
+        <div class="receipt-row">
+          <div class="label">GCash Ref</div>
+          <div class="value">{{ request_obj.transaction.gcash_ref }}</div>
+        </div>
+        {% endif %}
+        {% if request_obj.transaction.meetup_time or request_obj.transaction.meetup_place %}
+        <div class="receipt-row">
+          <div class="label">Meetup</div>
+          <div class="value">
+            {% if request_obj.transaction.meetup_time %}{{ request_obj.transaction.meetup_time|date:"Y-m-d H:i" }}{% endif %}
+            {% if request_obj.transaction.meetup_time and request_obj.transaction.meetup_place %} · {% endif %}
+            {% if request_obj.transaction.meetup_place %}{{ request_obj.transaction.meetup_place }}{% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="receipt-divider"></div>
+
+      <div class="receipt-totals">
+        <div class="receipt-row total">
+          <div class="label">Total</div>
+          <div class="value">₱{{ request_obj.transaction.amount_paid|default:0|floatformat:2 }}</div>
+        </div>
+      </div>
+
+      <div class="receipt-divider"></div>
+
+      <div class="receipt-footer">
+        <div>Thank you for using PETio.</div>
+        <div class="small">Keep this receipt for your records.</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   {# Main content layout: Messages primary, Details secondary #}
   <div class="grid grid-cols-1 gap-6 mt-4 lg:grid-cols-3" role="main">
@@ -542,6 +631,31 @@
 .card .card-body { word-break: break-word; overflow-wrap: anywhere; }
 #detailsPanel .card, #messagesPanel .card { overflow: hidden; }
 .card .card-body > * { min-width: 0; }
+#receipt-print { display: none; }
+
+.receipt-paper {
+  width: 80mm;
+  max-width: 80mm;
+  color: #0f172a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.receipt-brand { display: flex; align-items: center; gap: 10px; }
+.receipt-logo { width: 34px; height: 34px; object-fit: contain; }
+.receipt-title { font-weight: 700; font-size: 13px; letter-spacing: 0.3px; }
+.receipt-subtitle { font-size: 11px; opacity: 0.85; }
+.receipt-meta { margin-top: 10px; }
+.receipt-meta .k { display: inline-block; min-width: 8ch; opacity: 0.75; }
+.receipt-divider { border-top: 1px dashed #94a3b8; margin: 10px 0; }
+.receipt-row { display: flex; justify-content: space-between; gap: 10px; }
+.receipt-row .label { opacity: 0.75; min-width: 10ch; }
+.receipt-row .value { text-align: right; word-break: break-word; }
+.receipt-section { display: grid; gap: 6px; }
+.receipt-totals { display: grid; gap: 6px; }
+.receipt-row.total .label, .receipt-row.total .value { font-weight: 700; font-size: 13px; }
+.receipt-footer { text-align: center; display: grid; gap: 4px; }
+.receipt-footer .small { font-size: 11px; opacity: 0.8; }
 @media (max-width: 767px) {
   /* Mobile-first collapsible layout remains for internal sections */
   button, .btn { min-height: 44px; font-size: 16px; padding: 10px 20px; }
@@ -550,8 +664,12 @@
 }
 @media (min-width: 768px) and (max-width: 1023px) { #detailsPanel, #messagesPanel { grid-column: span 3 / span 3; } }
 @media print {
-  .sticky, .btn, .dropdown, .select, .file-input, form, .quick-reply, #typingIndicator { display: none !important; }
-  #summary-card { display: block !important; }
+  @page { margin: 6mm; }
+  body { background: #ffffff !important; }
+  body * { visibility: hidden !important; }
+  #receipt-print, #receipt-print * { visibility: visible !important; }
+  #receipt-print { display: block !important; position: fixed; left: 0; top: 0; width: 100%; }
+  .receipt-paper { margin: 0 auto; }
 }
 </style>
 <script>
