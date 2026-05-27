@@ -23,7 +23,7 @@ class CustomUserCreationForm(UserCreationForm):
 
     Captures email (unique), and optional fields to gather more info.
     """
-    email = forms.EmailField(required=False, help_text="We'll use this for notifications and activation.")
+    email = forms.EmailField(required=True, help_text="We'll use this for notifications and activation.")
     mobile_number = forms.CharField(required=False, max_length=32)
     age = forms.IntegerField(required=False, min_value=0)
     marketing_opt_in = forms.BooleanField(required=False)

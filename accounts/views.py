@@ -3,7 +3,6 @@ Accounts views: Signup, Login redirect mixin, and Profile view.
 Uses Django auth forms for security and simplicity.
 """
 import os
-from django.contrib.auth import login
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView
@@ -13,15 +12,14 @@ from django.db.models import Avg, Count
 from django.contrib.auth import get_user_model
 from django.contrib import messages
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import EmailMultiAlternatives
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 from django.urls import reverse
 from django.views import View
 from django.views.generic import UpdateView
 from django.shortcuts import resolve_url
-from django.http import HttpResponseRedirect
 from .models import Profile
+from .utils.email import send_account_verification_email
 try:
     # Local import; this file edit assumes forms.py will be created in the same app
     from .forms import ProfileForm, CustomUserCreationForm
@@ -51,11 +49,9 @@ class SignupView(CreateView):
     success_url = reverse_lazy("login")
 
     def form_valid(self, form):
-        """On successful form submission, create user and conditionally require activation."""
+        """On successful form submission, create user and require email verification."""
         response = super().form_valid(form)
-        # Conditionally require activation based on settings
-        activation_required = getattr(settings, "ACCOUNT_ACTIVATION_REQUIRED", False)
-        self.object.is_active = not activation_required
+        self.object.is_active = False
         # Assign optional fields captured during signup
         # Note: UserCreationForm already saved the instance; update extra fields
         cleaned = form.cleaned_data
@@ -68,44 +64,19 @@ class SignupView(CreateView):
         self.object.email_on_messages = cleaned.get("email_on_messages", True)
         self.object.save()
 
-        # Build activation URL
         uidb64 = urlsafe_base64_encode(force_bytes(self.object.pk))
         token = default_token_generator.make_token(self.object)
         activation_path = reverse("accounts:activate", kwargs={"uidb64": uidb64, "token": token})
         activation_url = self.request.build_absolute_uri(activation_path)
 
-        # Render and send email content only when activation is required
-        if activation_required:
-            try:
-                subject = "Activate your PETio account"
-                from_email = None  # Use DEFAULT_FROM_EMAIL from settings
-                to = [self.object.email] if getattr(self.object, "email", "") else []
-                if to:
-                    html_body = self.render_to_string("accounts/activation_email.html", {"activation_url": activation_url})
-                    text_body = self.render_to_string("accounts/activation_email.txt", {"activation_url": activation_url})
-                    email = EmailMultiAlternatives(subject=subject, body=text_body, from_email=from_email, to=to)
-                    email.attach_alternative(html_body, "text/html")
-                    try:
-                        email.send(fail_silently=True)
-                    except Exception:
-                        pass
-            except Exception:
-                # Ignore email rendering errors in development/testing
-                pass
+        try:
+            if getattr(self.object, "email", ""):
+                send_account_verification_email(to_email=self.object.email, activation_url=activation_url)
+        except Exception:
+            pass
 
-        if activation_required:
-            messages.info(self.request, "Account created. Please check your email to activate your account.")
-            return response
-
-        # Activation not required: auto-login and send user directly to controller flow.
-        login(self.request, self.object)
-        messages.success(self.request, "Account created. Welcome to PETio!")
-        return HttpResponseRedirect(resolve_url("home"))
-
-    def render_to_string(self, template_name, context):
-        """Helper to render template as string for emails."""
-        from django.template.loader import render_to_string
-        return render_to_string(template_name, context)
+        messages.info(self.request, "Account created. Please check your email to verify your account.")
+        return response
 
     def get_success_url(self):
         """Redirect to login and prefill username; preserve next if provided."""
