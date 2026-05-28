@@ -135,8 +135,15 @@ class ModerationQueueView(ModeratorRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['flagged_posts'] = Post.objects.filter(is_flagged=True).order_by('-created_at')[:50]
-        context['flagged_comments'] = Comment.objects.filter(is_flagged=True).order_by('-created_at')[:50]
+        t = (self.request.GET.get('type') or '').strip().lower()
+        flagged_posts = Post.objects.filter(is_flagged=True).order_by('-created_at')
+        flagged_comments = Comment.objects.filter(is_flagged=True).order_by('-created_at')
+        if t == 'posts':
+            flagged_comments = Comment.objects.none()
+        elif t == 'comments':
+            flagged_posts = Post.objects.none()
+        context['flagged_posts'] = flagged_posts[:50]
+        context['flagged_comments'] = flagged_comments[:50]
         context.update(get_moderation_context(self.request))
         return context
 

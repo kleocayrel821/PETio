@@ -1358,6 +1358,111 @@ def dismiss_report(request, pk):
 
 
 @moderator_required
+@require_POST
+@transaction.atomic
+def bulk_update_reports(request):
+    action = (request.POST.get('action') or '').strip().lower()
+    raw_ids = request.POST.getlist('report_ids')
+    report_ids = []
+    for rid in raw_ids:
+        try:
+            report_ids.append(int(rid))
+        except Exception:
+            continue
+
+    if not report_ids:
+        messages.error(request, 'Select at least one report.')
+        return redirect(request.META.get('HTTP_REFERER', 'social:moderation_reports'))
+
+    if action not in {'resolve', 'dismiss'}:
+        messages.error(request, 'Invalid bulk action.')
+        return redirect(request.META.get('HTTP_REFERER', 'social:moderation_reports'))
+
+    resolution_notes = (request.POST.get('resolution_notes') or '').strip()
+    action_taken = (request.POST.get('action_taken') or '').strip()
+    dismiss_reason = (request.POST.get('dismiss_reason') or '').strip()
+
+    if action == 'dismiss' and not dismiss_reason:
+        messages.error(request, 'Dismiss reason is required.')
+        return redirect(request.META.get('HTTP_REFERER', 'social:moderation_reports'))
+
+    reports = list(SocialReport.objects.select_related('reporter', 'reported_post', 'reported_comment').filter(id__in=report_ids))
+    if not reports:
+        messages.error(request, 'No matching reports found.')
+        return redirect(request.META.get('HTTP_REFERER', 'social:moderation_reports'))
+
+    updated = 0
+    for report in reports:
+        report.status = 'resolved'
+        report.save(update_fields=['status', 'updated_at'])
+        updated += 1
+
+        if action == 'resolve':
+            note = resolution_notes or 'Bulk resolved by moderator'
+            reason = f'Report resolved: {action_taken}\n{note}'.strip()
+            ModerationAction.objects.create(
+                moderator=request.user,
+                action_type='resolve_report',
+                related_report=report,
+                reason=reason,
+            )
+            if report.reporter:
+                try:
+                    Notification.objects.create(
+                        recipient=report.reporter,
+                        sender=request.user,
+                        notification_type='mention',
+                        message='Your report has been reviewed. Thank you for helping keep our community safe.'
+                    )
+                except Exception:
+                    pass
+            continue
+
+        if report.reported_post:
+            post = report.reported_post
+            other_pending = SocialReport.objects.filter(
+                reported_post=post,
+                status__in=['pending', 'reviewing']
+            ).exclude(pk=report.pk).exists()
+            if not other_pending:
+                post.is_flagged = False
+                post.hidden_at = None
+                post.save(update_fields=['is_flagged', 'hidden_at'])
+
+        if report.reported_comment:
+            comment = report.reported_comment
+            other_pending_c = SocialReport.objects.filter(
+                reported_comment=comment,
+                status__in=['pending', 'reviewing']
+            ).exclude(pk=report.pk).exists()
+            if not other_pending_c:
+                comment.is_flagged = False
+                comment.hidden_at = None
+                comment.save(update_fields=['is_flagged', 'hidden_at'])
+
+        ModerationAction.objects.create(
+            moderator=request.user,
+            action_type='dismiss_report',
+            related_report=report,
+            reason=dismiss_reason,
+        )
+
+        if report.reporter:
+            try:
+                Notification.objects.create(
+                    recipient=report.reporter,
+                    sender=request.user,
+                    notification_type='mention',
+                    message='Your report has been reviewed. No action was required at this time.'
+                )
+            except Exception:
+                pass
+
+    messages.success(request, f'Updated {updated} report(s).')
+    return redirect(request.META.get('HTTP_REFERER', 'social:moderation_reports'))
+
+
+@moderator_required
 def moderation_queue(request):
     """
     Show all flagged content that needs review (posts and comments).

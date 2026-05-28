@@ -27,12 +27,56 @@
     <a href="?status=resolved" class="join-item btn btn-sm {% if request.GET.status == 'resolved' %}btn-primary{% else %}btn-ghost{% endif %} hover:border-[#DDBA7D] hover:text-[#DDBA7D]" {% if request.GET.status == 'resolved' %}style="background:#DDBA7D;color:#000;border-color:#DDBA7D"{% endif %}>Resolved</a>
   </div>
 
-  <div class="space-y-3">
+  <form method="post" action="{% url 'social:moderation_reports_bulk' %}">
+    {% csrf_token %}
+    <div class="card bg-white/90 backdrop-blur rounded-2xl border border-[#DDBA7D33] shadow-md mb-6">
+      <div class="card-body">
+        <div class="flex flex-wrap items-end gap-3">
+          <label class="flex items-center gap-2">
+            <input id="bulkSelectAll" type="checkbox" class="checkbox checkbox-sm" />
+            <span class="text-sm">Select all on page</span>
+          </label>
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text text-xs">Bulk action</span></label>
+            <select id="bulkAction" name="action" class="select select-bordered select-sm w-44">
+              <option value="">Choose…</option>
+              <option value="resolve">Resolve</option>
+              <option value="dismiss">Dismiss</option>
+            </select>
+          </div>
+          <div id="bulkResolveFields" class="grow min-w-[260px]">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div class="form-control">
+                <label class="label py-1"><span class="label-text text-xs">Action taken (optional)</span></label>
+                <input type="text" name="action_taken" class="input input-bordered input-sm w-full" placeholder="e.g., Post hidden" />
+              </div>
+              <div class="form-control">
+                <label class="label py-1"><span class="label-text text-xs">Resolution notes (optional)</span></label>
+                <input type="text" name="resolution_notes" class="input input-bordered input-sm w-full" placeholder="e.g., Reviewed and resolved" />
+              </div>
+            </div>
+          </div>
+          <div id="bulkDismissFields" class="grow min-w-[260px] hidden">
+            <div class="form-control">
+              <label class="label py-1"><span class="label-text text-xs">Dismiss reason</span></label>
+              <input type="text" name="dismiss_reason" class="input input-bordered input-sm w-full" placeholder="Reason required to dismiss" />
+            </div>
+          </div>
+          <button id="bulkApplyBtn" type="submit" class="btn btn-sm" style="background:#DDBA7D;color:#000;border-color:#DDBA7D" disabled>
+            Apply to selected (<span id="bulkCount">0</span>)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-3">
     {% for report in reports %}
       <div class="card bg-white/90 backdrop-blur rounded-2xl border border-[#DDBA7D33] shadow-md hover:shadow-lg transition-all">
         <div class="card-body">
           <!-- Top meta row -->
           <div class="flex items-start justify-between">
+            <div class="flex items-center gap-3">
+              <input class="bulkReportCheck checkbox checkbox-sm" type="checkbox" name="report_ids" value="{{ report.id }}" />
             <div class="flex items-center gap-2 flex-wrap">
               <span class="badge badge-sm {% if report.report_type == 'spam' %}badge-warning{% elif report.report_type == 'harassment' %}badge-error{% elif report.report_type == 'inappropriate' %}badge-warning{% else %}badge-info{% endif %}">
                 {{ report.get_report_type_display }}
@@ -44,6 +88,7 @@
               {% if report.reporter %}
                 <span class="text-xs text-base-content/70">by @{{ report.reporter.username }}</span>
               {% endif %}
+            </div>
             </div>
             <span class="text-xs text-base-content/60">{{ report.created_at|timesince }} ago</span>
           </div>
@@ -81,5 +126,52 @@
       </div>
     {% endfor %}
   </div>
+  </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function() {
+    const selectAll = document.getElementById('bulkSelectAll');
+    const checks = () => Array.from(document.querySelectorAll('.bulkReportCheck'));
+    const countEl = document.getElementById('bulkCount');
+    const applyBtn = document.getElementById('bulkApplyBtn');
+    const actionSel = document.getElementById('bulkAction');
+    const resolveFields = document.getElementById('bulkResolveFields');
+    const dismissFields = document.getElementById('bulkDismissFields');
+
+    function selectedCount() {
+      return checks().filter(c => c.checked).length;
+    }
+    function sync() {
+      const n = selectedCount();
+      if (countEl) countEl.textContent = String(n);
+      const hasAction = actionSel && actionSel.value;
+      if (applyBtn) applyBtn.disabled = !(n > 0 && hasAction);
+      if (selectAll) {
+        const all = checks();
+        selectAll.checked = all.length > 0 && all.every(c => c.checked);
+        selectAll.indeterminate = all.some(c => c.checked) && !selectAll.checked;
+      }
+    }
+    function syncFields() {
+      const v = actionSel ? actionSel.value : '';
+      if (resolveFields) resolveFields.classList.toggle('hidden', v !== 'resolve');
+      if (dismissFields) dismissFields.classList.toggle('hidden', v !== 'dismiss');
+      sync();
+    }
+
+    checks().forEach(c => c.addEventListener('change', sync));
+    if (selectAll) {
+      selectAll.addEventListener('change', () => {
+        const v = selectAll.checked;
+        checks().forEach(c => { c.checked = v; });
+        sync();
+      });
+    }
+    if (actionSel) actionSel.addEventListener('change', syncFields);
+    syncFields();
+  })();
+</script>
 {% endblock %}

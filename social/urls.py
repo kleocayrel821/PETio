@@ -3,6 +3,8 @@ from . import views
 from .moderation_views import (
     ModerationDashboardView,
     ModerationReportsView,
+    ModerationQueueView,
+    ModerationUsersView,
     ReportDetailView,
 )
 
@@ -67,8 +69,9 @@ urlpatterns = [
     path('moderation/report/<int:pk>/dismiss/', views.dismiss_report, name='dismiss_report'),
 
     # Moderation - Views (FBVs)
-    path('moderation/queue/', views.moderation_queue, name='moderation_queue'),
-    path('moderation/users/', views.moderation_users, name='moderation_users'),
+    path('moderation/queue/', ModerationQueueView.as_view(), name='moderation_queue'),
+    path('moderation/users/', ModerationUsersView.as_view(), name='moderation_users'),
     path('moderation/logs/', views.moderation_logs, name='moderation_logs'),
+    path('moderation/reports/bulk/', views.bulk_update_reports, name='moderation_reports_bulk'),
     path('report/<int:pk>/', ReportDetailView.as_view(), name='report_detail'),
 ]
