@@ -1,27 +1,54 @@
 <!-- Activation Confirmation Page: Shows success or failure of account activation -->
 {% extends "base.html" %}
 {% block title %}Account Activation - PETio{% endblock %}
+{% block extra_css %}
+<style>
+  .activation-wrap { min-height: calc(100vh - 140px); display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .activation-card { width: 100%; max-width: 520px; }
+  .activation-hero { background: linear-gradient(135deg, rgba(155,180,192,0.25) 0%, rgba(83,98,158,0.20) 100%); }
+  .activation-icon { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center; }
+</style>
+{% endblock %}
 {% block content %}
-<div class="container mx-auto max-w-lg py-10">
-  {% if activated %}
-    <div class="alert alert-success shadow mb-6">
-      <i class="fas fa-check-circle mr-2"></i>
-      Your account has been activated. You can now use all features.
+<div class="activation-wrap">
+  <div class="activation-card card bg-base-100 shadow-xl border border-base-200 overflow-hidden">
+    <div class="activation-hero p-6 border-b border-base-200">
+      <div class="flex items-center gap-4">
+        {% if activated %}
+          <div class="activation-icon bg-success/15 text-success"><i class="fas fa-check text-xl"></i></div>
+          <div>
+            <div class="text-xl font-bold">Account verified</div>
+            <div class="text-sm text-base-content/70">Your PETio account is now active.</div>
+          </div>
+        {% else %}
+          <div class="activation-icon bg-error/15 text-error"><i class="fas fa-exclamation-triangle text-xl"></i></div>
+          <div>
+            <div class="text-xl font-bold">Verification link not valid</div>
+            <div class="text-sm text-base-content/70">This link is invalid or has expired.</div>
+          </div>
+        {% endif %}
+      </div>
     </div>
-    <div class="flex gap-2">
-      <a href="{% url 'login' %}" class="btn btn-primary">Log in</a>
-      <a href="/" class="btn btn-ghost">Home</a>
+
+    <div class="card-body p-6">
+      {% if activated %}
+        <div class="alert alert-success">
+          <span>You can now log in and use all features.</span>
+        </div>
+        <div class="mt-5 flex flex-col sm:flex-row gap-3">
+          <a href="{% url 'login' %}" class="btn btn-primary flex-1">Log in</a>
+          <a href="/" class="btn btn-ghost flex-1">Home</a>
+        </div>
+      {% else %}
+        <div class="alert alert-error">
+          <span>Please request a new verification link.</span>
+        </div>
+        <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <a href="{% url 'password_reset' %}" class="btn">Reset Password</a>
+          <a href="{% url 'accounts:signup' %}" class="btn btn-ghost">Sign up</a>
+        </div>
+      {% endif %}
     </div>
-  {% else %}
-    <div class="alert alert-error shadow mb-6">
-      <i class="fas fa-exclamation-triangle mr-2"></i>
-      Activation link is invalid or has expired.
-    </div>
-    <p class="mb-4">You can request a new activation email by resetting your password or signing up again.</p>
-    <div class="flex gap-2">
-      <a href="{% url 'password_reset' %}" class="btn">Reset Password</a>
-      <a href="{% url 'accounts:signup' %}" class="btn btn-ghost">Sign up</a>
-    </div>
-  {% endif %}
+  </div>
 </div>
 {% endblock %}

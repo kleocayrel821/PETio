@@ -22,10 +22,11 @@ from .models import Profile
 from .utils.email import send_account_verification_email
 try:
     # Local import; this file edit assumes forms.py will be created in the same app
-    from .forms import ProfileForm, CustomUserCreationForm
+    from .forms import ProfileForm, CustomUserCreationForm, VerifiedAuthenticationForm
 except Exception:  # pragma: no cover - during initial load before file exists
     ProfileForm = None
     CustomUserCreationForm = None
+    VerifiedAuthenticationForm = None
 
 User = get_user_model()
 
@@ -126,6 +127,8 @@ class AdminAwareLoginView(LoginView):
     Honors the "next" parameter if present; otherwise redirects based on role.
     Regular users follow settings.LOGIN_REDIRECT_URL.
     """
+    def get_form_class(self):
+        return VerifiedAuthenticationForm or super().get_form_class()
 
     def get_success_url(self):
         # Respect explicit next/redirect if provided
@@ -138,6 +141,7 @@ class AdminAwareLoginView(LoginView):
             return reverse("marketplace:moderator_dashboard")
         # Fallback to configured default
         return resolve_url(getattr(settings, "LOGIN_REDIRECT_URL", "/"))
+
 
 class ProfileDetailView(LoginRequiredMixin, DetailView):
     """Simple profile page showing current user's info."""

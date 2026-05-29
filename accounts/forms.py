@@ -6,7 +6,7 @@ Provides:
 """
 from django import forms
 from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import UserCreationForm, PasswordResetForm
+from django.contrib.auth.forms import UserCreationForm, PasswordResetForm, AuthenticationForm
 from django.template.loader import render_to_string
 import logging
 from .utils.email import send_brevo_email
@@ -17,6 +17,23 @@ MAX_AVATAR_SIZE_BYTES = MAX_AVATAR_SIZE_MB * 1024 * 1024
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+
+class VerifiedAuthenticationForm(AuthenticationForm):
+    error_messages = {
+        **AuthenticationForm.error_messages,
+        "inactive": "Please check your email and verify your account first.",
+    }
+
+    def confirm_login_allowed(self, user):
+        if not getattr(user, "is_active", True):
+            self.inactive_user = True
+            raise forms.ValidationError(
+                self.error_messages["inactive"],
+                code="inactive",
+            )
+        return super().confirm_login_allowed(user)
+
 
 class CustomUserCreationForm(UserCreationForm):
     """User creation form for the custom User model with extra fields.
