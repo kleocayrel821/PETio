@@ -8,30 +8,30 @@
 {% endblock %}
 
 {% block social_content %}
-<div class="max-w-7xl mx-auto">
+<div class="mx-auto max-w-7xl">
     <!-- Header (Sticky) -->
     <div class="sticky top-0 z-30 bg-white/80 backdrop-blur mb-8 shadow-md rounded-xl border border-[#DDBA7D33]">
-        <div class="flex items-center justify-between py-4 px-2">
+        <div class="flex justify-between items-center px-2 py-4">
             <div>
-                <h1 class="text-3xl font-bold mb-2 flex items-center gap-3">
-                    <div class="p-3 rounded-xl text-black" style="background-color:#DDBA7D">
-                        <i class="fas fa-shield-alt text-2xl"></i>
+                <h1 class="flex gap-3 items-center mb-2 text-3xl font-bold">
+                    <div class="p-3 text-black rounded-xl" style="background-color:#DDBA7D">
+                        <i class="text-2xl fas fa-shield-alt"></i>
                     </div>
                     <span>Moderation Dashboard</span>
                 </h1>
                 <p class="text-base-content/60">Monitor and manage community content and user behavior</p>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="flex gap-3 items-center">
                 <div class="relative">
                     <a href="{% url 'social:moderation_reports' %}" class="btn btn-ghost btn-circle" aria-label="Moderation Notifications">
-                        <i class="fas fa-bell text-xl"></i>
+                        <i class="text-xl fas fa-bell"></i>
                     </a>
                     {% if pending_reports_count|default:0 > 0 %}
                         <span class="absolute -top-1 -right-1 badge badge-error badge-xs">{{ pending_reports_count }}</span>
                     {% endif %}
                 </div>
                 <span class="badge badge-lg" style="background-color:#DDBA7D; color:#000">
-                    <i class="fas fa-user-shield mr-2"></i>
+                    <i class="mr-2 fas fa-user-shield"></i>
                     Moderator
                 </span>
             </div>
@@ -39,89 +39,89 @@
     </div>
 
     <!-- Stats Cards Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+    <div class="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 lg:grid-cols-5">
         <!-- Pending Reports Card -->
-        <div class="card text-white shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 rounded-2xl cursor-pointer border border-white/30" style="background: linear-gradient(135deg, #CC6C80 0%, #CC6C80 100%);">
+        <div class="text-white rounded-2xl border shadow-md transition-all duration-300 cursor-pointer card hover:shadow-lg hover:scale-105 border-white/30" style="background: linear-gradient(135deg, #CC6C80 0%, #CC6C80 100%);">
             <div class="card-body">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="p-3 bg-white/20 rounded-full">
-                        <i class="fas fa-flag text-2xl"></i>
+                <div class="flex justify-between items-center mb-2">
+                    <div class="p-3 rounded-full bg-white/20">
+                        <i class="text-2xl fas fa-flag"></i>
                     </div>
                     <div class="badge badge-error badge-lg">URGENT</div>
                 </div>
-                <h3 class="text-3xl font-bold mb-1">{{ pending_reports_count }}</h3>
-                <p class="opacity-90 text-sm mb-3">Pending Reports</p>
+                <h3 class="mb-1 text-3xl font-bold">{{ pending_reports_count }}</h3>
+                <p class="mb-3 text-sm opacity-90">Pending Reports</p>
                 <a href="{% url 'social:moderation_reports' %}?status=pending"
-                   class="btn btn-sm bg-white/20 border-white/30 hover:bg-white/30 text-white transition-all duration-300">
-                    Review Now <i class="fas fa-arrow-right ml-1"></i>
+                   class="text-white transition-all duration-300 btn btn-sm bg-white/20 border-white/30 hover:bg-white/30">
+                    Review Now <i class="ml-1 fas fa-arrow-right"></i>
                 </a>
             </div>
         </div>
 
         <!-- Reviewing Reports Card -->
-        <div class="card text-white shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 rounded-2xl cursor-pointer border border-white/30" style="background: linear-gradient(135deg, #F2A07C 0%, #F2A07C 100%);">
+        <div class="text-white rounded-2xl border shadow-md transition-all duration-300 cursor-pointer card hover:shadow-lg hover:scale-105 border-white/30" style="background: linear-gradient(135deg, #F2A07C 0%, #F2A07C 100%);">
             <div class="card-body">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="p-3 bg-white/20 rounded-full">
-                        <i class="fas fa-eye text-2xl"></i>
+                <div class="flex justify-between items-center mb-2">
+                    <div class="p-3 rounded-full bg-white/20">
+                        <i class="text-2xl fas fa-eye"></i>
                     </div>
                 </div>
-                <h3 class="text-3xl font-bold mb-1">{{ reviewing_reports_count }}</h3>
-                <p class="opacity-90 text-sm mb-3">Under Review</p>
+                <h3 class="mb-1 text-3xl font-bold">{{ reviewing_reports_count }}</h3>
+                <p class="mb-3 text-sm opacity-90">Under Review</p>
                 <a href="{% url 'social:moderation_reports' %}?status=reviewing"
-                   class="btn btn-sm bg-white/20 border-white/30 hover:bg-white/30 text-white transition-all duration-300">
-                    View All <i class="fas fa-arrow-right ml-1"></i>
+                   class="text-white transition-all duration-300 btn btn-sm bg-white/20 border-white/30 hover:bg-white/30">
+                    View All <i class="ml-1 fas fa-arrow-right"></i>
                 </a>
             </div>
         </div>
 
         <!-- Flagged Posts Card -->
-        <div class="card text-black shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 rounded-2xl cursor-pointer border border-black/20" style="background: linear-gradient(135deg, #EEE59F 0%, #EEE59F 100%);">
+        <div class="text-black rounded-2xl border shadow-md transition-all duration-300 cursor-pointer card hover:shadow-lg hover:scale-105 border-black/20" style="background: linear-gradient(135deg, #EEE59F 0%, #EEE59F 100%);">
             <div class="card-body">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="p-3 bg-black/10 rounded-full">
-                        <i class="fas fa-file-alt text-2xl"></i>
+                <div class="flex justify-between items-center mb-2">
+                    <div class="p-3 rounded-full bg-black/10">
+                        <i class="text-2xl fas fa-file-alt"></i>
                     </div>
                 </div>
-                <h3 class="text-3xl font-bold mb-1">{{ flagged_posts_count }}</h3>
-                <p class="opacity-90 text-sm mb-3">Flagged Posts</p>
+                <h3 class="mb-1 text-3xl font-bold">{{ flagged_posts_count }}</h3>
+                <p class="mb-3 text-sm opacity-90">Flagged Posts</p>
                 <a href="{% url 'social:moderation_queue' %}?type=posts"
-                   class="btn btn-sm bg-black/10 border-black/20 hover:bg-black/20 text-black transition-all duration-300">
-                    Review <i class="fas fa-arrow-right ml-1"></i>
+                   class="text-black transition-all duration-300 btn btn-sm bg-black/10 border-black/20 hover:bg-black/20">
+                    Review <i class="ml-1 fas fa-arrow-right"></i>
                 </a>
             </div>
         </div>
 
         <!-- Flagged Comments Card -->
-        <div class="card text-white shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 rounded-2xl cursor-pointer border border-white/30" style="background: linear-gradient(135deg, #5FA3CF 0%, #5FA3CF 100%);">
+        <div class="text-white rounded-2xl border shadow-md transition-all duration-300 cursor-pointer card hover:shadow-lg hover:scale-105 border-white/30" style="background: linear-gradient(135deg, #5FA3CF 0%, #5FA3CF 100%);">
             <div class="card-body">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="p-3 bg-white/20 rounded-full">
-                        <i class="fas fa-comment text-2xl"></i>
+                <div class="flex justify-between items-center mb-2">
+                    <div class="p-3 rounded-full bg-white/20">
+                        <i class="text-2xl fas fa-comment"></i>
                     </div>
                 </div>
-                <h3 class="text-3xl font-bold mb-1">{{ flagged_comments_count }}</h3>
-                <p class="opacity-90 text-sm mb-3">Flagged Comments</p>
+                <h3 class="mb-1 text-3xl font-bold">{{ flagged_comments_count }}</h3>
+                <p class="mb-3 text-sm opacity-90">Flagged Comments</p>
                 <a href="{% url 'social:moderation_queue' %}?type=comments"
-                   class="btn btn-sm bg-white/20 border-white/30 hover:bg-white/30 text-white transition-all duration-300">
-                    Review <i class="fas fa-arrow-right ml-1"></i>
+                   class="text-white transition-all duration-300 btn btn-sm bg-white/20 border-white/30 hover:bg-white/30">
+                    Review <i class="ml-1 fas fa-arrow-right"></i>
                 </a>
             </div>
         </div>
 
         <!-- Suspended Users Card -->
-        <div class="card text-white shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 rounded-2xl cursor-pointer border border-white/30" style="background: linear-gradient(135deg, #5A3A6B 0%, #5A3A6B 100%);">
+        <div class="text-white rounded-2xl border shadow-md transition-all duration-300 cursor-pointer card hover:shadow-lg hover:scale-105 border-white/30" style="background: linear-gradient(135deg, #5A3A6B 0%, #5A3A6B 100%);">
             <div class="card-body">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="p-3 bg-white/20 rounded-full">
-                        <i class="fas fa-user-slash text-2xl"></i>
+                <div class="flex justify-between items-center mb-2">
+                    <div class="p-3 rounded-full bg-white/20">
+                        <i class="text-2xl fas fa-user-slash"></i>
                     </div>
                 </div>
-                <h3 class="text-3xl font-bold mb-1">{{ suspended_users_count }}</h3>
-                <p class="opacity-90 text-sm mb-3">Suspended Users</p>
+                <h3 class="mb-1 text-3xl font-bold">{{ suspended_users_count }}</h3>
+                <p class="mb-3 text-sm opacity-90">Suspended Users</p>
                 <a href="{% url 'social:moderation_users' %}?status=suspended"
-                   class="btn btn-sm bg-white/20 border-white/30 hover:bg-white/30 text-white transition-all duration-300">
-                    Manage <i class="fas fa-arrow-right ml-1"></i>
+                   class="text-white transition-all duration-300 btn btn-sm bg-white/20 border-white/30 hover:bg-white/30">
+                    Manage <i class="ml-1 fas fa-arrow-right"></i>
                 </a>
             </div>
         </div>
@@ -130,15 +130,15 @@
     <!-- Weekly Overview -->
     <div class="card bg-white/90 backdrop-blur mb-8 rounded-2xl border border-[#DDBA7D33] shadow-md">
         <div class="card-body">
-            <div class="flex items-center justify-between mb-4">
+            <div class="flex justify-between items-center mb-4">
               <h2 class="card-title">
                 <i class="fas fa-chart-line" style="color:#DDBA7D"></i>
                 Weekly Overview
               </h2>
               <div>
                 <form method="get">
-                  <label class="label hidden md:flex"><span class="label-text text-xs">Range</span></label>
-                  <select name="range" class="select select-bordered select-sm w-32" onchange="this.form.submit()">
+                  <label class="hidden label md:flex"><span class="text-xs label-text">Range</span></label>
+                  <select name="range" class="w-32 select select-bordered select-sm" onchange="this.form.submit()">
                     <option value="7" {% if range_days == 7 %}selected{% endif %}>Last 7 days</option>
                     <option value="30" {% if range_days == 30 %}selected{% endif %}>Last 30 days</option>
                     <option value="90" {% if range_days == 90 %}selected{% endif %}>Last 90 days</option>
@@ -146,58 +146,58 @@
                 </form>
               </div>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="stat bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-lg p-4 shadow hover:shadow-xl transition-all duration-300">
-                    <div class="stat-title text-xs text-white">Reports Created</div>
-                    <div class="stat-value text-2xl text-white">{{ weekly_stats.reports_created }}</div>
+            <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+                <div class="p-4 text-white bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow transition-all duration-300 stat hover:shadow-xl">
+                    <div class="text-xs text-white stat-title">Reports Created</div>
+                    <div class="text-2xl text-white stat-value">{{ weekly_stats.reports_created }}</div>
                     <div class="stat-desc text-white/90">Last {{ range_days }} days</div>
                 </div>
-                <div class="stat bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-lg p-4 shadow hover:shadow-xl transition-all duration-300">
-                    <div class="stat-title text-xs text-white">Reports Resolved</div>
-                    <div class="stat-value text-2xl text-white">{{ weekly_stats.reports_resolved }}</div>
+                <div class="p-4 text-white bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg shadow transition-all duration-300 stat hover:shadow-xl">
+                    <div class="text-xs text-white stat-title">Reports Resolved</div>
+                    <div class="text-2xl text-white stat-value">{{ weekly_stats.reports_resolved }}</div>
                     <div class="stat-desc text-white/90">Last {{ range_days }} days</div>
                 </div>
-                <div class="stat bg-gradient-to-br from-yellow-500 to-amber-600 text-white rounded-lg p-4 shadow hover:shadow-xl transition-all duration-300">
-                    <div class="stat-title text-xs text-white">Actions Taken</div>
-                    <div class="stat-value text-2xl text-white">{{ weekly_stats.actions_taken }}</div>
+                <div class="p-4 text-white bg-gradient-to-br from-yellow-500 to-amber-600 rounded-lg shadow transition-all duration-300 stat hover:shadow-xl">
+                    <div class="text-xs text-white stat-title">Actions Taken</div>
+                    <div class="text-2xl text-white stat-value">{{ weekly_stats.actions_taken }}</div>
                     <div class="stat-desc text-white/90">Last {{ range_days }} days</div>
                 </div>
-                <div class="stat bg-gradient-to-br from-red-500 to-rose-600 text-white rounded-lg p-4 shadow hover:shadow-xl transition-all duration-300">
-                    <div class="stat-title text-xs text-white">Users Suspended</div>
-                    <div class="stat-value text-2xl text-white">{{ weekly_stats.users_suspended }}</div>
+                <div class="p-4 text-white bg-gradient-to-br from-red-500 to-rose-600 rounded-lg shadow transition-all duration-300 stat hover:shadow-xl">
+                    <div class="text-xs text-white stat-title">Users Suspended</div>
+                    <div class="text-2xl text-white stat-value">{{ weekly_stats.users_suspended }}</div>
                     <div class="stat-desc text-white/90">Last {{ range_days }} days</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <!-- Recent Reports -->
         <div class="card bg-white/90 backdrop-blur rounded-2xl border border-[#DDBA7D33] shadow-md">
             <div class="card-body">
-                <div class="flex items-center justify-between mb-4">
+                <div class="flex justify-between items-center mb-4">
                     <h2 class="card-title">
                         <i class="fas fa-flag" style="color:#DDBA7D"></i>
                         Recent Reports
                     </h2>
-                    <a href="{% url 'social:moderation_reports' %}" class="btn btn-ghost btn-sm transition-all duration-300">
-                        View All <i class="fas fa-arrow-right ml-1"></i>
+                    <a href="{% url 'social:moderation_reports' %}" class="transition-all duration-300 btn btn-ghost btn-sm">
+                        View All <i class="ml-1 fas fa-arrow-right"></i>
                     </a>
                 </div>
 
                 <div class="space-y-3">
                     {% for report in recent_reports %}
                     <div class="group border-l-4 {% if report.status == 'pending' %}border-error{% else %}border-warning{% endif %} pl-3 bg-base-200 p-3 rounded-r-lg hover:bg-base-300 transition-all duration-300">
-                        <div class="flex items-start justify-between mb-2">
-                            <div class="flex items-center gap-2 flex-wrap">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex flex-wrap gap-2 items-center">
                                 <span class="badge badge-sm {% if report.report_type == 'spam' %}badge-warning{% elif report.report_type == 'harassment' %}badge-error{% elif report.report_type == 'inappropriate' %}badge-warning{% else %}badge-info{% endif %}">
                                     {{ report.get_report_type_display }}
                                 </span>
                                 <span class="badge badge-sm badge-ghost">
                                     {% if report.status == 'pending' %}
-                                        <i class="fas fa-clock mr-1"></i>
+                                        <i class="mr-1 fas fa-clock"></i>
                                     {% elif report.status == 'reviewing' %}
-                                        <i class="fas fa-eye mr-1"></i>
+                                        <i class="mr-1 fas fa-eye"></i>
                                     {% endif %}
                                     {{ report.get_status_display }}
                                 </span>
@@ -205,7 +205,7 @@
                             <span class="text-xs text-base-content/60">{{ report.created_at|timesince }} ago</span>
                         </div>
                         
-                        <p class="text-sm font-semibold mb-1">
+                        <p class="mb-1 text-sm font-semibold">
                             {% if report.reported_post %}
                                 <i class="fas fa-file-alt" style="color:#DDBA7D"></i> Post: {{ report.reported_post.title|truncatewords:8 }}
                             {% elif report.reported_comment %}
@@ -215,19 +215,19 @@
                             {% endif %}
                         </p>
                         
-                        <p class="text-xs text-base-content/70 mb-2">
+                        <p class="mb-2 text-xs text-base-content/70">
                             Reported by {{ report.reporter.username }}
                         </p>
                         
-                        <p class="text-xs text-base-content/60 mb-2 line-clamp-2">{{ report.description }}</p>
+                        <p class="mb-2 text-xs text-base-content/60 line-clamp-2">{{ report.description }}</p>
                         
-                        <a href="{% url 'social:report_detail' report.pk %}" class="btn btn-xs transition-all duration-300" style="background-color:#DDBA7D;color:#000;border-color:#DDBA7D">
+                        <a href="{% url 'social:report_detail' report.pk %}" class="transition-all duration-300 btn btn-xs" style="background-color:#DDBA7D;color:#000;border-color:#DDBA7D">
                             <i class="fas fa-search"></i> Review Report
                         </a>
                     </div>
                     {% empty %}
-                    <div class="text-center py-8">
-                        <i class="fas fa-check-circle text-4xl text-success mb-3"></i>
+                    <div class="py-8 text-center">
+                        <i class="mb-3 text-4xl fas fa-check-circle text-success"></i>
                         <p class="text-base-content/60">No pending reports</p>
                         <p class="text-sm text-base-content/50">Great job! Everything is under control.</p>
                     </div>
@@ -239,49 +239,49 @@
         <!-- Recent Moderation Actions -->
         <div class="card bg-white/90 backdrop-blur rounded-2xl border border-[#DDBA7D33] shadow-md">
             <div class="card-body">
-                <div class="flex items-center justify-between mb-4">
+                <div class="flex justify-between items-center mb-4">
                     <h2 class="card-title">
                         <i class="fas fa-history" style="color:#DDBA7D"></i>
                         Recent Actions
                     </h2>
-                    <a href="{% url 'social:moderation_logs' %}" class="btn btn-ghost btn-sm transition-all duration-300">
-                        View All <i class="fas fa-arrow-right ml-1"></i>
+                    <a href="{% url 'social:moderation_logs' %}" class="transition-all duration-300 btn btn-ghost btn-sm">
+                        View All <i class="ml-1 fas fa-arrow-right"></i>
                     </a>
                 </div>
 
-                <div class="space-y-3 max-h-96 overflow-y-auto">
+                <div class="overflow-y-auto space-y-3 max-h-96">
                     {% for action in recent_actions %}
-                    <div class="flex items-start space-x-3 p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-all duration-300">
+                    <div class="flex items-start p-3 space-x-3 rounded-lg transition-all duration-300 bg-base-200 hover:bg-base-300">
                         <div class="avatar placeholder">
-                            <div class="w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                            <div class="w-10 text-white bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full">
                                 <span class="text-sm">{{ action.moderator.username|first|upper }}</span>
                             </div>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="font-semibold text-sm">{{ action.moderator.username }}</span>
+                            <div class="flex gap-2 items-center mb-1">
+                                <span class="text-sm font-semibold">{{ action.moderator.username }}</span>
                                 {% if action.action_type == 'delete_post' or action.action_type == 'delete_comment' %}
                                     <span class="badge badge-error badge-xs">
-                                        <i class="fas fa-trash mr-1"></i>{{ action.get_action_type_display }}
+                                        <i class="mr-1 fas fa-trash"></i>{{ action.get_action_type_display }}
                                     </span>
                                 {% elif action.action_type == 'warn' %}
                                     <span class="badge badge-warning badge-xs">
-                                        <i class="fas fa-exclamation-triangle mr-1"></i>{{ action.get_action_type_display }}
+                                        <i class="mr-1 fas fa-exclamation-triangle"></i>{{ action.get_action_type_display }}
                                     </span>
                                 {% elif action.action_type == 'suspend' or action.action_type == 'ban' %}
                                     <span class="badge badge-error badge-xs">
-                                        <i class="fas fa-ban mr-1"></i>{{ action.get_action_type_display }}
+                                        <i class="mr-1 fas fa-ban"></i>{{ action.get_action_type_display }}
                                     </span>
                                 {% elif action.action_type == 'restore_post' or action.action_type == 'restore_comment' %}
                                     <span class="badge badge-success badge-xs">
-                                        <i class="fas fa-undo mr-1"></i>{{ action.get_action_type_display }}
+                                        <i class="mr-1 fas fa-undo"></i>{{ action.get_action_type_display }}
                                     </span>
                                 {% else %}
                                     <span class="badge badge-info badge-xs">{{ action.get_action_type_display }}</span>
                                 {% endif %}
                             </div>
                             
-                            <p class="text-sm text-base-content/80 mb-1">
+                            <p class="mb-1 text-sm text-base-content/80">
                                 {% if action.target_user %}
                                     Target: <span class="font-medium">{{ action.target_user.username }}</span>
                                 {% elif action.target_post %}
@@ -292,12 +292,12 @@
                             </p>
                             
                             <p class="text-xs text-base-content/60 line-clamp-1">{{ action.reason|truncatewords:15 }}</p>
-                            <p class="text-xs text-base-content/50 mt-1">{{ action.created_at|timesince }} ago</p>
+                            <p class="mt-1 text-xs text-base-content/50">{{ action.created_at|timesince }} ago</p>
                         </div>
                     </div>
                     {% empty %}
-                    <div class="text-center py-8">
-                        <i class="fas fa-history text-4xl text-base-content/30 mb-3"></i>
+                    <div class="py-8 text-center">
+                        <i class="mb-3 text-4xl fas fa-history text-base-content/30"></i>
                         <p class="text-base-content/60">No recent actions</p>
                     </div>
                     {% endfor %}
@@ -310,12 +310,12 @@
     {% if moderator_stats %}
         <div class="card bg-white/90 backdrop-blur mt-6 rounded-2xl border border-[#DDBA7D33] shadow-md">
             <div class="card-body">
-                <h2 class="card-title mb-4">
+                <h2 class="mb-4 card-title">
                     <i class="fas fa-user-shield text-success"></i>
                     Your Activity (Last 30 Days)
                 </h2>
-            <div class="flex items-center justify-between">
-                <div class="stats stats-horizontal shadow">
+            <div class="flex justify-between items-center">
+                <div class="shadow stats stats-horizontal">
                     <div class="stat">
                         <div class="stat-title">Total Actions</div>
                         <div class="stat-value" style="color:#DDBA7D">{{ user_actions_count }}</div>
@@ -336,40 +336,40 @@
     {% endif %}
 
     <!-- Quick Actions -->
-    <div class="card bg-white/90 backdrop-blur mt-6 rounded-2xl border border-[#DDBA7D33] shadow-md">
+    {% comment %} <div class="card bg-white/90 backdrop-blur mt-6 rounded-2xl border border-[#DDBA7D33] shadow-md">
             <div class="card-body">
-                <h2 class="card-title mb-4">
+                <h2 class="mb-4 card-title">
                 <i class="fas fa-bolt" style="color:#DDBA7D"></i>
                 Quick Actions
                 </h2>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
                 <a href="{% url 'social:moderation_reports' %}?status=pending" class="group card rounded-xl p-5 transition-all duration-300 border border-[#DDBA7D33] bg-white/80 hover:border-[#DDBA7D] hover:bg-white">
-                    <div class="text-center space-y-2">
+                    <div class="space-y-2 text-center">
                         <i class="fas fa-flag text-2xl transition-colors group-hover:text-[#DDBA7D]"></i>
                         <div class="font-semibold">Review Reports</div>
                     </div>
                 </a>
                 <a href="{% url 'social:moderation_queue' %}" class="group card rounded-xl p-5 transition-all duration-300 border border-[#DDBA7D33] bg-white/80 hover:border-[#DDBA7D] hover:bg-white">
-                    <div class="text-center space-y-2">
+                    <div class="space-y-2 text-center">
                         <i class="fas fa-layer-group text-2xl transition-colors group-hover:text-[#DDBA7D]"></i>
                         <div class="font-semibold">Moderation Queue</div>
                     </div>
                 </a>
                 <a href="{% url 'social:moderation_users' %}" class="group card rounded-xl p-5 transition-all duration-300 border border-[#DDBA7D33] bg-white/80 hover:border-[#DDBA7D] hover:bg-white">
-                    <div class="text-center space-y-2">
+                    <div class="space-y-2 text-center">
                         <i class="fas fa-users-cog text-2xl transition-colors group-hover:text-[#DDBA7D]"></i>
                         <div class="font-semibold">Manage Users</div>
                     </div>
                 </a>
                 <a href="{% url 'social:moderation_logs' %}" class="group card rounded-xl p-5 transition-all duration-300 border border-[#DDBA7D33] bg-white/80 hover:border-[#DDBA7D] hover:bg-white">
-                    <div class="text-center space-y-2">
+                    <div class="space-y-2 text-center">
                         <i class="fas fa-history text-2xl transition-colors group-hover:text-[#DDBA7D]"></i>
                         <div class="font-semibold">View Logs</div>
                     </div>
                 </a>
             </div>
         </div>
-    </div>
+    </div> {% endcomment %}
 </div>
 {% endblock %}
 

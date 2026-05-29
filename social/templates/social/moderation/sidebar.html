@@ -62,11 +62,11 @@
         </div>
     </div>
 
-    <a href="{% url 'social:feed' %}"
+    {% comment %} <a href="{% url 'social:feed' %}"
        class="flex gap-3 items-center px-4 py-3 rounded-2xl transition-all duration-200 group hover:bg-white hover:shadow-sm hover:translate-x-0.5">
         <i class="fas fa-home w-5 transition-colors group-hover:text-[#DDBA7D]"></i>
         <span>Back to Feed</span>
-    </a>
+    </a> {% endcomment %}
 
     {% comment %} <a href="{% url 'social:dashboard' %}"
        class="flex gap-3 items-center px-4 py-3 rounded-2xl transition-all duration-200 group hover:bg-white hover:shadow-sm hover:translate-x-0.5">
