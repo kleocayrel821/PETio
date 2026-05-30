@@ -60,11 +60,11 @@
       <span>Users</span>
     </a>
     
-    <a href="{% url 'marketplace_admin:notifications' %}" 
+    {% comment %} <a href="{% url 'marketplace_admin:notifications' %}" 
        class="sidebar-item {% if active_tab == 'notifications' %}active{% endif %}">
       <i data-lucide="megaphone" class="w-5 h-5"></i>
       <span>Notifications</span>
-    </a>
+    </a> {% endcomment %}
 
   </nav>
   
