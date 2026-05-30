@@ -3,13 +3,13 @@
 
 {% block admin_sidebar %}
 <!-- Mobile Navigation Toggle -->
-<button class="sidebar-toggle md:hidden fixed top-4 left-4 z-50 bg-white rounded-lg shadow-md p-2" id="mobile-nav-toggle" aria-label="Open admin sidebar">
+<button class="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-md sidebar-toggle md:hidden" id="mobile-nav-toggle" aria-label="Open admin sidebar">
   <i data-lucide="menu" class="w-6 h-6"></i>
   <span class="sr-only">Open navigation</span>
 </button>
 
 <!-- Mobile Overlay -->
-<div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-30 hidden" id="mobile-overlay" aria-hidden="true"></div>
+<div class="hidden fixed inset-0 z-30 bg-black bg-opacity-50 backdrop-blur-sm" id="mobile-overlay" aria-hidden="true"></div>
 
 <aside class="admin-sidebar" id="admin-sidebar">
   <div class="sidebar-header">
@@ -23,7 +23,7 @@
   <!-- User Profile Section -->
   <div class="sidebar-user">
     <div class="avatar placeholder">
-      <div class="bg-neutral text-neutral-content rounded-full w-10">
+      <div class="w-10 rounded-full bg-neutral text-neutral-content">
         <span>{{ request.user.username|default:'A'|slice:':1'|upper }}</span>
       </div>
     </div>
@@ -71,10 +71,10 @@
   <div class="sidebar-footer">
     {% comment %} Logout link dynamically resolved based on project URL config {% endcomment %}
     {% if logout_url_name and request.user.is_authenticated and request.user.is_active %}
-      <form method="post" action="{% url logout_url_name %}" class="sidebar-item text-red-600 hover:bg-red-50">
+      <form method="post" action="{% url logout_url_name %}" class="text-red-600 sidebar-item hover:bg-red-50">
         {% csrf_token %}
         <input type="hidden" name="next" value="{% url 'login' %}">
-        <button type="submit" class="flex items-center gap-2">
+        <button type="submit" class="flex gap-2 items-center">
           <i data-lucide="log-out" class="w-5 h-5"></i>
           <span>Logout</span>
         </button>
