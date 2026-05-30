@@ -42,7 +42,7 @@
        {% if request.resolver_match.url_name == 'moderation_users' %}aria-current="page" style="background-color:#E8D3A6"{% endif %}>
         {% if request.resolver_match.url_name == 'moderation_users' %}<span style="background:#DDBA7D" class="w-1.5 h-6 rounded-full"></span>{% endif %}
         <i class="fas fa-users-cog w-5 transition-colors group-hover:text-[#DDBA7D]"></i>
-        <span>Users</span>
+        <span>Suspended Users</span>
     </a>
 
     <a href="{% url 'social:moderation_logs' %}"
