@@ -981,7 +981,7 @@ class FeedingLogPagination(PageNumberPagination):
 class FeedingLogViewSet(viewsets.ModelViewSet):
     queryset = FeedingLog.objects.order_by("-timestamp")
     serializer_class = FeedingLogSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     # Restrict to read-only methods to avoid unauthenticated writes
     http_method_names = ["get", "head", "options"]
     # Enable server-side pagination for logs endpoint
