@@ -176,7 +176,7 @@
     <div class="nav-left">
       <button id="globalMenuToggle" class="icon-btn hamburger-btn" aria-label="Open menu" aria-controls="globalAppMenu" aria-expanded="false">
         <span class="hamburger-icon" aria-hidden="true"><span></span><span></span><span></span></span>
-        <span class="hamburger-label">Menu</span>
+        <span class="sr-only">Menu</span>
       </button>
       <a href="{% url 'home' %}" class="logo" aria-label="PETio Home">
        <img src="{% static 'images/PETiologo.png' %}" alt="PETio logo" />
@@ -256,49 +256,80 @@
       <img src="{% static 'images/PETiologo.png' %}" alt="PETio" />
     </div>
     <div class="global-app-menu__list">
-      <a href="{% url 'home' %}" class="app-dropdown__item {% if request.path|slice:':19' != '/admin/marketplace/' and request.path|slice:':19' != '/social/moderation/' and current_app != 'social' and current_app != 'marketplace' %}active{% endif %}" role="menuitem">
-        <span class="app-dropdown__icon"><i data-feather="sliders"></i></span>
-        <div class="app-dropdown__meta">
-          <div class="app-dropdown__title">Controller</div>
-          <div class="app-dropdown__desc">Feed & Schedule Management</div>
-        </div>
-        <i class="fas fa-chevron-right item-chevron"></i>
-      </a>
-      <a href="{% url 'social:feed' %}" class="app-dropdown__item {% if current_app == 'social' and request.path|slice:':19' != '/social/moderation/' %}active{% endif %}" role="menuitem">
-        <span class="app-dropdown__icon"><i data-feather="users"></i></span>
-        <div class="app-dropdown__meta">
-          <div class="app-dropdown__title">Social</div>
-          <div class="app-dropdown__desc">Community & Sharing</div>
-        </div>
-        <i class="fas fa-chevron-right item-chevron"></i>
-      </a>
-      {% if user.is_authenticated and user.is_staff %}
-      <a href="{% url 'social:moderation_dashboard' %}" class="app-dropdown__item {% if request.path|slice:':19' == '/social/moderation/' %}active{% endif %}" role="menuitem" style="margin-top:-2px; margin-left:28px; width:calc(100% - 36px); background:#f8fafc;">
-        <span class="app-dropdown__icon"><i class="fas fa-shield-alt"></i></span>
-        <div class="app-dropdown__meta">
-          <div class="app-dropdown__title">Social Admin</div>
-          <div class="app-dropdown__desc">Moderation Panel</div>
-        </div>
-        <i class="fas fa-arrow-up-right-from-square item-chevron"></i>
-      </a>
-      {% endif %}
-      <a href="{% url 'marketplace:home' %}" class="app-dropdown__item {% if current_app == 'marketplace' %}active{% endif %}" role="menuitem">
-        <span class="app-dropdown__icon"><i data-feather="shopping-cart"></i></span>
-        <div class="app-dropdown__meta">
-          <div class="app-dropdown__title">Marketplace</div>
-          <div class="app-dropdown__desc">Products & Services</div>
-        </div>
-        <i class="fas fa-chevron-right item-chevron"></i>
-      </a>
-      {% if user.is_authenticated and user.is_staff %}
-      <a href="{% url 'marketplace_admin:listings' %}" class="app-dropdown__item {% if request.path|slice:':19' == '/admin/marketplace/' %}active{% endif %}" role="menuitem" style="margin-top:-2px; margin-left:28px; width:calc(100% - 36px); background:#f8fafc;">
-        <span class="app-dropdown__icon"><i class="fas fa-store"></i></span>
-        <div class="app-dropdown__meta">
-          <div class="app-dropdown__title">Marketplace Admin</div>
-          <div class="app-dropdown__desc">Listings & Reports</div>
-        </div>
-        <i class="fas fa-arrow-up-right-from-square item-chevron"></i>
-      </a>
+      {% if request.resolver_match %}
+        {% with view_name=request.resolver_match.url_name %}
+          {% if view_name != 'login' and view_name != 'signup' %}
+            <a href="{% url 'home' %}" class="app-dropdown__item {% if request.path|slice:':19' != '/admin/marketplace/' and request.path|slice:':19' != '/social/moderation/' and current_app != 'social' and current_app != 'marketplace' %}active{% endif %}" role="menuitem">
+              <span class="app-dropdown__icon"><i data-feather="sliders"></i></span>
+              <div class="app-dropdown__meta">
+                <div class="app-dropdown__title">Controller</div>
+                <div class="app-dropdown__desc">Feed & Schedule Management</div>
+              </div>
+              <i class="fas fa-chevron-right item-chevron"></i>
+            </a>
+            <a href="{% url 'social:feed' %}" class="app-dropdown__item {% if current_app == 'social' and request.path|slice:':19' != '/social/moderation/' %}active{% endif %}" role="menuitem">
+              <span class="app-dropdown__icon"><i data-feather="users"></i></span>
+              <div class="app-dropdown__meta">
+                <div class="app-dropdown__title">Social</div>
+                <div class="app-dropdown__desc">Community & Sharing</div>
+              </div>
+              <i class="fas fa-chevron-right item-chevron"></i>
+            </a>
+            {% if user.is_authenticated and user.is_staff %}
+            <a href="{% url 'social:moderation_dashboard' %}" class="app-dropdown__item {% if request.path|slice:':19' == '/social/moderation/' %}active{% endif %}" role="menuitem" style="margin-top:-2px; margin-left:28px; width:calc(100% - 36px); background:#f8fafc;">
+              <span class="app-dropdown__icon"><i class="fas fa-shield-alt"></i></span>
+              <div class="app-dropdown__meta">
+                <div class="app-dropdown__title">Social Admin</div>
+                <div class="app-dropdown__desc">Moderation Panel</div>
+              </div>
+              <i class="fas fa-arrow-up-right-from-square item-chevron"></i>
+            </a>
+            {% endif %}
+            <a href="{% url 'marketplace:home' %}" class="app-dropdown__item {% if current_app == 'marketplace' %}active{% endif %}" role="menuitem">
+              <span class="app-dropdown__icon"><i data-feather="shopping-cart"></i></span>
+              <div class="app-dropdown__meta">
+                <div class="app-dropdown__title">Marketplace</div>
+                <div class="app-dropdown__desc">Products & Services</div>
+              </div>
+              <i class="fas fa-chevron-right item-chevron"></i>
+            </a>
+            {% if user.is_authenticated and user.is_staff %}
+            <a href="{% url 'marketplace_admin:listings' %}" class="app-dropdown__item {% if request.path|slice:':19' == '/admin/marketplace/' %}active{% endif %}" role="menuitem" style="margin-top:-2px; margin-left:28px; width:calc(100% - 36px); background:#f8fafc;">
+              <span class="app-dropdown__icon"><i class="fas fa-store"></i></span>
+              <div class="app-dropdown__meta">
+                <div class="app-dropdown__title">Marketplace Admin</div>
+                <div class="app-dropdown__desc">Listings & Reports</div>
+              </div>
+              <i class="fas fa-arrow-up-right-from-square item-chevron"></i>
+            </a>
+            {% endif %}
+          {% endif %}
+        {% endwith %}
+      {% else %}
+        <a href="{% url 'home' %}" class="app-dropdown__item {% if request.path|slice:':19' != '/admin/marketplace/' and request.path|slice:':19' != '/social/moderation/' and current_app != 'social' and current_app != 'marketplace' %}active{% endif %}" role="menuitem">
+          <span class="app-dropdown__icon"><i data-feather="sliders"></i></span>
+          <div class="app-dropdown__meta">
+            <div class="app-dropdown__title">Controller</div>
+            <div class="app-dropdown__desc">Feed & Schedule Management</div>
+          </div>
+          <i class="fas fa-chevron-right item-chevron"></i>
+        </a>
+        <a href="{% url 'social:feed' %}" class="app-dropdown__item {% if current_app == 'social' and request.path|slice:':19' != '/social/moderation/' %}active{% endif %}" role="menuitem">
+          <span class="app-dropdown__icon"><i data-feather="users"></i></span>
+          <div class="app-dropdown__meta">
+            <div class="app-dropdown__title">Social</div>
+            <div class="app-dropdown__desc">Community & Sharing</div>
+          </div>
+          <i class="fas fa-chevron-right item-chevron"></i>
+        </a>
+        <a href="{% url 'marketplace:home' %}" class="app-dropdown__item {% if current_app == 'marketplace' %}active{% endif %}" role="menuitem">
+          <span class="app-dropdown__icon"><i data-feather="shopping-cart"></i></span>
+          <div class="app-dropdown__meta">
+            <div class="app-dropdown__title">Marketplace</div>
+            <div class="app-dropdown__desc">Products & Services</div>
+          </div>
+          <i class="fas fa-chevron-right item-chevron"></i>
+        </a>
       {% endif %}
     </div>
   </div>
