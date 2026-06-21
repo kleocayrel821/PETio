@@ -12,8 +12,8 @@
       {% endif %}
       {% if txn.listing.gcash_qr %}
       <div class="mb-1 text-xs opacity-70">QR Code</div>
-      <a href="{{ txn.listing.gcash_qr.url }}" target="_blank" rel="noopener">
-        <img src="{{ txn.listing.gcash_qr.url }}" alt="Seller GCash QR" class="max-h-64 rounded-lg border" />
+      <a href="{{ txn.listing.gcash_qr.url }}" class="inline-block">
+        <img src="{{ txn.listing.gcash_qr.url }}" alt="Seller GCash QR" class="max-h-64 rounded-lg border cursor-zoom-in" data-viewer data-group="gcash-qr-{{ txn.id }}" />
       </a>
       {% endif %}
     </div>
