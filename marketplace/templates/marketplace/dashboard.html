@@ -7,10 +7,10 @@
 {# Breadcrumbs removed #}
 {% endblock %}
 {% block marketplace_content %}
-<div class="space-y-6">
+<div class="space-y-4">
   <!-- Metrics Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 marketplace-dashboard-metrics">
-    <div class="card bg-base-100 shadow p-6 flex items-center justify-between">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3 marketplace-dashboard-metrics">
+    <div class="card bg-base-100 shadow p-4 flex items-center justify-between">
       <div>
         <div class="text-xs opacity-60">Total Products</div>
         <div class="text-4xl font-bold text-indigo-600">{{ global_stats.total_products|default:0 }}</div>
@@ -20,7 +20,7 @@
         <i class="fas fa-gift"></i>
       </div>
     </div>
-    <div class="card bg-base-100 shadow p-6 flex items-center justify-between">
+    <div class="card bg-base-100 shadow p-4 flex items-center justify-between">
       <div>
         <div class="text-xs opacity-60">Active Sellers</div>
         <div class="text-4xl font-bold text-pink-500">{{ global_stats.active_sellers|default:0 }}</div>
@@ -30,7 +30,7 @@
         <i class="fas fa-users"></i>
       </div>
     </div>
-    <div class="card bg-base-100 shadow p-6 flex items-center justify-between">
+    <div class="card bg-base-100 shadow p-4 flex items-center justify-between">
       <div>
         <div class="text-xs opacity-60">Categories</div>
         <div class="text-4xl font-bold text-teal-500">{{ global_stats.categories|default:0 }}</div>
@@ -74,7 +74,7 @@
 
   <!-- Listings Grid -->
   {% if my_listings %}
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
     {% for listing in my_listings %}
     <div class="card bg-base-100 shadow-md">
       <div class="card-body">
