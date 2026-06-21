@@ -107,7 +107,7 @@
      <!-- Marketplace Header Section -->
      {% block marketplace_header_section %}
      <div class="bg-gradient-to-r border-b border-base-300 marketplace-header">
-         <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+         <div class="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
              <!-- Marketplace Title & Navigation -->
              <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                  <div class="flex items-center gap-3">
@@ -147,7 +147,7 @@
      {% endblock %}
 
      <!-- Breadcrumbs -->
-     <div class="container mx-auto px-3 sm:px-4 py-2">
+     <div class="container mx-auto px-3 sm:px-4 py-1">
          <div class="breadcrumbs text-sm">
              <ul>
                  <li><a href="{% url 'marketplace:home' %}">Marketplace</a></li>
@@ -157,9 +157,9 @@
      </div>
 
      <!-- Main Marketplace Content -->
-     <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+     <div class="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
          {% if messages %}
-         <div id="marketplaceMessages" class="space-y-2 mb-4">
+        <div id="marketplaceMessages" class="space-y-2 mb-3">
              {% for message in messages %}
              <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %}">
                  <span>{{ message }}</span>
