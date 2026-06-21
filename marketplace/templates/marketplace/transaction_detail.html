@@ -86,7 +86,19 @@
       <div>
         <div class="text-sm opacity-70">Proof</div>
         {% if txn.payment_proof %}
-        <a class="link link-primary" href="{{ txn.payment_proof.url }}" target="_blank">View</a>
+          {% if txn.payment_proof.url|lower|slice:"-4:" == ".pdf" %}
+            <a class="link link-primary" href="{{ txn.payment_proof.url }}">View</a>
+          {% else %}
+            <a href="{{ txn.payment_proof.url }}" class="inline-block">
+              <img
+                src="{{ txn.payment_proof.url }}"
+                alt="Payment proof"
+                class="h-16 w-28 object-cover rounded-lg border cursor-zoom-in"
+                data-viewer
+                data-group="txn-proof-{{ txn.id }}"
+              />
+            </a>
+          {% endif %}
         {% else %}
         <span class="opacity-60">None</span>
         {% endif %}

@@ -415,8 +415,8 @@
               {% if request_obj.transaction.payment_method == 'gcash' and request_obj.transaction.payment_proof %}
               <div class="mt-2">
                 <div class="mb-1 text-xs opacity-70">GCash Receipt</div>
-                <a href="{{ request_obj.transaction.payment_proof.url }}" target="_blank" rel="noopener">
-                  <img src="{{ request_obj.transaction.payment_proof.url }}" alt="GCash receipt" class="max-h-64 rounded-lg border" />
+                <a href="{{ request_obj.transaction.payment_proof.url }}" class="inline-block">
+                  <img src="{{ request_obj.transaction.payment_proof.url }}" alt="GCash receipt" class="max-h-64 rounded-lg border cursor-zoom-in" data-viewer data-group="gcash-proof-{{ request_obj.id }}" />
                 </a>
               </div>
               {% endif %}
@@ -433,8 +433,8 @@
               {% if request_obj.transaction.payment_method == 'gcash' and request_obj.transaction.payment_proof %}
               <div class="mt-2">
                 <div class="mb-1 text-xs opacity-70">GCash Receipt</div>
-                <a href="{{ request_obj.transaction.payment_proof.url }}" target="_blank" rel="noopener">
-                  <img src="{{ request_obj.transaction.payment_proof.url }}" alt="GCash receipt" class="max-h-64 rounded-lg border" />
+                <a href="{{ request_obj.transaction.payment_proof.url }}" class="inline-block">
+                  <img src="{{ request_obj.transaction.payment_proof.url }}" alt="GCash receipt" class="max-h-64 rounded-lg border cursor-zoom-in" data-viewer data-group="gcash-proof-{{ request_obj.id }}" />
                 </a>
               </div>
               {% endif %}
@@ -445,8 +445,8 @@
               <div class="mb-1"><span class="font-semibold">Seller:</span> @{{ request_obj.seller.username }}</div>
               <div class="mb-2"><span class="font-semibold">Price:</span> {{ request_obj.transaction.amount_paid }} via GCash</div>
               <div class="text-xs opacity-70">GCash QR</div>
-              <a href="{{ request_obj.transaction.payment_proof.url }}" target="_blank" rel="noopener">
-                <img src="{{ request_obj.transaction.payment_proof.url }}" alt="GCash QR" class="mb-3 max-h-64 rounded-lg border" />
+              <a href="{{ request_obj.transaction.payment_proof.url }}" class="inline-block">
+                <img src="{{ request_obj.transaction.payment_proof.url }}" alt="GCash QR" class="mb-3 max-h-64 rounded-lg border cursor-zoom-in" data-viewer data-group="gcash-proof-{{ request_obj.id }}" />
               </a>
               {% else %}
               <div class="text-sm alert alert-info">Waiting for the seller to record payment. Once recorded, the buyer can mark this complete.</div>
