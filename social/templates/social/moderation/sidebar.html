@@ -42,7 +42,7 @@
        {% if request.resolver_match.url_name == 'moderation_users' %}aria-current="page" style="background-color:#E8D3A6"{% endif %}>
         {% if request.resolver_match.url_name == 'moderation_users' %}<span style="background:#DDBA7D" class="w-1.5 h-6 rounded-full"></span>{% endif %}
         <i class="fas fa-users-cog w-5 transition-colors group-hover:text-[#DDBA7D]"></i>
-        <span>Suspended Users</span>
+        <span>Users</span>
     </a>
 
     <a href="{% url 'social:moderation_logs' %}"
@@ -62,15 +62,15 @@
         </div>
     </div>
 
-    {% comment %} <a href="{% url 'social:feed' %}"
+    <a href="{% url 'social:feed' %}"
        class="flex gap-3 items-center px-4 py-3 rounded-2xl transition-all duration-200 group hover:bg-white hover:shadow-sm hover:translate-x-0.5">
         <i class="fas fa-home w-5 transition-colors group-hover:text-[#DDBA7D]"></i>
         <span>Back to Feed</span>
-    </a> {% endcomment %}
+    </a>
 
-    {% comment %} <a href="{% url 'social:dashboard' %}"
+    <a href="{% url 'social:dashboard' %}"
        class="flex gap-3 items-center px-4 py-3 rounded-2xl transition-all duration-200 group hover:bg-white hover:shadow-sm hover:translate-x-0.5">
         <i class="fas fa-user w-5 transition-colors group-hover:text-[#DDBA7D]"></i>
         <span>My Dashboard</span>
-    </a> {% endcomment %}
+    </a>
 </div>
