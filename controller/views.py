@@ -135,6 +135,10 @@ class PendingCommandsView(TemplateView):
             ctx["DEVICE_ID"] = ""
         return ctx
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class ControllerGuidelinesView(TemplateView):
+    template_name = 'app/guidelines.html'
+
 
 # Test page to validate unified base and sidebar rendering in Controller
 def test_base(request):
