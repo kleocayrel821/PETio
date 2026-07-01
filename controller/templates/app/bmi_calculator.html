@@ -39,6 +39,10 @@
             <input id="petBirthday" class="form-control-enhanced w-full" type="date" required aria-required="true" />
           </div>
           <div>
+            <label class="subsection-title" for="petAge">Age</label>
+            <input id="petAge" class="form-control-enhanced w-full" type="text" placeholder="--" readonly aria-readonly="true" />
+          </div>
+          <div>
             <label class="subsection-title" for="petGender">Gender*</label>
             <select id="petGender" class="form-control-enhanced w-full" required aria-required="true">
               <option value="">Select gender...</option>
@@ -111,6 +115,7 @@
           <div class="bmi-score text-4xl font-bold" id="bmiScore">--</div>
           <div class="bmi-category status-badge" id="bmiCategory">--</div>
         </div>
+        <div class="mt-2 text-xs text-gray-500" id="petAgeResult">Age: --</div>
 
         <div class="bmi-gauge mt-4">
           <svg viewBox="0 0 240 160" width="100%" height="auto" aria-hidden="true" style="max-height: 200px;">
@@ -414,6 +419,45 @@ function validate() {
   return { valid: errors.length === 0, errors, data: { type, name, birthday, gender, breed, weight, height } };
 }
 
+function computeAgeParts(birthdayStr) {
+  if (!birthdayStr) return null;
+  const b = new Date(birthdayStr);
+  if (Number.isNaN(b.getTime())) return null;
+  const t = new Date();
+  let years = t.getFullYear() - b.getFullYear();
+  let months = t.getMonth() - b.getMonth();
+  const days = t.getDate() - b.getDate();
+  if (days < 0) months -= 1;
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+  years = Math.max(0, years);
+  months = Math.max(0, months);
+  return { years, months };
+}
+
+function formatAge(parts) {
+  if (!parts) return '--';
+  const y = parts.years;
+  const m = parts.months;
+  const yText = `${y} ${y === 1 ? 'year' : 'years'}`;
+  const mText = `${m} ${m === 1 ? 'month' : 'months'}`;
+  if (y <= 0) return mText;
+  if (m <= 0) return yText;
+  return `${yText}, ${mText}`;
+}
+
+function updateAgeDisplays(birthdayStr) {
+  const age = computeAgeParts(birthdayStr);
+  const ageText = formatAge(age);
+  const ageInput = document.getElementById('petAge');
+  if (ageInput) ageInput.value = ageText === '--' ? '' : ageText;
+  const ageResult = document.getElementById('petAgeResult');
+  if (ageResult) ageResult.textContent = `Age: ${ageText}`;
+  return age;
+}
+
 function normalizeCategory(cat) {
   const c = String(cat || '').toLowerCase();
   if (c.startsWith('under')) return 'underweight';
@@ -556,10 +600,14 @@ function listProfiles() {
       const raw = localStorage.getItem(k);
       let obj = null;
       try { obj = JSON.parse(raw); } catch {}
+      const ageParts = (obj && (Number.isFinite(obj.age_years) || Number.isFinite(obj.age_months)))
+        ? { years: Number(obj.age_years) || 0, months: Number(obj.age_months) || 0 }
+        : computeAgeParts(obj?.birthday || '');
+      const ageText = ageParts ? formatAge(ageParts) : '--';
       const li = document.createElement('li');
       li.className = 'saved-profile-item';
       const title = document.createElement('div');
-      title.innerHTML = `<div class="saved-profile-title">${obj?.name || 'Unnamed'}</div><div class="saved-profile-meta">${obj?.type || '-'} • CBMI ${obj?.cbmi ?? '--'}</div>`;
+      title.innerHTML = `<div class="saved-profile-title">${obj?.name || 'Unnamed'}</div><div class="saved-profile-meta">${obj?.type || '-'} • Age ${ageText} • CBMI ${obj?.cbmi ?? '--'}</div>`;
       const actions = document.createElement('div');
       actions.className = 'profile-menu';
       const toggle = document.createElement('button');
@@ -604,6 +652,7 @@ function loadProfile(key) {
   setBreeds(petType);
   document.getElementById('petName').value = obj.name || '';
   document.getElementById('petBirthday').value = obj.birthday || '';
+  updateAgeDisplays(obj.birthday || '');
   document.getElementById('petGender').value = obj.gender || '';
   document.getElementById('breedSelect').value = obj.breed || '';
   document.getElementById('weightKg').value = obj.weight ?? '';
@@ -631,6 +680,7 @@ function calcAndRender() {
   const err = document.getElementById('formErrors');
   err.textContent = '';
   if (!v.valid) { err.textContent = v.errors[0]; err.classList.add('shake'); setTimeout(()=>err.classList.remove('shake'),300); return; }
+  const age = updateAgeDisplays(v.data.birthday);
   const result = calculateBodyIndex(v.data.weight, v.data.height, v.data.breed, v.data.type);
   document.getElementById('bmiScore').textContent = String(result.cbmi);
   setCategoryBadge(result.conditionBand);
@@ -640,11 +690,12 @@ function calcAndRender() {
   document.getElementById('saveProfileBtn').disabled = false;
   document.getElementById('saveProfileBtn').setAttribute('aria-disabled', 'false');
   document.getElementById('lastCalcAt').textContent = `Last calculated ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
-  return { ...v.data, ...result };
+  return { ...v.data, age_years: age ? age.years : null, age_months: age ? age.months : null, ...result };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   setBreeds(getPetType());
+  updateAgeDisplays(document.getElementById('petBirthday').value || '');
   const updateTypeHelp = () => {
     const wHelp = document.getElementById('weightHelp');
     const hHelp = document.getElementById('heightHelp');
@@ -653,6 +704,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('weightKg').max = WEIGHT_MAX_KG;
     document.getElementById('heightCm').max = HEIGHT_MAX_CM;
   };
+  document.getElementById('petBirthday').addEventListener('change', (e) => {
+    updateAgeDisplays(e.target.value || '');
+  });
   document.querySelectorAll('input[name="petType"]').forEach(r => {
     r.addEventListener('change', () => {
       setBreeds(getPetType());
@@ -695,6 +749,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('saveProfileBtn').setAttribute('aria-disabled', 'true');
     document.getElementById('lastCalcAt').textContent = '';
     document.getElementById('formErrors').textContent = '';
+    updateAgeDisplays(document.getElementById('petBirthday').value || '');
     currentProfileKey = null;
     document.getElementById('saveProfileBtn').textContent = 'Save Profile';
   });
