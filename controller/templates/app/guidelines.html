@@ -2,20 +2,27 @@
 {% block title %}Controller Guidelines{% endblock %}
 {% block sidebar %}{% include 'controller/sidebar.html' with view_name='controller_guidelines' %}{% endblock %}
 {% block content %}
-<div class="max-w-5xl mx-auto space-y-6">
+<style>
+  .controller-guidelines .btn.btn-primary{background:linear-gradient(135deg,#1f456e,#245c8d);border:none;color:#fff}
+  .controller-guidelines .btn.btn-primary:hover{filter:brightness(1.05)}
+  .controller-guidelines .btn.btn-ghost{border:1.5px solid rgba(31,69,110,.35);color:#1f456e}
+  .controller-guidelines .btn.btn-ghost:hover{background:rgba(31,69,110,.08);color:#1f456e}
+  .controller-guidelines .guidelines-icon{background:rgba(31,69,110,.12);color:#1f456e;width:34px;height:34px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
+</style>
+<div class="controller-guidelines max-w-5xl mx-auto space-y-6">
   <div class="enhanced-card">
     <h2 class="section-title items-center justify-between">
-      <i class="fas fa-circle-info text-[#1f456e]"></i>
+      <span class="guidelines-icon"><i class="fas fa-circle-info"></i></span>
       Controller & Device Guidelines
     </h2>
     <p class="text-sm text-gray-500 mt-1">Quick steps for pairing, schedules, feeding, and troubleshooting.</p>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <div class="card bg-base-100 shadow-md">
+    <div class="card bg-base-100 shadow-md overflow-hidden">
       <div class="card-body">
         <div class="flex items-center gap-2">
-          <i class="fas fa-link text-[#1f456e]"></i>
+          <span class="guidelines-icon"><i class="fas fa-link"></i></span>
           <h3 class="font-bold text-lg">Pair Your Device</h3>
         </div>
         <ol class="mt-3 list-decimal ml-5 space-y-2 text-sm text-base-content/80">
@@ -24,17 +31,17 @@
           <li>Enter your Hardware Key (UUID) or your Device ID + 6-digit PIN.</li>
           <li>After claiming, refresh My Devices and confirm the device shows Online.</li>
         </ol>
-        <div class="mt-4 flex gap-2">
-          <a href="{% url 'my_devices_page' %}" class="btn btn-sm btn-primary">Open My Devices</a>
-          <a href="{% url 'claim_device_page' %}" class="btn btn-sm btn-ghost">Claim Device</a>
+        <div class="mt-4 flex flex-col sm:flex-row gap-2">
+          <a href="{% url 'my_devices_page' %}" class="btn btn-sm btn-primary w-full sm:w-auto flex-1">Open My Devices</a>
+          <a href="{% url 'claim_device_page' %}" class="btn btn-sm btn-ghost w-full sm:w-auto flex-1">Claim Device</a>
         </div>
       </div>
     </div>
 
-    <div class="card bg-base-100 shadow-md">
+    <div class="card bg-base-100 shadow-md overflow-hidden">
       <div class="card-body">
         <div class="flex items-center gap-2">
-          <i class="fas fa-bolt text-[#1f456e]"></i>
+          <span class="guidelines-icon"><i class="fas fa-bolt"></i></span>
           <h3 class="font-bold text-lg">Use Feed Now</h3>
         </div>
         <ul class="mt-3 list-disc ml-5 space-y-2 text-sm text-base-content/80">
@@ -42,17 +49,17 @@
           <li>Wait for the command to finish before sending another.</li>
           <li>Check Pending Commands if a command looks stuck.</li>
         </ul>
-        <div class="mt-4 flex gap-2">
-          <a href="{% url 'home' %}" class="btn btn-sm btn-primary">Open Dashboard</a>
-          <a href="{% url 'pending_commands' %}" class="btn btn-sm btn-ghost">Pending Commands</a>
+        <div class="mt-4 flex flex-col sm:flex-row gap-2">
+          <a href="{% url 'home' %}" class="btn btn-sm btn-primary w-full sm:w-auto flex-1">Open Dashboard</a>
+          <a href="{% url 'pending_commands' %}" class="btn btn-sm btn-ghost w-full sm:w-auto flex-1">Pending Commands</a>
         </div>
       </div>
     </div>
 
-    <div class="card bg-base-100 shadow-md">
+    <div class="card bg-base-100 shadow-md overflow-hidden">
       <div class="card-body">
         <div class="flex items-center gap-2">
-          <i class="fas fa-calendar-alt text-[#1f456e]"></i>
+          <span class="guidelines-icon"><i class="fas fa-calendar-alt"></i></span>
           <h3 class="font-bold text-lg">Schedules</h3>
         </div>
         <ul class="mt-3 list-disc ml-5 space-y-2 text-sm text-base-content/80">
@@ -61,15 +68,15 @@
           <li>After editing schedules, confirm your device is online so it can sync changes.</li>
         </ul>
         <div class="mt-4">
-          <a href="{% url 'schedules_ui' %}" class="btn btn-sm btn-primary">Open Schedules</a>
+          <a href="{% url 'schedules_ui' %}" class="btn btn-sm btn-primary w-full sm:w-auto">Open Schedules</a>
         </div>
       </div>
     </div>
 
-    <div class="card bg-base-100 shadow-md">
+    <div class="card bg-base-100 shadow-md overflow-hidden">
       <div class="card-body">
         <div class="flex items-center gap-2">
-          <i class="fas fa-clipboard-check text-[#1f456e]"></i>
+          <span class="guidelines-icon"><i class="fas fa-clipboard-check"></i></span>
           <h3 class="font-bold text-lg">Logs & History</h3>
         </div>
         <ul class="mt-3 list-disc ml-5 space-y-2 text-sm text-base-content/80">
@@ -77,16 +84,16 @@
           <li>If the device feed happens but no log appears, check connectivity and try again.</li>
         </ul>
         <div class="mt-4">
-          <a href="{% url 'history' %}" class="btn btn-sm btn-primary">Open History</a>
+          <a href="{% url 'history' %}" class="btn btn-sm btn-primary w-full sm:w-auto">Open History</a>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="card bg-base-100 shadow-md">
+  <div class="card bg-base-100 shadow-md overflow-hidden">
     <div class="card-body">
       <div class="flex items-center gap-2">
-        <i class="fas fa-screwdriver-wrench text-[#1f456e]"></i>
+        <span class="guidelines-icon"><i class="fas fa-screwdriver-wrench"></i></span>
         <h3 class="font-bold text-lg">Troubleshooting</h3>
       </div>
       <div class="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm text-base-content/80">
