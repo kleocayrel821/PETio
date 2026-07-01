@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Controller Guidelines{% endblock %}
+{% block sidebar %}{% include 'controller/sidebar.html' with view_name='controller_guidelines' %}{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+  <div class="enhanced-card">
+    <h2 class="section-title items-center justify-between">
+      <i class="fas fa-circle-info text-[#1f456e]"></i>
+      Controller & Device Guidelines
+    </h2>
+    <p class="text-sm text-gray-500 mt-1">Quick steps for pairing, schedules, feeding, and troubleshooting.</p>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <div class="flex items-center gap-2">
+          <i class="fas fa-link text-[#1f456e]"></i>
+          <h3 class="font-bold text-lg">Pair Your Device</h3>
+        </div>
+        <ol class="mt-3 list-decimal ml-5 space-y-2 text-sm text-base-content/80">
+          <li>Go to My Devices.</li>
+          <li>Tap Claim a New Device.</li>
+          <li>Enter your Hardware Key (UUID) or your Device ID + 6-digit PIN.</li>
+          <li>After claiming, refresh My Devices and confirm the device shows Online.</li>
+        </ol>
+        <div class="mt-4 flex gap-2">
+          <a href="{% url 'my_devices_page' %}" class="btn btn-sm btn-primary">Open My Devices</a>
+          <a href="{% url 'claim_device_page' %}" class="btn btn-sm btn-ghost">Claim Device</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <div class="flex items-center gap-2">
+          <i class="fas fa-bolt text-[#1f456e]"></i>
+          <h3 class="font-bold text-lg">Use Feed Now</h3>
+        </div>
+        <ul class="mt-3 list-disc ml-5 space-y-2 text-sm text-base-content/80">
+          <li>Use Feed Now for manual feeding outside the schedule.</li>
+          <li>Wait for the command to finish before sending another.</li>
+          <li>Check Pending Commands if a command looks stuck.</li>
+        </ul>
+        <div class="mt-4 flex gap-2">
+          <a href="{% url 'home' %}" class="btn btn-sm btn-primary">Open Dashboard</a>
+          <a href="{% url 'pending_commands' %}" class="btn btn-sm btn-ghost">Pending Commands</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <div class="flex items-center gap-2">
+          <i class="fas fa-calendar-alt text-[#1f456e]"></i>
+          <h3 class="font-bold text-lg">Schedules</h3>
+        </div>
+        <ul class="mt-3 list-disc ml-5 space-y-2 text-sm text-base-content/80">
+          <li>Create schedules for consistent feeding times.</li>
+          <li>Use realistic portion sizes and adjust slowly.</li>
+          <li>After editing schedules, confirm your device is online so it can sync changes.</li>
+        </ul>
+        <div class="mt-4">
+          <a href="{% url 'schedules_ui' %}" class="btn btn-sm btn-primary">Open Schedules</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <div class="flex items-center gap-2">
+          <i class="fas fa-clipboard-check text-[#1f456e]"></i>
+          <h3 class="font-bold text-lg">Logs & History</h3>
+        </div>
+        <ul class="mt-3 list-disc ml-5 space-y-2 text-sm text-base-content/80">
+          <li>Use History to review feeding activity and timestamps.</li>
+          <li>If the device feed happens but no log appears, check connectivity and try again.</li>
+        </ul>
+        <div class="mt-4">
+          <a href="{% url 'history' %}" class="btn btn-sm btn-primary">Open History</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-md">
+    <div class="card-body">
+      <div class="flex items-center gap-2">
+        <i class="fas fa-screwdriver-wrench text-[#1f456e]"></i>
+        <h3 class="font-bold text-lg">Troubleshooting</h3>
+      </div>
+      <div class="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm text-base-content/80">
+        <div>
+          <div class="font-semibold mb-2">Device shows Offline</div>
+          <ul class="list-disc ml-5 space-y-1">
+            <li>Check power and Wi-Fi signal near the feeder.</li>
+            <li>Restart the device and wait 30–60 seconds.</li>
+            <li>Open My Devices and refresh status.</li>
+          </ul>
+        </div>
+        <div>
+          <div class="font-semibold mb-2">Commands stuck in Pending</div>
+          <ul class="list-disc ml-5 space-y-1">
+            <li>Confirm device is online.</li>
+            <li>Wait for one command to complete before sending another.</li>
+            <li>Use Pending Commands to review what is queued.</li>
+          </ul>
+        </div>
+        <div>
+          <div class="font-semibold mb-2">Portion looks wrong</div>
+          <ul class="list-disc ml-5 space-y-1">
+            <li>Calibrate your device if your model supports it.</li>
+            <li>Adjust portions gradually and verify with History.</li>
+          </ul>
+        </div>
+        <div>
+          <div class="font-semibold mb-2">Safety tips</div>
+          <ul class="list-disc ml-5 space-y-1">
+            <li>Keep the food container dry and clean.</li>
+            <li>Do not overfeed; follow your veterinarian’s guidance.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
