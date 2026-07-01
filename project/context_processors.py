@@ -14,6 +14,10 @@ try:
     from marketplace.models import Notification as MarketplaceNotification
 except Exception:
     MarketplaceNotification = None
+try:
+    from controller.models import Hardware as ControllerHardware
+except Exception:
+    ControllerHardware = None
 from django.conf import settings
 
 def device_id_context(request):
@@ -106,3 +110,16 @@ def unread_notifications_count(request):
         except Exception:
             count = 0
     return {"unread_notifications_count": count}
+
+
+def controller_has_devices(request):
+    user = getattr(request, "user", None)
+    if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
+        return {"controller_has_devices": False}
+    if ControllerHardware is None:
+        return {"controller_has_devices": False}
+    try:
+        has_devices = ControllerHardware.objects.filter(paired_user=user, is_paired=True).exists()
+        return {"controller_has_devices": has_devices}
+    except Exception:
+        return {"controller_has_devices": False}

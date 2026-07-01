@@ -111,7 +111,7 @@
     var links=nav.querySelectorAll('.sidebar-item');
     links.forEach(function(a){
       var key=a.getAttribute('data-nav-key')||'';
-      if(!hasDevices && key && key!=='devices' && key!=='guidelines'){ a.style.display='none'; }
+      if(!hasDevices && key && key!=='devices'){ a.style.display='none'; }
       else{ a.style.display=''; }
     });
   }

@@ -36,8 +36,10 @@ Expects: view_name set to a url_name for active highlighting
     <i class="fas fa-microchip"></i>
     <span>My Devices</span>
   </a>
+  {% if controller_has_devices %}
   <a href="{% url 'controller_guidelines' %}" class="sidebar-item {% if view_name == 'controller_guidelines' %}active{% endif %}" data-nav-key="guidelines">
     <i class="fas fa-circle-info"></i>
     <span>Guidelines</span>
   </a>
+  {% endif %}
 </nav>
