@@ -36,14 +36,14 @@
 
                 
 
-                <!-- Title (optional) -->
+                <!-- Title -->
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text font-semibold">Post Title (optional)</span>
+                        <span class="label-text font-semibold">Post Title *</span>
                     </label>
                     <input type="text" name="title" placeholder="What's your post about?" 
                            class="input input-bordered w-full {% if form.title.errors %}input-error{% endif %}" 
-                           value="{{ form.title.value|default:'' }}">
+                           value="{{ form.title.value|default:'' }}" required>
                     {% if form.title.errors %}
                         <label class="label">
                             <span class="label-text-alt text-error">{{ form.title.errors.0 }}</span>
