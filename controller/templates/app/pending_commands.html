@@ -3,22 +3,22 @@
 {% block title %}Pending Commands{% endblock %}
 {% block sidebar %}{% include 'controller/sidebar.html' with view_name='pending_commands' %}{% endblock %}
 {% block app_nav %}
-<ul class="menu menu-horizontal px-1 gap-1 overflow-x-auto">
+<ul class="overflow-x-auto gap-1 px-1 menu menu-horizontal">
   <li>
     <a href="{% url 'home' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'home' %}active{% endif %}">
-      <i class="fas fa-home mr-2"></i>
+      <i class="mr-2 fas fa-home"></i>
       <span>Home</span>
     </a>
   </li>
   <li>
     <a href="{% url 'schedules_ui' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'schedules_ui' %}active{% endif %}">
-      <i class="fas fa-calendar-alt mr-2"></i>
+      <i class="mr-2 fas fa-calendar-alt"></i>
       <span>Schedules</span>
     </a>
   </li>
   <li>
     <a href="{% url 'history' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'history' %}active{% endif %}">
-      <i class="fas fa-history mr-2"></i>
+      <i class="mr-2 fas fa-history"></i>
       <span>History</span>
     </a>
   </li>
@@ -43,14 +43,14 @@
 <div class="enhanced-card">
   <h2 class="section-title">
     <i class="fas fa-clipboard-list"></i>
-    Pending Commands
+    Pending Logs
   </h2>
-  <div class="mb-3 flex gap-2">
+  <div class="flex gap-2 mb-3">
     <button id="refreshPending" class="btn btn-sm btn-ghost btn-enhanced">Refresh</button>
     <button id="cancelAllPending" class="btn btn-sm btn-warning">Cancel All</button>
   </div>
   <div class="overflow-x-auto">
-    <table class="table table-zebra w-full">
+    <table class="table w-full table-zebra">
       <thead>
         <tr>
           <th>ID</th>
@@ -65,16 +65,16 @@
     </table>
   </div>
 </div>
-<div class="enhanced-card mt-6">
+<div class="mt-6 enhanced-card">
   <h2 class="section-title">
     <i class="fas fa-cogs"></i>
     Processing Commands
   </h2>
-  <div class="mb-3 flex gap-2">
+  <div class="flex gap-2 mb-3">
     <button id="refreshProcessing" class="btn btn-sm btn-ghost btn-enhanced">Refresh</button>
   </div>
   <div class="overflow-x-auto">
-    <table class="table table-zebra w-full">
+    <table class="table w-full table-zebra">
       <thead>
         <tr>
           <th>ID</th>
