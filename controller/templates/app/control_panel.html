@@ -125,6 +125,13 @@
             box-shadow: 0 0 0 6px rgba(79, 70, 229, 0.15);
         }
 
+        /* Hopper donut gauge */
+        .hopper-donut { width: 120px; height: 120px; display: inline-block; }
+        .hopper-donut svg { transform: rotate(-90deg); }
+        .hopper-donut .donut-bg { stroke: #e9ecef; stroke-width: 12; fill: none; }
+        .hopper-donut .donut-fg { stroke: var(--primary-color); stroke-width: 12; stroke-linecap: round; fill: none; transition: stroke-dashoffset 0.6s ease, stroke 0.3s ease; }
+        .hopper-donut .donut-center { font-weight:700; font-size:1.1rem; text-anchor:middle; dominant-baseline:middle; fill:var(--text-color); }
+
         
         .table { border-collapse: separate; border-spacing: 0 8px; }
         .table thead th {
@@ -267,6 +274,34 @@
                 </div>
                 <div id="lowFoodAlert" class="alert alert-warning mt-3 d-none" role="alert">
                     <i class="fas fa-info-circle"></i> Food level is running low! Consider refilling soon.
+                </div>
+                <!-- Additional visual: donut gauge + quick info -->
+                <div class="row mt-3 align-items-center">
+                    <div class="col-md-4 text-center">
+                        <div class="hopper-donut" aria-hidden="true">
+                            <svg width="120" height="120" viewBox="0 0 120 120">
+                                <circle class="donut-bg" cx="60" cy="60" r="48"></circle>
+                                <circle id="hopperDonutCircle" class="donut-fg" cx="60" cy="60" r="48" style="stroke-dasharray: 302 302; stroke-dashoffset: 302;"></circle>
+                                <text id="hopperDonutPct" class="donut-center" x="60" y="64">0%</text>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="d-flex flex-column gap-2">
+                            <div class="d-flex justify-content-between">
+                                <div class="text-muted">Hopper distance</div>
+                                <div id="hopperMmDisplay" class="fw-bold">0 mm</div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <div class="text-muted">Sensor status</div>
+                                <div id="hopperTofStatus" class="fw-bold">Sensor: Not available</div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <div class="text-muted">Low alert</div>
+                                <div id="hopperLowFlag" class="fw-bold text-danger">—</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -427,7 +462,6 @@
             return '';
         }
         
-        /
         function showToast(message, type = 'success', options = {}) {
             
             const mapType = (t) => {
@@ -1015,9 +1049,25 @@
                       
                       hopperStatus.textContent = `Level: ${pct}% (${data.hopper_mm || 0}mm)`;
                       
+                          // Update donut gauge (if present)
+                          const donutCircle = document.getElementById('hopperDonutCircle');
+                          const donutPct = document.getElementById('hopperDonutPct');
+                          if (donutCircle) {
+                              const radius = donutCircle.r.baseVal.value;
+                              const circumference = 2 * Math.PI * radius;
+                              const offset = circumference * (1 - (pct / 100));
+                              donutCircle.style.strokeDasharray = circumference + ' ' + circumference;
+                              donutCircle.style.strokeDashoffset = offset;
+                              // change color for low
+                              donutCircle.style.stroke = pct <= 20 ? 'var(--danger-color)' : (pct <= 40 ? '#f59e0b' : 'var(--primary-color)');
+                          }
+                          if (donutPct) donutPct.textContent = pct + '%';
+                          const mmEl = document.getElementById('hopperMmDisplay'); if (mmEl) mmEl.textContent = (data.hopper_mm || 0) + ' mm';
+                          const tofEl = document.getElementById('hopperTofStatus'); if (tofEl) tofEl.textContent = data.tof_ok ? 'Sensor OK' : 'Sensor Error';
                       // Handle low food alerts
                       if (data.food_low) {
                           lowFoodAlert.classList.remove('d-none');
+                          if (stickyLowFoodAlert) stickyLowFoodAlert.classList.remove('d-none');
                           // Only show sticky alert if we haven't shown it before and food is low
                           if (lastFoodLowState !== true) {
                               showToast('⚠️ FOOD LEVEL IS LOW! Please refill the hopper immediately!', 'error', { sticky: true });
@@ -1025,7 +1075,14 @@
                           lastFoodLowState = true;
                       } else {
                           lowFoodAlert.classList.add('d-none');
+                          if (stickyLowFoodAlert) stickyLowFoodAlert.classList.add('d-none');
                           lastFoodLowState = false;
+                      }
+
+                      const lowFlagEl = document.getElementById('hopperLowFlag');
+                      if (lowFlagEl) {
+                          lowFlagEl.textContent = data.food_low ? 'YES' : 'NO';
+                          lowFlagEl.classList.toggle('text-danger', !!data.food_low);
                       }
                   } else {
                       hopperProgress.style.width = '0%';
