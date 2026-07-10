@@ -1049,21 +1049,22 @@
                       
                       hopperStatus.textContent = `Level: ${pct}% (${data.hopper_mm || 0}mm)`;
                       
-                          // Update donut gauge (if present)
-                          const donutCircle = document.getElementById('hopperDonutCircle');
-                          const donutPct = document.getElementById('hopperDonutPct');
-                          if (donutCircle) {
-                              const radius = donutCircle.r.baseVal.value;
-                              const circumference = 2 * Math.PI * radius;
-                              const offset = circumference * (1 - (pct / 100));
-                              donutCircle.style.strokeDasharray = circumference + ' ' + circumference;
-                              donutCircle.style.strokeDashoffset = offset;
-                              // change color for low
-                              donutCircle.style.stroke = pct <= 20 ? 'var(--danger-color)' : (pct <= 40 ? '#f59e0b' : 'var(--primary-color)');
-                          }
-                          if (donutPct) donutPct.textContent = pct + '%';
-                          const mmEl = document.getElementById('hopperMmDisplay'); if (mmEl) mmEl.textContent = (data.hopper_mm || 0) + ' mm';
-                          const tofEl = document.getElementById('hopperTofStatus'); if (tofEl) tofEl.textContent = data.tof_ok ? 'Sensor OK' : 'Sensor Error';
+                      // Update donut gauge (if present)
+                      const donutCircle = document.getElementById('hopperDonutCircle');
+                      const donutPct = document.getElementById('hopperDonutPct');
+                      if (donutCircle) {
+                          const radius = donutCircle.r.baseVal.value;
+                          const circumference = 2 * Math.PI * radius;
+                          const offset = circumference * (1 - (pct / 100));
+                          donutCircle.style.strokeDasharray = circumference + ' ' + circumference;
+                          donutCircle.style.strokeDashoffset = offset;
+                          // change color for low
+                          donutCircle.style.stroke = pct <= 20 ? 'var(--danger-color)' : (pct <= 40 ? '#f59e0b' : 'var(--primary-color)');
+                      }
+                      if (donutPct) donutPct.textContent = pct + '%';
+                      const mmEl = document.getElementById('hopperMmDisplay'); if (mmEl) mmEl.textContent = (data.hopper_mm || 0) + ' mm';
+                      const tofEl = document.getElementById('hopperTofStatus'); if (tofEl) tofEl.textContent = data.tof_ok ? 'Sensor OK' : 'Sensor Error';
+                      
                       // Handle low food alerts
                       if (data.food_low) {
                           lowFoodAlert.classList.remove('d-none');
