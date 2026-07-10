@@ -1084,35 +1084,6 @@ function getActionLabel(type) {
     return labels[type] || 'Manual Feed';
 }
 
-// Test modal function
-function testModal() {
-    console.log('Test modal triggered');
-    const modalElement = document.getElementById('lowFoodAlertModal');
-    if (!modalElement) {
-        console.error('Modal element not found!');
-        return;
-    }
-    
-    console.log('Before:', { display: modalElement.style.display, classList: modalElement.className });
-    
-    // Show modal
-    modalElement.classList.remove('d-none');
-    modalElement.classList.add('show');
-    modalElement.style.display = 'flex';
-    modalElement.style.visibility = 'visible';
-    modalElement.setAttribute('aria-hidden', 'false');
-    
-    // Show backdrop
-    let backdrop = document.querySelector('.modal-backdrop');
-    if (backdrop) backdrop.remove();
-    backdrop = document.createElement('div');
-    backdrop.className = 'modal-backdrop fade show';
-    document.body.appendChild(backdrop);
-    document.body.classList.add('modal-open');
-    
-    console.log('After:', { display: modalElement.style.display, classList: modalElement.className });
-}
-
 // Update hopper level display
 let lastFoodLowState = null;
 function updateDeviceStatus() {
