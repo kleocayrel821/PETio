@@ -235,60 +235,62 @@
     </div>
     {% endif %}
 
-    <!-- Hopper Level Card -->
+    <!-- Food Level Monitoring Card -->
     <div class="enhanced-card">
         <div class="section-title">
             <i class="fas fa-bowl-rice text-[#1f456e]"></i>
-            Hopper Level
+            Food Level
         </div>
-        <div class="space-y-4">
-            <!-- Hopper Status Alert -->
-            <div id="stickyLowFoodAlert" class="alert alert-danger d-none" role="alert" style="border-radius: 8px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <i class="fas fa-exclamation-triangle fa-2x"></i>
-                    <div>
-                        <h6 class="mb-0 fw-bold">⚠️ FOOD LEVEL IS LOW!</h6>
-                        <p class="mb-0 small">Please refill the pet feeder hopper immediately!</p>
-                    </div>
+        <div class="space-y-5">
+            <!-- Status Banner (Dynamic) -->
+            <div id="foodStatusBanner" class="status-banner status-sufficient" style="display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 10px; background: #d4edda; border-left: 4px solid #28a745; transition: background 0.3s ease, border-color 0.3s ease;">
+                <div style="font-size: 24px; flex-shrink: 0;">🟢</div>
+                <div>
+                    <div style="font-weight: 700; font-size: 1rem; color: #155724; margin-bottom: 2px;">Food Level: <span id="statusText">Sufficient</span></div>
+                    <div style="font-size: 0.875rem; color: #155724; opacity: 0.85;" id="statusMessage">The hopper contains enough food for upcoming feedings.</div>
                 </div>
             </div>
 
-            <!-- Progress Bar -->
+            <!-- Progress Bar with Percentage -->
             <div>
-                <div style="height: 40px; border-radius: 20px; border: 2px solid #e9ecef; overflow: hidden;">
-                    <div id="hopperProgress" style="width: 0%; height: 100%; border-radius: 18px; background: linear-gradient(to right, #6c757d, #6c757d); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; transition: width 0.3s ease, background 0.3s ease;">
-                        0%
+                <div style="text-align: center; margin-bottom: 8px; font-size: 0.875rem; color: var(--text-secondary);">Food Remaining</div>
+                <div style="height: 50px; border-radius: 25px; background: #e9ecef; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); position: relative;">
+                    <div id="hopperProgress" style="width: 85%; height: 100%; border-radius: 25px; background: linear-gradient(90deg, #28a745, #20c997); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.25rem; transition: width 0.4s ease, background 0.3s ease; box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);">
+                        <span id="progressPercentage">85%</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Hopper Stats Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Donut Gauge -->
-                <div style="text-align: center;">
-                    <div style="display: inline-block; width: 120px; height: 120px;">
-                        <svg width="120" height="120" viewBox="0 0 120 120" style="transform: rotate(-90deg);">
-                            <circle cx="60" cy="60" r="48" stroke="#e9ecef" stroke-width="12" fill="none"></circle>
-                            <circle id="hopperDonutCircle" cx="60" cy="60" r="48" stroke="#4f46e5" stroke-width="12" stroke-linecap="round" fill="none" style="stroke-dasharray: 302 302; stroke-dashoffset: 302; transition: stroke-dashoffset 0.6s ease, stroke 0.3s ease;"></circle>
-                            <text id="hopperDonutPct" x="60" y="64" text-anchor="middle" dominant-baseline="middle" style="font-weight: 700; font-size: 1.1rem; fill: #e9ecef; transform: rotate(90deg); transform-origin: 60px 64px;">0%</text>
-                        </svg>
+            <!-- Circular Progress Indicator -->
+            <div style="text-align: center; padding: 20px 0;">
+                <div style="display: inline-block; position: relative; width: 140px; height: 140px;">
+                    <svg width="140" height="140" viewBox="0 0 140 140" style="transform: rotate(-90deg);">
+                        <!-- Background circle -->
+                        <circle cx="70" cy="70" r="60" stroke="#e9ecef" stroke-width="10" fill="none"></circle>
+                        <!-- Progress circle -->
+                        <circle id="circularProgress" cx="70" cy="70" r="60" stroke="#28a745" stroke-width="10" stroke-linecap="round" fill="none" 
+                                style="stroke-dasharray: 376.99 376.99; stroke-dashoffset: 56.55; transition: stroke-dashoffset 0.6s ease, stroke 0.3s ease; box-shadow: 0 0 8px rgba(40, 167, 69, 0.3);"></circle>
+                    </svg>
+                    <!-- Center text -->
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                        <div style="font-size: 2.5rem; font-weight: 700; color: #1f456e;" id="circularPercentage">85%</div>
+                        <div style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 4px;">Food Remaining</div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Info Cards -->
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-secondary); border-radius: 6px;">
-                        <div style="color: var(--text-secondary);">Hopper Distance</div>
-                        <div id="hopperMmDisplay" style="font-weight: 700;">0 mm</div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-secondary); border-radius: 6px;">
-                        <div style="color: var(--text-secondary);">Sensor Status</div>
-                        <div id="hopperTofStatus" style="font-weight: 700;">Sensor: Not available</div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-secondary); border-radius: 6px;">
-                        <div style="color: var(--text-secondary);">Low Alert</div>
-                        <div id="hopperLowFlag" style="font-weight: 700; color: var(--text-secondary);">—</div>
-                    </div>
+            <!-- Information Card -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: var(--bg-secondary); border-radius: 8px; border-left: 4px solid #4f46e5;">
+                <div style="color: var(--text-secondary); font-weight: 600;">Status</div>
+                <div id="statusValue" style="font-weight: 700; color: #28a745; font-size: 1.1rem;">Sufficient</div>
+            </div>
+
+            <!-- Empty State (Hidden by default) -->
+            <div id="foodUnavailableState" class="d-none" style="display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 10px; background: #fff3cd; border-left: 4px solid #ffc107;">
+                <div style="font-size: 24px; flex-shrink: 0;">⚠️</div>
+                <div>
+                    <div style="font-weight: 700; font-size: 1rem; color: #856404; margin-bottom: 2px;">Food Level Unavailable</div>
+                    <div style="font-size: 0.875rem; color: #856404; opacity: 0.85;">Unable to determine the remaining food. Please check the feeder.</div>
                 </div>
             </div>
         </div>
@@ -851,71 +853,134 @@ function updateDeviceStatus() {
     fetch(`/api/device-status/?device_id=${encodeURIComponent(deviceId)}`)
         .then(r => r.json())
         .then(data => {
+            const foodStatusBanner = document.getElementById('foodStatusBanner');
+            const statusText = document.getElementById('statusText');
+            const statusMessage = document.getElementById('statusMessage');
+            const progressPercentage = document.getElementById('progressPercentage');
             const hopperProgress = document.getElementById('hopperProgress');
-            const stickyLowFoodAlert = document.getElementById('stickyLowFoodAlert');
+            const circularProgress = document.getElementById('circularProgress');
+            const circularPercentage = document.getElementById('circularPercentage');
+            const statusValue = document.getElementById('statusValue');
+            const foodUnavailableState = document.getElementById('foodUnavailableState');
             
-            if (data.tof_ok) {
-                const pct = data.hopper_pct || 0;
+            if (data.tof_ok && data.hopper_pct !== undefined) {
+                // Hide empty state
+                if (foodUnavailableState) foodUnavailableState.classList.add('d-none');
+                
+                const pct = Math.max(0, Math.min(100, data.hopper_pct));
+                
+                // Determine status and colors
+                let status, emoji, bgColor, textColor, borderColor, messageText, progressColor;
+                
+                if (pct >= 60) {
+                    status = 'Sufficient';
+                    emoji = '🟢';
+                    bgColor = '#d4edda';
+                    textColor = '#155724';
+                    borderColor = '#28a745';
+                    messageText = 'The hopper contains enough food for upcoming feedings.';
+                    progressColor = 'linear-gradient(90deg, #28a745, #20c997)';
+                } else if (pct >= 40) {
+                    status = 'Moderate';
+                    emoji = '🟡';
+                    bgColor = '#fff3cd';
+                    textColor = '#856404';
+                    borderColor = '#ffc107';
+                    messageText = 'The hopper is at a moderate level. Plan to refill soon.';
+                    progressColor = 'linear-gradient(90deg, #ffc107, #fd7e14)';
+                } else if (pct >= 20) {
+                    status = 'Running Low';
+                    emoji = '🟠';
+                    bgColor = '#ffe5cc';
+                    textColor = '#b85c1a';
+                    borderColor = '#fd7e14';
+                    messageText = 'The hopper is running low. Consider refilling soon.';
+                    progressColor = 'linear-gradient(90deg, #fd7e14, #ff6b35)';
+                } else {
+                    status = 'Refill Required';
+                    emoji = '🔴';
+                    bgColor = '#f8d7da';
+                    textColor = '#721c24';
+                    borderColor = '#dc3545';
+                    messageText = 'Please refill the hopper immediately to ensure continuous feeding.';
+                    progressColor = 'linear-gradient(90deg, #dc3545, #c82333)';
+                }
+                
+                // Update status banner
+                if (foodStatusBanner) {
+                    foodStatusBanner.style.background = bgColor;
+                    foodStatusBanner.style.borderLeftColor = borderColor;
+                    foodStatusBanner.querySelector('div:first-child').textContent = emoji;
+                }
+                if (statusText) statusText.textContent = status;
+                if (statusMessage) {
+                    statusMessage.textContent = messageText;
+                    statusMessage.style.color = textColor;
+                }
+                
+                // Update text color in banner heading
+                const bannerHeading = foodStatusBanner ? foodStatusBanner.querySelector('div:nth-child(2) > div:first-child') : null;
+                if (bannerHeading) bannerHeading.style.color = textColor;
+                
+                // Update progress bar
+                if (progressPercentage) progressPercentage.textContent = pct + '%';
                 if (hopperProgress) {
-                    hopperProgress.style.width = `${pct}%`;
-                    hopperProgress.textContent = `${pct}%`;
-                    // Set progress bar color
-                    if (pct <= 20) {
-                        hopperProgress.style.background = 'linear-gradient(to right, #dc3545, #dc3545)';
-                    } else if (pct <= 40) {
-                        hopperProgress.style.background = 'linear-gradient(to right, #ffc107, #ffc107)';
-                    } else {
-                        hopperProgress.style.background = 'linear-gradient(to right, #28a745, #28a745)';
-                    }
+                    hopperProgress.style.width = pct + '%';
+                    hopperProgress.style.background = progressColor;
                 }
                 
-                // Update donut gauge
-                const donutCircle = document.getElementById('hopperDonutCircle');
-                const donutPct = document.getElementById('hopperDonutPct');
-                if (donutCircle) {
-                    const radius = donutCircle.r.baseVal.value;
-                    const circumference = 2 * Math.PI * radius;
+                // Update circular progress
+                if (circularPercentage) circularPercentage.textContent = pct + '%';
+                if (circularProgress) {
+                    const circumference = 2 * Math.PI * 60; // r=60
                     const offset = circumference * (1 - (pct / 100));
-                    donutCircle.style.strokeDasharray = circumference + ' ' + circumference;
-                    donutCircle.style.strokeDashoffset = offset;
-                    donutCircle.style.stroke = pct <= 20 ? '#dc3545' : (pct <= 40 ? '#ffc107' : '#4f46e5');
+                    circularProgress.style.strokeDasharray = circumference + ' ' + circumference;
+                    circularProgress.style.strokeDashoffset = offset;
+                    
+                    // Change circle color based on status
+                    const circleColors = {
+                        'Sufficient': '#28a745',
+                        'Moderate': '#ffc107',
+                        'Running Low': '#fd7e14',
+                        'Refill Required': '#dc3545'
+                    };
+                    circularProgress.style.stroke = circleColors[status] || '#4f46e5';
                 }
-                if (donutPct) donutPct.textContent = pct + '%';
                 
-                // Update info cards
-                const mmEl = document.getElementById('hopperMmDisplay');
-                if (mmEl) mmEl.textContent = (data.hopper_mm || 0) + ' mm';
-                const tofEl = document.getElementById('hopperTofStatus');
-                if (tofEl) tofEl.textContent = data.tof_ok ? 'Sensor OK' : 'Sensor Error';
+                // Update status card
+                if (statusValue) {
+                    statusValue.textContent = status;
+                    const statusColors = {
+                        'Sufficient': '#28a745',
+                        'Moderate': '#ffc107',
+                        'Running Low': '#fd7e14',
+                        'Refill Required': '#dc3545'
+                    };
+                    statusValue.style.color = statusColors[status] || '#4f46e5';
+                }
                 
-                // Handle low food alerts
-                if (data.food_low) {
-                    if (stickyLowFoodAlert) stickyLowFoodAlert.classList.remove('d-none');
-                    if (lastFoodLowState !== true) {
+                // Handle low food alerts (show toast when transitioning to low)
+                if (data.food_low && lastFoodLowState !== true) {
+                    if (typeof showToast === 'function') {
                         showToast('⚠️ FOOD LEVEL IS LOW! Please refill the hopper immediately!', 'error', { sticky: true });
                     }
-                    lastFoodLowState = true;
-                } else {
-                    if (stickyLowFoodAlert) stickyLowFoodAlert.classList.add('d-none');
-                    lastFoodLowState = false;
                 }
-                
-                const lowFlagEl = document.getElementById('hopperLowFlag');
-                if (lowFlagEl) {
-                    lowFlagEl.textContent = data.food_low ? 'YES' : 'NO';
-                    lowFlagEl.style.color = data.food_low ? '#dc3545' : 'var(--text-secondary)';
-                }
+                lastFoodLowState = data.food_low;
             } else {
-                if (hopperProgress) {
-                    hopperProgress.style.width = '0%';
-                    hopperProgress.textContent = '0%';
-                    hopperProgress.style.background = 'linear-gradient(to right, #6c757d, #6c757d)';
-                }
-                const tofEl = document.getElementById('hopperTofStatus');
-                if (tofEl) tofEl.textContent = 'Sensor: Not available';
+                // Show empty state
+                if (foodUnavailableState) foodUnavailableState.classList.remove('d-none');
+                if (foodStatusBanner) foodStatusBanner.style.display = 'none';
+                if (hopperProgress) hopperProgress.style.width = '0%';
+                if (progressPercentage) progressPercentage.textContent = '—';
+                if (circularPercentage) circularPercentage.textContent = '—';
+                if (statusValue) statusValue.textContent = 'Unavailable';
             }
         })
-        .catch(() => console.error('Failed to update device status'));
+        .catch(err => {
+            console.error('Failed to update device status:', err);
+            const foodUnavailableState = document.getElementById('foodUnavailableState');
+            if (foodUnavailableState) foodUnavailableState.classList.remove('d-none');
+        });
 }
 
 // Poll device status every 10 seconds
