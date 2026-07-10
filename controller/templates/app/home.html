@@ -286,7 +286,7 @@
             </div>
 
             <!-- Empty State (Hidden by default) -->
-            <div id="foodUnavailableState" class="d-none" style="display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 10px; background: #fff3cd; border-left: 4px solid #ffc107;">
+            <div id="foodUnavailableState" class="d-none" style="align-items: center; gap: 12px; padding: 16px; border-radius: 10px; background: #fff3cd; border-left: 4px solid #ffc107;">
                 <div style="font-size: 24px; flex-shrink: 0;">⚠️</div>
                 <div>
                     <div style="font-weight: 700; font-size: 1rem; color: #856404; margin-bottom: 2px;">Food Level Unavailable</div>
@@ -464,6 +464,11 @@
   .recent-activity-table td:nth-child(3), 
   .recent-activity-table td:nth-child(4) { text-align: right; }
   .recent-activity-table td .status-badge { margin-left: 12px; }
+}
+
+/* Show foodUnavailableState when d-none is removed */
+#foodUnavailableState:not(.d-none) {
+    display: flex !important;
 }
 </style>
 
