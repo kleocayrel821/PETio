@@ -497,6 +497,10 @@
 </div>
 
 <script>
+// Initialize device ID from Django template context
+window.DEVICE_ID = '{{ DEVICE_ID }}';
+console.log('Device ID initialized:', window.DEVICE_ID);
+
 // Helper: unified toast wrapper using global toastManager for consistent UI
 function showToast(message, type = 'success', options = {}) {
     /**
