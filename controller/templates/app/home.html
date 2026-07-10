@@ -990,8 +990,31 @@ function updateDeviceStatus() {
                 
                 // Handle low food alerts (show modal when transitioning to low)
                 if (data.food_low && lastFoodLowState !== true) {
-                    const modal = new bootstrap.Modal(document.getElementById('lowFoodAlertModal'));
-                    modal.show();
+                    console.log('Low food alert triggered! data.food_low =', data.food_low, 'lastFoodLowState =', lastFoodLowState);
+                    try {
+                        const modalElement = document.getElementById('lowFoodAlertModal');
+                        console.log('Modal element found:', !!modalElement);
+                        if (modalElement && window.bootstrap && window.bootstrap.Modal) {
+                            const modal = new window.bootstrap.Modal(modalElement);
+                            modal.show();
+                            console.log('Modal shown via bootstrap.Modal');
+                        } else if (modalElement && jQuery && jQuery.fn.modal) {
+                            jQuery(modalElement).modal('show');
+                            console.log('Modal shown via jQuery');
+                        } else {
+                            // Fallback: manually show with display
+                            if (modalElement) {
+                                modalElement.classList.add('show');
+                                modalElement.style.display = 'block';
+                                const backdrop = document.createElement('div');
+                                backdrop.className = 'modal-backdrop fade show';
+                                document.body.appendChild(backdrop);
+                                console.log('Modal shown via fallback');
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error showing modal:', e);
+                    }
                 }
                 lastFoodLowState = data.food_low;
             } else {
