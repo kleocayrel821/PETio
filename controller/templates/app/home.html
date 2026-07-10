@@ -237,13 +237,9 @@
 
     <!-- Food Level Monitoring Card -->
     <div class="enhanced-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <div class="section-title">
-                <i class="fas fa-bowl-rice text-[#1f456e]"></i>
-                Food Level
-            </div>
-            <!-- Test Button (Remove in production) -->
-            <button onclick="testModal()" style="padding: 0.5rem 1rem; background: #ffc107; color: #000; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Test Alert</button>
+        <div class="section-title">
+            <i class="fas fa-bowl-rice text-[#1f456e]"></i>
+            Food Level
         </div>
         <div class="space-y-5">
             <!-- Status Banner (Dynamic) -->
@@ -474,222 +470,9 @@
 #foodUnavailableState:not(.d-none) {
     display: flex !important;
 }
-
-/* Modal styles for CSS fallback */
-.modal {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    z-index: 1030 !important;
-    display: none !important;
-    width: 100% !important;
-    height: 100% !important;
-    overflow: hidden !important;
-    outline: 0 !important;
-    background: transparent !important;
-}
-
-.modal.show {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    overflow-y: auto !important;
-}
-
-.modal-dialog {
-    position: relative;
-    width: auto;
-    margin: 0.5rem;
-    pointer-events: none;
-    max-width: 500px;
-}
-
-.modal-dialog-centered {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: calc(100% - 1rem);
-}
-
-.modal-dialog-centered .modal-content {
-    pointer-events: auto;
-}
-
-.modal-content {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    pointer-events: auto;
-    background-color: #fff;
-    background-clip: padding-box;
-    border: 1px solid rgba(0, 0, 0, 0.2);
-    border-radius: 0.3rem;
-    outline: 0;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-}
-
-.modal-header {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem;
-    border-bottom: 1px solid #dee2e6;
-}
-
-.modal-title {
-    margin-bottom: 0;
-    line-height: 1.5;
-    font-size: 1.25rem;
-    font-weight: 500;
-}
-
-.modal-body {
-    position: relative;
-    flex: 1 1 auto;
-    padding: 1rem;
-}
-
-.modal-footer {
-    display: flex;
-    flex-shrink: 0;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-end;
-    padding: 0.75rem;
-    border-top: 1px solid #dee2e6;
-    gap: 0.5rem;
-}
-
-.modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 1040;
-    width: 100vw;
-    height: 100vh;
-    background-color: #000;
-    opacity: 0;
-}
-
-.modal-backdrop.show {
-    opacity: 0.5;
-}
-
-/* Button styles for modal */
-.btn {
-    display: inline-block;
-    font-weight: 400;
-    line-height: 1.5;
-    text-align: center;
-    text-decoration: none;
-    white-space: nowrap;
-    vertical-align: middle;
-    cursor: pointer;
-    user-select: none;
-    border: 1px solid transparent;
-    padding: 0.375rem 0.75rem;
-    font-size: 1rem;
-    border-radius: 0.25rem;
-    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.btn-primary {
-    color: #fff;
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-}
-
-.btn-primary:hover {
-    color: #fff;
-    background-color: #0b5ed7;
-    border-color: #0a58ca;
-}
-
-.btn-outline-secondary {
-    color: #6c757d;
-    border-color: #6c757d;
-    background-color: transparent;
-}
-
-.btn-outline-secondary:hover {
-    color: #fff;
-    background-color: #6c757d;
-    border-color: #6c757d;
-}
-
-.btn-close {
-    box-sizing: content-box;
-    width: 1em;
-    height: 1em;
-    padding: 0.25em 0.25em;
-    color: #000;
-    background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='%23000' d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e") center/1em auto no-repeat;
-    border: 0;
-    border-radius: 0.25rem;
-    opacity: 0.5;
-    cursor: pointer;
-}
-
-.btn-close:hover {
-    opacity: 0.75;
-}
-
-.btn-close-white {
-    filter: invert(1) grayscale(100%) brightness(200%);
-}
-
-.bg-danger {
-    background-color: #dc3545 !important;
-}
-
-.text-white {
-    color: #fff !important;
-}
-
-.text-muted {
-    color: #6c757d !important;
-}
-
-.fs-5 {
-    font-size: 1.25rem !important;
-}
-
-.mb-3 {
-    margin-bottom: 1rem !important;
-}
 </style>
 
-<!-- Low Food Level Alert Modal -->
-<div class="modal fade" id="lowFoodAlertModal" tabindex="-1" aria-labelledby="lowFoodAlertLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title" id="lowFoodAlertLabel">⚠️ Low Food Level Alert</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p class="fs-5 mb-3">
-          <strong>Your pet's food hopper is running critically low!</strong>
-        </p>
-        <p class="text-muted">
-          Please refill the hopper immediately to ensure continuous feeding. Your pet depends on a consistent food supply.
-        </p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Dismiss</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
-// Initialize device ID from Django template context
-window.DEVICE_ID = '{{ DEVICE_ID }}';
-console.log('Device ID initialized:', window.DEVICE_ID);
-
 // Helper: unified toast wrapper using global toastManager for consistent UI
 function showToast(message, type = 'success', options = {}) {
     /**
@@ -803,9 +586,9 @@ async function feedNow() {
     const portionSlider = document.getElementById('portionSlider');
     const raw = parseInt(portionSlider.value, 10);
     const snapped = Math.round(raw / 10) * 10;
-    
+
     setButtonLoading(button, true);
-    
+
     try {
         const response = await fetch('/feed_now/', {
             method: 'POST',
@@ -847,17 +630,17 @@ async function feedNow() {
 // Quick Schedule form submission
 document.getElementById('quickScheduleForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
+
     const formData = new FormData(this);
     const selectedDaysLower = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(cb => cb.value);
     const dayAbbrMap = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
     const selectedDays = selectedDaysLower.map(d => dayAbbrMap[d] || d);
-    
+
     if (selectedDays.length === 0) {
         showToast('Please select at least one day', 'warning');
         return;
     }
-    
+
     const rawPortion = parseInt(
         formData.get('scheduleAmount') || document.getElementById('scheduleAmount').value
     );
@@ -874,10 +657,10 @@ document.getElementById('quickScheduleForm').addEventListener('submit', async fu
         days_of_week: selectedDays,
         enabled: true
     };
-    
+
     const submitBtn = this.querySelector('button[type="submit"]');
     setButtonLoading(submitBtn, true);
-    
+
     try {
         const response = await fetch('/api/schedules/', {
             method: 'POST',
@@ -890,7 +673,7 @@ document.getElementById('quickScheduleForm').addEventListener('submit', async fu
             body: JSON.stringify(scheduleData)
         });
         const data = await parseJsonSafe(response);
-        
+
         if (response.ok) {
             showToast('Schedule added successfully!', 'success');
             this.reset();
@@ -918,9 +701,9 @@ async function loadRecentActivity() {
             credentials: 'same-origin'
         });
         const data = await parseJsonSafe(response);
-        
+
         const tbody = document.getElementById('recentActivityTable');
-        
+
         if (data && data.results && data.results.length > 0) {
             tbody.innerHTML = data.results.map(log => `
                 <tr>
@@ -970,22 +753,22 @@ async function loadStats() {
             fetch('/api/logs/?limit=100', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' }),
             fetch('/api/schedules/?page_size=100&ordering=-id', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
         ]);
-        
+
         const logsData = await parseJsonSafe(logsResponse);
         const schedulesData = await parseJsonSafe(schedulesResponse);
-        
+
         // Calculate today's stats
         const today = new Date().toDateString();
         const todayLogs = logsData && logsData.results?.filter(log => 
             new Date(log.timestamp).toDateString() === today
         ) || [];
-        
+
         document.getElementById('todayFeedings').textContent = todayLogs.length;
         document.getElementById('activeSchedules').textContent = 
             (schedulesData && schedulesData.results?.filter(s => s.enabled).length) || 0;
         document.getElementById('totalAmount').textContent = 
             `${todayLogs.reduce((sum, log) => sum + (log.amount || 0), 0)}g`;
-            
+
     } catch (error) {
         console.error('Failed to load stats:', error);
         document.getElementById('todayFeedings').textContent = '?';
@@ -1002,12 +785,12 @@ async function updateLastFedTime() {
             credentials: 'same-origin'
         });
         const data = await parseJsonSafe(response);
-        
+
         if (data && data.results && data.results.length > 0) {
             const lastFed = new Date(data.results[0].timestamp);
             const now = new Date();
             const diffMinutes = Math.floor((now - lastFed) / (1000 * 60));
-            
+
             let timeText;
             if (diffMinutes < 1) {
                 timeText = 'Just now';
@@ -1022,7 +805,7 @@ async function updateLastFedTime() {
                     ? `${days} day${days !== 1 ? 's' : ''} ago`
                     : lastFed.toLocaleDateString();
             }
-            
+
             document.getElementById('lastFedTime').textContent = timeText;
         } else {
             document.getElementById('lastFedTime').textContent = 'Never';
@@ -1034,29 +817,13 @@ async function updateLastFedTime() {
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
-    // Setup modal close buttons
-    const modalCloseButtons = document.querySelectorAll('#lowFoodAlertModal [data-bs-dismiss="modal"]');
-    modalCloseButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const modalElement = document.getElementById('lowFoodAlertModal');
-            if (modalElement) {
-                modalElement.classList.remove('show');
-                modalElement.style.display = 'none';
-                modalElement.setAttribute('aria-hidden', 'true');
-                document.body.classList.remove('modal-open');
-                const backdrop = document.querySelector('.modal-backdrop');
-                if (backdrop) backdrop.remove();
-            }
-        });
-    });
-    
     updatePortionDisplay(document.getElementById('portionSlider').value);
     loadStats();
     {% if user.is_authenticated %}
     loadRecentActivity();
     updateLastFedTime();
     {% endif %}
-    
+
     // Refresh data every 30 seconds
     setInterval(() => {
         loadStats();
@@ -1084,35 +851,6 @@ function getActionLabel(type) {
     return labels[type] || 'Manual Feed';
 }
 
-// Test modal function
-function testModal() {
-    console.log('Test modal triggered');
-    const modalElement = document.getElementById('lowFoodAlertModal');
-    if (!modalElement) {
-        console.error('Modal element not found!');
-        return;
-    }
-    
-    console.log('Before:', { display: modalElement.style.display, classList: modalElement.className });
-    
-    // Show modal
-    modalElement.classList.remove('d-none');
-    modalElement.classList.add('show');
-    modalElement.style.display = 'flex';
-    modalElement.style.visibility = 'visible';
-    modalElement.setAttribute('aria-hidden', 'false');
-    
-    // Show backdrop
-    let backdrop = document.querySelector('.modal-backdrop');
-    if (backdrop) backdrop.remove();
-    backdrop = document.createElement('div');
-    backdrop.className = 'modal-backdrop fade show';
-    document.body.appendChild(backdrop);
-    document.body.classList.add('modal-open');
-    
-    console.log('After:', { display: modalElement.style.display, classList: modalElement.className });
-}
-
 // Update hopper level display
 let lastFoodLowState = null;
 function updateDeviceStatus() {
@@ -1129,16 +867,16 @@ function updateDeviceStatus() {
             const circularPercentage = document.getElementById('circularPercentage');
             const statusValue = document.getElementById('statusValue');
             const foodUnavailableState = document.getElementById('foodUnavailableState');
-            
+
             if (data.tof_ok && data.hopper_pct !== undefined) {
                 // Hide empty state
                 if (foodUnavailableState) foodUnavailableState.classList.add('d-none');
-                
+
                 const pct = Math.max(0, Math.min(100, data.hopper_pct));
-                
+
                 // Determine status and colors
                 let status, emoji, bgColor, textColor, borderColor, messageText, progressColor;
-                
+
                 if (pct >= 60) {
                     status = 'Sufficient';
                     emoji = '🟢';
@@ -1172,7 +910,7 @@ function updateDeviceStatus() {
                     messageText = 'Please refill the hopper immediately to ensure continuous feeding.';
                     progressColor = 'linear-gradient(90deg, #dc3545, #c82333)';
                 }
-                
+
                 // Update status banner
                 if (foodStatusBanner) {
                     foodStatusBanner.style.background = bgColor;
@@ -1184,18 +922,18 @@ function updateDeviceStatus() {
                     statusMessage.textContent = messageText;
                     statusMessage.style.color = textColor;
                 }
-                
+
                 // Update text color in banner heading
                 const bannerHeading = foodStatusBanner ? foodStatusBanner.querySelector('div:nth-child(2) > div:first-child') : null;
                 if (bannerHeading) bannerHeading.style.color = textColor;
-                
+
                 // Update progress bar
                 if (progressPercentage) progressPercentage.textContent = pct + '%';
                 if (hopperProgress) {
                     hopperProgress.style.width = pct + '%';
                     hopperProgress.style.background = progressColor;
                 }
-                
+
                 // Update circular progress
                 if (circularPercentage) circularPercentage.textContent = pct + '%';
                 if (circularProgress) {
@@ -1203,7 +941,7 @@ function updateDeviceStatus() {
                     const offset = circumference * (1 - (pct / 100));
                     circularProgress.style.strokeDasharray = circumference + ' ' + circumference;
                     circularProgress.style.strokeDashoffset = offset;
-                    
+
                     // Change circle color based on status
                     const circleColors = {
                         'Sufficient': '#28a745',
@@ -1213,7 +951,7 @@ function updateDeviceStatus() {
                     };
                     circularProgress.style.stroke = circleColors[status] || '#4f46e5';
                 }
-                
+
                 // Update status card
                 if (statusValue) {
                     statusValue.textContent = status;
@@ -1225,38 +963,11 @@ function updateDeviceStatus() {
                     };
                     statusValue.style.color = statusColors[status] || '#4f46e5';
                 }
-                
-                // Handle low food alerts (show modal when transitioning to low)
+
+                // Handle low food alerts (show toast when transitioning to low)
                 if (data.food_low && lastFoodLowState !== true) {
-                    console.log('Low food alert triggered! data.food_low =', data.food_low, 'lastFoodLowState =', lastFoodLowState);
-                    try {
-                        const modalElement = document.getElementById('lowFoodAlertModal');
-                        console.log('Modal element found:', !!modalElement);
-                        
-                        // Try Bootstrap 5 first
-                        if (modalElement && window.bootstrap && window.bootstrap.Modal) {
-                            const modal = new window.bootstrap.Modal(modalElement);
-                            modal.show();
-                            console.log('Modal shown via bootstrap.Modal');
-                        } else if (modalElement) {
-                            // Fallback: manually show modal with CSS
-                            modalElement.classList.remove('d-none');
-                            modalElement.classList.add('show');
-                            modalElement.style.display = 'block';
-                            modalElement.setAttribute('aria-hidden', 'false');
-                            
-                            // Create and show backdrop
-                            let backdrop = document.querySelector('.modal-backdrop');
-                            if (!backdrop) {
-                                backdrop = document.createElement('div');
-                                backdrop.className = 'modal-backdrop fade show';
-                                document.body.appendChild(backdrop);
-                            }
-                            document.body.classList.add('modal-open');
-                            console.log('Modal shown via CSS fallback');
-                        }
-                    } catch (e) {
-                        console.error('Error showing modal:', e);
+                    if (typeof showToast === 'function') {
+                        showToast('⚠️ FOOD LEVEL IS LOW! Please refill the hopper immediately!', 'error', { sticky: true });
                     }
                 }
                 lastFoodLowState = data.food_low;
@@ -1277,6 +988,8 @@ function updateDeviceStatus() {
         });
 }
 
+// Poll device status every 10 seconds
+setInterval(updateDeviceStatus, 10000);
 // Poll device status every 15 seconds (matches firmware TOF_PRINT_INTERVAL_MS)
 setInterval(updateDeviceStatus, 15000);
 updateDeviceStatus(); // Initial call
