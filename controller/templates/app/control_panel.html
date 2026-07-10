@@ -229,46 +229,44 @@
             </div>
         </div>
         
-        <!-- Hopper Level Section -->
-        <div class="card mt-4" id="hopperCard">
-            <div class="card-header">Hopper Level</div>
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <div class="progress" style="height: 30px; border-radius: 15px;">
-                            <div id="hopperProgress" class="progress-bar" role="progressbar" style="width: 0%; border-radius: 15px;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                                0%
-                            </div>
+        <!-- Sticky Low Food Alert (always visible at top if active) -->
+        <div id="stickyLowFoodAlert" class="alert alert-danger d-none position-sticky top-0 z-3" style="border-radius: 0; border-top: none; border-left: none; border-right: none;" role="alert">
+            <div class="container">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        <div>
+                            <h4 class="mb-0 fw-bold">⚠️ FOOD LEVEL IS LOW!</h4>
+                            <p class="mb-0">Please refill the pet feeder hopper immediately!</p>
                         </div>
                     </div>
-                    <div class="col-md-4 text-center">
-                        <div id="hopperStatus" class="fs-5">Sensor: Not available</div>
-                    </div>
-                </div>
-                <div id="lowFoodAlert" class="alert alert-danger mt-3 d-none" role="alert">
-                    <i class="fas fa-exclamation-triangle"></i> Food level is low! Please refill the hopper.
+                    <button type="button" class="btn btn-light" onclick="this.closest('#stickyLowFoodAlert').classList.add('d-none');">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
             </div>
         </div>
         
         <!-- Hopper Level Section -->
-        <div class="card mt-4" id="hopperCard">
-            <div class="card-header">Hopper Level</div>
+        <div class="card mt-4 border-2 border-primary" id="hopperCard">
+            <div class="card-header bg-gradient-primary text-white">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-bowl-rice me-2"></i>Hopper Level</h5>
+            </div>
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col-md-8">
-                        <div class="progress" style="height: 30px; border-radius: 15px;">
-                            <div id="hopperProgress" class="progress-bar" role="progressbar" style="width: 0%; border-radius: 15px;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress" style="height: 40px; border-radius: 20px; border: 2px solid #dee2e6;">
+                            <div id="hopperProgress" class="progress-bar fw-bold fs-5" role="progressbar" style="width: 0%; border-radius: 18px;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
                                 0%
                             </div>
                         </div>
                     </div>
                     <div class="col-md-4 text-center">
-                        <div id="hopperStatus" class="fs-5">Sensor: Not available</div>
+                        <div id="hopperStatus" class="fs-4 fw-bold">Sensor: Not available</div>
                     </div>
                 </div>
-                <div id="lowFoodAlert" class="alert alert-danger mt-3 d-none" role="alert">
-                    <i class="fas fa-exclamation-triangle"></i> Food level is low! Please refill the hopper.
+                <div id="lowFoodAlert" class="alert alert-warning mt-3 d-none" role="alert">
+                    <i class="fas fa-info-circle"></i> Food level is running low! Consider refilling soon.
                 </div>
             </div>
         </div>
@@ -998,6 +996,7 @@
                   const hopperProgress = document.getElementById('hopperProgress');
                   const hopperStatus = document.getElementById('hopperStatus');
                   const lowFoodAlert = document.getElementById('lowFoodAlert');
+                  const stickyLowFoodAlert = document.getElementById('stickyLowFoodAlert');
                   
                   if (data.tof_ok) {
                       const pct = data.hopper_pct || 0;
@@ -1007,20 +1006,21 @@
                       
                       // Set progress bar color
                       if (pct <= 20) {
-                          hopperProgress.className = 'progress-bar bg-danger';
+                          hopperProgress.className = 'progress-bar bg-danger fw-bold fs-5';
                       } else if (pct <= 40) {
-                          hopperProgress.className = 'progress-bar bg-warning';
+                          hopperProgress.className = 'progress-bar bg-warning fw-bold fs-5';
                       } else {
-                          hopperProgress.className = 'progress-bar bg-success';
+                          hopperProgress.className = 'progress-bar bg-success fw-bold fs-5';
                       }
                       
                       hopperStatus.textContent = `Level: ${pct}% (${data.hopper_mm || 0}mm)`;
                       
-                      // Handle low food alert
+                      // Handle low food alerts
                       if (data.food_low) {
                           lowFoodAlert.classList.remove('d-none');
+                          // Only show sticky alert if we haven't shown it before and food is low
                           if (lastFoodLowState !== true) {
-                              showToast('Food level is low! Please refill the hopper.', 'warning', { sticky: true });
+                              showToast('⚠️ FOOD LEVEL IS LOW! Please refill the hopper immediately!', 'error', { sticky: true });
                           }
                           lastFoodLowState = true;
                       } else {
@@ -1031,7 +1031,7 @@
                       hopperProgress.style.width = '0%';
                       hopperProgress.setAttribute('aria-valuenow', '0');
                       hopperProgress.textContent = '0%';
-                      hopperProgress.className = 'progress-bar bg-secondary';
+                      hopperProgress.className = 'progress-bar bg-secondary fw-bold fs-5';
                       if (data.hopper_mm) {
                           hopperStatus.textContent = `Sensor: Error (${data.hopper_mm}mm)`;
                       } else {
