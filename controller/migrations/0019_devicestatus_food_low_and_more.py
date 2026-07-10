@@ -3,7 +3,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("controller", "0018_update_portion_size_wheel_30g"),
+        ("controller", "0018_update_portion_size_wheel_30g",),
     ]
 
     operations = [
