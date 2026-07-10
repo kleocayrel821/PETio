@@ -472,6 +472,30 @@
 }
 </style>
 
+<!-- Low Food Level Alert Modal -->
+<div class="modal fade" id="lowFoodAlertModal" tabindex="-1" aria-labelledby="lowFoodAlertLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="lowFoodAlertLabel">⚠️ Low Food Level Alert</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="fs-5 mb-3">
+          <strong>Your pet's food hopper is running critically low!</strong>
+        </p>
+        <p class="text-muted">
+          Please refill the hopper immediately to ensure continuous feeding. Your pet depends on a consistent food supply.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Dismiss</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // Helper: unified toast wrapper using global toastManager for consistent UI
 function showToast(message, type = 'success', options = {}) {
@@ -964,11 +988,10 @@ function updateDeviceStatus() {
                     statusValue.style.color = statusColors[status] || '#4f46e5';
                 }
                 
-                // Handle low food alerts (show toast when transitioning to low)
+                // Handle low food alerts (show modal when transitioning to low)
                 if (data.food_low && lastFoodLowState !== true) {
-                    if (typeof showToast === 'function') {
-                        showToast('⚠️ FOOD LEVEL IS LOW! Please refill the hopper immediately!', 'error', { sticky: true });
-                    }
+                    const modal = new bootstrap.Modal(document.getElementById('lowFoodAlertModal'));
+                    modal.show();
                 }
                 lastFoodLowState = data.food_low;
             } else {
@@ -988,8 +1011,8 @@ function updateDeviceStatus() {
         });
 }
 
-// Poll device status every 10 seconds
-setInterval(updateDeviceStatus, 10000);
+// Poll device status every 15 seconds (matches firmware TOF_PRINT_INTERVAL_MS)
+setInterval(updateDeviceStatus, 15000);
 updateDeviceStatus(); // Initial call
 
 </script>
