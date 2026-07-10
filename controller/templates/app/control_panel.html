@@ -251,6 +251,28 @@
             </div>
         </div>
         
+        <!-- Hopper Level Section -->
+        <div class="card mt-4" id="hopperCard">
+            <div class="card-header">Hopper Level</div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="progress" style="height: 30px; border-radius: 15px;">
+                            <div id="hopperProgress" class="progress-bar" role="progressbar" style="width: 0%; border-radius: 15px;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                0%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div id="hopperStatus" class="fs-5">Sensor: Not available</div>
+                    </div>
+                </div>
+                <div id="lowFoodAlert" class="alert alert-danger mt-3 d-none" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i> Food level is low! Please refill the hopper.
+                </div>
+            </div>
+        </div>
+        
         <!-- Schedule Feeding Section -->
         <div class="card">
             <div class="card-header">Schedule Feeding</div>
