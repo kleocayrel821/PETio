@@ -250,12 +250,6 @@
                     <div style="font-size: 0.875rem; color: #155724; opacity: 0.85;" id="statusMessage">The hopper contains enough food for upcoming feedings.</div>
                 </div>
             </div>
-            <div id="lowFoodWarningBanner" class="alert alert-error shadow-lg mt-4 hidden" style="display: none;">
-                <div>
-                    <span class="font-bold">Low food detected.</span>
-                    <span>The feeder is currently running low. Please refill the hopper soon.</span>
-                </div>
-            </div>
 
             <!-- Progress Bar with Percentage -->
             <div>
@@ -897,7 +891,6 @@ function updateDeviceStatus() {
             const circularPercentage = document.getElementById('circularPercentage');
             const statusValue = document.getElementById('statusValue');
             const foodUnavailableState = document.getElementById('foodUnavailableState');
-            const lowFoodWarningBanner = document.getElementById('lowFoodWarningBanner');
 
             if (data.tof_ok && data.hopper_pct !== undefined) {
                 // Hide empty state
@@ -993,17 +986,6 @@ function updateDeviceStatus() {
                         'Refill Required': '#dc3545'
                     };
                     statusValue.style.color = statusColors[status] || '#4f46e5';
-                }
-
-                // Show/hide the in-card warning banner
-                if (lowFoodWarningBanner) {
-                    if (data.food_low) {
-                        lowFoodWarningBanner.classList.remove('hidden');
-                        lowFoodWarningBanner.style.display = 'flex';
-                    } else {
-                        lowFoodWarningBanner.classList.add('hidden');
-                        lowFoodWarningBanner.style.display = 'none';
-                    }
                 }
 
                 // Handle low food alerts (show toast and modal when transitioning to low)
