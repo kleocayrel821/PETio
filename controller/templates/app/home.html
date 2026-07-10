@@ -237,9 +237,13 @@
 
     <!-- Food Level Monitoring Card -->
     <div class="enhanced-card">
-        <div class="section-title">
-            <i class="fas fa-bowl-rice text-[#1f456e]"></i>
-            Food Level
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div class="section-title">
+                <i class="fas fa-bowl-rice text-[#1f456e]"></i>
+                Food Level
+            </div>
+            <!-- Test Button (Remove in production) -->
+            <button onclick="testModal()" style="padding: 0.5rem 1rem; background: #ffc107; color: #000; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Test Alert</button>
         </div>
         <div class="space-y-5">
             <!-- Status Banner (Dynamic) -->
@@ -473,21 +477,23 @@
 
 /* Modal styles for CSS fallback */
 .modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 1030;
-    display: none;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    outline: 0;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    z-index: 1030 !important;
+    display: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    outline: 0 !important;
+    background: transparent !important;
 }
 
 .modal.show {
-    display: block !important;
-    overflow-y: auto;
-    padding-right: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow-y: auto !important;
 }
 
 .modal-dialog {
@@ -495,11 +501,13 @@
     width: auto;
     margin: 0.5rem;
     pointer-events: none;
+    max-width: 500px;
 }
 
 .modal-dialog-centered {
     display: flex;
     align-items: center;
+    justify-content: center;
     min-height: calc(100% - 1rem);
 }
 
@@ -1074,6 +1082,35 @@ function getActionLabel(type) {
         automatic: 'Automatic Feed'
     };
     return labels[type] || 'Manual Feed';
+}
+
+// Test modal function
+function testModal() {
+    console.log('Test modal triggered');
+    const modalElement = document.getElementById('lowFoodAlertModal');
+    if (!modalElement) {
+        console.error('Modal element not found!');
+        return;
+    }
+    
+    console.log('Before:', { display: modalElement.style.display, classList: modalElement.className });
+    
+    // Show modal
+    modalElement.classList.remove('d-none');
+    modalElement.classList.add('show');
+    modalElement.style.display = 'flex';
+    modalElement.style.visibility = 'visible';
+    modalElement.setAttribute('aria-hidden', 'false');
+    
+    // Show backdrop
+    let backdrop = document.querySelector('.modal-backdrop');
+    if (backdrop) backdrop.remove();
+    backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    document.body.appendChild(backdrop);
+    document.body.classList.add('modal-open');
+    
+    console.log('After:', { display: modalElement.style.display, classList: modalElement.className });
 }
 
 // Update hopper level display
