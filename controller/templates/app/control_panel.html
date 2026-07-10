@@ -229,6 +229,28 @@
             </div>
         </div>
         
+        <!-- Hopper Level Section -->
+        <div class="card mt-4" id="hopperCard">
+            <div class="card-header">Hopper Level</div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="progress" style="height: 30px; border-radius: 15px;">
+                            <div id="hopperProgress" class="progress-bar" role="progressbar" style="width: 0%; border-radius: 15px;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                0%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div id="hopperStatus" class="fs-5">Sensor: Not available</div>
+                    </div>
+                </div>
+                <div id="lowFoodAlert" class="alert alert-danger mt-3 d-none" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i> Food level is low! Please refill the hopper.
+                </div>
+            </div>
+        </div>
+        
         <!-- Schedule Feeding Section -->
         <div class="card">
             <div class="card-header">Schedule Feeding</div>
@@ -931,6 +953,7 @@
         const deviceStatusEl = document.getElementById('deviceStatus');
         const deviceStatusHeaderEl = document.getElementById('deviceStatusHeader');
         let lastOnline = null;
+        let lastFoodLowState = null;
         function updateDeviceStatus() {
             const deviceId = (window.DEVICE_ID || '{{ DEVICE_ID }}');
             fetch(`/api/device-status/?device_id=${encodeURIComponent(deviceId)}`)
@@ -948,6 +971,52 @@
                       deviceStatusHeaderEl.className = cls;
                   }
                   lastOnline = online;
+                  
+                  // Update hopper level
+                  const hopperProgress = document.getElementById('hopperProgress');
+                  const hopperStatus = document.getElementById('hopperStatus');
+                  const lowFoodAlert = document.getElementById('lowFoodAlert');
+                  
+                  if (data.tof_ok) {
+                      const pct = data.hopper_pct || 0;
+                      hopperProgress.style.width = `${pct}%`;
+                      hopperProgress.setAttribute('aria-valuenow', pct);
+                      hopperProgress.textContent = `${pct}%`;
+                      
+                      // Set progress bar color
+                      if (pct <= 20) {
+                          hopperProgress.className = 'progress-bar bg-danger';
+                      } else if (pct <= 40) {
+                          hopperProgress.className = 'progress-bar bg-warning';
+                      } else {
+                          hopperProgress.className = 'progress-bar bg-success';
+                      }
+                      
+                      hopperStatus.textContent = `Level: ${pct}% (${data.hopper_mm || 0}mm)`;
+                      
+                      // Handle low food alert
+                      if (data.food_low) {
+                          lowFoodAlert.classList.remove('d-none');
+                          if (lastFoodLowState !== true) {
+                              showToast('Food level is low! Please refill the hopper.', 'warning', { sticky: true });
+                          }
+                          lastFoodLowState = true;
+                      } else {
+                          lowFoodAlert.classList.add('d-none');
+                          lastFoodLowState = false;
+                      }
+                  } else {
+                      hopperProgress.style.width = '0%';
+                      hopperProgress.setAttribute('aria-valuenow', '0');
+                      hopperProgress.textContent = '0%';
+                      hopperProgress.className = 'progress-bar bg-secondary';
+                      if (data.hopper_mm) {
+                          hopperStatus.textContent = `Sensor: Error (${data.hopper_mm}mm)`;
+                      } else {
+                          hopperStatus.textContent = 'Sensor: Not available';
+                      }
+                      lowFoodAlert.classList.add('d-none');
+                  }
               })
               .catch(() => {
                   if (deviceStatusEl) {

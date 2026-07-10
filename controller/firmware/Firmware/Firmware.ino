@@ -1598,6 +1598,8 @@ const unsigned long CONFIG_SYNC_INTERVAL = 300000;   // Sync config every 5 minu
 
 #if ENABLE_VL53L0X
 static VL53L0X g_tof;
+static bool g_tofHasFilter = false;
+static uint16_t g_tofFilteredMm = 0;
 #endif
 bool g_tofAvailable = false;
 bool g_tofOk = false;
@@ -2488,6 +2490,24 @@ static inline uint8_t computeHopperPct(uint16_t distMm) {
   return (uint8_t)constrain((int)(num / den), 0, 100);
 }
 
+static void saveTofCalibration() {
+  EEPROM.write(TOF_FLAG_ADDR, 0xB1);
+  EEPROM.put(TOF_FULL_MM_ADDR, g_tofFullMm);
+  EEPROM.put(TOF_EMPTY_MM_ADDR, g_tofEmptyMm);
+  EEPROM.write(TOF_LOW_ON_PCT_ADDR, g_tofLowOnPct);
+  EEPROM.write(TOF_LOW_OFF_PCT_ADDR, g_tofLowOffPct);
+  EEPROM.commit();
+  Serial.print("TOF calibration saved: FULL=");
+  Serial.print(g_tofFullMm);
+  Serial.print("mm EMPTY=");
+  Serial.print(g_tofEmptyMm);
+  Serial.print("mm LOW_ON=");
+  Serial.print(g_tofLowOnPct);
+  Serial.print("% LOW_OFF=");
+  Serial.print(g_tofLowOffPct);
+  Serial.println("%");
+}
+
 static void loadTofCalibration() {
   const byte flag = EEPROM.read(TOF_FLAG_ADDR);
   uint16_t fullMm;
@@ -2580,8 +2600,6 @@ static void updateFoodLevelSensor(bool allowSample) {
 #if ENABLE_VL53L0X
   static unsigned long lastSampleMs = 0;
   static unsigned long lastPrintMs = 0;
-  static bool hasFilter = false;
-  static uint16_t filteredMm = 0;
 
   const unsigned long now = millis();
   if (!g_tofAvailable) return;
@@ -2599,14 +2617,14 @@ static void updateFoodLevelSensor(bool allowSample) {
   g_tofOk = true;
   g_tofDistanceMm = mm;
 
-  if (!hasFilter) {
-    filteredMm = mm;
-    hasFilter = true;
+  if (!g_tofHasFilter) {
+    g_tofFilteredMm = mm;
+    g_tofHasFilter = true;
   } else {
-    filteredMm = (uint16_t)(((uint32_t)filteredMm * 7UL + (uint32_t)mm) / 8UL);
+    g_tofFilteredMm = (uint16_t)(((uint32_t)g_tofFilteredMm * 7UL + (uint32_t)mm) / 8UL);
   }
 
-  const uint8_t pct = computeHopperPct(filteredMm);
+  const uint8_t pct = computeHopperPct(g_tofFilteredMm);
   g_hopperLevelPct = pct;
 
   if (!g_foodLow) {
@@ -2626,7 +2644,7 @@ static void updateFoodLevelSensor(bool allowSample) {
     Serial.print("Hopper: ");
     Serial.print((unsigned)pct);
     Serial.print("% (");
-    Serial.print(filteredMm);
+    Serial.print(g_tofFilteredMm);
     Serial.println("mm)");
   }
 #else
@@ -2652,7 +2670,8 @@ void handleCalibrationCommands() {
       if (line.length() == 0) return;
       line.toUpperCase();
       if (line.startsWith("CAL HELP")) {
-        Serial.println("=== WHEEL CAL COMMANDS ===");
+        Serial.println("=== CALIBRATION COMMANDS ===");
+        Serial.println("--- WHEEL CALIBRATION ---");
         Serial.println("  CAL STATUS          - Show current calibration + portion table");
         Serial.println("  CAL FILL <g>        - Set grams per compartment");
         Serial.println("                        Measure: fill all 7, weigh total, divide by 7");
@@ -2667,7 +2686,13 @@ void handleCalibrationCommands() {
         Serial.println("  CAL STOPINFO        - Show current stop behavior settings");
         Serial.println("  CAL TEST <count>    - Dispense exact compartment count for testing");
         Serial.println("  CAL RESET           - Reset all calibration to defaults");
-        Serial.println("==========================");
+        Serial.println("--- TOF CALIBRATION ---");
+        Serial.println("  CAL TOF STATUS      - Show TOF sensor calibration");
+        Serial.println("  CAL TOF FULL        - Set current distance as FULL hopper");
+        Serial.println("  CAL TOF EMPTY       - Set current distance as EMPTY hopper");
+        Serial.println("  CAL TOF LOW <pct>   - Set low food threshold percentage (1..99)");
+        Serial.println("  CAL TOF RESET       - Reset TOF calibration to defaults");
+        Serial.println("===========================");
         return;
       }
       if (line.startsWith("CAL STATUS")) {
@@ -2687,6 +2712,68 @@ void handleCalibrationCommands() {
             + String(totalMs) + "ms");
         }
         Serial.println("================================");
+        return;
+      }
+      if (line.startsWith("CAL TOF STATUS")) {
+        Serial.println("=== TOF SENSOR CALIBRATION ===");
+        Serial.println("  FULL (mm)  = " + String(g_tofFullMm));
+        Serial.println("  EMPTY (mm) = " + String(g_tofEmptyMm));
+        Serial.println("  LOW_ON (%) = " + String(g_tofLowOnPct));
+        Serial.println("  LOW_OFF (%)= " + String(g_tofLowOffPct));
+        if (g_tofAvailable && g_tofOk) {
+          Serial.print("  Current: " + String(g_hopperLevelPct) + "% (");
+          Serial.print(g_tofDistanceMm);
+          Serial.println("mm)");
+        } else if (g_tofAvailable) {
+          Serial.println("  Current: sensor error");
+        } else {
+          Serial.println("  Current: sensor not detected");
+        }
+        Serial.println("==============================");
+        return;
+      }
+      if (line.startsWith("CAL TOF FULL")) {
+        if (!g_tofAvailable || !g_tofOk) {
+          Serial.println("TOF sensor not available or not reading valid distance!");
+          return;
+        }
+        g_tofFullMm = g_tofFilteredMm;
+        if (g_tofFullMm >= g_tofEmptyMm) {
+          g_tofEmptyMm = g_tofFullMm + 1;
+        }
+        saveTofCalibration();
+        return;
+      }
+      if (line.startsWith("CAL TOF EMPTY")) {
+        if (!g_tofAvailable || !g_tofOk) {
+          Serial.println("TOF sensor not available or not reading valid distance!");
+          return;
+        }
+        g_tofEmptyMm = g_tofFilteredMm;
+        if (g_tofEmptyMm <= g_tofFullMm) {
+          g_tofFullMm = g_tofEmptyMm - 1;
+        }
+        saveTofCalibration();
+        return;
+      }
+      if (line.startsWith("CAL TOF LOW")) {
+        String rest = line.substring(11); rest.trim();
+        int pct = rest.toInt();
+        if (pct >= 1 && pct <= 99) {
+          g_tofLowOnPct = (uint8_t)pct;
+          g_tofLowOffPct = (uint8_t)min(99, pct + 5);
+          saveTofCalibration();
+        } else {
+          Serial.println("Invalid percentage — use 1..99");
+        }
+        return;
+      }
+      if (line.startsWith("CAL TOF RESET")) {
+        g_tofFullMm = TOF_FULL_MM_DEFAULT;
+        g_tofEmptyMm = TOF_EMPTY_MM_DEFAULT;
+        g_tofLowOnPct = TOF_LOW_ON_PCT_DEFAULT;
+        g_tofLowOffPct = TOF_LOW_OFF_PCT_DEFAULT;
+        saveTofCalibration();
         return;
       }
       if (line.startsWith("CAL STOPINFO")) {
