@@ -612,6 +612,10 @@ def device_status(request):
                 "uptime": ds.uptime,
                 "daily_feeds": ds.daily_feeds,
                 "last_feed": ds.last_feed.isoformat() if ds.last_feed else None,
+                "hopper_mm": ds.hopper_distance_mm,
+                "hopper_pct": ds.hopper_level_pct,
+                "food_low": bool(ds.food_low),
+                "tof_ok": bool(ds.tof_ok),
                 "error_message": ds.error_message,
                 "online": is_online,
                 "ttl_seconds": TTL_SECONDS,
@@ -630,6 +634,10 @@ def device_status(request):
         last_feed = request.data.get("last_feed")
         wifi_rssi = request.data.get("wifi_rssi")
         uptime = request.data.get("uptime")
+        hopper_mm = request.data.get("hopper_mm")
+        hopper_pct = request.data.get("hopper_pct")
+        food_low = request.data.get("food_low")
+        tof_ok = request.data.get("tof_ok")
         error_message = request.data.get("error_message", "")
 
         # Parse types safely
@@ -639,9 +647,25 @@ def device_status(request):
             except Exception:
                 return default
 
+        def to_bool(val, default=False):
+            if val is None:
+                return default
+            if isinstance(val, bool):
+                return val
+            s = str(val).strip().lower()
+            if s in ("1", "true", "t", "yes", "y", "on"):
+                return True
+            if s in ("0", "false", "f", "no", "n", "off"):
+                return False
+            return default
+
         wifi_rssi = to_int(wifi_rssi)
         uptime = to_int(uptime)
         daily_feeds = to_int(daily_feeds, default=0) or 0
+        hopper_mm = to_int(hopper_mm)
+        hopper_pct = to_int(hopper_pct)
+        food_low = to_bool(food_low, default=False)
+        tof_ok = to_bool(tof_ok, default=False)
 
         parsed_last_feed = None
         if last_feed:
@@ -663,6 +687,10 @@ def device_status(request):
         ds.daily_feeds = daily_feeds
         if parsed_last_feed:
             ds.last_feed = parsed_last_feed
+        ds.hopper_distance_mm = hopper_mm
+        ds.hopper_level_pct = hopper_pct
+        ds.food_low = food_low
+        ds.tof_ok = tof_ok
         ds.error_message = error_message or ""
         ds.save()
 

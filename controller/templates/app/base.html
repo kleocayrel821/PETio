@@ -1318,7 +1318,59 @@
     window.__petioErrorBoundary = new ErrorBoundary('/api/client-errors/');
   }
 
-  // HTTP polling fallback (used when WebSocket unavailable or disconnected)
+  const FOOD_LOW_STORAGE_KEY = 'petio_food_low_' + DEVICE_ID;
+  let lastFoodLowState = null;
+  (function initFoodLowState() {
+    try {
+      const v = localStorage.getItem(FOOD_LOW_STORAGE_KEY);
+      if (v === null) lastFoodLowState = null;
+      else lastFoodLowState = v === '1';
+    } catch (e) {
+      lastFoodLowState = null;
+    }
+  })();
+
+  function persistFoodLowState(val) {
+    try {
+      localStorage.setItem(FOOD_LOW_STORAGE_KEY, val ? '1' : '0');
+    } catch (e) {}
+  }
+
+  function parseMaybeInt(val) {
+    if (val === null || val === undefined) return null;
+    if (typeof val === 'number' && Number.isFinite(val)) return Math.trunc(val);
+    const n = parseInt(String(val), 10);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function handleFoodTelemetry(payload) {
+    if (!payload) return;
+    const isLow = !!payload.food_low;
+    const pct = parseMaybeInt(payload.hopper_pct);
+
+    if (lastFoodLowState === null) {
+      lastFoodLowState = isLow;
+      persistFoodLowState(isLow);
+      return;
+    }
+
+    if (isLow && lastFoodLowState === false) {
+      const suffix = (pct !== null) ? (' (about ' + pct + '%)') : '';
+      if (typeof toastManager !== 'undefined' && toastManager.warning) {
+        toastManager.warning('Food storage low — refill soon' + suffix + '.', { title: 'Food Low', autoDismiss: false });
+      }
+    }
+
+    if (!isLow && lastFoodLowState === true) {
+      if (typeof toastManager !== 'undefined' && toastManager.success) {
+        toastManager.success('Food storage level is back to normal.', { title: 'Food Level' });
+      }
+    }
+
+    lastFoodLowState = isLow;
+    persistFoodLowState(isLow);
+  }
+
   async function pollStatus() {
     try {
       const res = await window.fetchWithRetry(STATUS_ENDPOINT + '?device_id=' + encodeURIComponent(DEVICE_ID), {
@@ -1328,12 +1380,12 @@
       const data = await res.json();
       const status = data?.status === 'online' ? 'online' : (data?.status === 'offline' ? 'offline' : 'unknown');
       updateIndicator(status);
+      handleFoodTelemetry(data);
     } catch (e) {
       updateIndicator('unknown');
     }
   }
 
-  // Device status realtime via WebSocket
   function connectDeviceStatusWS() {
     if (!('WebSocket' in window)) {
       console.log('WebSocket not supported; falling back to polling.');
@@ -1346,6 +1398,7 @@
         const data = JSON.parse(event.data);
         const s = data?.status === 'online' ? 'online' : (data?.status === 'offline' ? 'offline' : 'unknown');
         updateIndicator(s);
+        handleFoodTelemetry(data);
       } catch (err) {
         console.warn('DeviceStatus WS parse error', err);
       }

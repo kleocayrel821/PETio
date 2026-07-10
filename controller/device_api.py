@@ -322,6 +322,10 @@ def device_status_heartbeat(request):
         uptime = request.data.get("uptime")
         daily_feeds = request.data.get("daily_feeds")
         last_feed = request.data.get("last_feed")
+        hopper_mm = request.data.get("hopper_mm")
+        hopper_pct = request.data.get("hopper_pct")
+        food_low = request.data.get("food_low")
+        tof_ok = request.data.get("tof_ok")
         error_message = request.data.get("error_message", "")
 
         def to_int(val, default=None):
@@ -330,9 +334,25 @@ def device_status_heartbeat(request):
             except Exception:
                 return default
 
+        def to_bool(val, default=False):
+            if val is None:
+                return default
+            if isinstance(val, bool):
+                return val
+            s = str(val).strip().lower()
+            if s in ("1", "true", "t", "yes", "y", "on"):
+                return True
+            if s in ("0", "false", "f", "no", "n", "off"):
+                return False
+            return default
+
         wifi_rssi = to_int(wifi_rssi)
         uptime = to_int(uptime)
         daily_feeds = to_int(daily_feeds, default=0) or 0
+        hopper_mm = to_int(hopper_mm)
+        hopper_pct = to_int(hopper_pct)
+        food_low = to_bool(food_low, default=False)
+        tof_ok = to_bool(tof_ok, default=False)
 
         parsed_last_feed = None
         if last_feed:
@@ -345,6 +365,10 @@ def device_status_heartbeat(request):
         ds.uptime = uptime
         ds.daily_feeds = daily_feeds
         ds.last_feed = parsed_last_feed
+        ds.hopper_distance_mm = hopper_mm
+        ds.hopper_level_pct = hopper_pct
+        ds.food_low = food_low
+        ds.tof_ok = tof_ok
         ds.error_message = error_message
         ds.save()
         return _resp_ok("heartbeat recorded")

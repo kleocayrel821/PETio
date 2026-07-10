@@ -140,6 +140,11 @@ class DeviceStatus(models.Model):
     daily_feeds = models.IntegerField(default=0)
     last_feed = models.DateTimeField(null=True, blank=True)
 
+    hopper_distance_mm = models.IntegerField(null=True, blank=True)
+    hopper_level_pct = models.IntegerField(null=True, blank=True)
+    food_low = models.BooleanField(default=False)
+    tof_ok = models.BooleanField(default=False)
+
     error_message = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
