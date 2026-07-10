@@ -1,0 +1,266 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [ 5 0 R 7 0 R ] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+4 0 obj
+<< /Length 5159 >>
+stream
+BT
+/F1 10 Tf
+54 738 Td
+(PETIO Firmware-Derived Bill of Materials \(BOM\)) Tj
+0 -12 Td
+(Generated on: 2026-05-30) Tj
+0 -12 Td
+(Source: d:\\PETio\\controller\\firmware\\Firmware\\Firmware.ino) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Schematics Cross-Verification:) Tj
+0 -12 Td
+(  Found in repo: False) Tj
+0 -12 Td
+(  Note: No schematics/PCB source files were found in the repository. Pin mapping verification is performed only against firmware constants. Provide schematics to complete the required cross-verification step.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(== Microcontrollers & Wireless ==) Tj
+0 -12 Td
+(Component Name: Espressif ESP8266EX \(ESP8266-based module; exact module variant not specified in firmware\) - Wi?Fi MCU/SoC) Tj
+0 -12 Td
+(Operating Voltage: 2.5?3.6 V \(nominal 3.3 V\). Firmware drives GPIO directly; assumes 3.3 V logic domain.) Tj
+0 -12 Td
+(Current Consumption: Firmware does not implement sleep; expect Wi?Fi active/idle currents per datasheet. Typical: ~70?80 mA average during active Wi?Fi, with TX peaks commonly >170 mA. Deep-sleep current \(datasheet\) is typically in the tens of µA, but deep-sleep is not used by this firmware.) Tj
+0 -12 Td
+(Communication Protocol: UART0 \(Serial debug\) @ 115200 baud; IEEE 802.11 b/g/n 2.4 GHz Wi?Fi; HTTP\(S\) client to backend \(ESP8266HTTPClient\) with TLS enabled but certificate validation disabled via setInsecure\(\); captive portal HTTP server on port 80 and DNS server on port 53; NTP over UDP \(pool.ntp.org\) update interval 3600000 ms.) Tj
+0 -12 Td
+(Datasheet Link: https://documentation.espressif.com/0a-esp8266ex_datasheet_en.html) Tj
+0 -12 Td
+(Firmware Evidence:) Tj
+0 -12 Td
+(  - Firmware.ino:L12-L26 \(ESP8266 libraries included\)) Tj
+0 -12 Td
+(  - Firmware.ino:L564 \(Serial.begin\(115200\)\)) Tj
+0 -12 Td
+(  - Firmware.ino:L405-L430 \(ESP8266WebServer\(80\), DNSServer, dnsServer.start\(53, ...\)\)) Tj
+0 -12 Td
+(  - Firmware.ino:L499 \(WiFiClientSecure.setInsecure\(\)\)) Tj
+0 -12 Td
+(  - Firmware.ino:L536-L538 \(NTPClient + pool.ntp.org parameters\)) Tj
+0 -12 Td
+(Discrepancy Flags:) Tj
+0 -12 Td
+(  - TLS certificate validation is disabled \(setInsecure\) which is a security risk, not a datasheet mismatch.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(== Actuators ==) Tj
+0 -12 Td
+(Component Name: Tower Pro MG996R \(as referenced by firmware comment\) - high-torque servo motor \(firmware uses continuous/feeding pulses via Servo.h\)) Tj
+0 -12 Td
+(Operating Voltage: 4.8?6.6 V \(per manufacturer product spec\). Control signal is PWM from ESP8266 GPIO \(3.3 V logic\).) Tj
+0 -12 Td
+(Current Consumption: Firmware does not calculate motor current. Manufacturer specs list idle ~10 mA, no-load ~170 mA, stall ~1400 mA \(ensure power supply margin\).) Tj
+0 -12 Td
+(Communication Protocol: Servo PWM control \(Servo.h\). Typical 50 Hz pulse train; firmware sets pulse widths in microseconds \(neutral 1500 µs; feed pulses around 1550?1680 µs; anti-jam reverse pulses ~1400 µs\).) Tj
+0 -12 Td
+(Datasheet Link: https://towerpro.com.tw/product/mg996r/) Tj
+0 -12 Td
+(Firmware Evidence:) Tj
+0 -12 Td
+(  - Firmware.ino:L7-L9 \(MG996R servo referenced in header comment\)) Tj
+0 -12 Td
+(  - Firmware.ino:L36-L81 \(SERVO_* pulse definitions\)) Tj
+0 -12 Td
+(  - Firmware.ino:L264-L267 \(Servo.attach + writeMicroseconds usage\)) Tj
+0 -12 Td
+(  - Firmware.ino:L279-L327 \(feeding control + ramping logic\)) Tj
+0 -12 Td
+(Discrepancy Flags:) Tj
+0 -12 Td
+(  - Firmware assumes continuous rotation behavior \(feeding\) while MG996R is commonly an angle servo; continuous behavior may depend on mechanical modification or a continuous-rotation variant. Verify the exact servo variant used on the hardware.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(== User Input \(Switches\) ==) Tj
+0 -12 Td
+(Component Name: Momentary tactile push button switch \(generic; exact part number not specified\) - FEED NOW button) Tj
+0 -12 Td
+(Operating Voltage: 3.3 V logic \(GPIO input with internal pull-up enabled\).) Tj
+0 -12 Td
+(Current Consumption: Negligible; GPIO pull-up current depends on internal pull-up and switch state \(firmware uses INPUT_PULLUP\).) Tj
+0 -12 Td
+(Communication Protocol: GPIO digital input \(active-low with debouncing in firmware\).) Tj
+0 -12 Td
+(Datasheet Link: ) Tj
+0 -12 Td
+(Firmware Evidence:) Tj
+0 -12 Td
+(  - Firmware.ino:L37-L41 \(FEED_NOW_PIN=5, BUTTON_PIN=FEED_NOW_PIN\)) Tj
+0 -12 Td
+(  - Firmware.ino:L594-L595 \(pinMode\(BUTTON_PIN, INPUT_PULLUP\)\)) Tj
+0 -12 Td
+(  - Firmware.ino:L104-L113 \(debounce constants\)) Tj
+0 -12 Td
+(Discrepancy Flags:) Tj
+0 -12 Td
+(  - Exact switch manufacturer/part number not specified in firmware; datasheet link cannot be verified without schematic/BOM.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Component Name: Momentary tactile push button switch \(generic; exact part number not specified\) - ADD PORTION button) Tj
+0 -12 Td
+(Operating Voltage: 3.3 V logic \(GPIO input with internal pull-up enabled\).) Tj
+0 -12 Td
+(Current Consumption: Negligible; GPIO pull-up current depends on internal pull-up and switch state \(firmware uses INPUT_PULLUP\).) Tj
+0 -12 Td
+(Communication Protocol: GPIO digital input \(active-low\).) Tj
+0 -12 Td
+(Datasheet Link: ) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 4123 >>
+stream
+BT
+/F1 10 Tf
+54 738 Td
+(Firmware Evidence:) Tj
+0 -12 Td
+(  - Firmware.ino:L38-L39 \(ADD_PORTION_PIN=4\)) Tj
+0 -12 Td
+(  - Firmware.ino:L592-L593 \(pinMode\(ADD_PORTION_PIN, INPUT_PULLUP\)\)) Tj
+0 -12 Td
+(Discrepancy Flags:) Tj
+0 -12 Td
+(  - Exact switch manufacturer/part number not specified in firmware; datasheet link cannot be verified without schematic/BOM.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Component Name: Momentary tactile push button switch \(generic; exact part number not specified\) - REDUCE PORTION button) Tj
+0 -12 Td
+(Operating Voltage: 3.3 V logic \(GPIO input with internal pull-up enabled\).) Tj
+0 -12 Td
+(Current Consumption: Negligible; GPIO pull-up current depends on internal pull-up and switch state \(firmware uses INPUT_PULLUP\).) Tj
+0 -12 Td
+(Communication Protocol: GPIO digital input \(active-low\).) Tj
+0 -12 Td
+(Datasheet Link: ) Tj
+0 -12 Td
+(Firmware Evidence:) Tj
+0 -12 Td
+(  - Firmware.ino:L39-L40 \(REDUCE_PORTION_PIN=12\)) Tj
+0 -12 Td
+(  - Firmware.ino:L592-L594 \(pinMode\(REDUCE_PORTION_PIN, INPUT_PULLUP\)\)) Tj
+0 -12 Td
+(Discrepancy Flags:) Tj
+0 -12 Td
+(  - Exact switch manufacturer/part number not specified in firmware; datasheet link cannot be verified without schematic/BOM.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(== Indicators \(LEDs\) ==) Tj
+0 -12 Td
+(Component Name: Red LED indicator \(generic; exact part number not specified\) - status LED \(ERROR/CONFIG\)) Tj
+0 -12 Td
+(Operating Voltage: Driven by ESP8266 GPIO at 3.3 V. LED forward voltage depends on the chosen LED; requires a series resistor \(value not specified in firmware\).) Tj
+0 -12 Td
+(Current Consumption: Depends on LED + series resistor. Firmware drives GPIO HIGH/LOW; typical LED indicator currents are often 2?10 mA, but must be confirmed from the actual hardware design.) Tj
+0 -12 Td
+(Communication Protocol: GPIO digital output.) Tj
+0 -12 Td
+(Datasheet Link: ) Tj
+0 -12 Td
+(Firmware Evidence:) Tj
+0 -12 Td
+(  - Firmware.ino:L31-L34 \(RED_LED_PIN=13\)) Tj
+0 -12 Td
+(  - Firmware.ino:L201-L207 \(pinMode OUTPUT and setState logic\)) Tj
+0 -12 Td
+(Discrepancy Flags:) Tj
+0 -12 Td
+(  - LED part number and series resistor value not specified in firmware; datasheet link cannot be verified without schematic/BOM.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Component Name: Blue LED indicator \(generic; exact part number not specified\) - status LED \(READY/FEEDING\)) Tj
+0 -12 Td
+(Operating Voltage: Driven by ESP8266 GPIO at 3.3 V. LED forward voltage depends on the chosen LED; requires a series resistor \(value not specified in firmware\).) Tj
+0 -12 Td
+(Current Consumption: Depends on LED + series resistor. Firmware drives GPIO HIGH/LOW; typical LED indicator currents are often 2?10 mA, but must be confirmed from the actual hardware design.) Tj
+0 -12 Td
+(Communication Protocol: GPIO digital output.) Tj
+0 -12 Td
+(Datasheet Link: ) Tj
+0 -12 Td
+(Firmware Evidence:) Tj
+0 -12 Td
+(  - Firmware.ino:L31-L34 \(BLUE_LED_PIN=16\)) Tj
+0 -12 Td
+(  - Firmware.ino:L201-L209 \(pinMode OUTPUT and setState logic\)) Tj
+0 -12 Td
+(Discrepancy Flags:) Tj
+0 -12 Td
+(  - LED part number and series resistor value not specified in firmware; datasheet link cannot be verified without schematic/BOM.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Validation:) Tj
+0 -12 Td
+(  - UART baud rate is explicitly configured in firmware \(115200\).) Tj
+0 -12 Td
+(  - Captive portal ports are explicitly configured \(HTTP server 80; DNS 53\).) Tj
+0 -12 Td
+(  - NTP server host and update interval are explicitly configured \(pool.ntp.org; 3600000 ms\).) Tj
+0 -12 Td
+(  - Servo control pulses are explicitly configured \(microsecond pulse widths\).) Tj
+0 -12 Td
+(Known Gaps Requiring Schematics:) Tj
+0 -12 Td
+(  - Exact ESP8266 module variant \(ESP-12E/ESP-12F/NodeMCU/etc.\) is not specified in firmware.) Tj
+0 -12 Td
+(  - Exact LED part numbers and their series resistor values are not specified in firmware.) Tj
+0 -12 Td
+(  - Exact button switch part numbers are not specified in firmware.) Tj
+0 -12 Td
+(  - Power supply/regulator selection and servo power rail design are not represented in firmware but are critical for correct operation.) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 6 0 R >>
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000015 00000 n 
+0000000083 00000 n 
+0000000148 00000 n 
+0000000197 00000 n 
+0000005408 00000 n 
+0000005534 00000 n 
+0000009709 00000 n 
+trailer
+<< /Size 8 /Root 3 0 R >>
+startxref
+9835
+%%EOF

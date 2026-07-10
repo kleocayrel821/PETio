@@ -7,14 +7,14 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Modern Glassmorphism theme for the Control Panel (CSS-only redesign) */
+        
         :root {
-            --primary-color: #4f46e5;      /* indigo-600 */
-            --primary-700: #4338ca;        /* indigo-700 */
-            --accent-color: #22c55e;       /* green-500 */
-            --danger-color: #ef4444;       /* red-500 */
-            --text-color: #111827;         /* gray-900 */
-            --muted-text: #6b7280;         /* gray-500 */
+            --primary-color: #4f46e5;      
+            --primary-700: #4338ca;        
+            --accent-color: #22c55e;       
+            --danger-color: #ef4444;      
+            --text-color: #111827;         
+            --muted-text: #6b7280;         
             --surface: rgba(255, 255, 255, 0.72);
             --surface-strong: rgba(255, 255, 255, 0.85);
             --border: rgba(17, 24, 39, 0.08);
@@ -45,7 +45,7 @@
             color: transparent;
         }
 
-        /* Card (glass) */
+       
         .card {
             margin-bottom: 1.5rem;
             border-radius: var(--card-radius);
@@ -72,7 +72,7 @@
             padding: 1rem 1.25rem;
         }
 
-        /* Buttons */
+        
         .btn-primary {
             background: linear-gradient(135deg, var(--primary-color), var(--primary-700));
             border: none;
@@ -105,7 +105,7 @@
             box-shadow: 0 10px 22px rgba(239, 68, 68, 0.35);
         }
 
-        /* Forms */
+        
         .form-control, .form-select {
             border-radius: 12px;
             padding: 0.7rem 1rem;
@@ -125,7 +125,7 @@
             box-shadow: 0 0 0 6px rgba(79, 70, 229, 0.15);
         }
 
-        /* Tables */
+        
         .table { border-collapse: separate; border-spacing: 0 8px; }
         .table thead th {
             border-bottom: none;
@@ -147,13 +147,13 @@
         }
         .table tbody td { padding: 1rem; vertical-align: middle; }
 
-        /* Logs scroll */
+        
         #feedingLogs { max-height: 300px; overflow-y: auto; scrollbar-width: thin; }
         #feedingLogs::-webkit-scrollbar { width: 6px; }
         #feedingLogs::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 10px; }
         #feedingLogs::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 10px; }
 
-        /* Feed now */
+        
         .feed-now-container {
             display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem;
         }
@@ -168,7 +168,7 @@
         .feed-now-btn:active { transform: scale(0.98); }
         .feed-now-btn i { font-size: 3rem; margin-bottom: 0.4rem; }
 
-        /* Portion control */
+        
         .portion-control {
             width: 100%; padding: 1.5rem; background: var(--surface-strong); border-radius: var(--card-radius);
             box-shadow: var(--shadow-sm);
@@ -176,7 +176,7 @@
         .portion-value { font-size: 2.1rem; font-weight: 800; color: var(--primary-color); text-align: center; margin-bottom: 1rem; }
         .portion-label { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-weight: 600; color: var(--muted-text); }
 
-        /* Schedules */
+      
         .schedule-item { background: var(--surface-strong); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm); transition: transform var(--transition-speed); }
         .schedule-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
         .schedule-time { font-size: 1.2rem; font-weight: 700; }
@@ -360,21 +360,21 @@
             }
             return cookieValue;
         }
-        // Robust CSRF token fallback helper
+        
         function getCSRFToken() {
-            // 1) Marketplace AdminUtils, if present
+            
             try {
                 if (window.AdminUtils && typeof window.AdminUtils.getCSRFToken === 'function') {
                     const v = window.AdminUtils.getCSRFToken();
                     if (v) return v;
                 }
             } catch (_) {}
-            // 2) Cookie helper
+           
             try {
                 const v = getCookie('csrftoken');
                 if (v) return v;
             } catch (_) {}
-            // 3) Hidden input rendered by Django {% csrf_token %}
+            
             const inp = document.querySelector('input[name="csrfmiddlewaretoken"]');
             if (inp && inp.value) return inp.value;
             // 4) Meta tag fallbacks
@@ -385,19 +385,9 @@
             return '';
         }
         
-        // Helper: unified toast wrapper using global toastManager for consistent UI
+        /
         function showToast(message, type = 'success', options = {}) {
-            /**
-             * Show a toast using the global ToastManager if available,
-             * otherwise fall back gracefully.
-             *
-             * Args:
-             * - message: Text to display.
-             * - type: 'success' | 'error' | 'warning' | 'info' (accepts 'danger').
-             * - options: { duration?: number, sticky?: boolean }
-             *   - duration: milliseconds before auto-dismiss (overrides defaults)
-             *   - sticky: if true, make toast persistent until user closes
-             */
+            
             const mapType = (t) => {
                 if (t === 'danger' || t === 'error') return 'error';
                 if (t === 'warning') return 'warning';
@@ -412,19 +402,19 @@
                         return;
                     }
                     if (typeof window.toastManager[normalized] === 'function') {
-                        // Some implementations may not accept options on typed methods
+                        
                         window.toastManager[normalized](message);
                         return;
                     }
                 }
-                // Fallback: minimal, non-blocking toast using alert only if nothing else available
+                
                 alert(message);
             } catch (_) {
                 alert(message);
             }
         }
         
-        // Utility: Simple debounce to rate-limit frequent actions
+        
         function debounce(fn, delay = 300) {
             let t;
             return function(...args) {
@@ -433,22 +423,20 @@
             };
         }
         
-        // Helper: Collect selected days within a container (inline form or modal)
-        // Returns an array of day abbreviations like ["Mon","Tue",...]
+        
         function getSelectedDays(containerEl) {
             const days = [];
             containerEl.querySelectorAll('.dow-checkbox').forEach(chk => { if (chk.checked) days.push(chk.value); });
             return days;
         }
         
-        // Helper: Set selected days in a container given an array of abbreviations
+      
         function setSelectedDays(containerEl, days) {
             const set = new Set(days || []);
             containerEl.querySelectorAll('.dow-checkbox').forEach(chk => { chk.checked = set.has(chk.value); });
         }
         
-        // Helper: Convert serializer time to input[type=time] value (HH:MM)
-        // Accepts either "HH:MM" or "hh:mm:ss AM/PM" and returns "HH:MM"
+        
         function timeToInputValue(timeStr) {
             if (!timeStr) return '';
             const hasMeridiem = /AM|PM/i.test(timeStr);
@@ -465,7 +453,7 @@
             return `${hour.toString().padStart(2,'0')}:${m}`;
         }
         
-        // Helper: Convert input HH:MM to 12-hour format with seconds for serializer input
+        
         function to12HourWithSeconds(hhmm) {
             const [hStr, m] = hhmm.split(':');
             let h = parseInt(hStr, 10);
@@ -474,8 +462,7 @@
             return `${h12.toString().padStart(2,'0')}:${m}:00 ${ampm}`;
         }
         
-        // Render a group of days-of-week checkboxes for a schedule row
-        // selectedDays: array like ["Mon","Tue",...]
+        
         function renderDaysCheckboxes(selectedDays = []) {
             const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
             const set = new Set(selectedDays || []);
@@ -487,7 +474,7 @@
             `).join('');
         }
         
-        // Use direct DOM lookup to avoid temporal dead zone error before variable initialization
+        
         document.getElementById('addScheduleForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const formEl = e.target;

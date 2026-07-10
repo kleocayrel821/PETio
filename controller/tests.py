@@ -231,6 +231,10 @@ class DeviceStatusEndpointTests(TestCase):
             'wifi_rssi': -65,
             'uptime': 123,
             'daily_feeds': 2,
+            'hopper_mm': 185,
+            'hopper_pct': 22,
+            'food_low': True,
+            'tof_ok': True,
         }
         resp = self.client.post(reverse('device_status'), payload, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
@@ -243,6 +247,10 @@ class DeviceStatusEndpointTests(TestCase):
         self.assertEqual(ds.wifi_rssi, -65)
         self.assertEqual(ds.uptime, 123)
         self.assertEqual(ds.daily_feeds, 2)
+        self.assertEqual(ds.hopper_distance_mm, 185)
+        self.assertEqual(ds.hopper_level_pct, 22)
+        self.assertTrue(ds.food_low)
+        self.assertTrue(ds.tof_ok)
 
     def test_get_online_when_recent_last_seen(self):
         now = timezone.now()

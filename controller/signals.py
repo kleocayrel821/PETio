@@ -19,6 +19,10 @@ def broadcast_device_status(sender, instance: DeviceStatus, **kwargs):
             "daily_feeds": instance.daily_feeds,
             "last_feed": instance.last_feed.isoformat() if instance.last_feed else None,
             "last_seen": instance.last_seen.isoformat() if instance.last_seen else None,
+            "hopper_mm": instance.hopper_distance_mm,
+            "hopper_pct": instance.hopper_level_pct,
+            "food_low": bool(instance.food_low),
+            "tof_ok": bool(instance.tof_ok),
         },
     }
     async_to_sync(layer.group_send)("device_status", payload)
