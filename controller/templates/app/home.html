@@ -235,6 +235,65 @@
     </div>
     {% endif %}
 
+    <!-- Hopper Level Card -->
+    <div class="enhanced-card">
+        <div class="section-title">
+            <i class="fas fa-bowl-rice text-[#1f456e]"></i>
+            Hopper Level
+        </div>
+        <div class="space-y-4">
+            <!-- Hopper Status Alert -->
+            <div id="stickyLowFoodAlert" class="alert alert-danger d-none" role="alert" style="border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    <div>
+                        <h6 class="mb-0 fw-bold">⚠️ FOOD LEVEL IS LOW!</h6>
+                        <p class="mb-0 small">Please refill the pet feeder hopper immediately!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div>
+                <div style="height: 40px; border-radius: 20px; border: 2px solid #e9ecef; overflow: hidden;">
+                    <div id="hopperProgress" style="width: 0%; height: 100%; border-radius: 18px; background: linear-gradient(to right, #6c757d, #6c757d); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; transition: width 0.3s ease, background 0.3s ease;">
+                        0%
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hopper Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Donut Gauge -->
+                <div style="text-align: center;">
+                    <div style="display: inline-block; width: 120px; height: 120px;">
+                        <svg width="120" height="120" viewBox="0 0 120 120" style="transform: rotate(-90deg);">
+                            <circle cx="60" cy="60" r="48" stroke="#e9ecef" stroke-width="12" fill="none"></circle>
+                            <circle id="hopperDonutCircle" cx="60" cy="60" r="48" stroke="#4f46e5" stroke-width="12" stroke-linecap="round" fill="none" style="stroke-dasharray: 302 302; stroke-dashoffset: 302; transition: stroke-dashoffset 0.6s ease, stroke 0.3s ease;"></circle>
+                            <text id="hopperDonutPct" x="60" y="64" text-anchor="middle" dominant-baseline="middle" style="font-weight: 700; font-size: 1.1rem; fill: #e9ecef; transform: rotate(90deg); transform-origin: 60px 64px;">0%</text>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Info Cards -->
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-secondary); border-radius: 6px;">
+                        <div style="color: var(--text-secondary);">Hopper Distance</div>
+                        <div id="hopperMmDisplay" style="font-weight: 700;">0 mm</div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-secondary); border-radius: 6px;">
+                        <div style="color: var(--text-secondary);">Sensor Status</div>
+                        <div id="hopperTofStatus" style="font-weight: 700;">Sensor: Not available</div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-secondary); border-radius: 6px;">
+                        <div style="color: var(--text-secondary);">Low Alert</div>
+                        <div id="hopperLowFlag" style="font-weight: 700; color: var(--text-secondary);">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Quick Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="enhanced-card text-center">
@@ -784,6 +843,85 @@ function getActionLabel(type) {
     };
     return labels[type] || 'Manual Feed';
 }
+
+// Update hopper level display
+let lastFoodLowState = null;
+function updateDeviceStatus() {
+    const deviceId = (window.DEVICE_ID || '{{ DEVICE_ID }}');
+    fetch(`/api/device-status/?device_id=${encodeURIComponent(deviceId)}`)
+        .then(r => r.json())
+        .then(data => {
+            const hopperProgress = document.getElementById('hopperProgress');
+            const stickyLowFoodAlert = document.getElementById('stickyLowFoodAlert');
+            
+            if (data.tof_ok) {
+                const pct = data.hopper_pct || 0;
+                if (hopperProgress) {
+                    hopperProgress.style.width = `${pct}%`;
+                    hopperProgress.textContent = `${pct}%`;
+                    // Set progress bar color
+                    if (pct <= 20) {
+                        hopperProgress.style.background = 'linear-gradient(to right, #dc3545, #dc3545)';
+                    } else if (pct <= 40) {
+                        hopperProgress.style.background = 'linear-gradient(to right, #ffc107, #ffc107)';
+                    } else {
+                        hopperProgress.style.background = 'linear-gradient(to right, #28a745, #28a745)';
+                    }
+                }
+                
+                // Update donut gauge
+                const donutCircle = document.getElementById('hopperDonutCircle');
+                const donutPct = document.getElementById('hopperDonutPct');
+                if (donutCircle) {
+                    const radius = donutCircle.r.baseVal.value;
+                    const circumference = 2 * Math.PI * radius;
+                    const offset = circumference * (1 - (pct / 100));
+                    donutCircle.style.strokeDasharray = circumference + ' ' + circumference;
+                    donutCircle.style.strokeDashoffset = offset;
+                    donutCircle.style.stroke = pct <= 20 ? '#dc3545' : (pct <= 40 ? '#ffc107' : '#4f46e5');
+                }
+                if (donutPct) donutPct.textContent = pct + '%';
+                
+                // Update info cards
+                const mmEl = document.getElementById('hopperMmDisplay');
+                if (mmEl) mmEl.textContent = (data.hopper_mm || 0) + ' mm';
+                const tofEl = document.getElementById('hopperTofStatus');
+                if (tofEl) tofEl.textContent = data.tof_ok ? 'Sensor OK' : 'Sensor Error';
+                
+                // Handle low food alerts
+                if (data.food_low) {
+                    if (stickyLowFoodAlert) stickyLowFoodAlert.classList.remove('d-none');
+                    if (lastFoodLowState !== true) {
+                        showToast('⚠️ FOOD LEVEL IS LOW! Please refill the hopper immediately!', 'error', { sticky: true });
+                    }
+                    lastFoodLowState = true;
+                } else {
+                    if (stickyLowFoodAlert) stickyLowFoodAlert.classList.add('d-none');
+                    lastFoodLowState = false;
+                }
+                
+                const lowFlagEl = document.getElementById('hopperLowFlag');
+                if (lowFlagEl) {
+                    lowFlagEl.textContent = data.food_low ? 'YES' : 'NO';
+                    lowFlagEl.style.color = data.food_low ? '#dc3545' : 'var(--text-secondary)';
+                }
+            } else {
+                if (hopperProgress) {
+                    hopperProgress.style.width = '0%';
+                    hopperProgress.textContent = '0%';
+                    hopperProgress.style.background = 'linear-gradient(to right, #6c757d, #6c757d)';
+                }
+                const tofEl = document.getElementById('hopperTofStatus');
+                if (tofEl) tofEl.textContent = 'Sensor: Not available';
+            }
+        })
+        .catch(() => console.error('Failed to update device status'));
+}
+
+// Poll device status every 10 seconds
+setInterval(updateDeviceStatus, 10000);
+updateDeviceStatus(); // Initial call
+
 </script>
 {% endblock %}
 
