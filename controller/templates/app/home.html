@@ -250,6 +250,12 @@
                     <div style="font-size: 0.875rem; color: #155724; opacity: 0.85;" id="statusMessage">The hopper contains enough food for upcoming feedings.</div>
                 </div>
             </div>
+            <div id="lowFoodWarningBanner" class="alert alert-error shadow-lg mt-4 hidden" style="display: none;">
+                <div>
+                    <span class="font-bold">Low food detected.</span>
+                    <span>The feeder is currently running low. Please refill the hopper soon.</span>
+                </div>
+            </div>
 
             <!-- Progress Bar with Percentage -->
             <div>
@@ -472,7 +478,31 @@
 }
 </style>
 
+<dialog id="lowFoodReminderModal" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg">Low Food Reminder</h3>
+    <p class="py-4 text-sm leading-relaxed text-base-content/80">
+      The food level in your PETIO feeder is running low. Please refill the hopper soon to avoid missed scheduled feedings.
+    </p>
+    <div class="modal-action">
+      <button type="button" class="btn btn-primary" onclick="closeLowFoodReminderModal()">Dismiss</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button aria-label="Close">close</button>
+  </form>
+</dialog>
+
 <script>
+function closeLowFoodReminderModal() {
+    const modal = document.getElementById('lowFoodReminderModal');
+    if (!modal) return;
+    if (typeof modal.close === 'function') {
+        modal.close();
+    }
+    modal.classList.remove('modal-open');
+}
+
 // Helper: unified toast wrapper using global toastManager for consistent UI
 function showToast(message, type = 'success', options = {}) {
     /**
@@ -867,6 +897,7 @@ function updateDeviceStatus() {
             const circularPercentage = document.getElementById('circularPercentage');
             const statusValue = document.getElementById('statusValue');
             const foodUnavailableState = document.getElementById('foodUnavailableState');
+            const lowFoodWarningBanner = document.getElementById('lowFoodWarningBanner');
 
             if (data.tof_ok && data.hopper_pct !== undefined) {
                 // Hide empty state
@@ -964,10 +995,36 @@ function updateDeviceStatus() {
                     statusValue.style.color = statusColors[status] || '#4f46e5';
                 }
 
-                // Handle low food alerts (show toast when transitioning to low)
+                // Show/hide the in-card warning banner
+                if (lowFoodWarningBanner) {
+                    if (data.food_low) {
+                        lowFoodWarningBanner.classList.remove('hidden');
+                        lowFoodWarningBanner.style.display = 'flex';
+                    } else {
+                        lowFoodWarningBanner.classList.add('hidden');
+                        lowFoodWarningBanner.style.display = 'none';
+                    }
+                }
+
+                // Handle low food alerts (show toast and modal when transitioning to low)
                 if (data.food_low && lastFoodLowState !== true) {
                     if (typeof showToast === 'function') {
                         showToast('⚠️ FOOD LEVEL IS LOW! Please refill the hopper immediately!', 'error', { sticky: true });
+                    }
+                    const modal = document.getElementById('lowFoodReminderModal');
+                    if (modal && typeof modal.showModal === 'function') {
+                        modal.showModal();
+                    } else if (modal) {
+                        modal.classList.add('modal-open');
+                    }
+                }
+                if (!data.food_low && lastFoodLowState === true) {
+                    const modal = document.getElementById('lowFoodReminderModal');
+                    if (modal && typeof modal.close === 'function') {
+                        modal.close();
+                    }
+                    if (modal) {
+                        modal.classList.remove('modal-open');
                     }
                 }
                 lastFoodLowState = data.food_low;
