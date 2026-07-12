@@ -876,7 +876,78 @@ function getActionLabel(type) {
 }
 
 // Update hopper level display
-let lastFoodLowState = null;
+let lastFoodState = null;
+
+function setLowFoodReminderOpen(open) {
+    const modal = document.getElementById('lowFoodReminderModal');
+    if (!modal) return;
+
+    if (open) {
+        if (typeof modal.showModal === 'function') {
+            modal.showModal();
+        } else {
+            modal.classList.add('modal-open');
+        }
+        return;
+    }
+
+    if (typeof modal.close === 'function') {
+        modal.close();
+    }
+    modal.classList.remove('modal-open');
+}
+
+function showFoodStateFromBackend(foodState, pct) {
+    const state = (foodState || '').toString().toUpperCase();
+
+    if (state === 'SUFFICIENT') {
+        showFoodStatus('Sufficient', pct, {
+            emoji: '🟢',
+            messageText: 'The hopper contains enough food for upcoming feedings.',
+            bgColor: '#d4edda',
+            textColor: '#155724',
+            borderColor: '#28a745',
+            progressColor: 'linear-gradient(90deg, #28a745, #20c997)',
+            circleColor: '#28a745',
+            statusColor: '#28a745'
+        });
+        return 'SUFFICIENT';
+    }
+
+    if (state === 'RUNNING_LOW') {
+        showFoodStatus('Running Low', pct, {
+            emoji: '🟠',
+            messageText: 'The hopper is running low. Consider refilling soon.',
+            bgColor: '#ffe5cc',
+            textColor: '#b85c1a',
+            borderColor: '#fd7e14',
+            progressColor: 'linear-gradient(90deg, #fd7e14, #ff6b35)',
+            circleColor: '#fd7e14',
+            statusColor: '#fd7e14'
+        });
+        return 'RUNNING_LOW';
+    }
+
+    if (state === 'REFILL_REQUIRED') {
+        showFoodStatus('Refill Required', pct, {
+            emoji: '🔴',
+            messageText: 'Please refill the hopper immediately to ensure continuous feeding.',
+            bgColor: '#f8d7da',
+            textColor: '#721c24',
+            borderColor: '#dc3545',
+            progressColor: 'linear-gradient(90deg, #dc3545, #c82333)',
+            circleColor: '#dc3545',
+            statusColor: '#dc3545'
+        });
+        return 'REFILL_REQUIRED';
+    }
+
+    showWarningCard(
+        'Food Level Unavailable',
+        'Unable to determine the remaining food right now. Please try again later.'
+    );
+    return 'UNKNOWN';
+}
 
 function getFoodLevelElements() {
     const foodStatusBanner = document.getElementById('foodStatusBanner');
@@ -1060,48 +1131,7 @@ function showFoodStatus(status, percentage, options = {}) {
     }
 }
 
-function showFoodStateFromPercentage(pct) {
-    if (pct > 40) {
-        showFoodStatus('Sufficient', pct, {
-            emoji: '🟢',
-            messageText: 'The hopper contains enough food for upcoming feedings.',
-            bgColor: '#d4edda',
-            textColor: '#155724',
-            borderColor: '#28a745',
-            progressColor: 'linear-gradient(90deg, #28a745, #20c997)',
-            circleColor: '#28a745',
-            statusColor: '#28a745'
-        });
-        return 'sufficient';
-    }
 
-    if (pct >= 21) {
-        showFoodStatus('Running Low', pct, {
-            emoji: '🟠',
-            messageText: 'The hopper is running low. Consider refilling soon.',
-            bgColor: '#ffe5cc',
-            textColor: '#b85c1a',
-            borderColor: '#fd7e14',
-            progressColor: 'linear-gradient(90deg, #fd7e14, #ff6b35)',
-            circleColor: '#fd7e14',
-            statusColor: '#fd7e14'
-        });
-        return 'running_low';
-    }
-
-    showFoodStatus('Refill Required', pct, {
-        emoji: '🔴',
-        messageText: 'Please refill the hopper immediately to ensure continuous feeding.',
-        bgColor: '#f8d7da',
-        textColor: '#721c24',
-        borderColor: '#dc3545',
-        progressColor: 'linear-gradient(90deg, #dc3545, #c82333)',
-        circleColor: '#dc3545',
-        statusColor: '#dc3545'
-    });
-
-    return 'refill_required';
-}
 
 function updateDeviceStatus() {
     const deviceId = (window.DEVICE_ID || '{{ DEVICE_ID }}');
@@ -1109,64 +1139,62 @@ function updateDeviceStatus() {
     fetch(`/api/device-status/?device_id=${encodeURIComponent(deviceId)}`)
         .then(r => r.json())
         .then(data => {
-            const computed = (data.computed_status || data.status || '').toString().toLowerCase();
-            const online = data.online === true || computed === 'online';
-
-            if (!online) {
-                lastFoodLowState = null;
+            const deviceState = (data.device_state || '').toString().toUpperCase();
+            if (deviceState && deviceState !== 'ONLINE') {
+                if (lastFoodState === 'REFILL_REQUIRED') setLowFoodReminderOpen(false);
+                lastFoodState = null;
                 showFeederOffline();
                 return;
             }
 
-            if (data.tof_ok === false) {
-                lastFoodLowState = null;
+            const computed = (data.computed_status || data.status || '').toString().toLowerCase();
+            const onlineFallback = data.online === true || computed === 'online';
+            if (!deviceState && !onlineFallback) {
+                if (lastFoodState === 'REFILL_REQUIRED') setLowFoodReminderOpen(false);
+                lastFoodState = null;
+                showFeederOffline();
+                return;
+            }
+
+            const sensorState = (data.sensor_state || '').toString().toUpperCase();
+            if (sensorState && sensorState !== 'OK') {
+                if (lastFoodState === 'REFILL_REQUIRED') setLowFoodReminderOpen(false);
+                lastFoodState = null;
+                showSensorError();
+                return;
+            }
+
+            if (!sensorState && data.tof_ok === false) {
+                if (lastFoodState === 'REFILL_REQUIRED') setLowFoodReminderOpen(false);
+                lastFoodState = null;
                 showSensorError();
                 return;
             }
 
             const pctRaw = data.hopper_pct;
-            const hasValidPercentage = pctRaw !== undefined && pctRaw !== null && Number.isFinite(Number(pctRaw));
-            if (!hasValidPercentage) {
-                lastFoodLowState = null;
-                showSensorError();
-                return;
-            }
+            const hasPct = pctRaw !== undefined && pctRaw !== null && Number.isFinite(Number(pctRaw));
+            const pct = hasPct ? Math.max(0, Math.min(100, Number(pctRaw))) : 0;
 
-            const pct = Math.max(0, Math.min(100, Number(pctRaw)));
-            const state = showFoodStateFromPercentage(pct);
+            const foodState = (data.food_state || '').toString().toUpperCase();
+            const renderedFoodState = showFoodStateFromBackend(foodState, pct);
 
-            if (data.food_low && lastFoodLowState !== true) {
+            if (renderedFoodState === 'REFILL_REQUIRED' && lastFoodState !== 'REFILL_REQUIRED') {
                 if (typeof showToast === 'function') {
                     showToast('⚠️ FOOD LEVEL IS LOW! Please refill the hopper immediately!', 'error', { sticky: true });
                 }
-
-                const modal = document.getElementById('lowFoodReminderModal');
-                if (modal && typeof modal.showModal === 'function') {
-                    modal.showModal();
-                } else if (modal) {
-                    modal.classList.add('modal-open');
-                }
+                setLowFoodReminderOpen(true);
             }
 
-            if (!data.food_low && lastFoodLowState === true) {
-                const modal = document.getElementById('lowFoodReminderModal');
-                if (modal && typeof modal.close === 'function') {
-                    modal.close();
-                }
-                if (modal) {
-                    modal.classList.remove('modal-open');
-                }
+            if (renderedFoodState !== 'REFILL_REQUIRED' && lastFoodState === 'REFILL_REQUIRED') {
+                setLowFoodReminderOpen(false);
             }
 
-            if (state !== 'refill_required') {
-                lastFoodLowState = false;
-            } else {
-                lastFoodLowState = !!data.food_low;
-            }
+            lastFoodState = renderedFoodState;
         })
         .catch(err => {
             console.error('Failed to update device status:', err);
-            lastFoodLowState = null;
+            if (lastFoodState === 'REFILL_REQUIRED') setLowFoodReminderOpen(false);
+            lastFoodState = null;
             showFeederOffline();
         });
 }

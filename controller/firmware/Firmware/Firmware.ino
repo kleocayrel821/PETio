@@ -1507,7 +1507,31 @@ public:
     return makeRequest("/device/unpair/", "POST", payload, resp);
   }
   bool sendFeedingLog(int portionSize, const String& feedType, const String& notes = "") { String payload = createFeedingPayload(portionSize, feedType, notes); String response; Serial.println("Sending feeding log to server..."); printPretty(payload); return makeRequest("/device/logs/", "POST", payload, response); }
-  bool sendDeviceStatus(const String& /*status*/, int /*batteryLevel*/ = 100, int wifiSignal = -50) { DynamicJsonDocument doc(768); doc["device_id"] = deviceID; doc["wifi_rssi"] = wifiSignal; doc["uptime"] = (int)(millis()/1000); doc["daily_feeds"] = dailyFeeds; if (lastFeedIso.length() > 0) doc["last_feed"] = lastFeedIso; doc["hopper_mm"] = (int)g_tofDistanceMm; doc["hopper_pct"] = (int)g_hopperLevelPct; doc["food_low"] = g_foodLow; doc["tof_ok"] = g_tofOk; doc["error_message"] = ""; String payload; serializeJson(doc, payload); String response; bool success = makeRequest("/device/status/", "POST", payload, response); if (success) { Serial.println("Device status sent successfully"); return true; } else { Serial.println("Failed to send device status: " + lastError); return false; } }
+  bool sendDeviceStatus(const String& /*status*/, int /*batteryLevel*/ = 100, int wifiSignal = -50) {
+    DynamicJsonDocument doc(768);
+    doc["device_id"] = deviceID;
+    doc["timestamp"] = nowUtcIso();
+    doc["heartbeat"] = true;
+    doc["wifi_rssi"] = wifiSignal;
+    doc["uptime"] = (int)(millis() / 1000);
+    doc["daily_feeds"] = dailyFeeds;
+    if (lastFeedIso.length() > 0) doc["last_feed"] = lastFeedIso;
+    doc["hopper_mm"] = (int)g_tofDistanceMm;
+    doc["hopper_pct"] = (int)g_hopperLevelPct;
+    doc["tof_ok"] = g_tofOk;
+    doc["error_message"] = "";
+
+    String payload;
+    serializeJson(doc, payload);
+    String response;
+    bool success = makeRequest("/device/status/", "POST", payload, response);
+    if (success) {
+      Serial.println("Device status sent successfully");
+      return true;
+    }
+    Serial.println("Failed to send device status: " + lastError);
+    return false;
+  }
   bool getDeviceConfig(String& configResponse) { String endpoint = String("/device/config/?device_id=") + deviceID; Serial.println("Requesting device configuration..."); bool success = makeRequest(endpoint, "GET", "", configResponse); if (success) { Serial.println("Device configuration retrieved successfully"); return true; } else { Serial.println("Failed to get device configuration: " + lastError); return false; } }
   bool getNextSchedule(String& scheduleResponse) { String endpoint = String("/check-schedule/?device_id=") + deviceID; return makeRequest(endpoint, "GET", "", scheduleResponse); }
   bool sendFeedingLogWithSchedule(int portionSize, const String& feedType, uint32_t scheduleId, const String& notes = "") { String payload = createScheduledFeedingPayload(portionSize, feedType, scheduleId, notes); String response; return makeRequest("/device/logs/", "POST", payload, response); }
