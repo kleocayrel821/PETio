@@ -877,159 +877,179 @@ function getActionLabel(type) {
 
 // Update hopper level display
 let lastFoodLowState = null;
+
+function showFoodStatus(status, percentage, options = {}) {
+    const foodStatusBanner = document.getElementById('foodStatusBanner');
+    const statusText = document.getElementById('statusText');
+    const statusMessage = document.getElementById('statusMessage');
+    const progressPercentage = document.getElementById('progressPercentage');
+    const hopperProgress = document.getElementById('hopperProgress');
+    const circularProgress = document.getElementById('circularProgress');
+    const circularPercentage = document.getElementById('circularPercentage');
+    const statusValue = document.getElementById('statusValue');
+    const foodUnavailableState = document.getElementById('foodUnavailableState');
+
+    const pct = Math.max(0, Math.min(100, Number(percentage) || 0));
+    const {
+        emoji,
+        messageText,
+        bgColor,
+        textColor,
+        borderColor,
+        progressColor,
+        circleColor,
+        statusColor
+    } = options;
+
+    if (foodUnavailableState) foodUnavailableState.classList.add('d-none');
+
+    if (foodStatusBanner) {
+        foodStatusBanner.style.display = 'flex';
+        foodStatusBanner.style.background = bgColor;
+        foodStatusBanner.style.borderLeftColor = borderColor;
+        const icon = foodStatusBanner.querySelector('div:first-child');
+        if (icon) icon.textContent = emoji;
+    }
+
+    if (statusText) statusText.textContent = status;
+    if (statusMessage) {
+        statusMessage.textContent = messageText;
+        statusMessage.style.color = textColor;
+    }
+
+    const bannerHeading = foodStatusBanner ? foodStatusBanner.querySelector('div:nth-child(2) > div:first-child') : null;
+    if (bannerHeading) bannerHeading.style.color = textColor;
+
+    if (progressPercentage) progressPercentage.textContent = pct + '%';
+    if (hopperProgress) {
+        hopperProgress.style.width = pct + '%';
+        hopperProgress.style.background = progressColor;
+    }
+
+    if (circularPercentage) circularPercentage.textContent = pct + '%';
+    if (circularProgress) {
+        const circumference = 2 * Math.PI * 60;
+        const offset = circumference * (1 - (pct / 100));
+        circularProgress.style.strokeDasharray = circumference + ' ' + circumference;
+        circularProgress.style.strokeDashoffset = offset;
+        circularProgress.style.stroke = circleColor;
+    }
+
+    if (statusValue) {
+        statusValue.textContent = status;
+        statusValue.style.color = statusColor;
+    }
+}
+
+function showFoodUnavailable() {
+    const foodUnavailableState = document.getElementById('foodUnavailableState');
+    const foodStatusBanner = document.getElementById('foodStatusBanner');
+    const progressPercentage = document.getElementById('progressPercentage');
+    const hopperProgress = document.getElementById('hopperProgress');
+    const circularPercentage = document.getElementById('circularPercentage');
+    const statusValue = document.getElementById('statusValue');
+
+    if (foodUnavailableState) foodUnavailableState.classList.remove('d-none');
+    if (foodStatusBanner) foodStatusBanner.style.display = 'none';
+    if (hopperProgress) hopperProgress.style.width = '0%';
+    if (progressPercentage) progressPercentage.textContent = '—';
+    if (circularPercentage) circularPercentage.textContent = '—';
+    if (statusValue) {
+        statusValue.textContent = 'Unavailable';
+        statusValue.style.color = '#6b7280';
+    }
+}
+
 function updateDeviceStatus() {
     const deviceId = (window.DEVICE_ID || '{{ DEVICE_ID }}');
     fetch(`/api/device-status/?device_id=${encodeURIComponent(deviceId)}`)
         .then(r => r.json())
         .then(data => {
-            const foodStatusBanner = document.getElementById('foodStatusBanner');
-            const statusText = document.getElementById('statusText');
-            const statusMessage = document.getElementById('statusMessage');
-            const progressPercentage = document.getElementById('progressPercentage');
-            const hopperProgress = document.getElementById('hopperProgress');
-            const circularProgress = document.getElementById('circularProgress');
-            const circularPercentage = document.getElementById('circularPercentage');
-            const statusValue = document.getElementById('statusValue');
-            const foodUnavailableState = document.getElementById('foodUnavailableState');
+            const online = !!data.online || data.computed_status === 'online' || data.status === 'online';
+            const hasValidPercentage = data.hopper_pct !== undefined && data.hopper_pct !== null && Number.isFinite(Number(data.hopper_pct));
+            const hasSensorReading = data.tof_ok !== false;
+            const feederResponsive = online && hasSensorReading;
 
-            if (data.tof_ok && data.hopper_pct !== undefined) {
-                // Hide empty state
-                if (foodUnavailableState) foodUnavailableState.classList.add('d-none');
-
-                const pct = Math.max(0, Math.min(100, data.hopper_pct));
-
-                // Determine status and colors
-                let status, emoji, bgColor, textColor, borderColor, messageText, progressColor;
-
-                if (pct >= 60) {
-                    status = 'Sufficient';
-                    emoji = '🟢';
-                    bgColor = '#d4edda';
-                    textColor = '#155724';
-                    borderColor = '#28a745';
-                    messageText = 'The hopper contains enough food for upcoming feedings.';
-                    progressColor = 'linear-gradient(90deg, #28a745, #20c997)';
-                } else if (pct >= 40) {
-                    status = 'Moderate';
-                    emoji = '🟡';
-                    bgColor = '#fff3cd';
-                    textColor = '#856404';
-                    borderColor = '#ffc107';
-                    messageText = 'The hopper is at a moderate level. Plan to refill soon.';
-                    progressColor = 'linear-gradient(90deg, #ffc107, #fd7e14)';
-                } else if (pct >= 20) {
-                    status = 'Running Low';
-                    emoji = '🟠';
-                    bgColor = '#ffe5cc';
-                    textColor = '#b85c1a';
-                    borderColor = '#fd7e14';
-                    messageText = 'The hopper is running low. Consider refilling soon.';
-                    progressColor = 'linear-gradient(90deg, #fd7e14, #ff6b35)';
-                } else {
-                    status = 'Refill Required';
-                    emoji = '🔴';
-                    bgColor = '#f8d7da';
-                    textColor = '#721c24';
-                    borderColor = '#dc3545';
-                    messageText = 'Please refill the hopper immediately to ensure continuous feeding.';
-                    progressColor = 'linear-gradient(90deg, #dc3545, #c82333)';
-                }
-
-                // Update status banner
-                if (foodStatusBanner) {
-                    foodStatusBanner.style.background = bgColor;
-                    foodStatusBanner.style.borderLeftColor = borderColor;
-                    foodStatusBanner.querySelector('div:first-child').textContent = emoji;
-                }
-                if (statusText) statusText.textContent = status;
-                if (statusMessage) {
-                    statusMessage.textContent = messageText;
-                    statusMessage.style.color = textColor;
-                }
-
-                // Update text color in banner heading
-                const bannerHeading = foodStatusBanner ? foodStatusBanner.querySelector('div:nth-child(2) > div:first-child') : null;
-                if (bannerHeading) bannerHeading.style.color = textColor;
-
-                // Update progress bar
-                if (progressPercentage) progressPercentage.textContent = pct + '%';
-                if (hopperProgress) {
-                    hopperProgress.style.width = pct + '%';
-                    hopperProgress.style.background = progressColor;
-                }
-
-                // Update circular progress
-                if (circularPercentage) circularPercentage.textContent = pct + '%';
-                if (circularProgress) {
-                    const circumference = 2 * Math.PI * 60; // r=60
-                    const offset = circumference * (1 - (pct / 100));
-                    circularProgress.style.strokeDasharray = circumference + ' ' + circumference;
-                    circularProgress.style.strokeDashoffset = offset;
-
-                    // Change circle color based on status
-                    const circleColors = {
-                        'Sufficient': '#28a745',
-                        'Moderate': '#ffc107',
-                        'Running Low': '#fd7e14',
-                        'Refill Required': '#dc3545'
-                    };
-                    circularProgress.style.stroke = circleColors[status] || '#4f46e5';
-                }
-
-                // Update status card
-                if (statusValue) {
-                    statusValue.textContent = status;
-                    const statusColors = {
-                        'Sufficient': '#28a745',
-                        'Moderate': '#ffc107',
-                        'Running Low': '#fd7e14',
-                        'Refill Required': '#dc3545'
-                    };
-                    statusValue.style.color = statusColors[status] || '#4f46e5';
-                }
-
-                // Handle low food alerts (show toast and modal when transitioning to low)
-                if (data.food_low && lastFoodLowState !== true) {
-                    if (typeof showToast === 'function') {
-                        showToast('⚠️ FOOD LEVEL IS LOW! Please refill the hopper immediately!', 'error', { sticky: true });
-                    }
-                    const modal = document.getElementById('lowFoodReminderModal');
-                    if (modal && typeof modal.showModal === 'function') {
-                        modal.showModal();
-                    } else if (modal) {
-                        modal.classList.add('modal-open');
-                    }
-                }
-                if (!data.food_low && lastFoodLowState === true) {
-                    const modal = document.getElementById('lowFoodReminderModal');
-                    if (modal && typeof modal.close === 'function') {
-                        modal.close();
-                    }
-                    if (modal) {
-                        modal.classList.remove('modal-open');
-                    }
-                }
-                lastFoodLowState = data.food_low;
-            } else {
-                // Show empty state
-                if (foodUnavailableState) foodUnavailableState.classList.remove('d-none');
-                if (foodStatusBanner) foodStatusBanner.style.display = 'none';
-                if (hopperProgress) hopperProgress.style.width = '0%';
-                if (progressPercentage) progressPercentage.textContent = '—';
-                if (circularPercentage) circularPercentage.textContent = '—';
-                if (statusValue) statusValue.textContent = 'Unavailable';
+            if (!feederResponsive || !hasValidPercentage) {
+                showFoodUnavailable();
+                return;
             }
+
+            const pct = Math.max(0, Math.min(100, Number(data.hopper_pct)));
+            let status, emoji, messageText, bgColor, textColor, borderColor, progressColor, circleColor, statusColor;
+
+            if (pct > 40) {
+                status = 'Sufficient';
+                emoji = '🟢';
+                messageText = 'The hopper contains enough food for upcoming feedings.';
+                bgColor = '#d4edda';
+                textColor = '#155724';
+                borderColor = '#28a745';
+                progressColor = 'linear-gradient(90deg, #28a745, #20c997)';
+                circleColor = '#28a745';
+                statusColor = '#28a745';
+            } else if (pct > 20) {
+                status = 'Running Low';
+                emoji = '🟠';
+                messageText = 'The hopper is running low. Consider refilling soon.';
+                bgColor = '#ffe5cc';
+                textColor = '#b85c1a';
+                borderColor = '#fd7e14';
+                progressColor = 'linear-gradient(90deg, #fd7e14, #ff6b35)';
+                circleColor = '#fd7e14';
+                statusColor = '#fd7e14';
+            } else {
+                status = 'Refill Required';
+                emoji = '🔴';
+                messageText = 'Please refill the hopper immediately to ensure continuous feeding.';
+                bgColor = '#f8d7da';
+                textColor = '#721c24';
+                borderColor = '#dc3545';
+                progressColor = 'linear-gradient(90deg, #dc3545, #c82333)';
+                circleColor = '#dc3545';
+                statusColor = '#dc3545';
+            }
+
+            showFoodStatus(status, pct, {
+                emoji,
+                messageText,
+                bgColor,
+                textColor,
+                borderColor,
+                progressColor,
+                circleColor,
+                statusColor
+            });
+
+            if (data.food_low && lastFoodLowState !== true) {
+                if (typeof showToast === 'function') {
+                    showToast('⚠️ FOOD LEVEL IS LOW! Please refill the hopper immediately!', 'error', { sticky: true });
+                }
+                const modal = document.getElementById('lowFoodReminderModal');
+                if (modal && typeof modal.showModal === 'function') {
+                    modal.showModal();
+                } else if (modal) {
+                    modal.classList.add('modal-open');
+                }
+            }
+            if (!data.food_low && lastFoodLowState === true) {
+                const modal = document.getElementById('lowFoodReminderModal');
+                if (modal && typeof modal.close === 'function') {
+                    modal.close();
+                }
+                if (modal) {
+                    modal.classList.remove('modal-open');
+                }
+            }
+            lastFoodLowState = data.food_low;
         })
         .catch(err => {
             console.error('Failed to update device status:', err);
-            const foodUnavailableState = document.getElementById('foodUnavailableState');
-            if (foodUnavailableState) foodUnavailableState.classList.remove('d-none');
+            showFoodUnavailable();
         });
 }
 
-// Poll device status every 10 seconds
-setInterval(updateDeviceStatus, 10000);
-// Poll device status every 15 seconds (matches firmware TOF_PRINT_INTERVAL_MS)
+// Poll device status every 15 seconds to match the feeder sampling cadence
 setInterval(updateDeviceStatus, 15000);
 updateDeviceStatus(); // Initial call
 
