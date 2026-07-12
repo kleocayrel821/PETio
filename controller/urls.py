@@ -21,7 +21,7 @@ urlpatterns = [
     # Test route to validate unified base + sidebar in Controller
     path('test-base/', views.test_base, name='test_base'),
     # Temporary legacy route to the old control panel (optional; can remove later)
-    path('control/', views.control_panel, name='control_panel'),
+    # path('control/', views.control_panel, name='control_panel'),
     path('devices/', views.my_devices_page, name='my_devices_page'),
     path('devices/claim/', views.claim_device, name='claim_device_page'),
 
