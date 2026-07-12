@@ -153,6 +153,32 @@ class DeviceStatus(models.Model):
     class Meta:
         ordering = ["-updated_at"]
 
+    def compute_device_state(self, ttl_seconds=90, now=None):
+        now = now or timezone.now()
+        if self.last_seen and (now - self.last_seen).total_seconds() <= float(ttl_seconds):
+            return "ONLINE"
+        return "OFFLINE"
+
+    def compute_sensor_state(self):
+        if self.tof_ok and self.hopper_level_pct is not None:
+            return "OK"
+        return "ERROR"
+
+    def compute_food_state(self):
+        pct = self.hopper_level_pct
+        try:
+            pct_int = int(pct)
+        except Exception:
+            return "UNKNOWN"
+
+        if pct_int < 0 or pct_int > 100:
+            return "UNKNOWN"
+        if pct_int > 40:
+            return "SUFFICIENT"
+        if pct_int >= 21:
+            return "RUNNING_LOW"
+        return "REFILL_REQUIRED"
+
     def __str__(self):
         return f"{self.device_id} - {self.status} ({self.last_seen})"
 

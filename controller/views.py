@@ -630,7 +630,16 @@ def device_status(request):
                 except Exception:
                     # Non-fatal; continue returning response
                     pass
+            device_state = ds.compute_device_state(ttl_seconds=TTL_SECONDS, now=now)
+            sensor_state = ds.compute_sensor_state()
+            food_state = ds.compute_food_state()
+
             data = {
+                "device_state": device_state,
+                "sensor_state": sensor_state,
+                "food_state": food_state,
+                "hopper_pct": ds.hopper_level_pct,
+
                 "status": ds.status,
                 "computed_status": computed,
                 "device_id": ds.device_id,
@@ -640,11 +649,10 @@ def device_status(request):
                 "daily_feeds": ds.daily_feeds,
                 "last_feed": ds.last_feed.isoformat() if ds.last_feed else None,
                 "hopper_mm": ds.hopper_distance_mm,
-                "hopper_pct": ds.hopper_level_pct,
                 "food_low": bool(ds.food_low),
                 "tof_ok": bool(ds.tof_ok),
                 "error_message": ds.error_message,
-                "online": is_online,
+                "online": (device_state == "ONLINE"),
                 "ttl_seconds": TTL_SECONDS,
                 "last_seen_age_seconds": (float((now - ds.last_seen).total_seconds()) if ds.last_seen else None),
             }
@@ -716,8 +724,8 @@ def device_status(request):
             ds.last_feed = parsed_last_feed
         ds.hopper_distance_mm = hopper_mm
         ds.hopper_level_pct = hopper_pct
-        ds.food_low = food_low
         ds.tof_ok = tof_ok
+        ds.food_low = bool(tof_ok and hopper_pct is not None and hopper_pct <= 20)
         ds.error_message = error_message or ""
         ds.save()
 

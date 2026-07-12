@@ -360,6 +360,7 @@ def device_status_heartbeat(request):
             parsed_last_feed = parse_datetime(last_feed)
 
         ds, _ = DeviceStatus.objects.get_or_create(device_id=device_id)
+        ds.status = "online"
         ds.last_seen = timezone.now()
         ds.wifi_rssi = wifi_rssi
         ds.uptime = uptime
@@ -367,8 +368,8 @@ def device_status_heartbeat(request):
         ds.last_feed = parsed_last_feed
         ds.hopper_distance_mm = hopper_mm
         ds.hopper_level_pct = hopper_pct
-        ds.food_low = food_low
         ds.tof_ok = tof_ok
+        ds.food_low = bool(tof_ok and hopper_pct is not None and hopper_pct <= 20)
         ds.error_message = error_message
         ds.save()
         return _resp_ok("heartbeat recorded")
