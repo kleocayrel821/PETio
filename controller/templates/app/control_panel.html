@@ -272,8 +272,8 @@
                         <div id="hopperStatus" class="fs-4 fw-bold">Sensor: Not available</div>
                     </div>
                 </div>
-                <div id="lowFoodAlert" class="alert alert-warning mt-3 d-none" role="alert">
-                    <i class="fas fa-info-circle"></i> Food level is running low! Consider refilling soon.
+                <div id="lowFoodAlert" class="alert alert-info mt-3 d-none" role="alert" aria-live="polite">
+                    <i class="fas fa-info-circle"></i> Checking food level status...
                 </div>
                 <!-- Additional visual: donut gauge + quick info -->
                 <div class="row mt-3 align-items-center">
@@ -1007,7 +1007,206 @@
         const deviceStatusEl = document.getElementById('deviceStatus');
         const deviceStatusHeaderEl = document.getElementById('deviceStatusHeader');
         let lastOnline = null;
-        let lastFoodLowState = null;
+
+        // Show one primary food-level status message and keep the rest of the card in sync.
+        function showFoodStatus(status, percentage) {
+            const hopperProgress = document.getElementById('hopperProgress');
+            const hopperStatus = document.getElementById('hopperStatus');
+            const lowFoodAlert = document.getElementById('lowFoodAlert');
+            const stickyLowFoodAlert = document.getElementById('stickyLowFoodAlert');
+            const donutCircle = document.getElementById('hopperDonutCircle');
+            const donutPct = document.getElementById('hopperDonutPct');
+            const mmEl = document.getElementById('hopperMmDisplay');
+            const tofEl = document.getElementById('hopperTofStatus');
+            const lowFlagEl = document.getElementById('hopperLowFlag');
+
+            const safePct = Math.max(0, Math.min(100, Number(percentage) || 0));
+            const statusConfig = {
+                sufficient: {
+                    title: 'Sufficient',
+                    icon: '✅',
+                    message: 'Food level is sufficient. Your feeder has enough food for upcoming scheduled feedings.',
+                    className: 'alert-success',
+                    progressClass: 'progress-bar bg-success fw-bold fs-5',
+                    donutColor: 'var(--primary-color)'
+                },
+                runningLow: {
+                    title: 'Running Low',
+                    icon: '⚠️',
+                    message: 'Food level is running low. Please refill the hopper soon.',
+                    className: 'alert-warning',
+                    progressClass: 'progress-bar bg-warning fw-bold fs-5',
+                    donutColor: '#f59e0b'
+                },
+                refillRequired: {
+                    title: 'Refill Required',
+                    icon: '🚨',
+                    message: 'Food level is critical. Please refill the hopper now to avoid missed feedings.',
+                    className: 'alert-danger',
+                    progressClass: 'progress-bar bg-danger fw-bold fs-5',
+                    donutColor: 'var(--danger-color)'
+                }
+            };
+            const config = statusConfig[status] || statusConfig.refillRequired;
+
+            if (hopperProgress) {
+                hopperProgress.style.width = `${safePct}%`;
+                hopperProgress.setAttribute('aria-valuenow', safePct);
+                hopperProgress.textContent = `${safePct}%`;
+                hopperProgress.className = config.progressClass;
+            }
+
+            if (hopperStatus) {
+                hopperStatus.textContent = `Food Level: ${config.title}`;
+            }
+
+            if (lowFoodAlert) {
+                lowFoodAlert.classList.remove('d-none');
+                lowFoodAlert.className = `alert mt-3 ${config.className}`;
+                lowFoodAlert.innerHTML = `<div class="fw-bold mb-1">${config.icon} ${config.title}</div><div>${config.message}</div>`;
+            }
+
+            if (stickyLowFoodAlert) {
+                stickyLowFoodAlert.classList.add('d-none');
+            }
+
+            if (donutCircle) {
+                const radius = donutCircle.r.baseVal.value;
+                const circumference = 2 * Math.PI * radius;
+                const offset = circumference * (1 - (safePct / 100));
+                donutCircle.style.strokeDasharray = circumference + ' ' + circumference;
+                donutCircle.style.strokeDashoffset = offset;
+                donutCircle.style.stroke = config.donutColor;
+            }
+
+            if (donutPct) {
+                donutPct.textContent = safePct + '%';
+            }
+
+            if (mmEl) {
+                mmEl.textContent = '0 mm';
+            }
+
+            if (tofEl) {
+                tofEl.textContent = 'Sensor OK';
+            }
+
+            if (lowFlagEl) {
+                lowFlagEl.textContent = status === 'refillRequired' || status === 'runningLow' ? 'YES' : 'NO';
+                lowFlagEl.classList.toggle('text-danger', status === 'refillRequired' || status === 'runningLow');
+            }
+        }
+
+        // Show the unavailable warning only when the feeder cannot be reached or the sensor cannot provide a valid reading.
+        function showFeederOffline() {
+            const hopperProgress = document.getElementById('hopperProgress');
+            const hopperStatus = document.getElementById('hopperStatus');
+            const lowFoodAlert = document.getElementById('lowFoodAlert');
+            const stickyLowFoodAlert = document.getElementById('stickyLowFoodAlert');
+            const donutCircle = document.getElementById('hopperDonutCircle');
+            const donutPct = document.getElementById('hopperDonutPct');
+            const mmEl = document.getElementById('hopperMmDisplay');
+            const tofEl = document.getElementById('hopperTofStatus');
+            const lowFlagEl = document.getElementById('hopperLowFlag');
+
+            if (hopperProgress) {
+                hopperProgress.style.width = '0%';
+                hopperProgress.setAttribute('aria-valuenow', '0');
+                hopperProgress.textContent = '0%';
+                hopperProgress.className = 'progress-bar bg-secondary fw-bold fs-5';
+            }
+            if (hopperStatus) {
+                hopperStatus.textContent = 'Food Level: Unavailable';
+            }
+            if (lowFoodAlert) {
+                lowFoodAlert.classList.remove('d-none');
+                lowFoodAlert.className = 'alert mt-3 alert-danger';
+                lowFoodAlert.innerHTML = '<div class="fw-bold mb-1">Feeder Offline</div><div>Unable to communicate with the feeder. Please check its power supply and Wi-Fi connection.</div>';
+            }
+            if (stickyLowFoodAlert) {
+                stickyLowFoodAlert.classList.add('d-none');
+            }
+            if (donutCircle) {
+                donutCircle.style.strokeDasharray = '302 302';
+                donutCircle.style.strokeDashoffset = '302';
+                donutCircle.style.stroke = '#9ca3af';
+            }
+            if (donutPct) {
+                donutPct.textContent = '0%';
+            }
+            if (mmEl) {
+                mmEl.textContent = '0 mm';
+            }
+            if (tofEl) {
+                tofEl.textContent = 'Sensor Offline';
+            }
+            if (lowFlagEl) {
+                lowFlagEl.textContent = '—';
+                lowFlagEl.classList.remove('text-danger');
+            }
+        }
+
+        function showSensorError() {
+            const hopperProgress = document.getElementById('hopperProgress');
+            const hopperStatus = document.getElementById('hopperStatus');
+            const lowFoodAlert = document.getElementById('lowFoodAlert');
+            const stickyLowFoodAlert = document.getElementById('stickyLowFoodAlert');
+            const donutCircle = document.getElementById('hopperDonutCircle');
+            const donutPct = document.getElementById('hopperDonutPct');
+            const mmEl = document.getElementById('hopperMmDisplay');
+            const tofEl = document.getElementById('hopperTofStatus');
+            const lowFlagEl = document.getElementById('hopperLowFlag');
+
+            if (hopperProgress) {
+                hopperProgress.style.width = '0%';
+                hopperProgress.setAttribute('aria-valuenow', '0');
+                hopperProgress.textContent = '0%';
+                hopperProgress.className = 'progress-bar bg-secondary fw-bold fs-5';
+            }
+            if (hopperStatus) {
+                hopperStatus.textContent = 'Food Level: Unavailable';
+            }
+            if (lowFoodAlert) {
+                lowFoodAlert.classList.remove('d-none');
+                lowFoodAlert.className = 'alert mt-3 alert-warning';
+                lowFoodAlert.innerHTML = '<div class="fw-bold mb-1">Food Level Sensor Error</div><div>The food level sensor is unavailable. Please inspect the VL53L0X sensor and its wiring.</div>';
+            }
+            if (stickyLowFoodAlert) {
+                stickyLowFoodAlert.classList.add('d-none');
+            }
+            if (donutCircle) {
+                donutCircle.style.strokeDasharray = '302 302';
+                donutCircle.style.strokeDashoffset = '302';
+                donutCircle.style.stroke = '#9ca3af';
+            }
+            if (donutPct) {
+                donutPct.textContent = '0%';
+            }
+            if (mmEl) {
+                mmEl.textContent = '0 mm';
+            }
+            if (tofEl) {
+                tofEl.textContent = 'Sensor Error';
+            }
+            if (lowFlagEl) {
+                lowFlagEl.textContent = '—';
+                lowFlagEl.classList.remove('text-danger');
+            }
+        }
+
+        function hideUnavailableWarning() {
+            const lowFoodAlert = document.getElementById('lowFoodAlert');
+            const stickyLowFoodAlert = document.getElementById('stickyLowFoodAlert');
+            if (lowFoodAlert) {
+                lowFoodAlert.classList.add('d-none');
+                lowFoodAlert.innerHTML = '';
+            }
+            if (stickyLowFoodAlert) {
+                stickyLowFoodAlert.classList.add('d-none');
+            }
+        }
+
+        // Main status poller for the feeder. Each food-level state is handled independently.
         function updateDeviceStatus() {
             const deviceId = (window.DEVICE_ID || '{{ DEVICE_ID }}');
             fetch(`/api/device-status/?device_id=${encodeURIComponent(deviceId)}`)
@@ -1025,77 +1224,35 @@
                       deviceStatusHeaderEl.className = cls;
                   }
                   lastOnline = online;
-                  
-                  // Update hopper level
-                  const hopperProgress = document.getElementById('hopperProgress');
-                  const hopperStatus = document.getElementById('hopperStatus');
-                  const lowFoodAlert = document.getElementById('lowFoodAlert');
-                  const stickyLowFoodAlert = document.getElementById('stickyLowFoodAlert');
-                  
-                  if (data.tof_ok) {
-                      const pct = data.hopper_pct || 0;
-                      hopperProgress.style.width = `${pct}%`;
-                      hopperProgress.setAttribute('aria-valuenow', pct);
-                      hopperProgress.textContent = `${pct}%`;
-                      
-                      // Set progress bar color
-                      if (pct <= 20) {
-                          hopperProgress.className = 'progress-bar bg-danger fw-bold fs-5';
-                      } else if (pct <= 40) {
-                          hopperProgress.className = 'progress-bar bg-warning fw-bold fs-5';
-                      } else {
-                          hopperProgress.className = 'progress-bar bg-success fw-bold fs-5';
-                      }
-                      
-                      hopperStatus.textContent = `Level: ${pct}% (${data.hopper_mm || 0}mm)`;
-                      
-                      // Update donut gauge (if present)
-                      const donutCircle = document.getElementById('hopperDonutCircle');
-                      const donutPct = document.getElementById('hopperDonutPct');
-                      if (donutCircle) {
-                          const radius = donutCircle.r.baseVal.value;
-                          const circumference = 2 * Math.PI * radius;
-                          const offset = circumference * (1 - (pct / 100));
-                          donutCircle.style.strokeDasharray = circumference + ' ' + circumference;
-                          donutCircle.style.strokeDashoffset = offset;
-                          // change color for low
-                          donutCircle.style.stroke = pct <= 20 ? 'var(--danger-color)' : (pct <= 40 ? '#f59e0b' : 'var(--primary-color)');
-                      }
-                      if (donutPct) donutPct.textContent = pct + '%';
-                      const mmEl = document.getElementById('hopperMmDisplay'); if (mmEl) mmEl.textContent = (data.hopper_mm || 0) + ' mm';
-                      const tofEl = document.getElementById('hopperTofStatus'); if (tofEl) tofEl.textContent = data.tof_ok ? 'Sensor OK' : 'Sensor Error';
-                      
-                      // Handle low food alerts
-                      if (data.food_low) {
-                          lowFoodAlert.classList.remove('d-none');
-                          if (stickyLowFoodAlert) stickyLowFoodAlert.classList.remove('d-none');
-                          // Only show sticky alert if we haven't shown it before and food is low
-                          if (lastFoodLowState !== true) {
-                              showToast('⚠️ FOOD LEVEL IS LOW! Please refill the hopper immediately!', 'error', { sticky: true });
-                          }
-                          lastFoodLowState = true;
-                      } else {
-                          lowFoodAlert.classList.add('d-none');
-                          if (stickyLowFoodAlert) stickyLowFoodAlert.classList.add('d-none');
-                          lastFoodLowState = false;
-                      }
 
-                      const lowFlagEl = document.getElementById('hopperLowFlag');
-                      if (lowFlagEl) {
-                          lowFlagEl.textContent = data.food_low ? 'YES' : 'NO';
-                          lowFlagEl.classList.toggle('text-danger', !!data.food_low);
-                      }
+                  // Feeder offline takes priority over all other food-level states.
+                  if (!online) {
+                      showFeederOffline();
+                      return;
+                  }
+
+                  // If the sensor cannot supply a valid reading, show the sensor error state.
+                  const hasValidPercentage = data.hopper_pct !== undefined && data.hopper_pct !== null && Number.isFinite(Number(data.hopper_pct));
+                  if (!data.tof_ok || !hasValidPercentage) {
+                      showSensorError();
+                      return;
+                  }
+
+                  const pct = Math.max(0, Math.min(100, Number(data.hopper_pct)));
+
+                  // Food level states are independent and should never be combined with the unavailable warning.
+                  if (pct > 40) {
+                      showFoodStatus('sufficient', pct);
+                  } else if (pct >= 21) {
+                      showFoodStatus('runningLow', pct);
                   } else {
-                      hopperProgress.style.width = '0%';
-                      hopperProgress.setAttribute('aria-valuenow', '0');
-                      hopperProgress.textContent = '0%';
-                      hopperProgress.className = 'progress-bar bg-secondary fw-bold fs-5';
-                      if (data.hopper_mm) {
-                          hopperStatus.textContent = `Sensor: Error (${data.hopper_mm}mm)`;
-                      } else {
-                          hopperStatus.textContent = 'Sensor: Not available';
-                      }
-                      lowFoodAlert.classList.add('d-none');
+                      showFoodStatus('refillRequired', pct);
+                  }
+
+                  const lowFlagEl = document.getElementById('hopperLowFlag');
+                  if (lowFlagEl) {
+                      lowFlagEl.textContent = data.food_low ? 'YES' : 'NO';
+                      lowFlagEl.classList.toggle('text-danger', !!data.food_low);
                   }
               })
               .catch(() => {
@@ -1108,6 +1265,7 @@
                       deviceStatusHeaderEl.className = 'badge bg-danger';
                   }
                   lastOnline = false;
+                  showFeederOffline();
               });
         }
         function updateCommandStatus() {
