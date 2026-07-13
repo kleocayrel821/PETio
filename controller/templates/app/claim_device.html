@@ -209,14 +209,6 @@
           window.location.href='{% url "login" %}?next={{ request.path }}';
         }else{
           const msg=d&&(d.error||d.message)||'Invalid Device ID or PIN';
-          const msgText=String(msg||'').toLowerCase();
-          if((r.status===400||r.status===404) && (msgText.indexOf('invalid or expired pin')>=0 || msgText.indexOf('device not found')>=0)){
-            const form=document.getElementById('claimForm');
-            if(form){
-              form.submit();
-              return;
-            }
-          }
           if(pinStatus){
             pinStatus.textContent=msg;
             pinStatus.className='status err';
