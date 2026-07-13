@@ -1344,61 +1344,19 @@ private:
       String ssidPref = "";
       if (configServer->hasArg("ssid")) ssidPref = configServer->arg("ssid");
       String ssidVal = htmlEscape(ssidPref);
-
       String html =
-        "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
-        "<title>PETIO WiFi Setup</title>"
-        "<style>"
-        ":root{--bg:#F8FAFC;--card:#fff;--txt:#0F172A;--mut:#475569;--b:#E2E8F0;--a:#2563EB;--a2:#1D4ED8;--r:16px}"
-        "*{box-sizing:border-box}html,body{height:100%}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;"
-        "background:var(--bg);color:var(--txt)}"
-        ".wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:18px}"
-        ".card{width:min(520px,100%);background:var(--card);border:1px solid var(--b);border-radius:var(--r);"
-        "box-shadow:0 18px 50px rgba(2,6,23,.10);padding:18px;animation:f .18s ease-out}"
-        "@keyframes f{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}"
-        ".hdr{display:flex;gap:12px;align-items:center;margin-bottom:10px}"
-        ".logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#93C5FD,var(--a));"
-        "box-shadow:0 10px 18px rgba(37,99,235,.20);flex:0 0 auto}"
-        ".title{margin:0;font-size:20px;font-weight:900;letter-spacing:.2px}"
-        ".sub{margin:4px 0 0;color:var(--mut);font-size:13px;line-height:1.35}"
-        ".section{margin-top:14px}"
-        ".label{display:block;font-size:12px;font-weight:800;margin:10px 0 6px}"
-        ".in{width:100%;border:1px solid var(--b);border-radius:14px;padding:12px 12px;font-size:15px;"
-        "background:#fff;color:inherit;outline:0;transition:border-color .15s ease,box-shadow .15s ease}"
-        ".in:focus{border-color:rgba(37,99,235,.65);box-shadow:0 0 0 3px rgba(37,99,235,.14)}"
-        ".row{display:flex;gap:12px;flex-wrap:wrap}"
-        ".row>*{flex:1;min-width:170px}"
-        ".btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border-radius:14px;"
-        "border:1px solid var(--b);padding:12px 14px;font-weight:900;font-size:15px;cursor:pointer;"
-        "text-decoration:none;user-select:none;transition:transform .08s ease,box-shadow .15s ease,background .15s ease,border-color .15s ease}"
-        ".btn:active{transform:translateY(1px)}"
-        ".btnP{background:var(--a);border-color:var(--a);color:#fff;box-shadow:0 10px 22px rgba(37,99,235,.20)}"
-        ".btnP:hover{background:var(--a2);border-color:var(--a2)}"
-        ".btnS{background:#fff;color:var(--txt)}"
-        ".btnW{width:100%}"
-        ".hint{margin:8px 0 0;color:var(--mut);font-size:12px;line-height:1.35}"
-        ".foot{margin-top:14px;padding-top:12px;border-top:1px solid var(--b);color:var(--mut);font-size:12px;line-height:1.35}"
-        "</style></head><body><div class='wrap'><main class='card'>"
-        "<header class='hdr'><div class='logo' aria-hidden='true'></div><div>"
-        "<h1 class='title'>PETIO WiFi Setup</h1>"
-        "<p class='sub'>Connect your feeder to your home WiFi network.</p></div></header>"
-        "<section class='section'>"
-        "<a class='btn btnP btnW' href='/scan'>🔍 Scan WiFi Networks</a>"
-        "<p class='hint'>Tip: tap a network, then return here to enter the password.</p>"
-        "</section>"
-        "<section class='section'>"
+        "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'/>"
+        "<title>WiFi Setup</title><style>body{font-family:Arial;margin:20px}input{padding:8px;margin:6px 0;width:100%}"
+        "button{padding:10px 14px}</style></head><body>"
+        "<h2>WiFi Setup</h2>"
+        "<p><a href='/scan'>Scan for networks</a></p>"
         "<form method='POST' action='/save'>"
-        "<label class='label' for='ssid'>WiFi Network (SSID)</label>"
-        "<input class='in' id='ssid' name='ssid' value='" + ssidVal + "' maxlength='" + String(WIFI_SSID_MAX_LEN - 1) + "' required>"
-        "<label class='label' for='pass'>Password</label>"
-        "<input class='in' id='pass' name='pass' type='password' maxlength='" + String(WIFI_PASS_MAX_LEN - 1) + "'>"
-        "<div class='row' style='margin-top:12px'>"
-        "<button class='btn btnP' type='submit'>Connect Feeder</button>"
-        "<a class='btn btnS' href='/scan'>Rescan</a></div>"
-        "</form></section>"
-        "<footer class='foot'>Need help? Hold the Reset button for 10 seconds to re-enter WiFi Setup Mode.</footer>"
-        "</main></div></body></html>";
-
+        "<label>SSID</label><input name='ssid' value='"
+        + ssidVal + "' maxlength='" + String(WIFI_SSID_MAX_LEN - 1) + "' required/>"
+                                                                      "<label>Password</label><input name='pass' type='password' maxlength='"
+        + String(WIFI_PASS_MAX_LEN - 1) + "'/>"
+                                          "<button type='submit'>Save</button></form>"
+                                          "</body></html>";
       configServer->send(200, "text/html", html);
     });
     // Captive portal helpers for common OS probes
@@ -1426,77 +1384,25 @@ private:
     configServer->on("/scan", [this]() {
       Serial.println("Scanning for networks...");
       int n = WiFi.scanNetworks();
-
       String html =
-        "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
-        "<title>PETIO WiFi Setup</title>"
-        "<style>"
-        ":root{--bg:#F8FAFC;--card:#fff;--txt:#0F172A;--mut:#475569;--b:#E2E8F0;--a:#2563EB;--a2:#1D4ED8;--r:16px}"
-        "*{box-sizing:border-box}html,body{height:100%}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--txt)}"
-        ".wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:18px}"
-        ".card{width:min(520px,100%);background:var(--card);border:1px solid var(--b);border-radius:var(--r);box-shadow:0 18px 50px rgba(2,6,23,.10);padding:18px;animation:f .18s ease-out}"
-        "@keyframes f{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}"
-        ".hdr{display:flex;gap:12px;align-items:center;margin-bottom:10px}"
-        ".logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#93C5FD,var(--a));box-shadow:0 10px 18px rgba(37,99,235,.20);flex:0 0 auto}"
-        ".title{margin:0;font-size:20px;font-weight:900;letter-spacing:.2px}"
-        ".sub{margin:4px 0 0;color:var(--mut);font-size:13px;line-height:1.35}"
-        ".nets{display:grid;gap:10px;margin-top:12px}"
-        ".net{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--b);border-radius:16px;text-decoration:none;color:inherit;background:#fff;transition:transform .08s ease,border-color .15s ease,box-shadow .15s ease}"
-        ".net:hover{border-color:rgba(37,99,235,.40);box-shadow:0 10px 18px rgba(2,6,23,.06)}"
-        ".net:active{transform:translateY(1px)}"
-        ".n1{font-weight:900}"
-        ".n2{color:var(--mut);font-size:12px;margin-top:2px}"
-        ".bars{display:inline-flex;gap:3px;align-items:flex-end;height:14px;margin-right:8px}"
-        ".bar{width:4px;border-radius:3px;background:rgba(148,163,184,.35)}.bar.on{background:var(--a)}"
-        ".tag{font-size:11px;font-weight:900;padding:4px 8px;border-radius:999px;border:1px solid var(--b);color:var(--mut)}"
-        ".row{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}"
-        ".row>*{flex:1;min-width:170px}"
-        ".btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border-radius:14px;border:1px solid var(--b);padding:12px 14px;font-weight:900;font-size:15px;cursor:pointer;text-decoration:none;color:inherit;user-select:none;transition:transform .08s ease,box-shadow .15s ease,background .15s ease,border-color .15s ease}"
-        ".btn:active{transform:translateY(1px)}"
-        ".btnP{background:var(--a);border-color:var(--a);color:#fff;box-shadow:0 10px 22px rgba(37,99,235,.20)}"
-        ".btnP:hover{background:var(--a2);border-color:var(--a2)}"
-        ".btnS{background:#fff;color:var(--txt)}"
-        ".hint{margin-top:10px;color:var(--mut);font-size:12px;line-height:1.35}"
-        "</style></head><body><div class='wrap'><main class='card'>"
-        "<header class='hdr'><div class='logo' aria-hidden='true'></div><div>"
-        "<h1 class='title'>Choose a WiFi Network</h1>"
-        "<p class='sub'>Tap a network below to use it for setup.</p></div></header>"
-        "<div class='nets'>";
-
+        "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'/>"
+        "<title>Network Scan</title><style>body{font-family:Arial;margin:20px}table{border-collapse:collapse;width:100%}"
+        "th,td{border:1px solid #ccc;padding:6px;text-align:left}</style></head><body>"
+        "<h2>Nearby Networks</h2>"
+        "<p><a href='/'>&larr; Back to setup</a> | <a href='/scan'>Refresh</a></p>"
+        "<table><tr><th>SSID</th><th>RSSI</th><th>Security</th><th></th></tr>";
       for (int i = 0; i < n; i++) {
         String ssid = WiFi.SSID(i);
         if (ssid.length() == 0) continue;
         long rssi = WiFi.RSSI(i);
         uint8_t enc = WiFi.encryptionType(i);
-
-        int bars = 1;
-        String strength = "Weak";
-        if (rssi >= -60) { bars = 4; strength = "Strong"; }
-        else if (rssi >= -75) { bars = 3; strength = "Good"; }
-        else if (rssi >= -85) { bars = 2; strength = "Weak"; }
-
-        const bool open = (enc == ENC_TYPE_NONE);
         String esc = htmlEscape(ssid);
         String link = String("/?ssid=") + urlEncode(ssid);
-
-        html += "<a class='net' href='" + link + "'><div><div class='n1'>📶 " + esc + "</div><div class='n2'>";
-        html += "<span class='bars'>";
-        for (int b = 1; b <= 4; b++) {
-          html += String("<span class='bar") + (b <= bars ? " on" : "") + "'></span>";
-        }
-        html += "</span>";
-        html += strength + " · " + String(rssi) + " dBm";
-        html += open ? " · Open" : " · Secured";
-        html += "</div></div><div><span class='tag'>Use</span></div></a>";
+        html += "<tr><td>" + esc + "</td><td>" + String(rssi) + " dBm</td><td>" + String(encTypeStr(enc)) + "</td>"
+                                                                                                            "<td><a href='"
+                + link + "'>Use</a></td></tr>";
       }
-
-      html += "</div>";
-      html += "<div class='row'>";
-      html += "<a class='btn btnP' href='/'>Back to Setup</a>";
-      html += "<a class='btn btnS' href='/scan'>Rescan</a></div>";
-      html += "<p class='hint'>After selecting a network, enter the password on the setup page.</p>";
-      html += "</main></div></body></html>";
-
+      html += "</table></body></html>";
       configServer->send(200, "text/html", html);
     });
     configServer->on("/save", [this]() {
