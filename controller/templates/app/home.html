@@ -261,24 +261,6 @@
                 </div>
             </div>
 
-            <!-- Circular Progress Indicator -->
-            <div style="text-align: center; padding: 20px 0;">
-                <div style="display: inline-block; position: relative; width: 140px; height: 140px;">
-                    <svg width="140" height="140" viewBox="0 0 140 140" style="transform: rotate(-90deg);">
-                        <!-- Background circle -->
-                        <circle cx="70" cy="70" r="60" stroke="#e9ecef" stroke-width="10" fill="none"></circle>
-                        <!-- Progress circle -->
-                        <circle id="circularProgress" cx="70" cy="70" r="60" stroke="#28a745" stroke-width="10" stroke-linecap="round" fill="none" 
-                                style="stroke-dasharray: 376.99 376.99; stroke-dashoffset: 56.55; transition: stroke-dashoffset 0.6s ease, stroke 0.3s ease; box-shadow: 0 0 8px rgba(40, 167, 69, 0.3);"></circle>
-                    </svg>
-                    <!-- Center text -->
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
-                        <div style="font-size: 2.5rem; font-weight: 700; color: #1f456e;" id="circularPercentage">85%</div>
-                        <div style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 4px;">Food Remaining</div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Information Card -->
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: var(--bg-secondary); border-radius: 8px; border-left: 4px solid #4f46e5;">
                 <div style="color: var(--text-secondary); font-weight: 600;">Status</div>
@@ -913,7 +895,6 @@ function showFoodStateFromBackend(foodState, pct) {
             textColor: '#155724',
             borderColor: '#28a745',
             progressColor: 'linear-gradient(90deg, #28a745, #20c997)',
-            circleColor: '#28a745',
             statusColor: '#28a745'
         });
         return 'SUFFICIENT';
@@ -927,7 +908,6 @@ function showFoodStateFromBackend(foodState, pct) {
             textColor: '#b85c1a',
             borderColor: '#fd7e14',
             progressColor: 'linear-gradient(90deg, #fd7e14, #ff6b35)',
-            circleColor: '#fd7e14',
             statusColor: '#fd7e14'
         });
         return 'RUNNING_LOW';
@@ -941,7 +921,6 @@ function showFoodStateFromBackend(foodState, pct) {
             textColor: '#721c24',
             borderColor: '#dc3545',
             progressColor: 'linear-gradient(90deg, #dc3545, #c82333)',
-            circleColor: '#dc3545',
             statusColor: '#dc3545'
         });
         return 'REFILL_REQUIRED';
@@ -965,24 +944,9 @@ function getFoodLevelElements() {
     const progressPercentage = document.getElementById('progressPercentage');
     const hopperProgress = document.getElementById('hopperProgress');
 
-    const circularPercentage = document.getElementById('circularPercentage');
-    const circularProgress = document.getElementById('circularProgress');
-
     const progressSection = hopperProgress
         ? hopperProgress.parentElement && hopperProgress.parentElement.parentElement
         : null;
-
-    let gaugeSection = null;
-    if (circularPercentage) {
-        let node = circularPercentage;
-        for (let i = 0; i < 6 && node; i++) {
-            if (node.querySelector && node.querySelector('svg')) {
-                gaugeSection = node;
-                break;
-            }
-            node = node.parentElement;
-        }
-    }
 
     const infoSection = statusValue ? statusValue.parentElement : null;
 
@@ -994,10 +958,7 @@ function getFoodLevelElements() {
         foodUnavailableState,
         progressPercentage,
         hopperProgress,
-        circularPercentage,
-        circularProgress,
         progressSection,
-        gaugeSection,
         infoSection
     };
 }
@@ -1008,10 +969,9 @@ function hideWarningCard() {
 }
 
 function setIndicatorsVisible(visible) {
-    const { progressSection, gaugeSection, infoSection } = getFoodLevelElements();
+    const { progressSection, infoSection } = getFoodLevelElements();
 
     if (progressSection) progressSection.style.display = visible ? '' : 'none';
-    if (gaugeSection) gaugeSection.style.display = visible ? '' : 'none';
     if (infoSection) infoSection.style.display = visible ? '' : 'none';
 }
 
@@ -1025,27 +985,13 @@ function updateProgressBar(pct, progressColor) {
     }
 }
 
-function updateCircularGauge(pct, circleColor) {
-    const { circularPercentage, circularProgress } = getFoodLevelElements();
-
-    if (circularPercentage) circularPercentage.textContent = pct + '%';
-    if (circularProgress) {
-        const circumference = 2 * Math.PI * 60;
-        const offset = circumference * (1 - (pct / 100));
-        circularProgress.style.strokeDasharray = circumference + ' ' + circumference;
-        circularProgress.style.strokeDashoffset = offset;
-        circularProgress.style.stroke = circleColor;
-    }
-}
-
 function showWarningCard(title, message) {
     const {
         foodUnavailableState,
         foodStatusBanner,
         statusValue,
         hopperProgress,
-        progressPercentage,
-        circularPercentage
+        progressPercentage
     } = getFoodLevelElements();
 
     if (foodStatusBanner) foodStatusBanner.style.display = 'none';
@@ -1053,7 +999,6 @@ function showWarningCard(title, message) {
 
     if (hopperProgress) hopperProgress.style.width = '0%';
     if (progressPercentage) progressPercentage.textContent = '—';
-    if (circularPercentage) circularPercentage.textContent = '—';
 
     if (statusValue) {
         statusValue.textContent = 'Unavailable';
@@ -1103,7 +1048,6 @@ function showFoodStatus(status, percentage, options = {}) {
         textColor,
         borderColor,
         progressColor,
-        circleColor,
         statusColor
     } = options;
 
@@ -1128,7 +1072,6 @@ function showFoodStatus(status, percentage, options = {}) {
     }
 
     updateProgressBar(pct, progressColor);
-    updateCircularGauge(pct, circleColor);
 
     if (statusValue) {
         statusValue.textContent = status;
