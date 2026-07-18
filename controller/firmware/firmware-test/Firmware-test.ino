@@ -258,6 +258,7 @@ unsigned int g_feedPulse = SERVO_FEED_SPEED;
 #define DEFAULT_API_KEY "51c1ebc55900af5273e5a43c2ba0c140"
 #endif
 // ─────────────────────────────────────────────────────────
+#define DEBUG_HTTP 0 // Set to 1 for verbose HTTP logging, 0 for production
 // ── HTTP Timeout (controlled by DEV_MODE) ────────────────
 // Local HTTP needs only 3s — no TLS handshake overhead
 // Production HTTPS to petio.site needs more time due to
@@ -355,8 +356,6 @@ unsigned long calibrationLastDuration = 0;
 String calibInput = "";
 
 // Inlined ledcontrol.h/.cpp
-// NOTE: Physical LED indicators were removed from the circuit.
-// The OLED screen is the primary user-facing status output.
 enum LedState {
   LED_OFF,
   LED_ERROR,
@@ -369,64 +368,153 @@ enum LedState {
 class LedController {
 private:
   LedState currentState;
+  bool blinkState;
+  unsigned long lastBlinkTime;
+  void setRedLED(bool state) {
+    digitalWrite(RED_LED_PIN, state ? HIGH : LOW);
+  }
+  void setBlueLED(bool state) {
+    digitalWrite(BLUE_LED_PIN, state ? HIGH : LOW);
+  }
+  void turnOffAllLEDs() {
+    setRedLED(false);
+    setBlueLED(false);
+  }
+  bool overlayActive;
+  bool overlayBlue;
+  unsigned long overlayLastToggle;
+  unsigned long overlayInterval;
+  bool overlayOn;
+  int overlayCycles;
+  int overlayCompleted;
+  LedState overlayRestore;
 
 public:
   LedController()
-    : currentState(LED_OFF) {}
-
+    : currentState(LED_OFF), blinkState(false), lastBlinkTime(0), overlayActive(false), overlayBlue(false), overlayLastToggle(0), overlayInterval(0), overlayOn(false), overlayCycles(0), overlayCompleted(0), overlayRestore(LED_OFF) {}
   void init() {
-    currentState = LED_OFF;
+    pinMode(RED_LED_PIN, OUTPUT);
+    pinMode(BLUE_LED_PIN, OUTPUT);
+    turnOffAllLEDs();
   }
-
   void setState(LedState state) {
     currentState = state;
+    resetBlinkTimer();
+    switch (currentState) {
+      case LED_OFF: turnOffAllLEDs(); break;
+      case LED_ERROR: showError(); break;
+      case LED_READY: showReady(); break;
+      case LED_FEEDING: showFeeding(); break;
+      case LED_CONFIG_BLINK: break;  // handled in update
+      case LED_CONNECTING: break;    // handled in update
+    }
   }
-
   LedState getState() {
     return currentState;
   }
-
-  void update(unsigned long /*currentTime*/) {}
-
-  void update() {}
-
+  void update(unsigned long currentTime) {
+    if (overlayActive) {
+      if (currentState == LED_CONFIG_BLINK || currentState == LED_CONNECTING) { /* overlay preempts base blink briefly */
+      }
+      if (currentTime - overlayLastToggle >= overlayInterval) {
+        overlayLastToggle = currentTime;
+        overlayOn = !overlayOn;
+        if (overlayOn) {
+          turnOffAllLEDs();
+          if (overlayBlue) setBlueLED(true);
+          else setRedLED(true);
+        } else {
+          if (overlayBlue) setBlueLED(false);
+          else setRedLED(false);
+          overlayCompleted++;
+          if (overlayCompleted >= overlayCycles) {
+            overlayActive = false;
+            setState(overlayRestore);
+            return;
+          }
+        }
+      }
+      return;
+    }
+    if (currentState == LED_CONFIG_BLINK || currentState == LED_CONNECTING) {
+      unsigned long blinkInterval = (currentState == LED_CONFIG_BLINK) ? LED_BLINK_FAST : LED_BLINK_SLOW;
+      if (currentTime - lastBlinkTime >= blinkInterval) {
+        blinkState = !blinkState;
+        lastBlinkTime = currentTime;
+        if (currentState == LED_CONFIG_BLINK) {
+          turnOffAllLEDs();
+          setRedLED(blinkState);
+        } else if (currentState == LED_CONNECTING) {
+          turnOffAllLEDs();
+          setRedLED(blinkState);
+        }
+      }
+    }
+  }
+  void update() {
+    update(millis());
+  }
   void showError() {
     currentState = LED_ERROR;
+    turnOffAllLEDs();
+    setRedLED(true);
   }
-
   void showReady() {
     currentState = LED_READY;
+    turnOffAllLEDs();
+    setBlueLED(true);
   }
-
   void showFeeding() {
     currentState = LED_FEEDING;
+    turnOffAllLEDs();
+    setBlueLED(true);
   }
-
   void showConfigMode() {
-    currentState = LED_CONFIG_BLINK;
+    setState(LED_CONFIG_BLINK);
   }
-
   void showConnecting() {
-    currentState = LED_CONNECTING;
+    setState(LED_CONNECTING);
   }
-
   void turnOff() {
-    currentState = LED_OFF;
+    setState(LED_OFF);
   }
-
   bool isBlinking() {
-    return false;
+    return (currentState == LED_CONFIG_BLINK || currentState == LED_CONNECTING);
   }
-
-  void resetBlinkTimer() {}
-
-  void flashRed(unsigned long /*duration_ms*/) {}
-
-  void flashBlue(unsigned long /*duration_ms*/) {}
-
-  void startFeedbackBlinkBlue(int /*cycles*/, unsigned long /*interval_ms*/) {}
-
-  void startFeedbackBlinkRed(int /*cycles*/, unsigned long /*interval_ms*/) {}
+  void resetBlinkTimer() {
+    lastBlinkTime = millis();
+    blinkState = false;
+  }
+  void flashRed(unsigned long duration_ms) {
+    setRedLED(true);
+    delay(duration_ms);
+    setRedLED(false);
+  }
+  void flashBlue(unsigned long duration_ms) {
+    setBlueLED(true);
+    delay(duration_ms);
+    setBlueLED(false);
+  }
+  void startFeedbackBlinkBlue(int cycles, unsigned long interval_ms) {
+    overlayRestore = currentState;
+    overlayActive = true;
+    overlayBlue = true;
+    overlayInterval = interval_ms;
+    overlayCycles = cycles;
+    overlayCompleted = 0;
+    overlayOn = false;
+    overlayLastToggle = millis();
+  }
+  void startFeedbackBlinkRed(int cycles, unsigned long interval_ms) {
+    overlayRestore = currentState;
+    overlayActive = true;
+    overlayBlue = false;
+    overlayInterval = interval_ms;
+    overlayCycles = cycles;
+    overlayCompleted = 0;
+    overlayOn = false;
+    overlayLastToggle = millis();
+  }
 };
 
 
@@ -1510,6 +1598,7 @@ extern String lastFeedIso;
 // Inlined httpclient.h/.cpp
 class HTTPClientManager {
 private:
+  HTTPClient http;
   WiFiClient wifiClientPlain;
   WiFiClientSecure wifiClientTLS;
   String serverURL;
@@ -1524,51 +1613,27 @@ private:
     s.trim();
     return s;
   }
-
-  bool makeRequestInternal(const String& endpoint, const String& method, const String& payload,
-                           String* responseStr, DynamicJsonDocument* responseDoc) {
+  bool makeRequest(const String& endpoint, const String& method, const String& payload, String& response) {
     if (!WiFi.isConnected()) {
       lastError = "WiFi not connected";
       return false;
     }
-
-    char fullURL[256];
+    char fullURL[256]; // Max URL length, adjust as needed
     snprintf(fullURL, sizeof(fullURL), "%s%s", serverURL.c_str(), endpoint.c_str());
+    // Ensure null termination for safety, though snprintf should handle it if size is sufficient
     fullURL[sizeof(fullURL) - 1] = '\0';
-
-    Serial.print("HTTP request: ");
-    Serial.println(fullURL);
-
+      Serial.print("HTTP request: "); Serial.println(fullURL);
     for (int attempt = 0; attempt < maxRetries; attempt++) {
-      HTTPClient http;
-
-      Serial.print("Attempt ");
-      Serial.print(attempt + 1);
-      Serial.print("/");
-      Serial.println(maxRetries);
-
+      Serial.println("Attempt " + String(attempt + 1) + "/" + String(maxRetries));
       http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-
-      const bool useTLS = (strncmp(fullURL, "https://", 8) == 0);
-      bool began = false;
+      bool useTLS = strncmp(fullURL, "https://", 8) == 0;
       if (useTLS) {
-        began = http.begin(wifiClientTLS, fullURL);
+        http.begin(wifiClientTLS, fullURL);
       } else {
-        began = http.begin(wifiClientPlain, fullURL);
+        http.begin(wifiClientPlain, fullURL);
       }
-
-      if (responseStr) *responseStr = "";
-      if (responseDoc) responseDoc->clear();
-
-      if (!began) {
-        lastError = "HTTP begin failed";
-        http.end();
-        if (attempt < maxRetries - 1) {
-          delay(250UL);
-        }
-        continue;
-      }
-
+      // Clear response string before reuse to free memory
+      response = "";
       http.setTimeout(requestTimeout);
       http.addHeader("Content-Type", "application/json");
       http.addHeader("User-Agent", "ESP8266-PetFeeder/1.0");
@@ -1578,101 +1643,68 @@ private:
       if (deviceID.length() > 0) { http.addHeader("Device-ID", deviceID); }
       if (deviceKey.length() > 0) { http.addHeader("X-Device-Key", deviceKey); }
       if (apiKey.length() > 0) { http.addHeader("X-API-Key", apiKey); }
-
       int httpCode = -1;
-      if (method == "POST") {
-        httpCode = http.POST(payload);
-      } else if (method == "GET") {
-        httpCode = http.GET();
-      }
-
+      if (method == "POST") httpCode = http.POST(payload);
+      else if (method == "GET") httpCode = http.GET();
       if (httpCode > 0) {
-        const bool success = (httpCode >= 200 && httpCode < 300);
-
-        if (success) {
-          // GET: stream-parse JSON to reduce String allocations.
-          if (method == "GET" && responseDoc) {
-            DeserializationError err = deserializeJson(*responseDoc, http.getStream());
-            http.end();
-            if (err) {
-              lastError = "JSON parse error: " + String(err.c_str());
-              return false;
-            }
-            lastError = "";
-            return true;
-          }
-
-          // Successful POSTs: skip reading body to reduce memory pressure.
-          if (responseStr) {
-            if (method == "GET") {
-              *responseStr = http.getString();
-            } else {
-              *responseStr = "";
-            }
-          }
-
-          http.end();
+        // Use a char buffer for response to avoid String fragmentation
+        // If response is expected to be large, this needs more sophisticated handling
+        // For now, keep getString() but ensure 'response' is cleared before use.
+        response = http.getString();
+        if (httpCode >= 200 && httpCode < 300) {
           lastError = "";
           return true;
+        } else {
+          lastError = "HTTP " + String(httpCode) + ": " + response;
         }
-
-        String errResp = http.getString();
-        lastError = "HTTP " + String(httpCode) + ": " + errResp;
-        http.end();
       } else {
         lastError = "HTTP request failed: " + String(http.errorToString(httpCode));
-        http.end();
       }
-
+      http.end();
       if (attempt < maxRetries - 1) {
-        unsigned long backoff = 250UL * (1UL << (unsigned long)attempt);
-        delay(backoff);
+        Serial.println("Request failed, retrying shortly...");
+        delay(250);
       }
     }
-
     return false;
   }
-
-  bool makeRequest(const String& endpoint, const String& method, const String& payload, String& response) {
-    return makeRequestInternal(endpoint, method, payload, &response, nullptr);
-  }
-
+#if DEBUG_HTTP
   void printPretty(const String& json) {
     DynamicJsonDocument doc(768);
     DeserializationError err = deserializeJson(doc, json);
     if (!err) {
-      Serial.println("Payload:");
-      serializeJsonPretty(doc, Serial);
-      Serial.println();
+      String out;
+      serializeJsonPretty(doc, out);
+      Serial.println("Payload:\n" + out);
     } else {
-      Serial.print("Payload: ");
-      Serial.println(json);
+    Serial.println("Payload: " + json);
     }
   }
-  String createFeedingPayload(int portionSize, const String& feedType, const String& notes = "") {
+#else
+  void printPretty(const String& json) { (void)json; } // No-op in production
+#endif
+  void createFeedingPayload(String& payload, int portionSize, const String& feedType, const String& notes = "") {
     DynamicJsonDocument doc(512);
     doc["device_id"] = deviceID;
     doc["timestamp"] = nowUtcIso();
     doc["portion_dispensed"] = portionSize;
     doc["source"] = feedType;
     if (notes.length() > 0) doc["notes"] = notes;
-    String payload;
+    payload = ""; // Clear previous content
     serializeJson(doc, payload);
-    return payload;
   }
-  String createScheduledFeedingPayload(int portionSize, const String& feedType, uint32_t /*scheduleId*/, const String& /*notes*/ = "") {
+  void createScheduledFeedingPayload(String& payload, int portionSize, const String& feedType, uint32_t /*scheduleId*/, const String& /*notes*/ = "") {
     DynamicJsonDocument doc(256);
     doc["device_id"] = deviceID;
     doc["timestamp"] = nowUtcIso();
     doc["portion_dispensed"] = portionSize;
     doc["source"] = "scheduled";
-    String payload;
+    payload = ""; // Clear previous content
     serializeJson(doc, payload);
-    return payload;
   }
 public:
   HTTPClientManager()
-    : requestTimeout(HTTP_TIMEOUT_MS), maxRetries(HTTP_MAX_RETRIES), lastError("") {}
+    : requestTimeout(HTTP_TIMEOUT_MS), maxRetries(HTTP_MAX_RETRIES), lastError(""), serverURL(""), deviceID(""), apiKey(""), deviceKey("") {}
   void init(const String& serverUrl, const String& devID) {
     serverURL = canonicalize(serverUrl);
     deviceID = devID;
@@ -1681,7 +1713,6 @@ public:
       serverURL += "api";
     }
     wifiClientTLS.setInsecure();
-    wifiClientTLS.setBufferSizes(1024, 512);
     Serial.println("HTTP Client initialized:");
     Serial.println("Server URL: " + serverURL);
     Serial.println("Device ID: " + deviceID);
@@ -1706,7 +1737,8 @@ public:
     return makeRequest("/device/unpair/", "POST", payload, resp);
   }
   bool sendFeedingLog(int portionSize, const String& feedType, const String& notes = "") {
-    String payload = createFeedingPayload(portionSize, feedType, notes);
+    String payload;
+    createFeedingPayload(payload, portionSize, feedType, notes);
     String response;
     Serial.println("Sending feeding log to server...");
     printPretty(payload);
@@ -1737,24 +1769,25 @@ public:
     Serial.println("Failed to send device status: " + lastError);
     return false;
   }
-  bool getDeviceConfig(DynamicJsonDocument& doc) {
+  bool getDeviceConfig(String& configResponse) {
     String endpoint = String("/device/config/?device_id=") + deviceID;
     Serial.println("Requesting device configuration...");
-    bool success = makeRequestInternal(endpoint, "GET", "", nullptr, &doc);
+    bool success = makeRequest(endpoint, "GET", "", configResponse);
     if (success) {
       Serial.println("Device configuration retrieved successfully");
       return true;
+    } else {
+      Serial.println("Failed to get device configuration: " + lastError);
+      return false;
     }
-    Serial.println("Failed to get device configuration: " + lastError);
-    return false;
   }
-
-  bool getNextSchedule(DynamicJsonDocument& doc) {
+  bool getNextSchedule(String& scheduleResponse) {
     String endpoint = String("/check-schedule/?device_id=") + deviceID;
-    return makeRequestInternal(endpoint, "GET", "", nullptr, &doc);
+    return makeRequest(endpoint, "GET", "", scheduleResponse);
   }
   bool sendFeedingLogWithSchedule(int portionSize, const String& feedType, uint32_t scheduleId, const String& notes = "") {
-    String payload = createScheduledFeedingPayload(portionSize, feedType, scheduleId, notes);
+    String payload;
+    createScheduledFeedingPayload(payload, portionSize, feedType, scheduleId, notes);
     String response;
     return makeRequest("/device/logs/", "POST", payload, response);
   }
@@ -1765,24 +1798,24 @@ public:
     maxRetries = retries;
   }
   bool isServerReachable() {
-    DynamicJsonDocument doc(256);
-    return makeRequestInternal(String("/device/config/?device_id=") + deviceID, "GET", "", nullptr, &doc);
+    String response;
+    return makeRequest(String("/device/config/?device_id=") + deviceID, "GET", "", response);
   }
   String getLastError() {
     return lastError;
   }
-  bool getFeedCommand(DynamicJsonDocument& doc) {
+  bool getFeedCommand(String& cmdResponse) {
     String endpoint = String("/device/command/?device_id=") + deviceID;
-    if (makeRequestInternal(endpoint, "GET", "", nullptr, &doc)) return true;
+    if (makeRequest(endpoint, "GET", "", cmdResponse)) return true;
     endpoint = String("/device/feed-command/?device_id=") + deviceID;
-    return makeRequestInternal(endpoint, "GET", "", nullptr, &doc);
+    return makeRequest(endpoint, "GET", "", cmdResponse);
   }
   bool sendAcknowledge(uint32_t commandId, const String& result = "ok") {
     DynamicJsonDocument doc(256);
     doc["command_id"] = commandId;
     doc["device_id"] = deviceID;
     doc["result"] = result;
-    String payload;
+    String payload = ""; // Initialize payload
     serializeJson(doc, payload);
     String response;
     if (makeRequest("/device/command/ack/", "POST", payload, response)) return true;
@@ -2067,8 +2100,8 @@ void setup() {
       g_pairRegistered = false;
       Serial.println("Pairing mode active");
     }
-    DynamicJsonDocument cfgDoc(1024);
-    bool cfgOk = httpClient.getDeviceConfig(cfgDoc);
+    String cfg;
+    bool cfgOk = httpClient.getDeviceConfig(cfg);
     if (cfgOk) {
       Serial.println("Startup HTTP check OK");
     } else {
@@ -2423,11 +2456,11 @@ void pollAndExecuteSchedules() {
     }
     Serial.println("Polling for scheduled feedings...");
 
-    DynamicJsonDocument scheduleDoc(2048);
-    bool success = httpClient.getNextSchedule(scheduleDoc);
+    String scheduleResponse;
+    bool success = httpClient.getNextSchedule(scheduleResponse);
 
     if (success) {
-      processScheduleResponse(scheduleDoc);
+      processScheduleResponse(scheduleResponse);
       networkBackoffMs = MIN_NETWORK_BACKOFF_MS;
       networkBackoffUntil = 0;
     } else {
@@ -2444,10 +2477,15 @@ void pollAndExecuteSchedules() {
 /**
  * Process schedule response and execute feeding if due
  */
-void processScheduleResponse(DynamicJsonDocument& doc) {
-  Serial.print("Schedule JSON: ");
-  serializeJson(doc, Serial);
-  Serial.println();
+void processScheduleResponse(const String& response) {
+  DynamicJsonDocument doc(1024);
+  DeserializationError error = deserializeJson(doc, response);
+
+  if (error) {
+    Serial.println("Failed to parse schedule response: " + String(error.c_str()));
+    return;
+  }
+  Serial.println("Raw schedule response: " + response);
 
   if (!doc["schedule"].isNull()) {
     JsonObject schedule = doc["schedule"];
@@ -3591,13 +3629,12 @@ void sendDeviceStatus() {
  * Retrieves feeding schedules and device settings
  */
 void syncDeviceConfiguration() {
-  DynamicJsonDocument configDoc(2048);
-  bool success = httpClient.getDeviceConfig(configDoc);
+  String configResponse;
+  bool success = httpClient.getDeviceConfig(configResponse);
 
   if (success) {
     Serial.println("Configuration synced with server");
-    serializeJsonPretty(configDoc, Serial);
-    Serial.println();
+    Serial.println("Config: " + configResponse);
 
     // TODO: Parse configuration and update device settings
     // This would include feeding schedules, portion sizes, etc.
@@ -3623,19 +3660,23 @@ void pollAndExecuteRemoteCommands() {
       lastCommandPoll = currentTime;
       return;
     }
-    DynamicJsonDocument doc(1024);
-    bool ok = httpClient.getFeedCommand(doc);
+    String cmdResponse;
+    bool ok = httpClient.getFeedCommand(cmdResponse);
     if (ok) {
-      bool has = doc["has_command"] | false;
-      if (has) {
-        String cmd = doc["command"] | "";
-        uint32_t cmdId = doc["command_id"] | 0;
-        float portion = doc["portion_size"] | 0.0;
-        if (cmd == "feed" || cmd == "feed_now") {
-          executeRemoteFeeding(cmdId, portion);
-        } else if (cmd == "stop_feeding") {
-          motorController.emergencyStop();
-          httpClient.sendAcknowledge(cmdId, "ok");
+      DynamicJsonDocument doc(512);
+      DeserializationError err = deserializeJson(doc, cmdResponse);
+      if (!err) {
+        bool has = doc["has_command"];
+        if (has) {
+          String cmd = doc["command"] | "";
+          uint32_t cmdId = doc["command_id"] | 0;
+          float portion = doc["portion_size"] | 0.0;
+          if (cmd == "feed" || cmd == "feed_now") {
+            executeRemoteFeeding(cmdId, portion);
+          } else if (cmd == "stop_feeding") {
+            motorController.emergencyStop();
+            httpClient.sendAcknowledge(cmdId, "ok");
+          }
         }
       }
       networkBackoffMs = MIN_NETWORK_BACKOFF_MS;
