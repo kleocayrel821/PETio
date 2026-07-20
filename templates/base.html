@@ -176,7 +176,7 @@
     <div class="nav-left">
       {% if request.resolver_match %}
         {% with view_name=request.resolver_match.url_name %}
-          {% if view_name != 'login' and view_name != 'signup' %}
+          {% if view_name != 'login' and view_name != 'signup' and view_name != 'logout' %}
             <button id="globalMenuToggle" class="icon-btn hamburger-btn" aria-label="Open menu" aria-controls="globalAppMenu" aria-expanded="false">
               <span class="hamburger-icon" aria-hidden="true"><span></span><span></span><span></span></span>
               <span class="sr-only">Menu</span>
@@ -264,7 +264,7 @@
 
   {% if request.resolver_match %}
     {% with view_name=request.resolver_match.url_name %}
-      {% if view_name != 'login' and view_name != 'signup' %}
+      {% if view_name != 'login' and view_name != 'signup' and view_name != 'logout' %}
         <div id="globalAppMenu" class="global-app-menu" role="menu" aria-labelledby="globalMenuToggle">
           <div class="global-app-menu__header">
             <img src="{% static 'images/PETiologo.png' %}" alt="PETio" />
@@ -272,7 +272,7 @@
           <div class="global-app-menu__list">
             {% if request.resolver_match %}
               {% with view_name=request.resolver_match.url_name %}
-                {% if view_name != 'login' and view_name != 'signup' %}
+                {% if view_name != 'login' and view_name != 'signup' and view_name != 'logout' %}
                   <a href="{% url 'home' %}" class="app-dropdown__item {% if request.path|slice:':19' != '/admin/marketplace/' and request.path|slice:':19' != '/social/moderation/' and current_app != 'social' and current_app != 'marketplace' %}active{% endif %}" role="menuitem">
                     <span class="app-dropdown__icon"><i data-feather="sliders"></i></span>
                     <div class="app-dropdown__meta">
